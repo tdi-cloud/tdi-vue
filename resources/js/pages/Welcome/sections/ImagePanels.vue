@@ -31,7 +31,7 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 
 const panels = [
   {
-    img:   'storage/hero/cpsc.jpg',
+    img:   'storage/hero/cpsc.JPG',
     title: 'Classroom Training',
     desc:  'Face-to-face learning sessions led by expert facilitators.',
     icon:  '🎒',

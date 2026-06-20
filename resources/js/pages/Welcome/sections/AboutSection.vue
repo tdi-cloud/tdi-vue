@@ -6,7 +6,7 @@
       <div class="about__media">
         <div class="about__img-wrap">
           <img
-            src="/storage/hero/cpsc2.jpg"
+            src="/storage/hero/cpsc2.JPG"
             alt="TDI Training Session"
             class="about__img"
           />
