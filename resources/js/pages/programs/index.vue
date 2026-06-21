@@ -397,6 +397,13 @@ const monthLabel = (ym: string) => {
                                         <SelectItem class="text-xs" value="Benchmarking">Benchmarking</SelectItem>
                                         <SelectItem class="text-xs" value="Capability Building">Capability Building</SelectItem>
                                         <SelectItem class="text-xs" value="Executive-Office">Executive-Office</SelectItem>
+                                        <SelectItem class="text-xs" value="Foreign-Bilateral">Foreign-Bilateral</SelectItem>
+                                        <SelectItem class="text-xs" value="Foreign-FSTP">Foreign-FSTP</SelectItem>
+                                        <SelectItem class="text-xs" value="Local-In-House">Local-In-House</SelectItem>
+                                        <SelectItem class="text-xs" value="Local-Public">Local-Public</SelectItem>
+                                        <SelectItem class="text-xs" value="Other-Foreign">Other Foreign Program</SelectItem>
+                                        <SelectItem class="text-xs" value="Regional">Regional</SelectItem>
+                                        <SelectItem class="text-xs" value="Team-Building">Team-Building</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <p class="text-xs text-red-500">{{ form.errors.category }}</p>
@@ -444,8 +451,6 @@ const monthLabel = (ym: string) => {
                                     class="text-xs h-8"
                                     v-model="form.provider"
                                     placeholder="Training provider"
-                                    :readonly="['TDI', 'NTTA'].includes(form.initiated)"
-                                    :class="{ 'bg-muted text-muted-foreground': ['TDI', 'NTTA'].includes(form.initiated) }"
                                 />
                                 <p class="text-xs text-red-500">{{ form.errors.provider }}</p>
                             </div>
