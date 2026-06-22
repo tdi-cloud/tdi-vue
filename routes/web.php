@@ -70,10 +70,14 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function(){
         ->name('dashboard.training-compliance');
     Route::get('/dashboard/training-compliance/list', [DashboardController::class, 'trainingComplianceList'])
         ->name('dashboard.training-compliance.list');
-        Route::get('/dashboard/supervisory-compliance',      [DashboardController::class, 'supervisoryCompliance'])
-     ->name('dashboard.supervisory-compliance');
+    Route::get('/dashboard/supervisory-compliance', [DashboardController::class, 'supervisoryCompliance'])
+        ->name('dashboard.supervisory-compliance');
     Route::get('/dashboard/supervisory-compliance-list', [DashboardController::class, 'supervisoryComplianceList'])
         ->name('dashboard.supervisory-compliance.list');
+
+    // NEW: Lookup endpoints for filter dropdowns
+    Route::get('/dashboard/offices',     [DashboardController::class, 'offices'])->name('dashboard.offices');
+    Route::get('/dashboard/batch-years', [DashboardController::class, 'batchYears'])->name('dashboard.batch-years');
 
     // CALENDAR 
     Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');

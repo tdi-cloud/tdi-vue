@@ -16,6 +16,8 @@ const props = defineProps<{
     target: 'Nationwide' | 'OPCR';
     region: string;
     selectedStatuses: string[];
+    year: string;    
+    office: string; 
 }>();
 
 // SG selector — local lang ito, para sa supervisory card lang
@@ -69,6 +71,8 @@ const fetchStats = async () => {
                 office_filter: props.target,
                 plant_status:  props.selectedStatuses,
                 sg_min:        sgMin.value,
+                year:          props.year,   
+                office:        props.office,  
             },
         });
         stats.value = data;
@@ -87,7 +91,7 @@ const fetchStats = async () => {
 
 onMounted(fetchStats);
 // Re-fetch kapag nagbago ang shared props O ang local sgMin
-watch(() => [props.target, props.region, props.selectedStatuses, sgMin.value], fetchStats, { deep: true });
+watch(() => [props.target, props.region, props.selectedStatuses, sgMin.value, props.year, props.office], fetchStats, { deep: true });
 
 /* ===================== EMPLOYEE LIST MODAL ===================== */
 
@@ -124,6 +128,8 @@ const openList = async (type: 'completed' | 'in_progress') => {
                 office_filter: props.target,
                 plant_status:  props.selectedStatuses,
                 sg_min:        sgMin.value,
+                year:          props.year,    
+                office:        props.office,  
             },
         });
         employees.value = data.employees;

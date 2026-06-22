@@ -2,7 +2,7 @@
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import PlaceholderPattern from '../components/PlaceholderPattern.vue';
 import TrainingComplianceCard from '../components/TrainingComplianceCard.vue';
 import SupervisoryComplianceCard from '../components/SupervisoryComplianceCard.vue';
@@ -28,6 +28,12 @@ const target           = ref<'Nationwide' | 'OPCR'>('Nationwide');
 const region           = ref('ALL');
 const selectedStatuses = ref<string[]>(STATUS_OPTIONS.filter((s) => s !== 'JOB ORDER'));
 
+// NEW
+const year             = ref('ALL');
+const office           = ref('ALL');
+const yearOptions      = ref<string[]>([]);
+const officeOptions    = ref<string[]>([]);
+
 const toggleStatus = (status: string) => {
     if (selectedStatuses.value.includes(status)) {
         selectedStatuses.value = selectedStatuses.value.filter((s) => s !== status);
@@ -35,6 +41,21 @@ const toggleStatus = (status: string) => {
         selectedStatuses.value = [...selectedStatuses.value, status];
     }
 };
+
+const fetchOffices = async () => {
+    const res = await fetch(`/dashboard/offices?region=${region.value}`);
+    officeOptions.value = await res.json();
+    office.value = 'ALL';
+};
+
+
+onMounted(async () => {
+    const yearsRes = await fetch('/dashboard/batch-years');
+    yearOptions.value = await yearsRes.json();
+    await fetchOffices(); 
+});
+
+watch(region, fetchOffices);
 </script>
 
 <template>
@@ -69,6 +90,42 @@ const toggleStatus = (status: string) => {
                     </SelectContent>
                 </Select>
 
+                <!-- NEW: Year filter -->
+                <Select v-model="year">
+                    <SelectTrigger class="h-9 w-32 text-xs font-semibold">
+                        <SelectValue placeholder="All Years" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem class="text-xs" value="ALL">All Years</SelectItem>
+                        <SelectItem
+                            v-for="y in yearOptions"
+                            :key="y"
+                            class="text-xs"
+                            :value="y"
+                        >
+                            {{ y }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+
+                <!-- NEW: Office filter -->
+                <Select v-model="office">
+                    <SelectTrigger class="h-9 w-48 text-xs font-semibold">
+                        <SelectValue placeholder="All Offices" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem class="text-xs" value="ALL">All Offices</SelectItem>
+                        <SelectItem
+                            v-for="o in officeOptions"
+                            :key="o"
+                            class="text-xs"
+                            :value="o"
+                        >
+                            {{ o }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+
                 <!-- Divider -->
                 <div class="h-5 w-px bg-border"></div>
 
@@ -97,11 +154,15 @@ const toggleStatus = (status: string) => {
                     :target="target"
                     :region="region"
                     :selected-statuses="selectedStatuses"
+                    :year="year"
+                    :office="office"
                 />
                 <SupervisoryComplianceCard
                     :target="target"
                     :region="region"
                     :selected-statuses="selectedStatuses"
+                    :year="year"
+                    :office="office"
                 />
             </div>
 

@@ -15,6 +15,8 @@ const props = defineProps<{
     target: 'Nationwide' | 'OPCR';
     region: string;
     selectedStatuses: string[];
+    year: string       
+    office: string 
 }>();
 
 /* ===================== STATS DATA ===================== */
@@ -65,6 +67,8 @@ const fetchStats = async () => {
                 region:        props.region,
                 office_filter: props.target,
                 plant_status:  props.selectedStatuses,
+                year:          props.year,    
+                office:        props.office,  
             },
         });
         stats.value = data;
@@ -82,7 +86,7 @@ const fetchStats = async () => {
 };
 
 onMounted(fetchStats);
-watch(() => [props.target, props.region, props.selectedStatuses], fetchStats, { deep: true });
+watch(() => [props.target, props.region, props.selectedStatuses, props.year, props.office], fetchStats, { deep: true });
 
 /* ===================== EMPLOYEE LIST MODAL ===================== */
 
@@ -116,6 +120,8 @@ const openList = async (type: 'trained' | 'not_trained') => {
                 region:        props.region,
                 office_filter: props.target,
                 plant_status:  props.selectedStatuses,
+                year:          props.year,    
+                office:        props.office,  
             },
         });
         employees.value = data.employees;
