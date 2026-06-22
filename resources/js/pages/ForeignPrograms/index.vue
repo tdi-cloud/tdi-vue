@@ -10,6 +10,7 @@ import {
 } from 'lucide-vue-next';
 import { ref, computed, watch } from 'vue';
 import ForeignProgramsDashboardModal from '@/components/ForeignProgramsDashboardModal.vue';
+import OrganizingSponsorModal from '@/components/OrganizingSponsorModal.vue';
 
 const showDashboard = ref(false);
 
@@ -291,11 +292,47 @@ const formatDate = (date?: string) => {
         month: 'short', day: 'numeric', year: 'numeric',
     });
 };
+
+
+// Organizing Sponsors
+const showSponsorModal    = ref(false);
+const sponsors            = ref<string[]>([]);
+const sponsorsForEditModal = ref(false); // true = para sa edit form, false = para sa add form
+
+const fetchSponsors = async () => {
+    const res = await fetch(route('organizing-sponsors.index'), {
+        headers: { Accept: 'application/json' },
+    });
+    const data = await res.json();
+    sponsors.value = data.map((s: { id: number; name: string }) => s.name);
+};
+
+const openSponsorModal = (forEdit = false) => {
+    sponsorsForEditModal.value = forEdit;
+    showSponsorModal.value = true;
+};
+
+const onSponsorSelected = (name: string) => {
+    if (sponsorsForEditModal.value) {
+        editForm.organizing_sponsor = name;
+    } else {
+        form.organizing_sponsor = name;
+    }
+};
+
+// Initial load
+fetchSponsors();
 </script>
 
 <template>
     <Head title="Foreign Programs" />
     <ForeignProgramsDashboardModal v-if="showDashboard" @close="showDashboard = false" />
+    <OrganizingSponsorModal
+        v-if="showSponsorModal"
+        @close="showSponsorModal = false"
+        @select="onSponsorSelected"
+        @updated="fetchSponsors"
+    />
 
     <AppLayout>
         <div class="flex h-full flex-1 flex-col gap-4 p-4">
@@ -737,7 +774,22 @@ const formatDate = (date?: string) => {
                                 <label class="text-xs font-semibold flex items-center gap-1.5">
                                     <Building2 class="h-3.5 w-3.5 text-muted-foreground" /> Organizing Sponsor <span class="text-red-500">*</span>
                                 </label>
-                                <input v-model="editForm.organizing_sponsor" type="text" class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                                <div class="flex gap-2">
+                                    <select
+                                        v-model="editForm.organizing_sponsor"
+                                        class="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                    >
+                                        <option value="">— Select sponsor —</option>
+                                        <option v-for="s in sponsors" :key="s" :value="s">{{ s }}</option>
+                                    </select>
+                                    <button
+                                        type="button"
+                                        class="px-3 py-2 rounded-lg border text-xs font-semibold text-amber-600 hover:bg-amber-50 transition-colors whitespace-nowrap"
+                                        @click="openSponsorModal(true)"
+                                    >
+                                        + Manage
+                                    </button>
+                                </div>
                             </div>
                             <div class="flex flex-col gap-1">
                                 <label class="text-xs font-semibold flex items-center gap-1.5">
@@ -960,7 +1012,22 @@ const formatDate = (date?: string) => {
                                 <label class="text-xs font-semibold flex items-center gap-1.5">
                                     <Building2 class="h-3.5 w-3.5 text-muted-foreground" /> Organizing Sponsor <span class="text-red-500">*</span>
                                 </label>
-                                <input v-model="form.organizing_sponsor" type="text" placeholder="e.g. JICA, World Bank" class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                <div class="flex gap-2">
+                                    <select
+                                        v-model="form.organizing_sponsor"
+                                        class="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="">— Select sponsor —</option>
+                                        <option v-for="s in sponsors" :key="s" :value="s">{{ s }}</option>
+                                    </select>
+                                    <button
+                                        type="button"
+                                        class="px-3 py-2 rounded-lg border text-xs font-semibold text-blue-600 hover:bg-blue-50 transition-colors whitespace-nowrap"
+                                        @click="openSponsorModal(false)"
+                                    >
+                                        + Manage
+                                    </button>
+                                </div>
                             </div>
                             <div class="flex flex-col gap-1">
                                 <label class="text-xs font-semibold flex items-center gap-1.5">

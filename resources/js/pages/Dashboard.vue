@@ -90,7 +90,23 @@ watch(region, fetchOffices);
                     </SelectContent>
                 </Select>
 
-                <!-- NEW: Year filter -->
+                <Select v-model="office">
+                    <SelectTrigger class="h-9 w-48 text-xs font-semibold">
+                        <SelectValue placeholder="All Offices" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem class="text-xs" value="ALL">All Offices</SelectItem>
+                        <SelectItem
+                            v-for="o in officeOptions"
+                            :key="o"
+                            class="text-xs"
+                            :value="o"
+                        >
+                            {{ o }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+
                 <Select v-model="year">
                     <SelectTrigger class="h-9 w-32 text-xs font-semibold">
                         <SelectValue placeholder="All Years" />
@@ -108,23 +124,7 @@ watch(region, fetchOffices);
                     </SelectContent>
                 </Select>
 
-                <!-- NEW: Office filter -->
-                <Select v-model="office">
-                    <SelectTrigger class="h-9 w-48 text-xs font-semibold">
-                        <SelectValue placeholder="All Offices" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem class="text-xs" value="ALL">All Offices</SelectItem>
-                        <SelectItem
-                            v-for="o in officeOptions"
-                            :key="o"
-                            class="text-xs"
-                            :value="o"
-                        >
-                            {{ o }}
-                        </SelectItem>
-                    </SelectContent>
-                </Select>
+                
 
                 <!-- Divider -->
                 <div class="h-5 w-px bg-border"></div>

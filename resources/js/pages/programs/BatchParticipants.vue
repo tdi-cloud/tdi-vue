@@ -22,6 +22,8 @@ import {
     Save,
     Upload,
     ClipboardPaste,
+    ArrowUp,
+    ArrowDown,
 } from 'lucide-vue-next';
 import { ref, watch, computed } from 'vue';
 import BulkAddParticipants from '@/pages/programs/BulkAddParticipants.vue';
@@ -49,7 +51,12 @@ let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 const selected = ref<EmployeeOption[]>([]);
 const processing = ref(false);
 
-const participants = computed(() => props.batch?.participants ?? []);
+const participants = computed(() =>
+    [...(props.batch?.participants ?? [])].sort((a, b) => {
+        if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
+        return a.id - b.id; // tiebreaker
+    })
+);
 const requirements = computed(() => props.batch?.requirements ?? []);
 
 const listQuery = ref('');
@@ -384,6 +391,20 @@ const removeParticipant = (participant: any) => {
     });
 };
 
+const reordering = ref<number | null>(null);
+
+const reorder = (participant: any, direction: 'up' | 'down') => {
+    reordering.value = participant.id;
+    router.post(
+        route('participants.reorder', participant.id),
+        { direction },
+        {
+            preserveScroll: true,
+            onFinish: () => { reordering.value = null; },
+        }
+    );
+};
+
 const showBulkAdd = ref(false);
 
 const clearingAll = ref(false);
@@ -653,6 +674,29 @@ const applyToAll = () => {
                                 </div>
 
                                 <div class="flex items-center gap-3 shrink-0">
+                                    
+                                    <div class="flex gap-0.5">
+                                        <button
+                                            type="button"
+                                            :disabled="reordering === p.id || rowNumber(i) === 1"
+                                            class="rounded p-0.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                                            title="Move up"
+                                            @click="reorder(p, 'up')"
+                                        >
+                                            <ArrowUp class="h-3 w-3" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            :disabled="reordering === p.id || rowNumber(i) === filteredParticipants.length"
+                                            class="rounded p-0.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                                            title="Move down"
+                                            @click="reorder(p, 'down')"
+                                        >
+                                            <ArrowDown class="h-3 w-3" />
+                                        </button>
+                                    </div>
+
+
                                     <div class="flex flex-col items-center gap-0.5">
                                         <span class="text-[9px] font-bold uppercase tracking-wide text-slate-400">Submissions</span>
                                         <button

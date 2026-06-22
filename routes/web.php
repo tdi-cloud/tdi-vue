@@ -17,6 +17,7 @@ use App\Http\Controllers\EmployeeProgressController;
 use App\Http\Controllers\EnrolledProgramController;
 use App\Http\Controllers\DeclarationController;
 use App\Http\Controllers\TPMRController;
+use App\Http\Controllers\OrganizingSponsorController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -63,6 +64,8 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function(){
     Route::post('/participants/bulk-store', [ParticipantController::class, 'bulkStore'])
     ->name('participants.bulk-store');
     Route::post('/participants/{participant}/apply-to-all', [ParticipantController::class, 'applyToAll'])->name('participants.applyToAll');
+    Route::post('/participants/{participant}/reorder', [ParticipantController::class, 'reorder'])
+    ->name('participants.reorder');
 
 
     // DASHBOARD 
@@ -161,6 +164,11 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function(){
     Route::get('/batches/{batch}/declaration', [DeclarationController::class, 'generate'])
         ->name('batches.declaration');
 
+
+    // ORGANIZING SPONSORS
+    Route::get('/organizing-sponsors',        [OrganizingSponsorController::class, 'index'])->name('organizing-sponsors.index');
+    Route::post('/organizing-sponsors',       [OrganizingSponsorController::class, 'store'])->name('organizing-sponsors.store');
+    Route::delete('/organizing-sponsors/{organizingSponsor}', [OrganizingSponsorController::class, 'destroy'])->name('organizing-sponsors.destroy');
 
 
 });

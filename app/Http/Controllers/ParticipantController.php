@@ -319,4 +319,41 @@ class ParticipantController extends Controller
             'failed'  => $failedCount,
         ]);
     }
+
+    public function reorder(Request $request, Participant $participant)
+    {
+        $request->validate([
+            'direction' => 'required|in:up,down',
+        ]);
+
+        // Kunin ang lahat ng participants ng batch, sorted by sort_order
+        $siblings = Participant::where('batch_id', $participant->batch_id)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        $index = $siblings->search(fn($p) => $p->id === $participant->id);
+
+        if ($request->direction === 'up' && $index > 0) {
+            $swap = $siblings[$index - 1];
+        } elseif ($request->direction === 'down' && $index < $siblings->count() - 1) {
+            $swap = $siblings[$index + 1];
+        } else {
+            return back(); // nasa dulo/simula na, walang gagawin
+        }
+
+        // I-swap ang sort_order
+        [$participant->sort_order, $swap->sort_order] = [$swap->sort_order, $participant->sort_order];
+
+        // Edge case: kung magkapareho ang sort_order, i-normalize
+        if ($participant->sort_order === $swap->sort_order) {
+            $participant->sort_order = $index;
+            $swap->sort_order = $request->direction === 'up' ? $index + 1 : $index - 1;
+        }
+
+        $participant->save();
+        $swap->save();
+
+        return back()->with('success', 'Order updated.');
+    }
 }
