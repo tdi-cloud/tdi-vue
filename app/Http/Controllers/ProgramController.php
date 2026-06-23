@@ -111,6 +111,7 @@ class ProgramController extends Controller
                               'employee',
                               'justification',
                               'submissions.requirement',
+                              'certificates'
                           ]);
                       },
                   ]);

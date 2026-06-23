@@ -38,7 +38,7 @@
         }
         .body {
             padding: 32px;
-            line-height: 1.8;
+            line-height: 1.5;
         }
         .body a {
             color: #1d4ed8;
@@ -51,7 +51,7 @@
         .signature {
             color: #6b7280;
             font-size: 13px;
-            line-height: 1.7;
+            line-height: 1.2;
             white-space: pre-line;
         }
         .footer {

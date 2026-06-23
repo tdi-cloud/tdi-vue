@@ -24,7 +24,8 @@ import {
     Coins,
     HandCoins,
     Flag,
-    Megaphone 
+    Megaphone ,
+    Award
 } from 'lucide-vue-next';
 import { Link } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
@@ -35,6 +36,7 @@ import SubmissionList from '@/pages/programs/SubmissionList.vue';
 import SupportingDocuments from '@/pages/programs/SupportingDocuments.vue';
 import ResourceSpeakers from '@/pages/programs/ResourceSpeakers.vue';
 import CoverPagePanel from '@/pages/programs/CoverPagePanel.vue';
+import CertificatesPanel from '@/pages/programs/CertificatesPanel.vue';
 
 
 interface Requirement {
@@ -234,6 +236,15 @@ const removeCompetency = (competency: Competency) => {
                         </TabsTrigger>
 
                         <TabsTrigger
+                            value="certificates"
+                            class="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-1 text-sm font-medium"
+                        >
+                            <span class="flex items-center gap-1">
+                                <Award class="h-4 w-4" /> Certificates
+                            </span>
+                        </TabsTrigger>
+
+                        <TabsTrigger
                             value="requirements"
                             class="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-1 text-sm font-medium"
                         >
@@ -401,6 +412,11 @@ const removeCompetency = (competency: Competency) => {
                     <SubmissionList :program="program" :submissions="submissions" />
                 </TabsContent>
 
+                <!-- Certificates Tab -->
+                <TabsContent value="certificates" class="flex flex-col gap-4 px-6 py-4 mt-0">
+                    <CertificatesPanel :program="program" />
+                </TabsContent>
+                                
                 <!-- Requirements Tab -->
                 <TabsContent value="requirements" class="flex flex-col gap-4 px-6 py-4 mt-0">
                     <RequirementList :program="program" />

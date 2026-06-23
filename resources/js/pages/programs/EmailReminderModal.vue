@@ -94,21 +94,19 @@ const loadLink = (href: string, id: string) => {
 const initQuill = async () => {
     if (!quillContainer.value) return;
 
-    // Load CSS first
-    loadLink('https://cdn.jsdelivr.net/npm/quill@2/dist/quill.snow.css', 'quill-css');
-
-    // Load JS and wait for it to be ready
-    if (!(window as any).Quill) {
-        await loadScript('https://cdn.jsdelivr.net/npm/quill@2/dist/quill.js');
+    // Wait for Quill to be available (should already be loaded via onMounted)
+    let attempts = 0;
+    while (!(window as any).Quill && attempts < 20) {
+        await new Promise<void>((r) => setTimeout(r, 100));
+        attempts++;
     }
 
-    // Wait for CSS to paint so Quill measures correctly
-    await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+    if (!(window as any).Quill) return; // timeout
 
     const Quill = (window as any).Quill;
 
-    // Destroy existing instance if any
-    if (quill) { quill = null; quillContainer.value!.innerHTML = ''; }
+    // ── Body editor ──
+    if (quill) { quill = null; quillContainer.value.innerHTML = ''; }
 
     quill = new Quill(quillContainer.value, {
         theme: 'snow',
@@ -127,14 +125,13 @@ const initQuill = async () => {
         },
     });
 
-    // Wait one more frame then set content — ensures Quill is fully mounted
-    await new Promise<void>((r) => requestAnimationFrame(() => r()));
     quill.clipboard.dangerouslyPasteHTML(buildBody());
-    quill.setSelection(0, 0); // move cursor to top
+    quill.setSelection(0, 0);
 
-    // Init signature Quill (minimal toolbar)
+    // ── Signature editor ──
     if (sigContainer.value) {
         if (sigQuill) { sigQuill = null; sigContainer.value.innerHTML = ''; }
+
         sigQuill = new Quill(sigContainer.value, {
             theme: 'snow',
             placeholder: 'Your signature…',
@@ -146,10 +143,8 @@ const initQuill = async () => {
                 ],
             },
         });
-        await new Promise<void>((r) => requestAnimationFrame(() => r()));
-        sigQuill.clipboard.dangerouslyPasteHTML(
-            buildSig().replace(/\n/g, '<br>')
-        );
+
+        sigQuill.clipboard.dangerouslyPasteHTML(buildSig().replace(/\n/g, '<br>'));
         sigQuill.setSelection(0, 0);
     }
 };
@@ -159,12 +154,21 @@ const destroyQuill = () => {
     if (sigQuill) { sigQuill = null; if (sigContainer.value) sigContainer.value.innerHTML = ''; }
 };
 
+// Pre-load Quill as soon as the component mounts so it's ready instantly
+onMounted(async () => {
+    loadLink('https://cdn.jsdelivr.net/npm/quill@2/dist/quill.snow.css', 'quill-css');
+    if (!(window as any).Quill) {
+        await loadScript('https://cdn.jsdelivr.net/npm/quill@2/dist/quill.js');
+    }
+});
+
 watch(() => props.open, async (val) => {
     if (val) {
         quillReady.value  = false;
         toList.value      = props.participants.filter((p) => p.employee_email).map((p) => p.employee_email!);
         noEmailList.value = props.participants.filter((p) => !p.employee_email);
         subject.value     = buildSubject();
+        // Wait for DOM to be ready
         await nextTick();
         await initQuill();
         quillReady.value  = true;
@@ -378,12 +382,12 @@ onUnmounted(() => destroyQuill());
     min-height: 200px;
     padding: 12px 16px;
     direction: ltr;
-    line-height: 1.7;
+    line-height: 1.4;        
 }
-.quill-wrapper .ql-editor p { margin-bottom: 8px; }
+.quill-wrapper .ql-editor p { margin-bottom: 10px; }  /* ← space between paragraphs */
 .quill-wrapper .ql-editor ul,
 .quill-wrapper .ql-editor ol { padding-left: 1.5em; margin-bottom: 8px; }
-.quill-wrapper .ql-editor li { margin-bottom: 2px; }
+.quill-wrapper .ql-editor li { margin-bottom: 4px; }  /* ← space between list items */
 .quill-wrapper .ql-editor.ql-blank::before {
     color: hsl(var(--muted-foreground));
     font-style: normal;
@@ -392,7 +396,9 @@ onUnmounted(() => destroyQuill());
     min-height: 80px;
     font-size: 12px;
     padding: 10px 16px;
+    line-height: 1.3;       
 }
+.quill-sig .ql-editor p { margin-bottom: 4px; }  /* ← space between sig lines */
 .quill-sig .ql-toolbar {
     padding: 4px 6px;
 }

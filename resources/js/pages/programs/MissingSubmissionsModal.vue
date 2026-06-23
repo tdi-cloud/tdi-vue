@@ -158,7 +158,13 @@ interface EmailTarget {
 }
 
 const showEmail = ref(false);
-const emailTarget = ref<EmailTarget | null>(null);
+const emailTarget = ref<EmailTarget>({
+    batchName: '',
+    requirementTitle: '',
+    requirementName: '',
+    dueDate: null,
+    participants: [],
+});
 
 const openEmailReminder = (group: Group) => {
     emailTarget.value = {
@@ -387,7 +393,7 @@ const openEmailReminder = (group: Group) => {
 
     <!-- Email Reminder Compose Modal -->
     <EmailReminderModal
-        v-if="emailTarget"
+        v-show="showEmail"
         :open="showEmail"
         :program-title="program.title ?? ''"
         :batch-name="emailTarget.batchName"

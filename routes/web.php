@@ -19,6 +19,7 @@ use App\Http\Controllers\DeclarationController;
 use App\Http\Controllers\TPMRController;
 use App\Http\Controllers\OrganizingSponsorController;
 use App\Http\Controllers\EmailReminderController;
+use App\Http\Controllers\CertificateController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -176,6 +177,17 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function(){
     ->name('email-reminder.send');
 
 
+    // CERTIFICATES 
+    // ── ADMIN routes (inside auth + admin middleware group) ──
+    Route::post('/certificates', [CertificateController::class, 'store'])
+        ->name('certificates.store');
+ 
+    Route::delete('/certificates/{certificate}', [CertificateController::class, 'destroy'])
+        ->name('certificates.destroy');
+
+
+
+
 });
 
 
@@ -191,6 +203,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
  
     Route::delete('/my-programs/{batch}/requirements/{requirement}/submission', [EnrolledProgramController::class, 'destroySubmission'])
         ->name('programs.my-progress.destroy');
+
+    // CERTIFICATES 
+    Route::post('/my-programs/{batch}/certificates', [CertificateController::class, 'uploadByUser'])
+    ->name('certificates.upload-by-user');
+ 
+    Route::delete('/my-programs/{batch}/certificates/{certificate}', [CertificateController::class, 'destroyByUser'])
+    ->name('certificates.destroy-by-user');
 });
 
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Batch;
+use App\Models\Certificate;
 use App\Models\Participant;
 use App\Models\Requirement;
 use App\Models\Submission;
@@ -13,12 +14,6 @@ use Inertia\Inertia;
 
 class EnrolledProgramController extends Controller
 {
-    /**
-     * Tinatawag ito ng controller na nag-re-render ng Welcome/index, para
-     * mabuo ang data ng "My Enrolled Programs" section sa landing page.
-     * Naka-link ang participants sa users sa pamamagitan ng `empcode`
-     * (parehong column sa dalawang tables), hindi user_id.
-     */
     public static function forUser($user): array
     {
         if (empty($user->empcode)) {
@@ -34,9 +29,6 @@ class EnrolledProgramController extends Controller
             ->toArray();
     }
 
-    /**
-     * "View full program" page — pinipindot mula sa card sa landing page.
-     */
     public function show(Request $request, Batch $batch)
     {
         $user = $request->user();
@@ -53,15 +45,34 @@ class EnrolledProgramController extends Controller
             ->where('batch_id', $batch->id)
             ->firstOrFail();
 
+        // ── Load certificates for this participant in this batch ──
+        $certificates = Certificate::where('participant_id', $participant->id)
+            ->where('batch_id', $batch->id)
+            ->orderBy('created_at')
+            ->get()
+            ->map(fn ($c) => [
+                'id'                 => $c->id,
+                'type'               => $c->type,
+                'certificate_number' => $c->certificate_number,
+                'status'             => $c->status,
+                'issued_date'        => $c->issued_date?->toDateString(),
+                'hours'              => (float) $c->hours,
+                'file_url'           => $c->file_path ? '/storage/' . $c->file_path : null,
+                'file_name'          => $c->file_name,
+                'uploaded_by'        => $c->uploaded_by,
+                'issued_by'          => $c->issued_by,
+                'remarks'            => $c->remarks,
+            ])
+            ->values();
+
         return Inertia::render('MyPrograms/Show', [
-            'program' => self::transform($participant, withRequirements: true),
+            'program' => array_merge(
+                self::transform($participant, withRequirements: true),
+                ['certificates' => $certificates]
+            ),
         ]);
     }
 
-    /**
-     * Helper: hanapin ang participant record ng currently logged-in user
-     * sa isang batch, o i-abort kung wala.
-     */
     protected function ownParticipant(Request $request, Batch $batch): Participant
     {
         $user = $request->user();
@@ -72,18 +83,6 @@ class EnrolledProgramController extends Controller
             ->firstOrFail();
     }
 
-    /**
-     * Submit o i-update ang sariling submission ng participant para sa isang
-     * requirement: file (PDF) at/o notes. Hiwalay 'to sa SubmissionController
-     * (admin-only, ginagamit para sa pag-review) — dito, sariling submission
-     * lang ng currently logged-in participant ang puwedeng baguhin.
-     *
-     * - Kapag may bagong file na in-upload → bumabalik sa "Pending" ang status
-     *   (kahit Rejected dati), at nire-reset ang reviewed_at/reviewed_by.
-     * - Kapag notes lang ang binago (walang bagong file) → hindi nagbabago
-     *   ang status, file_path lang at notes ang naa-update.
-     * - Hindi na pwedeng baguhin kapag "Approved" na.
-     */
     public function submitRequirement(Request $request, Batch $batch, Requirement $requirement)
     {
         abort_unless($requirement->batch_id === $batch->id, 404);
@@ -105,7 +104,7 @@ class EnrolledProgramController extends Controller
             return back()->withErrors(['file' => 'Please attach a PDF file.'])->withInput();
         }
 
-        $path          = $submission->file_path ?? null;
+        $path            = $submission->file_path ?? null;
         $newFileUploaded = $request->hasFile('file');
 
         if ($newFileUploaded) {
@@ -134,13 +133,11 @@ class EnrolledProgramController extends Controller
             ]
         );
 
-        return back()->with('success', $newFileUploaded ? 'Requirement submitted successfully. Awaiting review.' : 'Notes updated.');
+        return back()->with('success', $newFileUploaded
+            ? 'Requirement submitted successfully. Awaiting review.'
+            : 'Notes updated.');
     }
 
-    /**
-     * I-delete ang sariling submission ng participant. Hindi pwede kapag
-     * Approved na (panatilihin ang audit trail para sa mga naaprubahan na).
-     */
     public function destroySubmission(Request $request, Batch $batch, Requirement $requirement)
     {
         $participant = $this->ownParticipant($request, $batch);
@@ -166,31 +163,24 @@ class EnrolledProgramController extends Controller
         $batch        = $participant->batch;
         $program      = $batch->program;
         $requirements = $batch->requirements;
-
-        $submissions = $participant->submissions->keyBy('requirement_id');
+        $submissions  = $participant->submissions->keyBy('requirement_id');
 
         $reqList = $requirements->map(function ($req) use ($submissions) {
             $sub = $submissions->get($req->id);
-
             return [
                 'id'           => $req->id,
                 'title'        => $req->title,
                 'name'         => $req->name,
                 'due_date'     => optional($req->due_date)->toDateString() ?? $req->due_date,
                 'is_required'  => (bool) $req->is_required,
-                'status'       => $sub->status ?? null, // Pending | Approved | Rejected | null
+                'status'       => $sub->status ?? null,
                 'submitted_at' => $sub->submitted_at ?? null,
-                'remarks'      => $sub->remarks ?? null,     // reviewer remarks (read-only)
-                'notes'        => $sub->notes ?? null,       // participant's own notes (editable)
+                'remarks'      => $sub->remarks ?? null,
+                'notes'        => $sub->notes ?? null,
                 'file_url'     => $sub && $sub->file_path ? '/storage/' . $sub->file_path : null,
                 'file_name'    => $sub && $sub->file_path ? basename($sub->file_path) : null,
             ];
         });
-
-        $missingCount  = $reqList->filter(fn ($r) => $r['is_required'] && is_null($r['status']))->count();
-        $pendingCount  = $reqList->filter(fn ($r) => $r['status'] === 'Pending')->count();
-        $approvedCount = $reqList->filter(fn ($r) => $r['status'] === 'Approved')->count();
-        $rejectedCount = $reqList->filter(fn ($r) => $r['status'] === 'Rejected')->count();
 
         $data = [
             'batch_id'              => $batch->id,
@@ -208,10 +198,11 @@ class EnrolledProgramController extends Controller
             'attendance'            => $participant->attendance ?? 'Pending',
             'cover_image'           => $program->coverPage ? '/storage/' . $program->coverPage->image : null,
             'requirements_total'    => $reqList->count(),
-            'requirements_missing'  => $missingCount,
-            'requirements_pending'  => $pendingCount,
-            'requirements_approved' => $approvedCount,
-            'requirements_rejected' => $rejectedCount,
+            'requirements_missing'  => $reqList->filter(fn ($r) => $r['is_required'] && is_null($r['status']))->count(),
+            'requirements_pending'  => $reqList->filter(fn ($r) => $r['status'] === 'Pending')->count(),
+            'requirements_approved' => $reqList->filter(fn ($r) => $r['status'] === 'Approved')->count(),
+            'requirements_rejected' => $reqList->filter(fn ($r) => $r['status'] === 'Rejected')->count(),
+            'certificates'          => [],
         ];
 
         if ($withRequirements) {

@@ -22,8 +22,8 @@ import {
     Save,
     Upload,
     ClipboardPaste,
-    ArrowUp,
-    ArrowDown,
+    ChevronDown,
+    ChevronUp,
 } from 'lucide-vue-next';
 import { ref, watch, computed } from 'vue';
 import BulkAddParticipants from '@/pages/programs/BulkAddParticipants.vue';
@@ -482,70 +482,85 @@ const applyToAll = () => {
 
 <template>
     <Dialog :open="open" @update:open="emit('update:open', $event)">
-        <DialogContent class="max-w-4xl flex flex-col max-h-[90vh] overflow-hidden !rounded-2xl">
+        <DialogContent class="max-w-4xl flex flex-col max-h-[90vh] overflow-hidden !rounded-2xl p-0 gap-0">
 
-            <DialogHeader class="shrink-0">
-                <DialogTitle>
-                    <span class="flex gap-2 items-center">
-                        <Users /> {{ batch?.batch }} — Participants
-                    </span>
-                </DialogTitle>
-                <DialogDescription class="text-xs text-muted-foreground">
-                    Search and select employees, then add them to this batch all at once.
-                </DialogDescription>
-            </DialogHeader>
+            <!-- ── Modal Header ── -->
+            <div class="flex items-center gap-3 px-6 py-4 border-b shrink-0">
+                <div class="flex items-center justify-center w-9 h-9 rounded-xl bg-blue-600 shrink-0">
+                    <Users class="h-4 w-4 text-white" />
+                </div>
+                <div>
+                    <h2 class="text-sm font-bold leading-tight">{{ batch?.batch }} — Participants</h2>
+                    <p class="text-[11px] text-muted-foreground">Manage participants enrolled in this batch</p>
+                </div>
+            </div>
 
-            <div class="flex flex-col gap-3 overflow-y-auto flex-1 px-1 py-1">
+            <div class="flex flex-col gap-0 overflow-y-auto flex-1">
 
-                <div class="rounded-xl border p-3">
+                <!-- ══════════════════════════════════════════
+                     SECTION 1 — ADD PARTICIPANTS
+                ══════════════════════════════════════════ -->
+                <div class="bg-blue-50 dark:bg-blue-950/30 border-b px-6 py-4 flex flex-col gap-3">
 
+                    <!-- Section title -->
+                    <div class="flex items-center gap-2">
+                        <div class="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-600 shrink-0">
+                            <UserPlus class="h-3.5 w-3.5 text-white" />
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-blue-900 dark:text-blue-100 leading-none">Add Participants</p>
+                            <p class="text-[11px] text-blue-600 dark:text-blue-400 mt-0.5">Search employees or paste a list of employee codes</p>
+                        </div>
+                    </div>
+
+                    <!-- Search input -->
                     <div class="relative">
-                        <Search class="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Search class="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-blue-400" />
                         <Input
                             v-model="query"
-                            class="text-xs h-8 pl-7"
+                            class="text-xs h-9 pl-8 bg-white dark:bg-blue-950/50 border-blue-200 dark:border-blue-800 focus-visible:ring-blue-400"
                             placeholder="Search employee by name or empcode..."
                         />
                         <LoaderCircle
                             v-if="searching"
-                            class="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-muted-foreground"
+                            class="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-blue-400"
                         />
 
+                        <!-- Dropdown results -->
                         <div
                             v-if="showDropdown && results.length"
-                            class="absolute z-50 mt-1 w-full rounded-lg border bg-popover shadow-md max-h-48 overflow-y-auto"
+                            class="absolute z-50 mt-1 w-full rounded-xl border border-blue-100 bg-white dark:bg-slate-900 shadow-lg max-h-48 overflow-y-auto"
                         >
                             <button
                                 v-for="emp in results"
                                 :key="emp.empcode"
                                 type="button"
-                                class="flex w-full items-center justify-between px-3 py-2 text-left text-xs hover:bg-accent"
+                                class="flex w-full items-center justify-between px-3 py-2 text-left text-xs hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors"
                                 @click="selectEmployee(emp)"
                             >
                                 <span class="font-semibold">{{ emp.name }}</span>
-                                <span class="text-muted-foreground">{{ emp.empcode }}</span>
+                                <span class="text-muted-foreground text-[11px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-full">{{ emp.empcode }}</span>
                             </button>
                         </div>
-
                         <div
                             v-else-if="showDropdown && !searching && query.length >= 2"
-                            class="absolute z-50 mt-1 w-full rounded-lg border bg-popover shadow-md px-3 py-2 text-xs text-muted-foreground"
+                            class="absolute z-50 mt-1 w-full rounded-xl border bg-white dark:bg-slate-900 shadow-md px-3 py-2 text-xs text-muted-foreground"
                         >
                             No employees found.
                         </div>
                     </div>
 
-                    <div v-if="selected.length" class="mt-2 flex flex-wrap gap-1.5">
+                    <!-- Selected tags -->
+                    <div v-if="selected.length" class="flex flex-wrap gap-1.5">
                         <Badge
                             v-for="emp in selected"
                             :key="emp.empcode"
-                            variant="secondary"
-                            class="text-[11px] font-semibold pl-2 pr-1 py-1 gap-1"
+                            class="text-[11px] font-semibold pl-2 pr-1 py-1 gap-1 bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200 border-blue-200 dark:border-blue-700 hover:bg-blue-100"
                         >
                             {{ emp.name }}
                             <button
                                 type="button"
-                                class="rounded-full hover:bg-muted-foreground/20 p-0.5"
+                                class="rounded-full hover:bg-blue-200 dark:hover:bg-blue-800 p-0.5 transition-colors"
                                 @click="removeSelected(emp.empcode)"
                             >
                                 <X class="h-3 w-3" />
@@ -553,83 +568,107 @@ const applyToAll = () => {
                         </Badge>
                     </div>
 
-                    <div class="mt-2 flex justify-end gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            class="font-extrabold"
-                            @click="showBulkAdd = true"
-                        >
-                            <ClipboardPaste class="h-4 w-4" />
-                            Bulk Add
-                        </Button>
-                        <Button
-                            size="sm"
-                            class="bg-blue-600 font-extrabold hover:bg-blue-500 dark:text-white"
-                            :disabled="!selected.length || processing"
-                            @click="addParticipants"
-                        >
-                            <LoaderCircle v-if="processing" class="h-3 w-3 animate-spin mr-1" />
-                            <UserPlus v-else class="h-4 w-4" />
-                            Add Participant{{ selected.length > 1 ? 's' : '' }}
-                            <span v-if="selected.length">({{ selected.length }})</span>
-                        </Button>
+                    <!-- Action buttons -->
+                    <div class="flex items-center justify-between gap-2">
+                        <!-- Stats pill -->
+                        <div v-if="selected.length" class="text-[11px] text-blue-600 dark:text-blue-400 font-semibold">
+                            {{ selected.length }} employee{{ selected.length > 1 ? 's' : '' }} selected
+                        </div>
+                        <div v-else class="text-[11px] text-blue-400 dark:text-blue-500 italic">
+                            Select employees above to add them
+                        </div>
+
+                        <div class="flex gap-2 ml-auto">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                class="text-xs border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 bg-white dark:bg-transparent"
+                                @click="showBulkAdd = true"
+                            >
+                                <ClipboardPaste class="h-3.5 w-3.5 mr-1" />
+                                Bulk Add
+                            </Button>
+                            <Button
+                                size="sm"
+                                class="bg-blue-600 hover:bg-blue-700 dark:text-white text-xs font-bold"
+                                :disabled="!selected.length || processing"
+                                @click="addParticipants"
+                            >
+                                <LoaderCircle v-if="processing" class="h-3 w-3 animate-spin mr-1" />
+                                <UserPlus v-else class="h-3.5 w-3.5 mr-1" />
+                                Add{{ selected.length > 1 ? ` ${selected.length} Participants` : selected.length === 1 ? ' Participant' : ' Participants' }}
+                            </Button>
+                        </div>
                     </div>
                 </div>
 
-                 <div>
-                    <div class="flex items-center justify-between gap-2 mb-1.5">
-                        <p class="text-xs font-bold text-slate-500 shrink-0">
-                            Enrolled ({{ participants.length }})
-                        </p>
+                <!-- ══════════════════════════════════════════
+                     SECTION 2 — ENROLLED PARTICIPANTS LIST
+                ══════════════════════════════════════════ -->
+                <div class="px-6 py-4 flex flex-col gap-3">
 
+                    <!-- Section title -->
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <div class="flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-600 shrink-0">
+                                <Users class="h-3.5 w-3.5 text-white" />
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold text-slate-700 dark:text-slate-200 leading-none">
+                                    Enrolled Participants
+                                    <span class="ml-1.5 text-[11px] font-normal text-muted-foreground">({{ participants.length }} total)</span>
+                                </p>
+                                <p class="text-[11px] text-muted-foreground mt-0.5">Manage attendance, submissions, and order</p>
+                            </div>
+                        </div>
+
+                        <!-- Search + Clear All -->
                         <div v-if="participants.length" class="flex items-center gap-2">
-                            <div class="relative w-48">
-                                <ListFilter class="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                            <div class="relative w-52">
+                                <Search class="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                                 <Input
                                     v-model="listQuery"
                                     class="text-xs h-7 pl-6"
-                                    placeholder="Filter enrolled..."
+                                    placeholder="Search enrolled..."
                                 />
                             </div>
-
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                class="h-7 px-2 text-[11px] font-bold text-red-500 hover:text-red-600 shrink-0"
+                                class="h-7 px-2 text-[11px] font-bold text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 shrink-0"
                                 :disabled="clearingAll"
                                 @click="clearAllParticipants"
                             >
                                 <LoaderCircle v-if="clearingAll" class="h-3 w-3 animate-spin mr-1" />
-                                <Trash2 v-else class="h-3 w-3" />
+                                <Trash2 v-else class="h-3 w-3 mr-1" />
                                 Clear All
                             </Button>
                         </div>
                     </div>
 
+                    <!-- Empty: no participants -->
                     <div
                         v-if="!participants.length"
-                        class="flex flex-col items-center justify-center rounded-2xl border border-dashed py-10 px-6 text-center gap-2"
+                        class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 py-10 px-6 text-center gap-2"
                     >
-                        <!-- Illustration: people / group -->
                         <svg viewBox="0 0 160 110" class="h-24 w-auto" xmlns="http://www.w3.org/2000/svg">
                             <ellipse cx="80" cy="98" rx="60" ry="6" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
-                            <circle cx="55" cy="40" r="18" fill="currentColor" class="text-blue-100 dark:text-blue-900/40" />
-                            <path d="M30 85 c0 -18 12 -28 25 -28 s25 10 25 28" fill="currentColor" class="text-blue-100 dark:text-blue-900/40" />
-                            <circle cx="105" cy="36" r="22" fill="currentColor" class="text-blue-200 dark:text-blue-800/60" />
-                            <path d="M75 88 c0 -22 14 -34 30 -34 s30 12 30 34" fill="currentColor" class="text-blue-200 dark:text-blue-800/60" />
-                            <circle cx="105" cy="36" r="22" stroke="currentColor" stroke-width="2" fill="none" class="text-blue-300 dark:text-blue-700/60" stroke-dasharray="4 4" />
-                            <path d="M95 36 l7 7 l12 -14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 dark:text-blue-500" />
+                            <circle cx="55" cy="40" r="18" fill="currentColor" class="text-emerald-100 dark:text-emerald-900/40" />
+                            <path d="M30 85 c0 -18 12 -28 25 -28 s25 10 25 28" fill="currentColor" class="text-emerald-100 dark:text-emerald-900/40" />
+                            <circle cx="105" cy="36" r="22" fill="currentColor" class="text-emerald-200 dark:text-emerald-800/60" />
+                            <path d="M75 88 c0 -22 14 -34 30 -34 s30 12 30 34" fill="currentColor" class="text-emerald-200 dark:text-emerald-800/60" />
+                            <circle cx="105" cy="36" r="22" stroke="currentColor" stroke-width="2" fill="none" class="text-emerald-300 dark:text-emerald-700/60" stroke-dasharray="4 4" />
+                            <path d="M95 36 l7 7 l12 -14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-500 dark:text-emerald-400" />
                         </svg>
                         <p class="text-sm font-bold text-slate-500">No participants yet</p>
                         <p class="text-xs text-slate-400 max-w-xs">Use the search above to find and add employees, or use "Bulk Add" to paste a list of employee codes.</p>
                     </div>
 
+                    <!-- Empty: filter no match -->
                     <div
                         v-else-if="!filteredParticipants.length"
                         class="flex flex-col items-center justify-center rounded-2xl border border-dashed py-8 px-6 text-center gap-2"
                     >
-                        <!-- Illustration: magnifying glass, no results -->
                         <svg viewBox="0 0 140 100" class="h-20 w-auto" xmlns="http://www.w3.org/2000/svg">
                             <ellipse cx="70" cy="90" rx="50" ry="6" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
                             <circle cx="60" cy="45" r="28" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
@@ -637,29 +676,44 @@ const applyToAll = () => {
                             <line x1="80" y1="65" x2="102" y2="87" stroke="currentColor" stroke-width="7" stroke-linecap="round" class="text-blue-300 dark:text-blue-700/60" />
                             <path d="M48 45 h24 M60 33 v24" stroke="currentColor" stroke-width="4" stroke-linecap="round" class="text-slate-300 dark:text-slate-700" />
                         </svg>
-                        <p class="text-xs font-bold text-slate-500">
-                            No participant matching "{{ listQuery }}"
-                        </p>
+                        <p class="text-xs font-bold text-slate-500">No participant matching "{{ listQuery }}"</p>
                     </div>
 
+                    <!-- Participant list -->
                     <template v-else>
-                        <div class="rounded-xl border divide-y">
+                        <div class="rounded-xl border overflow-hidden divide-y">
+
+                            <!-- List header -->
+                            <div class="grid grid-cols-[2rem_1fr_auto] gap-2 items-center px-3 py-1.5 bg-muted/40 border-b">
+                                <span class="text-[10px] font-bold uppercase tracking-wide text-muted-foreground text-center">#</span>
+                                <span class="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Employee</span>
+                                <span class="text-[10px] font-bold uppercase tracking-wide text-muted-foreground text-right pr-1">Actions</span>
+                            </div>
+
                             <div
                                 v-for="(p, i) in paginatedParticipants"
                                 :key="p.id"
-                                class="flex items-center justify-between px-3 py-2"
+                                class="flex items-center justify-between px-3 py-2.5 hover:bg-muted/20 transition-colors"
                             >
+                                <!-- Left: number + name -->
                                 <div class="flex items-center gap-2.5 min-w-0">
+                                    <!-- Row number -->
                                     <span class="text-[11px] font-bold text-slate-400 w-6 text-right shrink-0">
                                         {{ rowNumber(i) }}.
                                     </span>
+
+                                    <!-- Avatar circle -->
+                                    <div class="shrink-0 w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-300">
+                                        {{ (p.employee?.name ?? p.empcode).split(' ').map((n: string) => n[0]).slice(0,2).join('').toUpperCase() }}
+                                    </div>
+
                                     <div class="min-w-0">
                                         <p class="text-xs font-bold leading-4 truncate">
                                             {{ p.employee?.name ?? p.empcode }}
                                         </p>
                                         <p class="text-[11px] text-muted-foreground">
                                             {{ p.empcode }}
-                                            <span v-if="p.attendance === 'Complete'" class="text-emerald-600 font-semibold">
+                                            <span v-if="p.attendance === 'Complete'" class="text-emerald-600 dark:text-emerald-400 font-semibold">
                                                 · {{ p.hours }} hr/s
                                             </span>
                                         </p>
@@ -673,30 +727,34 @@ const applyToAll = () => {
                                     </div>
                                 </div>
 
-                                <div class="flex items-center gap-3 shrink-0">
-                                    
+                                <!-- Right: actions -->
+                                <div class="flex items-center gap-2.5 shrink-0">
+
+                                    <!-- Reorder -->
                                     <div class="flex gap-0.5">
                                         <button
                                             type="button"
                                             :disabled="reordering === p.id || rowNumber(i) === 1"
-                                            class="rounded p-0.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                                            class="rounded p-0.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
                                             title="Move up"
                                             @click="reorder(p, 'up')"
                                         >
-                                            <ArrowUp class="h-3 w-3" />
+                                            <ChevronUp  class="h-5 w-5" />
                                         </button>
                                         <button
                                             type="button"
                                             :disabled="reordering === p.id || rowNumber(i) === filteredParticipants.length"
-                                            class="rounded p-0.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                                            class="rounded p-0.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
                                             title="Move down"
                                             @click="reorder(p, 'down')"
                                         >
-                                            <ArrowDown class="h-3 w-3" />
+                                            <ChevronDown class="h-5 w-5" />
                                         </button>
                                     </div>
 
+                                    <div class="w-px h-4 bg-border" />
 
+                                    <!-- Submissions badge -->
                                     <div class="flex flex-col items-center gap-0.5">
                                         <span class="text-[9px] font-bold uppercase tracking-wide text-slate-400">Submissions</span>
                                         <button
@@ -708,6 +766,9 @@ const applyToAll = () => {
                                             <Badge
                                                 variant="outline"
                                                 class="text-[10px] font-bold cursor-pointer flex items-center gap-1"
+                                                :class="(p.submissions?.length ?? 0) === requirements.length && requirements.length > 0
+                                                    ? 'border-emerald-300 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30'
+                                                    : ''"
                                             >
                                                 <ClipboardList class="h-3 w-3" />
                                                 {{ p.submissions?.length ?? 0 }}/{{ requirements.length }}
@@ -715,6 +776,7 @@ const applyToAll = () => {
                                         </button>
                                     </div>
 
+                                    <!-- Attendance badge -->
                                     <div class="flex flex-col items-center gap-0.5">
                                         <span class="text-[9px] font-bold uppercase tracking-wide text-slate-400">Attendance</span>
                                         <button
@@ -729,58 +791,42 @@ const applyToAll = () => {
                                         </button>
                                     </div>
 
+                                    <div class="w-px h-4 bg-border" />
+
+                                    <!-- Remove -->
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        class="h-7 w-7 p-0 text-red-500 hover:text-red-600"
+                                        class="h-7 w-7 p-0 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
                                         @click="removeParticipant(p)"
                                     >
                                         <Trash2 class="h-3.5 w-3.5" />
                                     </Button>
                                 </div>
-
-
                             </div>
                         </div>
 
-                        <div
-                            v-if="totalPages > 1"
-                            class="mt-2 flex items-center justify-between"
-                        >
+                        <!-- Pagination -->
+                        <div v-if="totalPages > 1" class="flex items-center justify-between mt-1">
                             <p class="text-[11px] font-semibold text-slate-400">
                                 Showing {{ (page - 1) * perPage + 1 }}–{{ Math.min(page * perPage, filteredParticipants.length) }}
                                 of {{ filteredParticipants.length }}
                             </p>
-
                             <div class="flex items-center gap-1">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    class="h-7 w-7 p-0"
-                                    :disabled="page <= 1"
-                                    @click="page--"
-                                >
+                                <Button variant="outline" size="sm" class="h-7 w-7 p-0" :disabled="page <= 1" @click="page--">
                                     <ChevronLeft class="h-3.5 w-3.5" />
                                 </Button>
-                                <span class="text-[11px] font-bold text-slate-500 px-1.5">
-                                    {{ page }} / {{ totalPages }}
-                                </span>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    class="h-7 w-7 p-0"
-                                    :disabled="page >= totalPages"
-                                    @click="page++"
-                                >
+                                <span class="text-[11px] font-bold text-slate-500 px-1.5">{{ page }} / {{ totalPages }}</span>
+                                <Button variant="outline" size="sm" class="h-7 w-7 p-0" :disabled="page >= totalPages" @click="page++">
                                     <ChevronRight class="h-3.5 w-3.5" />
                                 </Button>
                             </div>
                         </div>
                     </template>
                 </div>
-
             </div>
 
+            <!-- ── Set Attendance Dialog ── -->
             <Dialog :open="showAttendance" @update:open="showAttendance = $event">
                 <DialogContent class="max-w-sm !rounded-2xl">
                     <DialogHeader>
@@ -796,7 +842,6 @@ const applyToAll = () => {
                     </DialogHeader>
 
                     <div class="grid gap-3 py-1">
-
                         <div class="grid gap-1">
                             <Label class="text-xs">Attendance <span class="text-red-500">*</span></Label>
                             <Select v-model="attStatus">
@@ -814,39 +859,20 @@ const applyToAll = () => {
                         <div v-if="attStatus === 'Complete'" class="grid gap-1">
                             <Label class="text-xs">
                                 Completed Hours <span class="text-red-500">*</span>
-                                <span class="text-muted-foreground font-normal">
-                                    (max: {{ batchHours }} hr/s)
-                                </span>
+                                <span class="text-muted-foreground font-normal">(max: {{ batchHours }} hr/s)</span>
                             </Label>
-                            <Input
-                                type="number"
-                                step="0.5"
-                                min="0.5"
-                                :max="batchHours || undefined"
-                                class="text-xs h-8"
-                                v-model="attHours"
-                                placeholder="e.g. 16"
-                            />
+                            <Input type="number" step="0.5" min="0.5" :max="batchHours || undefined"
+                                class="text-xs h-8" v-model="attHours" placeholder="e.g. 16" />
                             <p class="text-xs text-red-500">{{ attErrors.hours }}</p>
                         </div>
 
                         <div v-if="attStatus === 'Absent'" class="grid gap-1">
-                            <Label class="text-xs">
-                                Justification Memo <span class="text-red-500">*</span>
-                            </Label>
-                            <input
-                                type="file"
-                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                            <Label class="text-xs">Justification Memo <span class="text-red-500">*</span></Label>
+                            <input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                                 class="text-xs file:mr-2 file:rounded-md file:border-0 file:bg-blue-600 file:px-2.5 file:py-1.5 file:text-[11px] file:font-bold file:text-white hover:file:bg-blue-500 cursor-pointer"
-                                @change="onFileChange"
-                            />
-                            <p class="text-[11px] text-muted-foreground">
-                                PDF, Word, o image. Max 5MB.
-                            </p>
-                            <p
-                                v-if="attendanceTarget?.justification && !attFile"
-                                class="text-[11px] text-slate-500"
-                            >
+                                @change="onFileChange" />
+                            <p class="text-[11px] text-muted-foreground">PDF, Word, o image. Max 5MB.</p>
+                            <p v-if="attendanceTarget?.justification && !attFile" class="text-[11px] text-slate-500">
                                 May naka-upload nang memo. Mag-upload ulit para palitan ito.
                             </p>
                             <p class="text-xs text-red-500">{{ attErrors.justification }}</p>
@@ -855,44 +881,29 @@ const applyToAll = () => {
                         <p v-if="attStatus === 'Pending'" class="text-[11px] text-muted-foreground">
                             Pending attendance resets the participant's hours to 0.
                         </p>
-
                     </div>
 
                     <div class="flex justify-end gap-2 pt-2">
                         <Button variant="outline" size="sm" @click="showAttendance = false">Cancel</Button>
-                        <Button
-                            v-if="attStatus === 'Complete'"
-                            variant="outline"
-                            size="sm"
-                            :disabled="attProcessing"
-                            @click="applyToAll"
-                        >
+                        <Button v-if="attStatus === 'Complete'" variant="outline" size="sm"
+                            :disabled="attProcessing" @click="applyToAll">
                             <LoaderCircle v-if="attProcessing" class="h-3 w-3 animate-spin mr-1" />
-                            <Users v-else class="h-3.5 w-3.5" />
+                            <Users v-else class="h-3.5 w-3.5 mr-1" />
                             Apply to all
                         </Button>
-                        <Button
-                            class="bg-blue-600 hover:bg-blue-700 dark:text-white"
-                            size="sm"
-                            :disabled="attProcessing"
-                            @click="submitAttendance"
-                        >
+                        <Button class="bg-blue-600 hover:bg-blue-700 dark:text-white" size="sm"
+                            :disabled="attProcessing" @click="submitAttendance">
                             <LoaderCircle v-if="attProcessing" class="h-3 w-3 animate-spin mr-1" />
-                            
-                            <Save v-else class="h-3.5 w-3.5" />
+                            <Save v-else class="h-3.5 w-3.5 mr-1" />
                             Save Attendance
                         </Button>
                     </div>
                 </DialogContent>
             </Dialog>
 
+            <BulkAddParticipants :open="showBulkAdd" :batch="batch" @update:open="showBulkAdd = $event" />
 
-            <BulkAddParticipants
-                :open="showBulkAdd"
-                :batch="batch"
-                @update:open="showBulkAdd = $event"
-            />
-
+            <!-- ── Submissions Dialog ── -->
             <Dialog :open="showSubmissions" @update:open="showSubmissions = $event">
                 <DialogContent class="max-w-2xl flex flex-col max-h-[90vh] overflow-hidden !rounded-2xl">
                     <DialogHeader class="shrink-0">
@@ -908,9 +919,8 @@ const applyToAll = () => {
                     </DialogHeader>
 
                     <div class="overflow-y-auto flex-1 px-1 py-1">
-
-                        <div v-if="!requirements.length" class="flex flex-col items-center justify-center rounded-2xl border border-dashed py-10 px-6 text-center gap-2">
-                            <!-- Illustration: checklist -->
+                        <div v-if="!requirements.length"
+                            class="flex flex-col items-center justify-center rounded-2xl border border-dashed py-10 px-6 text-center gap-2">
                             <svg viewBox="0 0 120 100" class="h-20 w-auto" xmlns="http://www.w3.org/2000/svg">
                                 <ellipse cx="60" cy="92" rx="44" ry="6" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
                                 <rect x="22" y="10" width="76" height="76" rx="8" fill="currentColor" class="text-blue-100 dark:text-blue-900/40" />
@@ -927,11 +937,7 @@ const applyToAll = () => {
                         </div>
 
                         <div v-else class="rounded-xl border divide-y">
-                            <div
-                                v-for="row in mergedSubmissions"
-                                :key="row.requirement.id"
-                                class="px-3 py-2.5"
-                            >
+                            <div v-for="row in mergedSubmissions" :key="row.requirement.id" class="px-3 py-2.5">
                                 <div v-if="editingRow !== row.requirement.id" class="flex items-center justify-between gap-2">
                                     <div class="min-w-0">
                                         <p class="text-xs font-bold leading-4 truncate">
@@ -945,32 +951,21 @@ const applyToAll = () => {
                                         <p v-if="row.submission?.remarks" class="text-[11px] text-slate-500 mt-0.5">
                                             Remarks: {{ row.submission.remarks }}
                                         </p>
-                                        <a v-if="row.submission?.file_path"
-                                            :href="`/storage/${row.submission.file_path}`"
-                                            target="_blank"
-                                            class="inline-flex items-center gap-0.5 text-[11px] text-blue-600 hover:underline font-semibold mt-0.5"
-                                        >
+                                        <a v-if="row.submission?.file_path" :href="`/storage/${row.submission.file_path}`"
+                                            target="_blank" class="inline-flex items-center gap-0.5 text-[11px] text-blue-600 hover:underline font-semibold mt-0.5">
                                             <FileText class="h-3 w-3" /> View file
                                         </a>
                                     </div>
-
                                     <div class="flex items-center gap-2 shrink-0">
-                                        <Badge
-                                            :class="submissionStatusColor(row.submission?.status)"
-                                            class="text-[10px] font-bold border-0"
-                                        >
+                                        <Badge :class="submissionStatusColor(row.submission?.status)" class="text-[10px] font-bold border-0">
                                             {{ row.submission ? submissionStatusLabel(row.submission.status) : 'No submission' }}
                                         </Badge>
                                         <Button variant="ghost" size="sm" class="h-7 px-2 text-xs" @click="startEdit(row)">
-                                            <Upload class="h-3 w-3" /> Set
+                                            <Upload class="h-3 w-3 mr-1" /> Set
                                         </Button>
-                                        <Button
-                                            v-if="row.submission"
-                                            variant="ghost"
-                                            size="sm"
+                                        <Button v-if="row.submission" variant="ghost" size="sm"
                                             class="h-7 w-7 p-0 text-red-500 hover:text-red-600"
-                                            @click="deleteSubmission(row.submission.id)"
-                                        >
+                                            @click="deleteSubmission(row.submission.id)">
                                             <Trash2 class="h-3.5 w-3.5" />
                                         </Button>
                                     </div>
@@ -980,22 +975,15 @@ const applyToAll = () => {
                                     <p class="text-xs font-bold leading-4 flex items-center gap-2">
                                         {{ row.requirement.name }}
                                         <span class="text-[10px] font-semibold text-slate-400">({{ row.requirement.title }})</span>
-                                        <Badge
-                                            v-if="row.submission?.file_path"
-                                            variant="outline"
-                                            class="text-[9px] font-bold gap-0.5"
-                                        >
+                                        <Badge v-if="row.submission?.file_path" variant="outline" class="text-[9px] font-bold gap-0.5">
                                             <FileText class="h-3 w-3" /> File on record
                                         </Badge>
                                     </p>
-
                                     <div class="grid grid-cols-2 gap-2">
                                         <div class="grid gap-1">
                                             <Label class="text-xs">Status</Label>
                                             <Select v-model="subStatus">
-                                                <SelectTrigger class="text-xs h-8">
-                                                    <SelectValue placeholder="Select status" />
-                                                </SelectTrigger>
+                                                <SelectTrigger class="text-xs h-8"><SelectValue placeholder="Select status" /></SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem class="text-xs" value="Pending">Pending</SelectItem>
                                                     <SelectItem class="text-xs" value="Approved">Approved</SelectItem>
@@ -1003,37 +991,27 @@ const applyToAll = () => {
                                                 </SelectContent>
                                             </Select>
                                         </div>
-
                                         <div class="grid gap-1">
                                             <Label class="text-xs">File (PDF)</Label>
-                                            <input
-                                                type="file"
-                                                accept=".pdf"
+                                            <input type="file" accept=".pdf"
                                                 class="text-xs file:mr-2 file:rounded-md file:border-0 file:bg-blue-600 file:px-2.5 file:py-1.5 file:text-[11px] file:font-bold file:text-white hover:file:bg-blue-500 cursor-pointer"
-                                                @change="onSubFileChange"
-                                            />
+                                                @change="onSubFileChange" />
                                             <p v-if="row.submission?.file_path && !subFile" class="text-[11px] text-slate-500">
                                                 Naka-upload na. Mag-upload ulit para palitan.
                                             </p>
                                             <p class="text-xs text-red-500">{{ subErrors.file }}</p>
                                         </div>
                                     </div>
-
                                     <div class="grid gap-1">
                                         <Label class="text-xs">Remarks</Label>
                                         <Input class="text-xs h-8" v-model="subRemarks" placeholder="e.g. Needs revision on section 3" />
                                     </div>
-
                                     <div class="flex justify-end gap-2 pt-1">
                                         <Button variant="outline" size="sm" @click="cancelEdit">Cancel</Button>
-                                        <Button
-                                            class="bg-blue-600 hover:bg-blue-700 dark:text-white"
-                                            size="sm"
-                                            :disabled="subProcessing"
-                                            @click="saveSubmission(row)"
-                                        >
+                                        <Button class="bg-blue-600 hover:bg-blue-700 dark:text-white" size="sm"
+                                            :disabled="subProcessing" @click="saveSubmission(row)">
                                             <LoaderCircle v-if="subProcessing" class="h-3 w-3 animate-spin mr-1" />
-                                            <Save v-else class="h-3.5 w-3.5" />
+                                            <Save v-else class="h-3.5 w-3.5 mr-1" />
                                             Save
                                         </Button>
                                     </div>
