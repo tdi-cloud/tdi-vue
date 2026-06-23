@@ -223,7 +223,7 @@ const submitReview = () => {
                     @click="showMissing = true"
                 >
                     <FileX class="h-3.5 w-3.5 mr-1.5" />
-                    Missing
+                    Incomplete
                     <span
                         v-if="missingCount > 0"
                         class="ml-1.5 inline-flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold w-4 h-4 leading-none"
@@ -319,7 +319,7 @@ const submitReview = () => {
             <p class="text-sm font-bold text-slate-500">No submissions yet</p>
             <p class="text-xs text-slate-400 max-w-xs">Submissions from participants will appear here once they submit their requirements.</p>
             <Button variant="outline" size="sm" class="mt-1 text-xs text-red-600 border-red-200 hover:bg-red-50" @click="showMissing = true">
-                <FileX class="h-3.5 w-3.5 mr-1" /> View who hasn't submitted yet
+                <FileX class="h-3.5 w-3.5 mr-1" /> View who hasn't completed yet
             </Button>
         </div>
 

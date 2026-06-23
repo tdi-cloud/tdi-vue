@@ -7,6 +7,7 @@ import {
     Search, AlertTriangle, Users, FileX,
     Mail, Building2, BadgeCheck, X, ChevronDown, ChevronUp,
 } from 'lucide-vue-next';
+import EmailReminderModal from '@/pages/programs/EmailReminderModal.vue';
 
 interface Employee {
     EMPCODE?: string; FIRSTNAME?: string; LASTNAME?: string; SURNAME?: string;
@@ -30,7 +31,7 @@ interface Submission {
     participant?: { empcode: string } | null;
     requirement?: { title: string } | null;
 }
-interface Program { batches?: BatchWithDetails[]; }
+interface Program { title?: string; batches?: BatchWithDetails[]; }
 interface MissingEntry {
     participant_id: number; empcode: string; batch_id: number; batch_name: string;
     requirement_id: number; requirement_title: string; requirement_name: string;
@@ -145,6 +146,34 @@ const avatarColor = (empcode: string) => {
 };
 
 defineExpose({ missingCount: computed(() => allMissing.value.length) });
+
+/* ===================== EMAIL REMINDER ===================== */
+
+interface EmailTarget {
+    batchName: string;
+    requirementTitle: string;
+    requirementName: string;
+    dueDate: string | null;
+    participants: Array<{ empcode: string; employee_name: string | null; employee_email: string | null }>;
+}
+
+const showEmail = ref(false);
+const emailTarget = ref<EmailTarget | null>(null);
+
+const openEmailReminder = (group: Group) => {
+    emailTarget.value = {
+        batchName: group.batch,
+        requirementTitle: group.requirement_title,
+        requirementName: group.requirement_name,
+        dueDate: group.due_date,
+        participants: group.entries.map((e) => ({
+            empcode: e.empcode,
+            employee_name: e.employee_name,
+            employee_email: e.employee_email,
+        })),
+    };
+    showEmail.value = true;
+};
 </script>
 
 <template>
@@ -172,9 +201,9 @@ defineExpose({ missingCount: computed(() => allMissing.value.length) });
                                     <FileX class="h-4 w-4 text-red-600 dark:text-red-400" />
                                 </span>
                                 <div>
-                                    <h2 class="text-base font-semibold leading-none">Missing Submissions</h2>
+                                    <h2 class="text-base font-semibold leading-none">Incomplete Submissions</h2>
                                     <p class="text-xs text-muted-foreground mt-1">
-                                        Participants who have not yet submitted one or more required documents.
+                                        Participants who have not yet completed one or more required documents.
                                         Absent participants are excluded.
                                     </p>
                                 </div>
@@ -197,7 +226,7 @@ defineExpose({ missingCount: computed(() => allMissing.value.length) });
                             </span>
                             <span class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold">
                                 <FileX class="h-3.5 w-3.5 text-red-500" />
-                                {{ allMissing.length }} missing submission{{ allMissing.length !== 1 ? 's' : '' }}
+                                {{ allMissing.length }} incomplete submission{{ allMissing.length !== 1 ? 's' : '' }}
                             </span>
                             <span
                                 class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold"
@@ -247,7 +276,7 @@ defineExpose({ missingCount: computed(() => allMissing.value.length) });
                                 <BadgeCheck class="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
                             </div>
                             <p class="text-sm font-bold">All submissions are in!</p>
-                            <p class="text-xs text-muted-foreground max-w-xs">Every participant has submitted all required documents.</p>
+                            <p class="text-xs text-muted-foreground max-w-xs">Every participant has completed all required documents.</p>
                         </div>
 
                         <!-- No filter match -->
@@ -261,16 +290,16 @@ defineExpose({ missingCount: computed(() => allMissing.value.length) });
                         <!-- Grouped list -->
                         <template v-else>
                             <p class="text-[11px] text-muted-foreground">
-                                Showing <span class="font-semibold">{{ filtered.length }}</span> missing submission(s)
+                                Showing <span class="font-semibold">{{ filtered.length }}</span> incomplete submission(s)
                                 across <span class="font-semibold">{{ grouped.length }}</span> group(s)
                             </p>
 
                             <div v-for="group in grouped" :key="group.key" class="rounded-2xl border shadow-sm overflow-hidden">
 
                                 <!-- Group toggle header -->
-                                <button
-                                    type="button"
-                                    class="w-full flex items-center justify-between gap-3 px-4 py-3 bg-muted/40 hover:bg-muted/70 transition-colors text-left"
+                                <!-- Div instead of button — hindi pwede mag-nest ng button sa loob ng button -->
+                                <div
+                                    class="w-full flex items-center justify-between gap-3 px-4 py-3 bg-muted/40 hover:bg-muted/70 transition-colors cursor-pointer select-none"
                                     @click="toggle(group.key)"
                                 >
                                     <div class="flex items-center gap-2 flex-wrap">
@@ -291,11 +320,18 @@ defineExpose({ missingCount: computed(() => allMissing.value.length) });
                                         </span>
                                     </div>
                                     <div class="flex items-center gap-2 shrink-0">
-                                        <span class="text-[11px] font-bold text-muted-foreground">{{ group.entries.length }} missing</span>
+                                        <span class="text-[11px] font-bold text-muted-foreground">{{ group.entries.length }} incomplete</span>
+                                        <button
+                                            type="button"
+                                            class="inline-flex items-center gap-1 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 text-[11px] font-semibold transition-colors"
+                                            @click.stop="openEmailReminder(group)"
+                                        >
+                                            <Mail class="h-3 w-3" /> Email Reminder
+                                        </button>
                                         <ChevronDown v-if="collapsed[group.key]" class="h-4 w-4 text-muted-foreground" />
                                         <ChevronUp v-else class="h-4 w-4 text-muted-foreground" />
                                     </div>
-                                </button>
+                                </div>
 
                                 <!-- Participant rows -->
                                 <div v-if="!collapsed[group.key]" class="divide-y" style="max-height:320px; overflow-y:auto;">
@@ -348,6 +384,19 @@ defineExpose({ missingCount: computed(() => allMissing.value.length) });
             </div>
         </Transition>
     </Teleport>
+
+    <!-- Email Reminder Compose Modal -->
+    <EmailReminderModal
+        v-if="emailTarget"
+        :open="showEmail"
+        :program-title="program.title ?? ''"
+        :batch-name="emailTarget.batchName"
+        :requirement-title="emailTarget.requirementTitle"
+        :requirement-name="emailTarget.requirementName"
+        :due-date="emailTarget.dueDate"
+        :participants="emailTarget.participants"
+        @update:open="showEmail = $event"
+    />
 </template>
 
 <style scoped>

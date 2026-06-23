@@ -18,6 +18,7 @@ use App\Http\Controllers\EnrolledProgramController;
 use App\Http\Controllers\DeclarationController;
 use App\Http\Controllers\TPMRController;
 use App\Http\Controllers\OrganizingSponsorController;
+use App\Http\Controllers\EmailReminderController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -169,6 +170,10 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function(){
     Route::get('/organizing-sponsors',        [OrganizingSponsorController::class, 'index'])->name('organizing-sponsors.index');
     Route::post('/organizing-sponsors',       [OrganizingSponsorController::class, 'store'])->name('organizing-sponsors.store');
     Route::delete('/organizing-sponsors/{organizingSponsor}', [OrganizingSponsorController::class, 'destroy'])->name('organizing-sponsors.destroy');
+
+    // EMAIL REMINDER 
+    Route::post('/email-reminder/send', [EmailReminderController::class, 'send'])
+    ->name('email-reminder.send');
 
 
 });
