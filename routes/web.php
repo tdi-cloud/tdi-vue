@@ -20,6 +20,7 @@ use App\Http\Controllers\TPMRController;
 use App\Http\Controllers\OrganizingSponsorController;
 use App\Http\Controllers\EmailReminderController;
 use App\Http\Controllers\CertificateController;
+use App\Http\Controllers\AttendanceController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -184,6 +185,13 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function(){
  
     Route::delete('/certificates/{certificate}', [CertificateController::class, 'destroy'])
         ->name('certificates.destroy');
+
+    // ATTENDANCE
+    Route::get('/employees/search-signatory', [AttendanceController::class, 'searchSignatory'])
+        ->name('employees.search-signatory');
+    
+    Route::get('/attendance/generate', [AttendanceController::class, 'generate'])
+        ->name('attendance.generate');
 
 
 

@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import {
     Plus, Search, Pencil, Trash2, ArrowLeft, Users, Calendar,
     Building2, Mail, Phone, UserCircle2, X,
-    CheckCircle2, ClipboardList, MapPin, Award
+    CheckCircle2, ClipboardList, MapPin, Award,
+    UserRound
 } from 'lucide-vue-next';
 import { ref, computed } from 'vue';
 
@@ -63,10 +64,9 @@ const filteredParticipants = computed(() => {
     );
 });
 
-const maleCount   = computed(() => props.program.participants.filter(p => p.sex === 'male').length);
-const femaleCount = computed(() => props.program.participants.filter(p => p.sex === 'female').length);
+const maleCount     = computed(() => props.program.participants.filter(p => p.sex === 'male').length);
+const femaleCount   = computed(() => props.program.participants.filter(p => p.sex === 'female').length);
 const acceptedCount = computed(() => props.program.participants.filter(p => p.status === 'accepted').length);
-const endorsedCount = computed(() => props.program.participants.filter(p => p.status === 'endorsed').length);
 
 const openAdd = () => {
     editingId.value = null;
@@ -78,13 +78,13 @@ const openAdd = () => {
 
 const openEdit = (p: Participant) => {
     editingId.value = p.id;
-    form.name = p.name;
-    form.sex = p.sex;
-    form.position = p.position;
-    form.agency = p.agency;
+    form.name       = p.name;
+    form.sex        = p.sex;
+    form.position   = p.position;
+    form.agency     = p.agency;
     form.contact_no = p.contact_no ?? '';
-    form.email = p.email ?? '';
-    form.status = p.status;
+    form.email      = p.email ?? '';
+    form.status     = p.status;
     showModal.value = true;
 };
 
@@ -108,7 +108,6 @@ const remove = (p: Participant) => {
 };
 
 const sexLabel: Record<string, string> = { male: 'Male', female: 'Female', other: 'Other' };
-const sexIcon: Record<string, string> = { male: '👨', female: '👩', other: '🧑' };
 
 const statusLabels: Record<string, string> = {
     endorsed:       'Endorsed',
@@ -139,10 +138,10 @@ const programStatusLabels: Record<string, string> = {
     concluded:            'Concluded',
 };
 
-const modalityIcons: Record<string, string> = {
-    'in-person': '🏢',
-    'online':    '💻',
-    'hybrid':    '🔀',
+const modalityLabels: Record<string, string> = {
+    'in-person': 'In-person',
+    'online':    'Online',
+    'hybrid':    'Hybrid',
 };
 
 const formatDate = (date?: string | null) => {
@@ -154,7 +153,7 @@ const formatDate = (date?: string | null) => {
     });
 };
 
-const slotsUsed = computed(() => props.program.participants.length);
+const slotsUsed    = computed(() => props.program.participants.length);
 const slotsPercent = computed(() => Math.min(100, Math.round((slotsUsed.value / props.program.slots) * 100)));
 </script>
 
@@ -174,13 +173,10 @@ const slotsPercent = computed(() => Math.min(100, Math.round((slotsUsed.value / 
 
             <!-- Hero Banner -->
             <div class="relative rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 p-6 text-white shadow-xl overflow-hidden">
-                <!-- Background decoration -->
                 <div class="absolute inset-0 overflow-hidden pointer-events-none">
                     <div class="absolute -top-8 -right-8 h-48 w-48 rounded-full bg-white/5" />
                     <div class="absolute -bottom-12 -right-4 h-64 w-64 rounded-full bg-white/5" />
                     <div class="absolute top-4 right-32 h-24 w-24 rounded-full bg-white/5" />
-                    <!-- Globe illustration -->
-                    <div class="absolute right-6 top-1/2 -translate-y-1/2 text-[80px] opacity-20 select-none">🌏</div>
                 </div>
 
                 <div class="relative flex items-start justify-between gap-4">
@@ -190,7 +186,7 @@ const slotsPercent = computed(() => Math.min(100, Math.round((slotsUsed.value / 
                                 {{ program.category ?? 'Foreign' }}
                             </span>
                             <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/15 capitalize">
-                                {{ modalityIcons[program.modality] }} {{ program.modality }}
+                                {{ modalityLabels[program.modality] ?? program.modality }}
                             </span>
                             <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/25">
                                 {{ programStatusLabels[program.status] }}
@@ -247,28 +243,36 @@ const slotsPercent = computed(() => Math.min(100, Math.round((slotsUsed.value / 
             <!-- Stat Cards -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div class="rounded-xl border bg-background p-4 flex items-center gap-3 shadow-sm">
-                    <div class="h-10 w-10 rounded-xl bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center text-xl">👥</div>
+                    <div class="h-10 w-10 rounded-xl bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center shrink-0">
+                        <Users class="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
                     <div>
                         <p class="text-xs text-muted-foreground">Total</p>
                         <p class="text-xl font-bold">{{ program.participants.length }}</p>
                     </div>
                 </div>
                 <div class="rounded-xl border bg-background p-4 flex items-center gap-3 shadow-sm">
-                    <div class="h-10 w-10 rounded-xl bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center text-xl">👨</div>
+                    <div class="h-10 w-10 rounded-xl bg-sky-100 dark:bg-sky-950/50 flex items-center justify-center shrink-0">
+                        <UserRound class="h-5 w-5 text-sky-600 dark:text-sky-400" />
+                    </div>
                     <div>
                         <p class="text-xs text-muted-foreground">Male</p>
                         <p class="text-xl font-bold">{{ maleCount }}</p>
                     </div>
                 </div>
                 <div class="rounded-xl border bg-background p-4 flex items-center gap-3 shadow-sm">
-                    <div class="h-10 w-10 rounded-xl bg-pink-100 dark:bg-pink-950/50 flex items-center justify-center text-xl">👩</div>
+                    <div class="h-10 w-10 rounded-xl bg-pink-100 dark:bg-pink-950/50 flex items-center justify-center shrink-0">
+                        <UserRound  class="h-5 w-5 text-pink-500 dark:text-pink-400" />
+                    </div>
                     <div>
                         <p class="text-xs text-muted-foreground">Female</p>
                         <p class="text-xl font-bold">{{ femaleCount }}</p>
                     </div>
                 </div>
                 <div class="rounded-xl border bg-background p-4 flex items-center gap-3 shadow-sm">
-                    <div class="h-10 w-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center text-xl">✅</div>
+                    <div class="h-10 w-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center shrink-0">
+                        <CheckCircle2 class="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                    </div>
                     <div>
                         <p class="text-xs text-muted-foreground">Accepted</p>
                         <p class="text-xl font-bold">{{ acceptedCount }}</p>
@@ -326,8 +330,14 @@ const slotsPercent = computed(() => Math.min(100, Math.round((slotsUsed.value / 
                             <td class="px-4 py-3 text-muted-foreground text-xs">{{ index + 1 }}</td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2">
-                                    <div class="h-7 w-7 rounded-full bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center text-sm shrink-0">
-                                        {{ sexIcon[p.sex] ?? '🧑' }}
+                                    <div class="h-7 w-7 rounded-full flex items-center justify-center shrink-0"
+                                        :class="p.sex === 'female'
+                                            ? 'bg-pink-100 dark:bg-pink-950/50'
+                                            : 'bg-sky-100 dark:bg-sky-950/50'"
+                                    >
+                                        <UserRound  v-if="p.sex === 'female'" class="h-4 w-4 text-pink-500" />
+                                        <UserRound   v-else-if="p.sex === 'male'" class="h-4 w-4 text-sky-600" />
+                                        <UserRound v-else class="h-4 w-4 text-muted-foreground" />
                                     </div>
                                     <span class="font-semibold">{{ p.name }}</span>
                                 </div>
@@ -380,7 +390,7 @@ const slotsPercent = computed(() => Math.min(100, Math.round((slotsUsed.value / 
                         <tr v-if="filteredParticipants.length === 0">
                             <td colspan="9" class="px-4 py-16 text-center">
                                 <div class="flex flex-col items-center gap-3 text-muted-foreground">
-                                    <div class="text-5xl">👥</div>
+                                    <Users class="h-12 w-12 opacity-20" />
                                     <p class="text-sm font-semibold">No participants found.</p>
                                     <p class="text-xs">Add a participant or adjust your search.</p>
                                 </div>
@@ -402,10 +412,12 @@ const slotsPercent = computed(() => Math.min(100, Math.round((slotsUsed.value / 
 
                 <!-- Modal Header -->
                 <div class="flex items-center gap-3 px-6 py-4 border-b bg-background">
-                    <div class="flex items-center justify-center h-9 w-9 rounded-xl shadow"
+                    <div
+                        class="flex items-center justify-center h-9 w-9 rounded-xl shadow"
                         :class="editingId ? 'bg-amber-500' : 'bg-blue-600'"
                     >
-                        <span class="text-lg">{{ editingId ? '✏️' : '👤' }}</span>
+                        <Pencil v-if="editingId" class="h-4 w-4 text-white" />
+                        <UserCircle2 v-else class="h-4 w-4 text-white" />
                     </div>
                     <div>
                         <h2 class="text-base font-bold leading-none">{{ editingId ? 'Edit Participant' : 'Add Participant' }}</h2>
@@ -440,9 +452,9 @@ const slotsPercent = computed(() => Math.min(100, Math.round((slotsUsed.value / 
                             </label>
                             <select v-model="form.sex" class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background">
                                 <option value="" disabled>-- Select --</option>
-                                <option value="male">👨 Male</option>
-                                <option value="female">👩 Female</option>
-                                <option value="other">🧑 Other</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="other">Other</option>
                             </select>
                             <span v-if="form.errors.sex" class="text-xs text-red-500">{{ form.errors.sex }}</span>
                         </div>
