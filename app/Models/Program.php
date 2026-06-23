@@ -18,7 +18,7 @@ class Program extends Model
         static::created(function (Program $program) {
             $program->update([
                 'program_code' => 'TDI-' . now()->year . '-' . str_pad($program->id, 4, '0', STR_PAD_LEFT),
-            ]);
+        ]);
         });
 
         // Kapag binura ang program, kasamang mabubura ang batches niya

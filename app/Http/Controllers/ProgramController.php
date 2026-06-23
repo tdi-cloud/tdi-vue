@@ -6,11 +6,13 @@ use App\Models\Program;
 use App\Models\ProgramCompetency;
 use App\Models\Submission;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class ProgramController extends Controller
 {
-    public function index(){
+    public function index()
+    {
         $programs = Program::orderBy('sort_order')
             ->orderByDesc('created_at')
             ->withCount('batches')
@@ -24,14 +26,13 @@ class ProgramController extends Controller
                 $program->requirements_count = $program->batches->sum('requirements_count');
 
                 $program->date_start = $program->batches->min('date_start');
-                $program->date_end = $program->batches->max('date_end');
+                $program->date_end   = $program->batches->max('date_end');
 
                 $program->batch_statuses = $program->batches
                     ->pluck('status')
                     ->unique()
                     ->values();
 
-                // ✅ Lahat ng "YYYY-MM" na buwan na sakop ng batches (para sa "Month" filter)
                 $program->months = $program->batches
                     ->flatMap(function ($batch) {
                         if (! $batch->date_start || ! $batch->date_end) {
@@ -65,18 +66,17 @@ class ProgramController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            // 'program_code' => 'nullable|string|unique:programs,program_code',
-            'title'        => 'required|string',
-            'description'  => 'nullable|string',
-            'modality'     => 'required|string',
-            'pax'          => 'required|string',
-            'category'     => 'required|string',
-            'type'         => 'required|string',
-            'initiated'    => 'required|string',
-            'provider'     => 'nullable|string',
-            'cost'         => 'required|string',
-            'fund'         => 'required|string',
-            'origin'       => 'required|string',
+            'title'       => 'required|string',
+            'description' => 'nullable|string',
+            'modality'    => 'required|string',
+            'pax'         => 'required|string',
+            'category'    => 'required|string',
+            'type'        => 'required|string',
+            'initiated'   => 'required|string',
+            'provider'    => 'nullable|string',
+            'cost'        => 'required|string',
+            'fund'        => 'required|string',
+            'origin'      => 'required|string',
         ]);
 
         Program::create($request->all());
@@ -84,36 +84,47 @@ class ProgramController extends Controller
         return back()->with('success', 'Program created successfully.');
     }
 
-    public function destroy(Program $program)
-    {
-        $program->delete();
-
-        return redirect()->route('programs.index')->with('success', 'Program deleted successfully.');
-    }
-
     public function show(Program $program)
     {
-        return Inertia::render('programs/show', [
-            'program' => $program->load([
-                'batches' => function ($q) {
-                    $q->with(
-                        'participants.employee',
-                        'participants.justification',
-                        'participants.submissions.requirement',
-                        'requirements'
-                    )
-                        ->orderBy('sort_order')
-                        ->orderBy('date_start');
-                },
-                'competencies',
-                'supportingDocuments',
-                'resourceSpeakers',
-                'coverPage',
-            ]),
-            'submissions' => Submission::with(['participant.employee', 'batch', 'requirement'])
+        $program->load([
+            'competencies',
+            'supportingDocuments',
+            'resourceSpeakers',
+            'coverPage',
+            'batches' => function ($q) {
+                $q->orderBy('sort_order')
+                  ->orderBy('date_start')
+                  ->with([
+                      'requirements',
+                      'participants' => function ($pq) {
+                          $pq->addSelect([
+                              'participants.*',
+                              // Pull the matching user's email via a correlated subquery
+                              DB::raw('(
+                                  SELECT users.email
+                                  FROM users
+                                  WHERE users.empcode = participants.empcode
+                                  LIMIT 1
+                              ) AS user_email'),
+                          ])
+                          ->with([
+                              'employee',
+                              'justification',
+                              'submissions.requirement',
+                          ]);
+                      },
+                  ]);
+            },
+        ]);
+
+        $submissions = Submission::with(['participant.employee', 'batch', 'requirement'])
             ->where('program_code', $program->program_code)
             ->orderByDesc('submitted_at')
-            ->get(),
+            ->get();
+
+        return Inertia::render('programs/show', [
+            'program'     => $program,
+            'submissions' => $submissions,
         ]);
     }
 
@@ -127,24 +138,23 @@ class ProgramController extends Controller
     public function update(Request $request, Program $program)
     {
         $request->validate([
-            'title'      => 'required|string',
-            'description'=> 'nullable|string',
-            'modality'   => 'required|string',
-            'pax'        => 'required|string',
-            'category'   => 'required|string',
-            'type'       => 'required|string',
-            'initiated'  => 'required|string',
-            'provider'   => 'nullable|string',
-            'cost'       => 'required|string',
-            'fund'       => 'required|string',
-            'origin'     => 'required|string',
+            'title'       => 'required|string',
+            'description' => 'nullable|string',
+            'modality'    => 'required|string',
+            'pax'         => 'required|string',
+            'category'    => 'required|string',
+            'type'        => 'required|string',
+            'initiated'   => 'required|string',
+            'provider'    => 'nullable|string',
+            'cost'        => 'required|string',
+            'fund'        => 'required|string',
+            'origin'      => 'required|string',
         ]);
 
         $program->update($request->all());
 
         return redirect()->route('programs.show', $program)->with('success', 'Program updated successfully.');
     }
-
 
     public function storeCompetencies(Request $request, Program $program)
     {
@@ -166,7 +176,6 @@ class ProgramController extends Controller
 
     public function destroyCompetency(Program $program, ProgramCompetency $competency)
     {
-        // Siguraduhing sa program na ito talaga ang competency
         abort_unless($competency->program_id === $program->id, 404);
 
         $competency->delete();
