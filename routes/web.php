@@ -81,10 +81,14 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function(){
         ->name('dashboard.supervisory-compliance');
     Route::get('/dashboard/supervisory-compliance-list', [DashboardController::class, 'supervisoryComplianceList'])
         ->name('dashboard.supervisory-compliance.list');
+    
     Route::get('/dashboard/treap-compliance', [DashboardController::class, 'treapCompliance'])
     ->name('dashboard.treap-compliance');
     Route::get('/dashboard/treap-compliance-list', [DashboardController::class, 'treapComplianceList'])
     ->name('dashboard.treap-compliance.list');
+
+    Route::get('/dashboard/reap-compliance',      [DashboardController::class, 'reapCompliance'])     ->name('dashboard.reap-compliance');
+    Route::get('/dashboard/reap-compliance-list', [DashboardController::class, 'reapComplianceList']) ->name('dashboard.reap-compliance.list');
 
     // NEW: Lookup endpoints for filter dropdowns
     Route::get('/dashboard/offices',     [DashboardController::class, 'offices'])->name('dashboard.offices');

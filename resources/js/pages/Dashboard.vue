@@ -7,6 +7,8 @@ import PlaceholderPattern from '../components/PlaceholderPattern.vue';
 import TrainingComplianceCard from '../components/TrainingComplianceCard.vue';
 import SupervisoryComplianceCard from '../components/SupervisoryComplianceCard.vue';
 import TreapComplianceCard from '../components/TreapComplianceCard.vue';
+import ReapComplianceCard from '../components/ReapComplianceCard.vue';
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -165,6 +167,14 @@ watch(region, fetchOffices);
 
             <!-- ===================== TREAP PANEL ===================== -->
             <TreapComplianceCard
+                :target="target"
+                :region="region"
+                :selected-statuses="selectedStatuses"
+                :year="year"
+                :office="office"
+            />
+
+            <ReapComplianceCard
                 :target="target"
                 :region="region"
                 :selected-statuses="selectedStatuses"

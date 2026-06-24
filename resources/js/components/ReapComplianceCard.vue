@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
 import VueApexCharts from 'vue3-apexcharts';
-import { FileCheck, FileX, Users, TrendingUp, X, Loader2 } from 'lucide-vue-next';
+import { FileText, FileX, Users, TrendingUp, X, Loader2 } from 'lucide-vue-next';
 
 const props = defineProps<{
     target: string;
@@ -13,7 +13,7 @@ const props = defineProps<{
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
-interface TreapData {
+interface ReapData {
     total:             number;
     submitted:         number;
     not_submitted:     number;
@@ -37,7 +37,7 @@ interface EmployeeRow {
     due_date:         string;
 }
 
-const data    = ref<TreapData | null>(null);
+const data    = ref<ReapData | null>(null);
 const loading = ref(false);
 
 // ─── Modal state ─────────────────────────────────────────────────────────────
@@ -61,7 +61,7 @@ async function fetchData() {
             office_filter: props.target,
         });
         props.selectedStatuses.forEach(s => params.append('plant_status[]', s));
-        const res  = await fetch(`/dashboard/treap-compliance?${params}`);
+        const res  = await fetch(`/dashboard/reap-compliance?${params}`);
         data.value = await res.json();
     } finally {
         loading.value = false;
@@ -93,7 +93,7 @@ async function fetchList(type: 'submitted' | 'not_submitted', reg = 'ALL') {
             reg,
         });
         props.selectedStatuses.forEach(s => params.append('plant_status[]', s));
-        const res  = await fetch(`/dashboard/treap-compliance-list?${params}`);
+        const res  = await fetch(`/dashboard/reap-compliance-list?${params}`);
         const json = await res.json();
         modalEmployees.value = json.employees;
         modalCount.value     = json.count;
@@ -122,14 +122,14 @@ function onBarClick(_e: any, _chart: any, opts: any) {
 
 const donutOptions = computed(() => ({
     chart: {
-        type:      'donut',
-        fontFamily:'inherit',
-        toolbar:   { show: false },
-        events:    { dataPointSelection: onDonutClick },
+        type:       'donut',
+        fontFamily: 'inherit',
+        toolbar:    { show: false },
+        events:     { dataPointSelection: onDonutClick },
         background: 'transparent',
     },
     labels:  ['Submitted', 'Not Submitted'],
-    colors:  ['#059669', '#f43f5e'],
+    colors:  ['#6366f1', '#f59e0b'],
     fill: {
         type:    'solid',
         opacity: [0.45, 0.35],
@@ -137,13 +137,13 @@ const donutOptions = computed(() => ({
     stroke: {
         show:    true,
         width:   1.5,
-        colors:  ['#059669', '#f43f5e'],
+        colors:  ['#6366f1', '#f59e0b'],
         lineCap: 'round',
     },
     legend: {
         position: 'bottom',
         fontSize: '12px',
-        labels:   { colors: ['#059669', '#f43f5e'] },
+        labels:   { colors: ['#6366f1', '#f59e0b'] },
     },
     plotOptions: {
         pie: {
@@ -156,14 +156,14 @@ const donutOptions = computed(() => ({
                     total: {
                         show:       true,
                         label:      'Submitted',
-                        color:      '#059669',
+                        color:      '#6366f1',
                         fontSize:   '13px',
                         fontWeight: 700,
                         formatter:  () =>
                             data.value ? `${data.value.submitted_pct}%` : '0%',
                     },
                     value: {
-                        color:      '#059669',
+                        color:      '#6366f1',
                         fontWeight: 700,
                     },
                 },
@@ -191,12 +191,12 @@ const REGIONS = [
 
 const barOptions = computed(() => ({
     chart: {
-        type:      'bar',
-        fontFamily:'inherit',
-        toolbar:   { show: false },
-        stacked:    true,
-        stackType: '100%',
-        events:    { dataPointSelection: onBarClick },
+        type:       'bar',
+        fontFamily: 'inherit',
+        toolbar:    { show: false },
+        stacked:     true,
+        stackType:  '100%',
+        events:     { dataPointSelection: onBarClick },
     },
     plotOptions: {
         bar: {
@@ -206,7 +206,7 @@ const barOptions = computed(() => ({
             barHeight:               '60%',
         },
     },
-    colors:  ['#10b981', '#f43f5e'],
+    colors:  ['#818cf8', '#fbbf24'],
     xaxis: {
         categories: data.value?.regions ?? REGIONS,
         labels: {
@@ -248,8 +248,8 @@ function formatDate(d: string | null) {
 const modalTitle = computed(() => {
     const label = modalType.value === 'submitted' ? 'Submitted' : 'Not Yet Submitted';
     return modalRegion.value === 'ALL'
-        ? `TREAP — ${label} (All Regions)`
-        : `TREAP — ${label} · ${modalRegion.value}`;
+        ? `REAP — ${label} (All Regions)`
+        : `REAP — ${label} · ${modalRegion.value}`;
 });
 </script>
 
@@ -258,25 +258,25 @@ const modalTitle = computed(() => {
 
         <!-- Header -->
         <div class="flex items-center gap-2">
-            <div class="h-8 w-8 rounded-lg bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center shrink-0">
-                <FileCheck class="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <div class="h-8 w-8 rounded-lg bg-indigo-100 dark:bg-indigo-950/50 flex items-center justify-center shrink-0">
+                <FileText class="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
             </div>
             <div>
-                <h2 class="text-sm font-extrabold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
-                    Terminal Report (TREAP)
+                <h2 class="text-sm font-extrabold uppercase tracking-wide text-indigo-700 dark:text-indigo-400">
+                    Terminal Report &amp; Re-entry Action Plan (REAP)
                 </h2>
-                <p class="text-xs text-muted-foreground">Overdue TREAP submission compliance · click any chart segment to see the list</p>
+                <p class="text-xs text-muted-foreground">Overdue REAP submission compliance · click any chart segment to see the list</p>
             </div>
         </div>
 
         <!-- Loading -->
         <div v-if="loading" class="flex justify-center py-12">
-            <div class="h-8 w-8 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin" />
+            <div class="h-8 w-8 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin" />
         </div>
 
         <template v-else-if="data">
 
-            <!-- Stat row — clickable -->
+            <!-- Stat row -->
             <div class="grid grid-cols-3 gap-3">
                 <div class="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3 flex flex-col gap-0.5">
                     <p class="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
@@ -285,24 +285,24 @@ const modalTitle = computed(() => {
                     <p class="text-2xl font-extrabold">{{ data.total.toLocaleString() }}</p>
                 </div>
                 <button
-                    class="rounded-xl p-3 flex flex-col gap-0.5 text-left hover:brightness-95 transition-all cursor-pointer border border-emerald-200 dark:border-emerald-800/40 bg-emerald-50 dark:bg-emerald-950/20"
+                    class="rounded-xl p-3 flex flex-col gap-0.5 text-left hover:brightness-95 transition-all cursor-pointer border border-indigo-200 dark:border-indigo-800/40 bg-indigo-50 dark:bg-indigo-950/20"
                     @click="fetchList('submitted', 'ALL')"
                 >
-                    <p class="text-[10px] font-semibold uppercase tracking-wide flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
-                        <FileCheck class="h-3 w-3" /> Submitted
+                    <p class="text-[10px] font-semibold uppercase tracking-wide flex items-center gap-1 text-indigo-700 dark:text-indigo-400">
+                        <FileText class="h-3 w-3" /> Submitted
                     </p>
-                    <p class="text-2xl font-extrabold text-emerald-700 dark:text-emerald-300">{{ data.submitted.toLocaleString() }}</p>
-                    <p class="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{{ data.submitted_pct }}%</p>
+                    <p class="text-2xl font-extrabold text-indigo-700 dark:text-indigo-300">{{ data.submitted.toLocaleString() }}</p>
+                    <p class="text-xs font-semibold text-indigo-600 dark:text-indigo-400">{{ data.submitted_pct }}%</p>
                 </button>
                 <button
-                    class="rounded-xl p-3 flex flex-col gap-0.5 text-left hover:brightness-95 transition-all cursor-pointer border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/20"
+                    class="rounded-xl p-3 flex flex-col gap-0.5 text-left hover:brightness-95 transition-all cursor-pointer border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/20"
                     @click="fetchList('not_submitted', 'ALL')"
                 >
-                    <p class="text-[10px] font-semibold uppercase tracking-wide flex items-center gap-1 text-rose-600 dark:text-rose-400">
+                    <p class="text-[10px] font-semibold uppercase tracking-wide flex items-center gap-1 text-amber-600 dark:text-amber-400">
                         <FileX class="h-3 w-3" /> Not Submitted
                     </p>
-                    <p class="text-2xl font-extrabold text-rose-600 dark:text-rose-400">{{ data.not_submitted.toLocaleString() }}</p>
-                    <p class="text-xs font-semibold text-rose-500 dark:text-rose-400">{{ data.not_submitted_pct }}%</p>
+                    <p class="text-2xl font-extrabold text-amber-600 dark:text-amber-400">{{ data.not_submitted.toLocaleString() }}</p>
+                    <p class="text-xs font-semibold text-amber-500 dark:text-amber-400">{{ data.not_submitted_pct }}%</p>
                 </button>
             </div>
 
@@ -338,7 +338,7 @@ const modalTitle = computed(() => {
         <!-- Empty -->
         <div v-else class="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
             <TrendingUp class="h-10 w-10 opacity-20" />
-            <p class="text-sm">No TREAP data available.</p>
+            <p class="text-sm">No REAP data available.</p>
         </div>
 
     </div>
@@ -360,11 +360,11 @@ const modalTitle = computed(() => {
                         <div
                             class="h-8 w-8 rounded-lg flex items-center justify-center shrink-0"
                             :class="modalType === 'submitted'
-                                ? 'bg-emerald-100 dark:bg-emerald-950/50'
-                                : 'bg-red-100 dark:bg-red-950/50'"
+                                ? 'bg-indigo-100 dark:bg-indigo-950/50'
+                                : 'bg-amber-100 dark:bg-amber-950/50'"
                         >
-                            <FileCheck v-if="modalType === 'submitted'" class="h-4 w-4 text-emerald-600" />
-                            <FileX     v-else                           class="h-4 w-4 text-red-500" />
+                            <FileText v-if="modalType === 'submitted'" class="h-4 w-4 text-indigo-600" />
+                            <FileX    v-else                           class="h-4 w-4 text-amber-500" />
                         </div>
                         <div>
                             <p class="font-bold text-sm">{{ modalTitle }}</p>
@@ -409,7 +409,7 @@ const modalTitle = computed(() => {
                                 <td class="px-4 py-2.5 text-xs text-muted-foreground">{{ emp.position }}</td>
                                 <td class="px-4 py-2.5 text-xs text-muted-foreground">{{ emp.office_division }}</td>
                                 <td class="px-4 py-2.5">
-                                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
                                         {{ emp.region }}
                                     </span>
                                 </td>
@@ -417,7 +417,7 @@ const modalTitle = computed(() => {
                                 <td class="px-4 py-2.5">
                                     <span
                                         class="text-xs font-semibold"
-                                        :class="modalType === 'not_submitted' ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'"
+                                        :class="modalType === 'not_submitted' ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'"
                                     >
                                         {{ formatDate(emp.due_date) }}
                                     </span>
