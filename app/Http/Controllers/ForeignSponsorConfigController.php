@@ -55,10 +55,12 @@ class ForeignSponsorConfigController extends Controller
             'available_courses'          => 'nullable|array',
             'available_courses.*.title'  => 'required|string|max:255',
             'available_courses.*.url'    => 'required|url',
+            'selected_program_ids'       => 'nullable|array',   // ← IDAGDAG
+            'selected_program_ids.*'     => 'integer',          // ← IDAGDAG
         ]);
-
+    
         $config->update($data);
-
+    
         return response()->json($config->fresh()->load('requirements'));
     }
 

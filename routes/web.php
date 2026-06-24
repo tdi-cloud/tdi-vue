@@ -140,6 +140,10 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function(){
     Route::get('foreign-programs/dashboard-data', [ForeignProgramController::class, 'dashboardData'])
     ->name('foreign-programs.dashboard-data');
 
+    Route::get('/foreign-programs/by-sponsor', [ForeignProgramController::class, 'byOrganizingSponsor'])
+    ->name('foreign-programs.by-sponsor')
+    ->middleware('auth');
+
     Route::get('/foreign-programs', [ForeignProgramController::class, 'index'])->name('foreign-programs.index');
     Route::get('/foreign-programs/{foreignProgram}', [ForeignProgramController::class, 'show'])->name('foreign-programs.show');
     Route::post('/foreign-programs', [ForeignProgramController::class, 'store'])->name('foreign-programs.store');
@@ -238,6 +242,8 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function(){
         $nominee->delete();
         return back();
     })->name('foreign-nominees.destroy')->middleware('auth');
+
+    
 
 
 });

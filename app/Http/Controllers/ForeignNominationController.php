@@ -17,12 +17,21 @@ class ForeignNominationController extends Controller
             ->where('is_active', true)
             ->with(['requirements' => fn($q) => $q->orderBy('sort_order')])
             ->firstOrFail();
-
-        $programs = ForeignProgram::where('organizing_sponsor', $config->organizing_sponsor)
-            ->whereNotIn('status', ['concluded', 'no_nominee'])
+    
+        $programsQuery = ForeignProgram::where('organizing_sponsor', $config->organizing_sponsor);
+    
+        // If admin selected specific programs, show only those
+        if (!empty($config->selected_program_ids)) {
+            $programsQuery->whereIn('id', $config->selected_program_ids);
+        } else {
+            // Otherwise show all non-concluded programs
+            $programsQuery->whereNotIn('status', ['concluded', 'no_nominee']);
+        }
+    
+        $programs = $programsQuery
             ->orderBy('program_start')
             ->get(['id', 'program_title', 'program_start', 'program_end', 'slots', 'modality']);
-
+    
         return Inertia::render('ForeignPrograms/NominationForm', [
             'config'   => $config,
             'programs' => $programs,

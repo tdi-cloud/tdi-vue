@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
 import axios from 'axios';
-import { X, Plus, Trash2, GripVertical, ExternalLink, Loader2, Settings, Link, FileText, Save } from 'lucide-vue-next';
+import { X, Plus, Trash2, GripVertical, ExternalLink, Loader2, Settings, FileText, Save, CheckSquare, Square, Calendar } from 'lucide-vue-next';
 
 interface Requirement {
     id: number | null;
@@ -10,12 +10,21 @@ interface Requirement {
     link: string;
     file_required: boolean;
     sort_order: number;
-    _editing?: boolean;
 }
 
 interface Course {
     title: string;
     url: string;
+}
+
+interface Program {
+    id: number;
+    program_title: string;
+    program_start: string;
+    program_end: string;
+    modality: string;
+    slots: number;
+    status: string;
 }
 
 interface Config {
@@ -27,11 +36,12 @@ interface Config {
     accomplished_form_note: string;
     available_courses: Course[];
     requirements: Requirement[];
+    selected_program_ids: number[];
 }
 
 const props = defineProps<{
     open: boolean;
-    organizingSponsor: string; // pre-filled from parent
+    organizingSponsor: string;
 }>();
 
 const emit = defineEmits<{
@@ -41,10 +51,9 @@ const emit = defineEmits<{
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
-const tab       = ref<'general' | 'requirements' | 'courses'>('general');
-const loading   = ref(false);
-const saving    = ref(false);
-const notFound  = ref(false);
+const tab     = ref<'general' | 'requirements' | 'courses' | 'programs'>('general');
+const loading = ref(false);
+const saving  = ref(false);
 
 const config = ref<Config>({
     id: null,
@@ -55,46 +64,131 @@ const config = ref<Config>({
     accomplished_form_note: '',
     available_courses: [],
     requirements: [],
+    selected_program_ids: [],
 });
+
+// ── Programs tab state ────────────────────────────────────────────────────────
+
+const programYear      = ref('');
+const programYears     = ref<number[]>([]);
+const programList      = ref<Program[]>([]);
+const programsLoading  = ref(false);
+const selectedPrograms = ref<number[]>([]);
+
+const allSelected = computed(() =>
+    programList.value.length > 0 &&
+    programList.value.every(p => selectedPrograms.value.includes(p.id))
+);
+
+function toggleAll() {
+    if (allSelected.value) {
+        selectedPrograms.value = [];
+    } else {
+        selectedPrograms.value = programList.value.map(p => p.id);
+    }
+}
+
+function toggleProgram(id: number) {
+    const idx = selectedPrograms.value.indexOf(id);
+    if (idx >= 0) {
+        selectedPrograms.value.splice(idx, 1);
+    } else {
+        selectedPrograms.value.push(id);
+    }
+}
+
+async function fetchPrograms() {
+    if (!config.value.id) return;
+    programsLoading.value = true;
+    try {
+        const res = await axios.get(route('foreign-programs.by-sponsor'), {
+            params: {
+                sponsor: props.organizingSponsor,
+                year:    programYear.value || undefined,
+            },
+        });
+        programList.value  = res.data.programs;
+        programYears.value = res.data.years;
+    } finally {
+        programsLoading.value = false;
+    }
+}
+
+watch(programYear, fetchPrograms);
+
+async function savePrograms() {
+    if (selectedPrograms.value.length === 0) {
+        alert('Please select at least one program.');
+        return;
+    }
+    saving.value = true;
+    try {
+        const res = await axios.put(`/foreign-sponsor-configs/${config.value.id}`, {
+            form_title:             config.value.form_title,
+            is_active:              config.value.is_active,
+            accomplished_form_note: config.value.accomplished_form_note,
+            available_courses:      config.value.available_courses,
+            selected_program_ids:   selectedPrograms.value,
+        });
+        config.value = { ...config.value, ...res.data };
+        emit('saved', config.value);
+    } finally {
+        saving.value = false;
+    }
+}
+
+function formatDate(d: string) {
+    if (!d) return '—';
+    const date = d.includes('T') ? new Date(d) : new Date(d + 'T00:00:00');
+    return date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+}
 
 // ── Load config when modal opens ──────────────────────────────────────────────
 
 watch(() => props.open, async (val) => {
     if (!val) return;
-    tab.value    = 'general';
-    notFound.value = false;
-    loading.value  = true;
+    tab.value           = 'general';
+    programYear.value   = '';
+    programList.value   = [];
+    loading.value       = true;
 
     try {
-        // Try to find existing config for this sponsor
-        const res = await axios.get('/foreign-sponsor-configs');
-        const existing = res.data.find(
-            (c: Config) => c.organizing_sponsor === props.organizingSponsor
-        );
+        const res     = await axios.get('/foreign-sponsor-configs');
+        const existing = res.data.find((c: Config) => c.organizing_sponsor === props.organizingSponsor);
 
         if (existing) {
             const detail = await axios.get(`/foreign-sponsor-configs/${existing.id}`);
             config.value = {
                 ...detail.data,
-                available_courses:  detail.data.available_courses ?? [],
-                requirements:       detail.data.requirements ?? [],
+                available_courses:    detail.data.available_courses    ?? [],
+                requirements:         detail.data.requirements         ?? [],
+                selected_program_ids: detail.data.selected_program_ids ?? [],
                 accomplished_form_note: detail.data.accomplished_form_note ?? '',
             };
+            selectedPrograms.value = config.value.selected_program_ids ?? [];
         } else {
-            // New config for this sponsor
             config.value = {
                 id: null,
                 organizing_sponsor: props.organizingSponsor,
                 slug: props.organizingSponsor.toLowerCase().replace(/\s+/g, '-'),
-                form_title: `${props.organizingSponsor} Nomination Form`,
+                form_title: `${props.organizingSponsor} | ${new Date().getFullYear()} Foreign Scholarship and Training Program`,
                 is_active: true,
                 accomplished_form_note: '',
                 available_courses: [],
                 requirements: [],
+                selected_program_ids: [],
             };
+            selectedPrograms.value = [];
         }
     } finally {
         loading.value = false;
+    }
+});
+
+// Fetch programs when Programs tab is opened
+watch(tab, (val) => {
+    if (val === 'programs' && config.value.id) {
+        fetchPrograms();
     }
 });
 
@@ -109,6 +203,7 @@ async function saveGeneral() {
                 is_active:              config.value.is_active,
                 accomplished_form_note: config.value.accomplished_form_note,
                 available_courses:      config.value.available_courses,
+                selected_program_ids:   selectedPrograms.value,
             });
             config.value = { ...config.value, ...res.data };
         } else {
@@ -128,11 +223,9 @@ async function saveGeneral() {
 
 // ── Requirements ──────────────────────────────────────────────────────────────
 
-const newReq = ref<Omit<Requirement, 'id' | 'sort_order'>>({
-    question: '', description: '', link: '', file_required: true, _editing: false,
-});
-
+const newReq    = ref({ question: '', description: '', link: '', file_required: true });
 const addingReq = ref(false);
+const editingReq = ref<Requirement | null>(null);
 
 async function addRequirement() {
     if (!config.value.id || !newReq.value.question) return;
@@ -140,20 +233,18 @@ async function addRequirement() {
     try {
         const res = await axios.post(`/foreign-sponsor-configs/${config.value.id}/requirements`, newReq.value);
         config.value.requirements.push(res.data);
-        newReq.value = { question: '', description: '', link: '', file_required: true };
+        newReq.value  = { question: '', description: '', link: '', file_required: true };
         addingReq.value = false;
     } finally {
         saving.value = false;
     }
 }
 
-const editingReq = ref<Requirement | null>(null);
-
 async function saveRequirement(req: Requirement) {
     saving.value = true;
     try {
         const res = await axios.put(`/foreign-nominee-requirements/${req.id}`, req);
-        const idx = config.value.requirements.findIndex(r => r.id === req.id);
+        const idx  = config.value.requirements.findIndex(r => r.id === req.id);
         if (idx >= 0) config.value.requirements[idx] = res.data;
         editingReq.value = null;
     } finally {
@@ -189,6 +280,7 @@ async function saveCourses() {
             is_active:              config.value.is_active,
             accomplished_form_note: config.value.accomplished_form_note,
             available_courses:      config.value.available_courses,
+            selected_program_ids:   selectedPrograms.value,
         });
         config.value = { ...config.value, ...res.data };
     } finally {
@@ -196,7 +288,7 @@ async function saveCourses() {
     }
 }
 
-// ── Computed ──────────────────────────────────────────────────────────────────
+// ── Nomination URL ────────────────────────────────────────────────────────────
 
 const nominationUrl = computed(() =>
     config.value.slug ? `/nominate/${config.value.slug}` : ''
@@ -240,21 +332,28 @@ const nominationUrl = computed(() =>
 
                 <template v-else>
                     <!-- Tabs -->
-                    <div class="flex border-b shrink-0 px-5">
+                    <div class="flex border-b shrink-0 px-5 overflow-x-auto">
                         <button
                             v-for="t in [
-                                { key: 'general', label: 'General' },
+                                { key: 'general',      label: 'General' },
+                                { key: 'programs',     label: 'Programs' },
                                 { key: 'requirements', label: 'Requirements' },
-                                { key: 'courses', label: 'Available Courses' },
+                                { key: 'courses',      label: 'Courses' },
                             ]"
                             :key="t.key"
-                            class="px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors"
+                            class="px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap"
                             :class="tab === t.key
                                 ? 'border-blue-600 text-blue-600'
                                 : 'border-transparent text-muted-foreground hover:text-foreground'"
                             @click="tab = t.key as any"
                         >
                             {{ t.label }}
+                            <span
+                                v-if="t.key === 'programs' && selectedPrograms.length > 0"
+                                class="ml-1 text-[10px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full"
+                            >
+                                {{ selectedPrograms.length }}
+                            </span>
                         </button>
                     </div>
 
@@ -265,20 +364,13 @@ const nominationUrl = computed(() =>
                         <div v-if="tab === 'general'" class="space-y-4">
                             <div>
                                 <label class="block text-xs font-semibold text-muted-foreground mb-1">Form Title <span class="text-red-500">*</span></label>
-                                <input
-                                    v-model="config.form_title"
-                                    type="text"
-                                    class="w-full rounded-xl border border-border bg-muted/30 px-3 py-2 text-sm outline-none focus:border-blue-500 transition"
-                                />
+                                <input v-model="config.form_title" type="text"
+                                    class="w-full rounded-xl border border-border bg-muted/30 px-3 py-2 text-sm outline-none focus:border-blue-500 transition" />
                             </div>
 
                             <div class="flex items-center gap-3">
-                                <input
-                                    id="is-active"
-                                    v-model="config.is_active"
-                                    type="checkbox"
-                                    class="h-4 w-4 rounded border-border text-blue-600"
-                                />
+                                <input id="is-active" v-model="config.is_active" type="checkbox"
+                                    class="h-4 w-4 rounded border-border text-blue-600" />
                                 <label for="is-active" class="text-sm font-semibold">Form Active</label>
                                 <span class="text-xs text-muted-foreground">(inactive = nominees cannot access the form)</span>
                             </div>
@@ -287,27 +379,116 @@ const nominationUrl = computed(() =>
                                 <label class="block text-xs font-semibold text-muted-foreground mb-1">
                                     <div class="flex items-center gap-1"><FileText class="h-3 w-3" /> Note for Accomplished Form</div>
                                 </label>
-                                <textarea
-                                    v-model="config.accomplished_form_note"
-                                    rows="3"
+                                <textarea v-model="config.accomplished_form_note" rows="3"
                                     placeholder="Instructions for downloading/filling the application form…"
-                                    class="w-full rounded-xl border border-border bg-muted/30 px-3 py-2 text-sm outline-none focus:border-blue-500 transition resize-none"
-                                />
+                                    class="w-full rounded-xl border border-border bg-muted/30 px-3 py-2 text-sm outline-none focus:border-blue-500 transition resize-none" />
                             </div>
 
                             <div v-if="!config.id" class="rounded-xl bg-amber-50 border border-amber-100 px-4 py-3 text-xs text-amber-700">
                                 ⚠️ Save General Settings first before adding requirements and courses.
                             </div>
 
-                            <button
-                                :disabled="saving"
+                            <button :disabled="saving"
                                 class="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold py-2.5 text-sm transition"
-                                @click="saveGeneral"
-                            >
+                                @click="saveGeneral">
                                 <Loader2 v-if="saving" class="h-3.5 w-3.5 animate-spin" />
                                 <Save v-else class="h-3.5 w-3.5" />
                                 {{ saving ? 'Saving…' : 'Save General Settings' }}
                             </button>
+                        </div>
+
+                        <!-- ── Programs Tab ── -->
+                        <div v-else-if="tab === 'programs'" class="space-y-4">
+                            <div v-if="!config.id" class="rounded-xl bg-amber-50 border border-amber-100 px-4 py-3 text-xs text-amber-700">
+                                ⚠️ Save General Settings first before selecting programs.
+                            </div>
+
+                            <template v-else>
+                                <!-- Year filter -->
+                                <div class="flex items-center gap-3">
+                                    <div class="flex items-center gap-2">
+                                        <Calendar class="h-4 w-4 text-muted-foreground" />
+                                        <label class="text-xs font-semibold text-muted-foreground">Filter by Year</label>
+                                    </div>
+                                    <select v-model="programYear"
+                                        class="rounded-lg border border-border bg-muted/30 px-3 py-1.5 text-xs outline-none focus:border-blue-500 transition">
+                                        <option value="">All Years</option>
+                                        <option v-for="y in programYears" :key="y" :value="y">{{ y }}</option>
+                                    </select>
+                                    <span class="text-xs text-muted-foreground">
+                                        {{ selectedPrograms.length }} selected
+                                    </span>
+                                </div>
+
+                                <!-- Loading -->
+                                <div v-if="programsLoading" class="flex justify-center py-8">
+                                    <Loader2 class="h-5 w-5 animate-spin text-muted-foreground" />
+                                </div>
+
+                                <template v-else>
+                                    <!-- Select All -->
+                                    <div v-if="programList.length > 0"
+                                        class="flex items-center justify-between px-3 py-2 rounded-xl bg-muted/30 border">
+                                        <button
+                                            class="flex items-center gap-2 text-xs font-semibold text-blue-600 hover:text-blue-800 transition"
+                                            @click="toggleAll"
+                                        >
+                                            <CheckSquare v-if="allSelected" class="h-4 w-4" />
+                                            <Square v-else class="h-4 w-4" />
+                                            {{ allSelected ? 'Unselect All' : 'Select All' }}
+                                        </button>
+                                        <span class="text-xs text-muted-foreground">
+                                            {{ programList.length }} program(s) shown
+                                        </span>
+                                    </div>
+
+                                    <!-- Program list -->
+                                    <div v-if="programList.length > 0" class="space-y-2">
+                                        <div
+                                            v-for="p in programList"
+                                            :key="p.id"
+                                            class="flex items-start gap-3 rounded-xl border px-3 py-3 cursor-pointer transition-colors"
+                                            :class="selectedPrograms.includes(p.id)
+                                                ? 'border-blue-300 bg-blue-50 dark:bg-blue-950/30'
+                                                : 'border-border hover:bg-muted/30'"
+                                            @click="toggleProgram(p.id)"
+                                        >
+                                            <div class="mt-0.5 shrink-0">
+                                                <CheckSquare v-if="selectedPrograms.includes(p.id)" class="h-4 w-4 text-blue-600" />
+                                                <Square v-else class="h-4 w-4 text-muted-foreground" />
+                                            </div>
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-sm font-semibold leading-tight">{{ p.program_title }}</p>
+                                                <p class="text-xs text-muted-foreground mt-0.5">
+                                                    {{ formatDate(p.program_start) }} — {{ formatDate(p.program_end) }}
+                                                    · <span class="capitalize">{{ p.modality }}</span>
+                                                    · {{ p.slots }} slots
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <p v-else class="text-center text-xs text-muted-foreground py-8">
+                                        No programs found for this sponsor{{ programYear ? ` in ${programYear}` : '' }}.
+                                    </p>
+
+                                    <!-- Save -->
+                                    <div v-if="programList.length > 0" class="pt-2">
+                                        <p v-if="selectedPrograms.length === 0" class="text-xs text-red-500 mb-2">
+                                            ⚠️ Select at least one program to include in the nomination form.
+                                        </p>
+                                        <button
+                                            :disabled="saving || selectedPrograms.length === 0"
+                                            class="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-2.5 text-sm transition"
+                                            @click="savePrograms"
+                                        >
+                                            <Loader2 v-if="saving" class="h-3.5 w-3.5 animate-spin" />
+                                            <Save v-else class="h-3.5 w-3.5" />
+                                            {{ saving ? 'Saving…' : `Save Selected Programs (${selectedPrograms.length})` }}
+                                        </button>
+                                    </div>
+                                </template>
+                            </template>
                         </div>
 
                         <!-- ── Requirements Tab ── -->
@@ -317,32 +498,15 @@ const nominationUrl = computed(() =>
                             </div>
 
                             <template v-else>
-                                <!-- Existing requirements -->
-                                <div
-                                    v-for="(req, idx) in config.requirements"
-                                    :key="req.id"
-                                    class="rounded-xl border border-border bg-muted/20 p-3"
-                                >
+                                <div v-for="(req, idx) in config.requirements" :key="req.id" class="rounded-xl border border-border bg-muted/20 p-3">
                                     <template v-if="editingReq?.id === req.id">
                                         <div class="space-y-2">
-                                            <input
-                                                v-model="editingReq.question"
-                                                type="text"
-                                                placeholder="Question / Label"
-                                                class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none"
-                                            />
-                                            <textarea
-                                                v-model="editingReq.description"
-                                                rows="2"
-                                                placeholder="Description (optional)"
-                                                class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none resize-none"
-                                            />
-                                            <input
-                                                v-model="editingReq.link"
-                                                type="url"
-                                                placeholder="Link (optional)"
-                                                class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none"
-                                            />
+                                            <input v-model="editingReq.question" type="text" placeholder="Question / Label"
+                                                class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none" />
+                                            <textarea v-model="editingReq.description" rows="2" placeholder="Description (optional)"
+                                                class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none resize-none" />
+                                            <input v-model="editingReq.link" type="url" placeholder="Link (optional)"
+                                                class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none" />
                                             <div class="flex items-center gap-2">
                                                 <input v-model="editingReq.file_required" type="checkbox" class="h-4 w-4 rounded" id="fr-edit" />
                                                 <label for="fr-edit" class="text-xs font-semibold">File upload required</label>
@@ -381,27 +545,13 @@ const nominationUrl = computed(() =>
                                     </template>
                                 </div>
 
-                                <!-- Add new requirement -->
                                 <div v-if="addingReq" class="rounded-xl border border-blue-200 bg-blue-50/50 p-3 space-y-2">
-                                    <input
-                                        v-model="newReq.question"
-                                        type="text"
-                                        placeholder="Question / Label *"
-                                        class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none"
-                                        autofocus
-                                    />
-                                    <textarea
-                                        v-model="newReq.description"
-                                        rows="2"
-                                        placeholder="Description (optional)"
-                                        class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none resize-none"
-                                    />
-                                    <input
-                                        v-model="newReq.link"
-                                        type="url"
-                                        placeholder="Link to form/document (optional)"
-                                        class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none"
-                                    />
+                                    <input v-model="newReq.question" type="text" placeholder="Question / Label *"
+                                        class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none" autofocus />
+                                    <textarea v-model="newReq.description" rows="2" placeholder="Description (optional)"
+                                        class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none resize-none" />
+                                    <input v-model="newReq.link" type="url" placeholder="Link to form/document (optional)"
+                                        class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none" />
                                     <div class="flex items-center gap-2">
                                         <input v-model="newReq.file_required" type="checkbox" class="h-4 w-4 rounded" id="fr-new" />
                                         <label for="fr-new" class="text-xs font-semibold">File upload required</label>
@@ -412,11 +562,7 @@ const nominationUrl = computed(() =>
                                     </div>
                                 </div>
 
-                                <button
-                                    v-else
-                                    class="flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-800 transition"
-                                    @click="addingReq = true"
-                                >
+                                <button v-else class="flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-800 transition" @click="addingReq = true">
                                     <Plus class="h-4 w-4" /> Add Requirement
                                 </button>
                             </template>
@@ -430,8 +576,7 @@ const nominationUrl = computed(() =>
 
                             <template v-else>
                                 <div v-for="(course, idx) in config.available_courses" :key="idx"
-                                    class="flex items-center gap-2 rounded-xl border border-border bg-muted/20 px-3 py-2.5"
-                                >
+                                    class="flex items-center gap-2 rounded-xl border border-border bg-muted/20 px-3 py-2.5">
                                     <ExternalLink class="h-3.5 w-3.5 text-blue-500 shrink-0" />
                                     <div class="flex-1 min-w-0">
                                         <p class="text-sm font-semibold truncate">{{ course.title }}</p>
@@ -442,35 +587,22 @@ const nominationUrl = computed(() =>
                                     </button>
                                 </div>
 
-                                <!-- Add course -->
                                 <div class="rounded-xl border border-dashed border-blue-200 p-3 space-y-2">
                                     <p class="text-xs font-semibold text-muted-foreground">Add Course Link</p>
-                                    <input
-                                        v-model="newCourse.title"
-                                        type="text"
-                                        placeholder="Course title"
-                                        class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none"
-                                    />
-                                    <input
-                                        v-model="newCourse.url"
-                                        type="url"
-                                        placeholder="https://..."
-                                        class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none"
-                                    />
-                                    <button
-                                        :disabled="!newCourse.title || !newCourse.url"
+                                    <input v-model="newCourse.title" type="text" placeholder="Course title"
+                                        class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none" />
+                                    <input v-model="newCourse.url" type="url" placeholder="https://..."
+                                        class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none" />
+                                    <button :disabled="!newCourse.title || !newCourse.url"
                                         class="flex items-center gap-1 text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50 transition"
-                                        @click="addCourse"
-                                    >
+                                        @click="addCourse">
                                         <Plus class="h-3.5 w-3.5" /> Add Course
                                     </button>
                                 </div>
 
-                                <button
-                                    :disabled="saving"
+                                <button :disabled="saving"
                                     class="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold py-2.5 text-sm transition"
-                                    @click="saveCourses"
-                                >
+                                    @click="saveCourses">
                                     <Loader2 v-if="saving" class="h-3.5 w-3.5 animate-spin" />
                                     <Save v-else class="h-3.5 w-3.5" />
                                     {{ saving ? 'Saving…' : 'Save Courses' }}

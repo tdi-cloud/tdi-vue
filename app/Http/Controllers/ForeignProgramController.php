@@ -212,4 +212,32 @@ class ForeignProgramController extends Controller
             ],
         ]);
     }
+
+    public function byOrganizingSponsor(Request $request)
+    {
+        $sponsor = trim($request->query('sponsor'));
+
+        $query = ForeignProgram::query()
+            ->where('organizing_sponsor', $sponsor); // exact match — ito ang madalas na sira
+
+        // Year filter (optional)
+        if ($request->filled('year')) {
+            $query->whereYear('program_start', $request->query('year'));
+        }
+
+        $programs = $query
+            ->orderBy('program_start', 'desc')
+            ->get(['id', 'program_title', 'program_start', 'program_end', 'modality', 'slots', 'status']);
+
+        $years = ForeignProgram::where('organizing_sponsor', $sponsor)
+            ->selectRaw('YEAR(program_start) as year')
+            ->distinct()
+            ->orderBy('year', 'desc')
+            ->pluck('year');
+
+        return response()->json([
+            'programs' => $programs,
+            'years'    => $years,
+        ]);
+    }
 }

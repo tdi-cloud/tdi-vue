@@ -14,11 +14,13 @@ class ForeignSponsorConfig extends Model
         'is_active',
         'available_courses',
         'accomplished_form_note',
+        'selected_program_ids',   
     ];
 
     protected $casts = [
-        'available_courses' => 'array',
-        'is_active'         => 'boolean',
+        'available_courses'    => 'array',
+        'is_active'            => 'boolean',
+        'selected_program_ids' => 'array',  
     ];
 
     public function requirements(): HasMany
