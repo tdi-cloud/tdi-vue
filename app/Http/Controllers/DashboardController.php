@@ -361,6 +361,22 @@ class DashboardController extends Controller
         ]);
     }
 
+    // ── Shared submitted condition builder ────────────────────────────────────
+    // Ginagamit ang empcode matching (hindi participant_id) para ma-catch
+    // ang mga submission kahit sa ibang batch ng parehong program nag-submit.
+
+    private function submittedCondition(string $title): \Closure
+    {
+        return function ($q) use ($title) {
+            $q->select(DB::raw(1))
+                ->from('submissions')
+                ->join('requirements as req_sub', 'submissions.requirement_id', '=', 'req_sub.id')
+                ->join('participants as p2',      'submissions.participant_id', '=', 'p2.id')
+                ->whereColumn('p2.empcode', 'participants.empcode')
+                ->where('req_sub.title', $title);
+        };
+    }
+
     // ── TREAP Compliance ──────────────────────────────────────────────────────
 
     public function treapCompliance(Request $request)
@@ -369,7 +385,7 @@ class DashboardController extends Controller
         $statuses     = $request->plant_status;
         $office       = $request->office;
         $year         = $request->year;
-        $officeFilter = $request->office_filter; // ← OPCR / Nationwide
+        $officeFilter = $request->office_filter;
 
         $allRegions = [
             'CO','NCR','R1','R2','R3','R4A','R4B','R5',
@@ -377,7 +393,8 @@ class DashboardController extends Controller
             'CAR','CARAGA',
         ];
 
-        $today = now()->toDateString();
+        $today             = now()->toDateString();
+        $submittedCond     = $this->submittedCondition('TREAP');
 
         $baseParticipants = DB::table('participants')
             ->join('batches',      'participants.batch_id', '=', 'batches.id')
@@ -395,29 +412,13 @@ class DashboardController extends Controller
             $baseParticipants->where('batches.date_start', 'LIKE', $year . '%');
         }
 
-        $totalEmployees = (clone $baseParticipants)
-            ->distinct()
-            ->count('participants.empcode');
-
-        // ── Simplified submitted check using requirement_id join ──────────────
-        $submittedCondition = function ($q) {
-            $q->select(DB::raw(1))
-                ->from('submissions')
-                ->join('requirements as req_sub', 'submissions.requirement_id', '=', 'req_sub.id')
-                ->whereColumn('submissions.participant_id', 'participants.id')
-                ->where('req_sub.title', 'TREAP');
-        };
-
-        $submittedEmployees = (clone $baseParticipants)
-            ->whereExists($submittedCondition)
-            ->distinct()
-            ->count('participants.empcode');
+        $totalEmployees     = (clone $baseParticipants)->distinct()->count('participants.empcode');
+        $submittedEmployees = (clone $baseParticipants)->whereExists($submittedCond)->distinct()->count('participants.empcode');
 
         $notSubmitted    = $totalEmployees - $submittedEmployees;
         $submittedPct    = $totalEmployees > 0 ? round(($submittedEmployees / $totalEmployees) * 100, 1) : 0;
         $notSubmittedPct = $totalEmployees > 0 ? round(($notSubmitted       / $totalEmployees) * 100, 1) : 0;
 
-        // ── Regional breakdown ────────────────────────────────────────────────
         $regionsSubmitted    = [];
         $regionsNotSubmitted = [];
 
@@ -445,12 +446,8 @@ class DashboardController extends Controller
                 $regBase->where('batches.date_start', 'LIKE', $year . '%');
             }
 
-            $regTotal = (clone $regBase)->distinct()->count('participants.empcode');
-
-            $regSubmitted = (clone $regBase)
-                ->whereExists($submittedCondition)
-                ->distinct()
-                ->count('participants.empcode');
+            $regTotal         = (clone $regBase)->distinct()->count('participants.empcode');
+            $regSubmitted     = (clone $regBase)->whereExists($submittedCond)->distinct()->count('participants.empcode');
 
             $regionsSubmitted[]    = $regSubmitted;
             $regionsNotSubmitted[] = $regTotal - $regSubmitted;
@@ -474,11 +471,12 @@ class DashboardController extends Controller
         $statuses     = $request->plant_status;
         $office       = $request->office;
         $year         = $request->year;
-        $officeFilter = $request->office_filter; // ← OPCR / Nationwide
+        $officeFilter = $request->office_filter;
         $reg          = $request->reg;
         $type         = $request->type;
 
-        $today = now()->toDateString();
+        $today         = now()->toDateString();
+        $submittedCond = $this->submittedCondition('TREAP');
 
         $query = DB::table('participants')
             ->join('batches',      'participants.batch_id', '=', 'batches.id')
@@ -500,19 +498,10 @@ class DashboardController extends Controller
             $query->where('employees.REGION', $reg);
         }
 
-        // ── Simplified submitted check using requirement_id join ──────────────
-        $submittedCondition = function ($q) {
-            $q->select(DB::raw(1))
-                ->from('submissions')
-                ->join('requirements as req_sub', 'submissions.requirement_id', '=', 'req_sub.id')
-                ->whereColumn('submissions.participant_id', 'participants.id')
-                ->where('req_sub.title', 'TREAP');
-        };
-
         if ($type === 'submitted') {
-            $query->whereExists($submittedCondition);
+            $query->whereExists($submittedCond);
         } else {
-            $query->whereNotExists($submittedCondition);
+            $query->whereNotExists($submittedCond);
         }
 
         $employees = $query
@@ -559,6 +548,7 @@ class DashboardController extends Controller
         ]);
     }
 
+    // ── REAP Compliance ───────────────────────────────────────────────────────
 
     public function reapCompliance(Request $request)
     {
@@ -567,15 +557,16 @@ class DashboardController extends Controller
         $office       = $request->office;
         $year         = $request->year;
         $officeFilter = $request->office_filter;
- 
+
         $allRegions = [
             'CO','NCR','R1','R2','R3','R4A','R4B','R5',
             'NIR','R6','R7','R8','R9','R10','R11','R12',
             'CAR','CARAGA',
         ];
- 
-        $today = now()->toDateString();
- 
+
+        $today         = now()->toDateString();
+        $submittedCond = $this->submittedCondition('REAP');
+
         $baseParticipants = DB::table('participants')
             ->join('batches',      'participants.batch_id', '=', 'batches.id')
             ->join('requirements', 'requirements.batch_id', '=', 'batches.id')
@@ -583,46 +574,32 @@ class DashboardController extends Controller
             ->where('requirements.title',      'REAP')
             ->where('requirements.due_date',   '<=', $today)
             ->where('participants.attendance', '!=', 'Absent');
- 
+
         $baseParticipants = $this->applyEmployeeFilters(
             $baseParticipants, $region, $statuses, $officeFilter, $office, 'employees.'
         );
- 
+
         if ($year && $year !== 'ALL') {
             $baseParticipants->where('batches.date_start', 'LIKE', $year . '%');
         }
- 
-        $totalEmployees = (clone $baseParticipants)
-            ->distinct()
-            ->count('participants.empcode');
- 
-        $submittedCondition = function ($q) {
-            $q->select(DB::raw(1))
-                ->from('submissions')
-                ->join('requirements as req_sub', 'submissions.requirement_id', '=', 'req_sub.id')
-                ->whereColumn('submissions.participant_id', 'participants.id')
-                ->where('req_sub.title', 'REAP');
-        };
- 
-        $submittedEmployees = (clone $baseParticipants)
-            ->whereExists($submittedCondition)
-            ->distinct()
-            ->count('participants.empcode');
- 
+
+        $totalEmployees     = (clone $baseParticipants)->distinct()->count('participants.empcode');
+        $submittedEmployees = (clone $baseParticipants)->whereExists($submittedCond)->distinct()->count('participants.empcode');
+
         $notSubmitted    = $totalEmployees - $submittedEmployees;
         $submittedPct    = $totalEmployees > 0 ? round(($submittedEmployees / $totalEmployees) * 100, 1) : 0;
         $notSubmittedPct = $totalEmployees > 0 ? round(($notSubmitted       / $totalEmployees) * 100, 1) : 0;
- 
+
         $regionsSubmitted    = [];
         $regionsNotSubmitted = [];
- 
+
         foreach ($allRegions as $reg) {
             if ($region && $region !== 'ALL' && $reg !== $region) {
                 $regionsSubmitted[]    = 0;
                 $regionsNotSubmitted[] = 0;
                 continue;
             }
- 
+
             $regBase = DB::table('participants')
                 ->join('batches',      'participants.batch_id', '=', 'batches.id')
                 ->join('requirements', 'requirements.batch_id', '=', 'batches.id')
@@ -631,22 +608,22 @@ class DashboardController extends Controller
                 ->where('requirements.due_date',   '<=', $today)
                 ->where('participants.attendance', '!=', 'Absent')
                 ->where('employees.REGION',        $reg);
- 
+
             $regBase = $this->applyEmployeeFilters(
                 $regBase, null, $statuses, $officeFilter, $office, 'employees.'
             );
- 
+
             if ($year && $year !== 'ALL') {
                 $regBase->where('batches.date_start', 'LIKE', $year . '%');
             }
- 
+
             $regTotal     = (clone $regBase)->distinct()->count('participants.empcode');
-            $regSubmitted = (clone $regBase)->whereExists($submittedCondition)->distinct()->count('participants.empcode');
- 
+            $regSubmitted = (clone $regBase)->whereExists($submittedCond)->distinct()->count('participants.empcode');
+
             $regionsSubmitted[]    = $regSubmitted;
             $regionsNotSubmitted[] = $regTotal - $regSubmitted;
         }
- 
+
         return response()->json([
             'total'                 => $totalEmployees,
             'submitted'             => $submittedEmployees,
@@ -658,7 +635,7 @@ class DashboardController extends Controller
             'regions_not_submitted' => $regionsNotSubmitted,
         ]);
     }
- 
+
     public function reapComplianceList(Request $request)
     {
         $region       = $request->region;
@@ -668,9 +645,10 @@ class DashboardController extends Controller
         $officeFilter = $request->office_filter;
         $reg          = $request->reg;
         $type         = $request->type;
- 
-        $today = now()->toDateString();
- 
+
+        $today         = now()->toDateString();
+        $submittedCond = $this->submittedCondition('REAP');
+
         $query = DB::table('participants')
             ->join('batches',      'participants.batch_id', '=', 'batches.id')
             ->join('requirements', 'requirements.batch_id', '=', 'batches.id')
@@ -678,33 +656,25 @@ class DashboardController extends Controller
             ->where('requirements.title',      'REAP')
             ->where('requirements.due_date',   '<=', $today)
             ->where('participants.attendance', '!=', 'Absent');
- 
+
         $query = $this->applyEmployeeFilters(
             $query, $region, $statuses, $officeFilter, $office, 'employees.'
         );
- 
+
         if ($year && $year !== 'ALL') {
             $query->where('batches.date_start', 'LIKE', $year . '%');
         }
- 
+
         if ($reg && $reg !== 'ALL') {
             $query->where('employees.REGION', $reg);
         }
- 
-        $submittedCondition = function ($q) {
-            $q->select(DB::raw(1))
-                ->from('submissions')
-                ->join('requirements as req_sub', 'submissions.requirement_id', '=', 'req_sub.id')
-                ->whereColumn('submissions.participant_id', 'participants.id')
-                ->where('req_sub.title', 'REAP');
-        };
- 
+
         if ($type === 'submitted') {
-            $query->whereExists($submittedCondition);
+            $query->whereExists($submittedCond);
         } else {
-            $query->whereNotExists($submittedCondition);
+            $query->whereNotExists($submittedCond);
         }
- 
+
         $employees = $query
             ->select(
                 'employees.EMPCODE as empcode',
@@ -740,7 +710,7 @@ class DashboardController extends Controller
                     'due_date'         => $e->due_date,
                 ];
             });
- 
+
         return response()->json([
             'type'      => $type,
             'region'    => $reg ?? 'ALL',
@@ -748,5 +718,4 @@ class DashboardController extends Controller
             'employees' => $employees,
         ]);
     }
-
 }

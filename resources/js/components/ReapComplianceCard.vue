@@ -206,7 +206,7 @@ const barOptions = computed(() => ({
             barHeight:               '60%',
         },
     },
-    colors:  ['#818cf8', '#fbbf24'],
+    colors:  ['#818cf8', '#d97706'],
     xaxis: {
         categories: data.value?.regions ?? REGIONS,
         labels: {
