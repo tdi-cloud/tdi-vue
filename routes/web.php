@@ -22,6 +22,8 @@ use App\Http\Controllers\EmailReminderController;
 use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\ForeignAgencyController;
+use App\Http\Controllers\ForeignNominationController;
+use App\Http\Controllers\ForeignSponsorConfigController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -208,7 +210,34 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function(){
     Route::post('/foreign-agencies',                     [ForeignAgencyController::class, 'store'])->name('foreign-agencies.store');
     Route::delete('/foreign-agencies/{foreignAgency}',   [ForeignAgencyController::class, 'destroy'])->name('foreign-agencies.destroy');
 
+    // FOREIGN NOMINATION
+    Route::get('/foreign-sponsor-configs',         [ForeignSponsorConfigController::class, 'index'])->name('foreign-sponsor-configs.index');
+    Route::post('/foreign-sponsor-configs',        [ForeignSponsorConfigController::class, 'store'])->name('foreign-sponsor-configs.store');
+    Route::get('/foreign-sponsor-configs/{config}',[ForeignSponsorConfigController::class, 'show'])->name('foreign-sponsor-configs.show');
+    Route::put('/foreign-sponsor-configs/{config}',[ForeignSponsorConfigController::class, 'update'])->name('foreign-sponsor-configs.update');
+ 
+    // Requirements
+    Route::post('/foreign-sponsor-configs/{config}/requirements',
+        [ForeignSponsorConfigController::class, 'storeRequirement']
+    )->name('foreign-sponsor-configs.requirements.store');
+ 
+    Route::put('/foreign-nominee-requirements/{requirement}',
+        [ForeignSponsorConfigController::class, 'updateRequirement']
+    )->name('foreign-nominee-requirements.update');
+ 
+    Route::delete('/foreign-nominee-requirements/{requirement}',
+        [ForeignSponsorConfigController::class, 'destroyRequirement']
+    )->name('foreign-nominee-requirements.destroy');
+ 
+    // Nominee Status Update
+    Route::patch('/foreign-nominees/{nominee}/status',
+        [ForeignSponsorConfigController::class, 'updateNomineeStatus']
+    )->name('foreign-nominees.status');
 
+    Route::delete('/foreign-nominees/{nominee}', function(\App\Models\ForeignNominee $nominee) {
+        $nominee->delete();
+        return back();
+    })->name('foreign-nominees.destroy')->middleware('auth');
 
 
 });
@@ -234,6 +263,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/my-programs/{batch}/certificates/{certificate}', [CertificateController::class, 'destroyByUser'])
     ->name('certificates.destroy-by-user');
 });
+
+// PUBLIC USER 
+
+Route::get('/nominate/{slug}',         [ForeignNominationController::class, 'show'])->name('nominate.show');
+Route::post('/nominate/{slug}',        [ForeignNominationController::class, 'submit'])->name('nominate.submit');
+Route::get('/nominate/{slug}/success', [ForeignNominationController::class, 'success'])->name('nominate.success');
 
 
 

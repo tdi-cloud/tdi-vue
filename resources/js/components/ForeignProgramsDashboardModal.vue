@@ -2,7 +2,7 @@
 import { ref, watch, onMounted, onBeforeUnmount, computed } from 'vue';
 import axios from 'axios';
 import {
-    X, BarChart3, Users2, Filter, CheckCircle2,
+    X, BarChart3, Users2, CheckCircle2,
     Building2, CalendarDays, TrendingUp,
 } from 'lucide-vue-next';
 import VueApexCharts from 'vue3-apexcharts';
@@ -10,15 +10,17 @@ import VueApexCharts from 'vue3-apexcharts';
 const emit = defineEmits(['close']);
 
 const statusOptions: Record<string, string> = {
-    endorsed: 'Endorsed',
+    for_interview:  'For Interview',
+    endorsed:       'Endorsed',
     waiting_result: 'Waiting Result',
-    not_endorsed: 'Not Endorsed',
-    accepted: 'Accepted',
-    regret: 'Regret',
-    cancelled: 'Cancelled',
+    not_endorsed:   'Not Endorsed',
+    accepted:       'Accepted',
+    regret:         'Regret',
+    cancelled:      'Cancelled',
 };
 
 const statusGaugeColors: Record<string, [string, string]> = {
+    for_interview:  ['#60a5fa', '#2563eb'],
     endorsed:       ['#a78bfa', '#7c3aed'],
     waiting_result: ['#22d3ee', '#0891b2'],
     not_endorsed:   ['#f87171', '#dc2626'],
@@ -31,30 +33,27 @@ const filterStatus = ref('accepted');
 const filterAgency = ref('TESDA');
 const filterYear   = ref('');
 
-const loading = ref(false);
-const errorMsg = ref('');
-// const agencyOptions = ref<string[]>([]);
-const yearOptions   = ref<number[]>([]);
+const loading   = ref(false);
+const errorMsg  = ref('');
+const yearOptions = ref<number[]>([]);
 
 const selectedStatusCount = ref(0);
-const totalParticipants   = ref(0);
+const totalNominees       = ref(0);
 
 const gaugePercent = computed(() =>
-    totalParticipants.value > 0
-        ? Math.round((selectedStatusCount.value / totalParticipants.value) * 100)
+    totalNominees.value > 0
+        ? Math.round((selectedStatusCount.value / totalNominees.value) * 100)
         : 0
 );
 
-const gaugeSeries = computed(() => [gaugePercent.value]);
+const gaugeSeries  = computed(() => [gaugePercent.value]);
 const gaugeOptions = computed(() => {
     const [from, to] = statusGaugeColors[filterStatus.value] ?? ['#38bdf8', '#34d399'];
     return {
         chart: {
             type: 'radialBar',
             animations: {
-                enabled: true,
-                easing: 'easeinout',
-                speed: 700,
+                enabled: true, easing: 'easeinout', speed: 700,
                 animateGradually: { enabled: true, delay: 100 },
                 dynamicAnimation: { enabled: true, speed: 400 },
             },
@@ -65,16 +64,11 @@ const gaugeOptions = computed(() => {
                 track: { background: '#eef2f7', strokeWidth: '100%' },
                 dataLabels: {
                     name: {
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        color: '#6b7280',
-                        offsetY: 22,
+                        fontSize: '11px', fontWeight: 700, color: '#6b7280', offsetY: 22,
                         formatter: () => statusOptions[filterStatus.value]?.toUpperCase() ?? '',
                     },
                     value: {
-                        fontSize: '30px',
-                        fontWeight: 800,
-                        offsetY: -8,
+                        fontSize: '30px', fontWeight: 800, offsetY: -8,
                         formatter: (val: number) => val + '%',
                     },
                 },
@@ -84,36 +78,30 @@ const gaugeOptions = computed(() => {
         fill: {
             type: 'gradient',
             gradient: {
-                shade: 'light',
-                type: 'horizontal',
-                shadeIntensity: 0.5,
-                gradientToColors: [to],
-                inverseColors: false,
-                stops: [0, 100],
+                shade: 'light', type: 'horizontal', shadeIntensity: 0.5,
+                gradientToColors: [to], inverseColors: false, stops: [0, 100],
             },
         },
-        colors: [from],
-        labels: [statusOptions[filterStatus.value]],
+        colors:  [from],
+        labels:  [statusOptions[filterStatus.value]],
     };
 });
 
-const donutSeries = ref<number[]>([]);
+const donutSeries  = ref<number[]>([]);
 const donutOptions = ref<any>({
     chart: {
         type: 'donut',
         animations: {
-            enabled: true,
-            easing: 'easeinout',
-            speed: 600,
+            enabled: true, easing: 'easeinout', speed: 600,
             animateGradually: { enabled: true, delay: 120 },
             dynamicAnimation: { enabled: true, speed: 350 },
         },
         dropShadow: { enabled: true, top: 2, left: 0, blur: 6, opacity: 0.12 },
     },
-    labels: [],
-    legend: { position: 'bottom', fontSize: '12px', markers: { offsetX: -2 } },
-    colors: ['#8b5cf6', '#06b6d4', '#ef4444', '#10b981', '#f59e0b', '#9ca3af'],
-    stroke: { width: 3, colors: ['#ffffff'] },
+    labels:  [],
+    legend:  { position: 'bottom', fontSize: '12px', markers: { offsetX: -2 } },
+    colors:  ['#3b82f6', '#8b5cf6', '#06b6d4', '#ef4444', '#10b981', '#f59e0b', '#9ca3af'],
+    stroke:  { width: 3, colors: ['#ffffff'] },
     dataLabels: { enabled: true, formatter: (val: number) => val.toFixed(0) + '%' },
     plotOptions: {
         pie: {
@@ -130,58 +118,51 @@ const donutOptions = ref<any>({
     },
 });
 
-const barReceived = ref<number[]>([]);
-const barDisseminated = ref<number[]>([]);
-const barOptions = ref<any>({
+const barReceived      = ref<number[]>([]);
+const barDisseminated  = ref<number[]>([]);
+const barOptions       = ref<any>({
     chart: {
-        type: 'bar',
-        toolbar: { show: false },
+        type: 'bar', toolbar: { show: false },
         animations: {
-            enabled: true,
-            easing: 'easeinout',
-            speed: 600,
+            enabled: true, easing: 'easeinout', speed: 600,
             animateGradually: { enabled: true, delay: 120 },
             dynamicAnimation: { enabled: true, speed: 350 },
         },
     },
     plotOptions: { bar: { columnWidth: '50%', borderRadius: 6, borderRadiusApplication: 'end' } },
-    dataLabels: { enabled: false },
-    xaxis: { categories: [], labels: { style: { fontSize: '11px' } } },
+    dataLabels:  { enabled: false },
+    xaxis:       { categories: [], labels: { style: { fontSize: '11px' } } },
     fill: {
         type: 'gradient',
         gradient: { shade: 'light', type: 'vertical', shadeIntensity: 0.3, opacityFrom: 1, opacityTo: 0.85, stops: [0, 100] },
     },
     colors: ['#3b82f6', '#10b981'],
     legend: { position: 'top' },
-    grid: { borderColor: '#f1f5f9' },
+    grid:   { borderColor: '#f1f5f9' },
 });
 
-// keeps track of the in-flight request so we can cancel it ourselves
 let activeController: AbortController | null = null;
 
 const fetchDashboard = async () => {
     if (activeController) activeController.abort();
-    const controller = new AbortController();
-    activeController = controller;
-
-    loading.value = true;
-    errorMsg.value = '';
+    const controller  = new AbortController();
+    activeController  = controller;
+    loading.value     = true;
+    errorMsg.value    = '';
 
     try {
         const { data } = await axios.get(route('foreign-programs.dashboard-data'), {
             params: {
                 status: filterStatus.value || undefined,
                 agency: filterAgency.value || undefined,
-                year: filterYear.value || undefined,
+                year:   filterYear.value   || undefined,
             },
             signal: controller.signal,
         });
 
-        // agencyOptions.value = data.agencies ?? [];
-        yearOptions.value   = data.years ?? [];
-
+        yearOptions.value         = data.years ?? [];
         selectedStatusCount.value = data.participants.selectedStatusCount;
-        totalParticipants.value   = data.participants.totalParticipants;
+        totalNominees.value       = data.participants.totalParticipants;
 
         donutOptions.value = { ...donutOptions.value, labels: data.participants.statusLabels };
         donutSeries.value  = data.participants.statusSeries;
@@ -190,14 +171,12 @@ const fetchDashboard = async () => {
         barReceived.value     = data.programs.received;
         barDisseminated.value = data.programs.disseminated;
     } catch (err: any) {
-        if (axios.isCancel(err) || err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') {
-            return;
-        }
-        console.error('Failed to load dashboard data:', err?.response?.data ?? err);
+        if (axios.isCancel(err) || err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') return;
+        console.error('Dashboard fetch failed:', err?.response?.data ?? err);
         errorMsg.value = `Failed to load dashboard data${err?.response?.status ? ` (${err.response.status})` : ''}.`;
     } finally {
         if (activeController === controller) {
-            loading.value = false;
+            loading.value    = false;
             activeController = null;
         }
     }
@@ -210,13 +189,9 @@ watch([filterStatus, filterAgency, filterYear], () => {
 });
 
 onMounted(fetchDashboard);
-
 onBeforeUnmount(() => {
     clearTimeout(debounce);
-    if (activeController) {
-        activeController.abort();
-        activeController = null;
-    }
+    if (activeController) { activeController.abort(); activeController = null; }
 });
 </script>
 
@@ -233,9 +208,9 @@ onBeforeUnmount(() => {
                         </div>
                         <div>
                             <h2 class="text-base font-bold leading-none">Foreign Programs Dashboard</h2>
-                            <p class="text-xs text-white/75 mt-0.5">Overview ng participants at programs</p>
+                            <p class="text-xs text-white/75 mt-0.5">Overview of nominees and programs</p>
                         </div>
-                        <button @click="emit('close')" class="ml-auto text-white/80 hover:text-white transition-colors">
+                        <button class="ml-auto text-white/80 hover:text-white transition-colors" @click="emit('close')">
                             <X class="h-5 w-5" />
                         </button>
                     </div>
@@ -300,7 +275,7 @@ onBeforeUnmount(() => {
                                         <Users2 class="h-5 w-5 text-white" />
                                     </div>
                                     <div>
-                                        <p class="text-xs text-muted-foreground">{{ statusOptions[filterStatus] }} Participants</p>
+                                        <p class="text-xs text-muted-foreground">{{ statusOptions[filterStatus] }} Nominees</p>
                                         <p class="text-2xl font-bold">{{ selectedStatusCount }}</p>
                                     </div>
                                 </div>
@@ -309,8 +284,8 @@ onBeforeUnmount(() => {
                                         <Users2 class="h-5 w-5 text-white" />
                                     </div>
                                     <div>
-                                        <p class="text-xs text-muted-foreground">Total Participants (filtered)</p>
-                                        <p class="text-2xl font-bold">{{ totalParticipants }}</p>
+                                        <p class="text-xs text-muted-foreground">Total Nominees (filtered)</p>
+                                        <p class="text-2xl font-bold">{{ totalNominees }}</p>
                                     </div>
                                 </div>
                             </div>
@@ -320,7 +295,7 @@ onBeforeUnmount(() => {
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <div class="anim-in rounded-xl border p-4" style="animation-delay:380ms">
                                 <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5">
-                                    <span class="h-2 w-2 rounded-full bg-violet-500"></span> Participants by Status
+                                    <span class="h-2 w-2 rounded-full bg-violet-500"></span> Nominees by Status
                                 </p>
                                 <VueApexCharts type="donut" height="300" :options="donutOptions" :series="donutSeries" />
                             </div>
@@ -350,14 +325,12 @@ onBeforeUnmount(() => {
     opacity: 0;
     animation: fadeSlideIn 0.45s ease-out forwards;
 }
-
 .backdrop-enter-active,
 .backdrop-leave-active { transition: opacity 0.2s ease; }
 .backdrop-enter-from,
-.backdrop-leave-to { opacity: 0; }
-
+.backdrop-leave-to     { opacity: 0; }
 .pop-enter-active { transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
 .pop-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
-.pop-enter-from { opacity: 0; transform: scale(0.94) translateY(8px); }
-.pop-leave-to   { opacity: 0; transform: scale(0.97); }
+.pop-enter-from   { opacity: 0; transform: scale(0.94) translateY(8px); }
+.pop-leave-to     { opacity: 0; transform: scale(0.97); }
 </style>

@@ -1,25 +1,38 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Head, useForm, router } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import {
-    Plus, Search, Pencil, Trash2, ArrowLeft, Users, Calendar,
-    Building2, Mail, Phone, UserCircle2, X,
-    CheckCircle2, ClipboardList, MapPin, Award,
-    UserRound, Settings2,
+    ArrowLeft, Users, Calendar, Building2, Mail, Phone,
+    UserCircle2, X, CheckCircle2, ClipboardList, MapPin,
+    UserRound, Search, FileText, Eye, Loader2, ChevronDown,
+    Trash2,
 } from 'lucide-vue-next';
-import { ref, computed, onMounted } from 'vue';
-import ForeignAgencyModal from '@/components/ForeignAgencyModal.vue';
+import { ref, computed } from 'vue';
+import axios from 'axios';
 
-interface Participant {
+// ── Interfaces ────────────────────────────────────────────────────────────────
+
+interface Submission {
     id: number;
-    name: string;
+    file_path: string;
+    requirement: { question: string };
+}
+
+interface Nominee {
+    id: number;
+    firstname: string;
+    middle_name: string | null;
+    surname: string;
     sex: 'male' | 'female' | 'other';
+    age: number;
     position: string;
     agency: string;
-    contact_no: string | null;
+    contact_number: string | null;
     email: string | null;
     status: string;
+    accomplished_form_path: string | null;
+    submissions: Submission[];
 }
 
 interface ForeignProgram {
@@ -36,109 +49,79 @@ interface ForeignProgram {
     interview_date: string | null;
     category: string | null;
     description: string | null;
-    participants: Participant[];
+    nominees: Nominee[];
 }
 
 const props = defineProps<{ program: ForeignProgram }>();
 
-const showModal      = ref(false);
-const showAgencyModal = ref(false);
-const editingId      = ref<number | null>(null);
-const searchQuery    = ref('');
-const agencies       = ref<string[]>([]);
+// ── State ─────────────────────────────────────────────────────────────────────
 
-const form = useForm({
-    name:       '',
-    sex:        '' as '' | 'male' | 'female' | 'other',
-    position:   '',
-    agency:     '',
-    contact_no: '',
-    email:      '',
-    status:     '' as string,
-});
+const searchQuery     = ref('');
+const updatingId      = ref<number | null>(null);
+const viewNominee     = ref<Nominee | null>(null);
 
-// ─── Fetch agencies ───────────────────────────────────────────────────────────
+// ── Computed ──────────────────────────────────────────────────────────────────
 
-async function fetchAgencies() {
-    const res  = await fetch(route('foreign-agencies.index'), {
-        headers: { Accept: 'application/json' },
-    });
-    const data = await res.json();
-    agencies.value = data.map((a: { id: number; name: string }) => a.name);
-}
-
-onMounted(fetchAgencies);
-
-// ─── Computed ─────────────────────────────────────────────────────────────────
-
-const filteredParticipants = computed(() => {
+const filtered = computed(() => {
     const q = searchQuery.value.toLowerCase().trim();
-    if (!q) return props.program.participants;
-    return props.program.participants.filter(p =>
-        p.name.toLowerCase().includes(q) ||
-        p.agency.toLowerCase().includes(q) ||
-        p.position.toLowerCase().includes(q)
+    if (!q) return props.program.nominees;
+    return props.program.nominees.filter(n =>
+        fullName(n).toLowerCase().includes(q) ||
+        n.agency.toLowerCase().includes(q) ||
+        n.position.toLowerCase().includes(q)
     );
 });
 
-const maleCount     = computed(() => props.program.participants.filter(p => p.sex === 'male').length);
-const femaleCount   = computed(() => props.program.participants.filter(p => p.sex === 'female').length);
-const acceptedCount = computed(() => props.program.participants.filter(p => p.status === 'accepted').length);
-const slotsUsed     = computed(() => props.program.participants.length);
-const slotsPercent  = computed(() => Math.min(100, Math.round((slotsUsed.value / props.program.slots) * 100)));
+const maleCount        = computed(() => props.program.nominees.filter(n => n.sex === 'male').length);
+const femaleCount      = computed(() => props.program.nominees.filter(n => n.sex === 'female').length);
+const acceptedCount    = computed(() => props.program.nominees.filter(n => n.status === 'accepted').length);
+const forInterviewCount = computed(() => props.program.nominees.filter(n => n.status === 'for_interview').length);
+const slotsUsed        = computed(() => props.program.nominees.length);
+const slotsPercent     = computed(() => Math.min(100, Math.round((slotsUsed.value / props.program.slots) * 100)));
 
-// ─── Modal open/close ─────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-const openAdd = () => {
-    editingId.value = null;
-    form.reset();
-    form.sex    = '';
-    form.status = '';
-    showModal.value = true;
-};
-
-const openEdit = (p: Participant) => {
-    editingId.value  = p.id;
-    form.name        = p.name;
-    form.sex         = p.sex;
-    form.position    = p.position;
-    form.agency      = p.agency;
-    form.contact_no  = p.contact_no ?? '';
-    form.email       = p.email ?? '';
-    form.status      = p.status;
-    showModal.value  = true;
-};
-
-const submit = () => {
-    if (editingId.value) {
-        form.put(route('foreign-participants.update', editingId.value), {
-            preserveScroll: true,
-            onSuccess: () => { showModal.value = false; form.reset(); },
-        });
-    } else {
-        form.post(route('foreign-participants.store', props.program.id), {
-            preserveScroll: true,
-            onSuccess: () => { showModal.value = false; form.reset(); },
-        });
-    }
-};
-
-const remove = (p: Participant) => {
-    if (!confirm('Remove this participant?')) return;
-    router.delete(route('foreign-participants.destroy', p.id), { preserveScroll: true });
-};
-
-// ─── Agency modal ─────────────────────────────────────────────────────────────
-
-function onAgencySelected(name: string) {
-    form.agency = name;
+function fullName(n: Nominee) {
+    return [n.firstname, n.middle_name, n.surname].filter(Boolean).join(' ');
 }
 
-// ─── Lookups ──────────────────────────────────────────────────────────────────
+function displayName(n: Nominee) {
+    const mi = n.middle_name ? ` ${n.middle_name}` : '';
+    return `${n.surname.toUpperCase()}, ${n.firstname}${mi}`;
+}
 
-const sexLabel: Record<string, string> = { male: 'Male', female: 'Female', other: 'Other' };
+const formatDate = (date?: string | null) => {
+    if (!date) return '—';
+    const d = date.includes('T') ? new Date(date) : new Date(date + 'T00:00:00');
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+function fileUrl(path: string) {
+    return `/storage/${path}`;
+}
+
+// ── Status update ─────────────────────────────────────────────────────────────
+
+async function updateStatus(nominee: Nominee, newStatus: string) {
+    updatingId.value = nominee.id;
+    try {
+        await axios.patch(route('foreign-nominees.status', nominee.id), { status: newStatus });
+        nominee.status = newStatus;
+    } finally {
+        updatingId.value = null;
+    }
+}
+
+function confirmDelete(nominee: Nominee) {
+    if (!confirm(`Remove nominee "${fullName(nominee)}"?`)) return;
+    router.delete(route('foreign-nominees.destroy', nominee.id), { preserveScroll: true });
+}
+
+// ── Lookups ───────────────────────────────────────────────────────────────────
 
 const statusLabels: Record<string, string> = {
+    for_interview:  'For Interview',
     endorsed:       'Endorsed',
     waiting_result: 'Waiting Result',
     not_endorsed:   'Not Endorsed',
@@ -148,6 +131,7 @@ const statusLabels: Record<string, string> = {
 };
 
 const statusColors: Record<string, string> = {
+    for_interview:  'bg-blue-100 text-blue-700',
     endorsed:       'bg-violet-100 text-violet-700',
     waiting_result: 'bg-cyan-100 text-cyan-700',
     not_endorsed:   'bg-red-100 text-red-700',
@@ -171,13 +155,6 @@ const modalityLabels: Record<string, string> = {
     'in-person': 'In-person',
     'online':    'Online',
     'hybrid':    'Hybrid',
-};
-
-const formatDate = (date?: string | null) => {
-    if (!date) return '—';
-    const d = date.includes('T') ? new Date(date) : new Date(date + 'T00:00:00');
-    if (isNaN(d.getTime())) return '—';
-    return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 </script>
 
@@ -249,9 +226,9 @@ const formatDate = (date?: string | null) => {
 
                     <!-- Slots progress -->
                     <div class="shrink-0 hidden md:flex flex-col items-center gap-2 bg-white/10 rounded-2xl px-5 py-4 text-center min-w-[120px]">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-white/70">Slots</p>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-white/70">Nominees</p>
                         <p class="text-3xl font-extrabold">{{ slotsUsed }}</p>
-                        <p class="text-xs text-white/70">of {{ program.slots }}</p>
+                        <p class="text-xs text-white/70">of {{ program.slots }} slots</p>
                         <div class="w-full h-1.5 rounded-full bg-white/20 mt-1">
                             <div
                                 class="h-full rounded-full transition-all"
@@ -271,26 +248,17 @@ const formatDate = (date?: string | null) => {
                         <Users class="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
-                        <p class="text-xs text-muted-foreground">Total</p>
-                        <p class="text-xl font-bold">{{ program.participants.length }}</p>
+                        <p class="text-xs text-muted-foreground">Total Nominees</p>
+                        <p class="text-xl font-bold">{{ program.nominees.length }}</p>
                     </div>
                 </div>
                 <div class="rounded-xl border bg-background p-4 flex items-center gap-3 shadow-sm">
-                    <div class="h-10 w-10 rounded-xl bg-sky-100 dark:bg-sky-950/50 flex items-center justify-center shrink-0">
-                        <UserRound class="h-5 w-5 text-sky-600 dark:text-sky-400" />
+                    <div class="h-10 w-10 rounded-xl bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center shrink-0">
+                        <UserCircle2 class="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
-                        <p class="text-xs text-muted-foreground">Male</p>
-                        <p class="text-xl font-bold">{{ maleCount }}</p>
-                    </div>
-                </div>
-                <div class="rounded-xl border bg-background p-4 flex items-center gap-3 shadow-sm">
-                    <div class="h-10 w-10 rounded-xl bg-pink-100 dark:bg-pink-950/50 flex items-center justify-center shrink-0">
-                        <UserRound class="h-5 w-5 text-pink-500 dark:text-pink-400" />
-                    </div>
-                    <div>
-                        <p class="text-xs text-muted-foreground">Female</p>
-                        <p class="text-xl font-bold">{{ femaleCount }}</p>
+                        <p class="text-xs text-muted-foreground">For Interview</p>
+                        <p class="text-xl font-bold">{{ forInterviewCount }}</p>
                     </div>
                 </div>
                 <div class="rounded-xl border bg-background p-4 flex items-center gap-3 shadow-sm">
@@ -302,20 +270,29 @@ const formatDate = (date?: string | null) => {
                         <p class="text-xl font-bold">{{ acceptedCount }}</p>
                     </div>
                 </div>
+                <div class="rounded-xl border bg-background p-4 flex items-center gap-3 shadow-sm">
+                    <div class="h-10 w-10 rounded-xl bg-sky-100 dark:bg-sky-950/50 flex items-center justify-center shrink-0">
+                        <UserRound class="h-5 w-5 text-sky-600 dark:text-sky-400" />
+                    </div>
+                    <div>
+                        <p class="text-xs text-muted-foreground">Male / Female</p>
+                        <p class="text-xl font-bold">{{ maleCount }} / {{ femaleCount }}</p>
+                    </div>
+                </div>
             </div>
 
-            <!-- Participants header -->
+            <!-- Nominees header -->
             <div class="flex items-center justify-between gap-3">
                 <div class="flex items-center gap-2">
                     <Users class="h-5 w-5 text-blue-600" />
-                    <h2 class="text-lg font-bold">Participants</h2>
+                    <h2 class="text-lg font-bold">Nominees</h2>
                     <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-                        {{ program.participants.length }}
+                        {{ program.nominees.length }}
                     </span>
                 </div>
-                <Button class="bg-blue-600 hover:bg-blue-700 dark:text-white shadow-sm" @click="openAdd">
-                    <Plus class="h-4 w-4 mr-1" /> Add Participant
-                </Button>
+                <p class="text-xs text-muted-foreground">
+                    Nominees are submitted through the public nomination form.
+                </p>
             </div>
 
             <!-- Search -->
@@ -334,76 +311,106 @@ const formatDate = (date?: string | null) => {
                 <table class="w-full text-sm">
                     <thead class="bg-muted/50 text-xs uppercase text-muted-foreground tracking-wide">
                         <tr>
-                            <th class="text-left font-semibold px-4 py-3 w-10">#</th>
+                            <th class="text-left font-semibold px-4 py-3 w-8">#</th>
                             <th class="text-left font-semibold px-4 py-3">Name</th>
-                            <th class="text-left font-semibold px-4 py-3">Sex</th>
+                            <th class="text-left font-semibold px-4 py-3">Age</th>
                             <th class="text-left font-semibold px-4 py-3">Position</th>
                             <th class="text-left font-semibold px-4 py-3">Agency</th>
                             <th class="text-left font-semibold px-4 py-3">Contact</th>
-                            <th class="text-left font-semibold px-4 py-3">Email</th>
-                            <th class="text-left font-semibold px-4 py-3">Status</th>
+                            <th class="text-left font-semibold px-4 py-3">Docs</th>
+                            <th class="text-left font-semibold px-4 py-3 min-w-[160px]">Status</th>
                             <th class="text-center font-semibold px-4 py-3">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y">
                         <tr
-                            v-for="(p, index) in filteredParticipants"
-                            :key="p.id"
-                            class="hover:bg-blue-50/40 dark:hover:bg-blue-950/20 transition-colors group"
+                            v-for="(n, idx) in filtered"
+                            :key="n.id"
+                            class="hover:bg-blue-50/40 dark:hover:bg-blue-950/20 transition-colors"
                         >
-                            <td class="px-4 py-3 text-muted-foreground text-xs">{{ index + 1 }}</td>
+                            <td class="px-4 py-3 text-muted-foreground text-xs">{{ idx + 1 }}</td>
+
+                            <!-- Name -->
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2">
                                     <div
                                         class="h-7 w-7 rounded-full flex items-center justify-center shrink-0"
-                                        :class="p.sex === 'female' ? 'bg-pink-100 dark:bg-pink-950/50' : 'bg-sky-100 dark:bg-sky-950/50'"
+                                        :class="n.sex === 'female' ? 'bg-pink-100 dark:bg-pink-950/50' : 'bg-sky-100 dark:bg-sky-950/50'"
                                     >
-                                        <UserRound
-                                            class="h-4 w-4"
-                                            :class="p.sex === 'female' ? 'text-pink-500' : 'text-sky-600'"
-                                        />
+                                        <UserRound class="h-4 w-4" :class="n.sex === 'female' ? 'text-pink-500' : 'text-sky-600'" />
                                     </div>
-                                    <span class="font-semibold">{{ p.name }}</span>
+                                    <div>
+                                        <p class="font-semibold text-xs leading-tight">{{ displayName(n) }}</p>
+                                        <p class="text-[10px] text-muted-foreground capitalize">{{ n.sex }}</p>
+                                    </div>
                                 </div>
                             </td>
-                            <td class="px-4 py-3 text-muted-foreground">{{ sexLabel[p.sex] }}</td>
-                            <td class="px-4 py-3 text-muted-foreground">{{ p.position }}</td>
+
+                            <td class="px-4 py-3 text-muted-foreground text-xs">{{ n.age }}</td>
+                            <td class="px-4 py-3 text-muted-foreground text-xs">{{ n.position }}</td>
+
+                            <!-- Agency -->
                             <td class="px-4 py-3">
-                                <div class="flex items-center gap-1.5 text-muted-foreground">
+                                <div class="flex items-center gap-1.5 text-muted-foreground text-xs">
                                     <Building2 class="h-3.5 w-3.5 shrink-0 text-blue-400" />
-                                    <span>{{ p.agency }}</span>
+                                    {{ n.agency }}
                                 </div>
                             </td>
-                            <td class="px-4 py-3 text-muted-foreground">
-                                <span v-if="p.contact_no" class="flex items-center gap-1">
-                                    <Phone class="h-3 w-3 shrink-0" /> {{ p.contact_no }}
-                                </span>
-                                <span v-else>—</span>
+
+                            <!-- Contact -->
+                            <td class="px-4 py-3 text-xs text-muted-foreground">
+                                <div v-if="n.contact_number" class="flex items-center gap-1">
+                                    <Phone class="h-3 w-3" /> {{ n.contact_number }}
+                                </div>
+                                <div v-if="n.email" class="flex items-center gap-1">
+                                    <Mail class="h-3 w-3" />
+                                    <a :href="`mailto:${n.email}`" class="text-blue-600 hover:underline">{{ n.email }}</a>
+                                </div>
+                                <span v-if="!n.contact_number && !n.email">—</span>
                             </td>
+
+                            <!-- Docs -->
                             <td class="px-4 py-3">
-                                <a v-if="p.email" :href="`mailto:${p.email}`" class="flex items-center gap-1 text-blue-600 hover:underline">
-                                    <Mail class="h-3 w-3 shrink-0" /> {{ p.email }}
-                                </a>
-                                <span v-else class="text-muted-foreground">—</span>
+                                <button
+                                    class="flex items-center gap-1 text-xs text-blue-600 hover:underline font-semibold"
+                                    @click="viewNominee = n"
+                                >
+                                    <FileText class="h-3.5 w-3.5" />
+                                    {{ n.submissions.length }} file(s)
+                                </button>
                             </td>
+
+                            <!-- Status — inline select -->
                             <td class="px-4 py-3">
-                                <span class="text-[11px] font-semibold px-2.5 py-1 rounded-full" :class="statusColors[p.status]">
-                                    {{ statusLabels[p.status] }}
-                                </span>
+                                <div class="relative flex items-center gap-1">
+                                    <select
+                                        :value="n.status"
+                                        :disabled="updatingId === n.id"
+                                        class="text-[11px] font-semibold rounded-full px-2.5 py-1 pr-6 border-0 outline-none cursor-pointer appearance-none"
+                                        :class="statusColors[n.status]"
+                                        @change="updateStatus(n, ($event.target as HTMLSelectElement).value)"
+                                    >
+                                        <option v-for="(label, key) in statusLabels" :key="key" :value="key">{{ label }}</option>
+                                    </select>
+                                    <Loader2 v-if="updatingId === n.id" class="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />
+                                    <ChevronDown v-else class="h-3 w-3 text-current opacity-50 pointer-events-none absolute right-1.5" />
+                                </div>
                             </td>
+
+                            <!-- Actions -->
                             <td class="px-4 py-3">
                                 <div class="flex items-center justify-center gap-1">
                                     <button
-                                        class="p-1.5 rounded-lg text-muted-foreground hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors"
-                                        title="Edit"
-                                        @click="openEdit(p)"
+                                        class="p-1.5 rounded-lg text-muted-foreground hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                        title="View submissions"
+                                        @click="viewNominee = n"
                                     >
-                                        <Pencil class="h-3.5 w-3.5" />
+                                        <Eye class="h-3.5 w-3.5" />
                                     </button>
                                     <button
-                                        class="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                                        title="Remove"
-                                        @click="remove(p)"
+                                        class="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"
+                                        title="Remove nominee"
+                                        @click="confirmDelete(n)"
                                     >
                                         <Trash2 class="h-3.5 w-3.5" />
                                     </button>
@@ -411,12 +418,12 @@ const formatDate = (date?: string | null) => {
                             </td>
                         </tr>
 
-                        <tr v-if="filteredParticipants.length === 0">
+                        <tr v-if="filtered.length === 0">
                             <td colspan="9" class="px-4 py-16 text-center">
                                 <div class="flex flex-col items-center gap-3 text-muted-foreground">
                                     <Users class="h-12 w-12 opacity-20" />
-                                    <p class="text-sm font-semibold">No participants found.</p>
-                                    <p class="text-xs">Add a participant or adjust your search.</p>
+                                    <p class="text-sm font-semibold">No nominees found.</p>
+                                    <p class="text-xs">Nominees are submitted through the public nomination form.</p>
                                 </div>
                             </td>
                         </tr>
@@ -426,164 +433,79 @@ const formatDate = (date?: string | null) => {
 
         </div>
 
-        <!-- ===== Agency Modal ===== -->
-        <ForeignAgencyModal
-            v-if="showAgencyModal"
-            @close="showAgencyModal = false"
-            @select="onAgencySelected"
-            @updated="fetchAgencies"
-        />
+        <!-- ===== Nominee Submissions Modal ===== -->
+        <Teleport to="body">
+            <div
+                v-if="viewNominee"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+                @click.self="viewNominee = null"
+            >
+                <div class="bg-background rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[85vh] overflow-hidden">
 
-        <!-- ===== Add/Edit Participant Modal ===== -->
-        <div
-            v-if="showModal"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-            @click.self="showModal = false"
-        >
-            <div class="bg-background rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
-
-                <!-- Modal Header -->
-                <div class="flex items-center gap-3 px-6 py-4 border-b bg-background">
-                    <div
-                        class="flex items-center justify-center h-9 w-9 rounded-xl shadow"
-                        :class="editingId ? 'bg-amber-500' : 'bg-blue-600'"
-                    >
-                        <Pencil v-if="editingId" class="h-4 w-4 text-white" />
-                        <UserCircle2 v-else class="h-4 w-4 text-white" />
-                    </div>
-                    <div>
-                        <h2 class="text-base font-bold leading-none">{{ editingId ? 'Edit Participant' : 'Add Participant' }}</h2>
-                        <p class="text-xs text-muted-foreground mt-0.5">{{ editingId ? 'Update participant details' : 'Fill in the participant information' }}</p>
-                    </div>
-                    <button class="ml-auto text-muted-foreground hover:text-foreground transition-colors" @click="showModal = false">
-                        <X class="h-5 w-5" />
-                    </button>
-                </div>
-
-                <div class="p-6 flex flex-col gap-5">
-
-                    <!-- Name -->
-                    <div class="flex flex-col gap-1">
-                        <label class="text-xs font-semibold flex items-center gap-1.5">
-                            <UserCircle2 class="h-3.5 w-3.5 text-muted-foreground" /> Name <span class="text-red-500">*</span>
-                        </label>
-                        <input
-                            v-model="form.name"
-                            type="text"
-                            placeholder="Full name"
-                            class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <span v-if="form.errors.name" class="text-xs text-red-500">{{ form.errors.name }}</span>
-                    </div>
-
-                    <!-- Sex + Status -->
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="flex flex-col gap-1">
-                            <label class="text-xs font-semibold flex items-center gap-1.5">
-                                <Users class="h-3.5 w-3.5 text-muted-foreground" /> Sex <span class="text-red-500">*</span>
-                            </label>
-                            <select v-model="form.sex" class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background">
-                                <option value="" disabled>-- Select --</option>
-                                <option value="male">Male</option>
-                                <option value="female">Female</option>
-                                <option value="other">Other</option>
-                            </select>
-                            <span v-if="form.errors.sex" class="text-xs text-red-500">{{ form.errors.sex }}</span>
-                        </div>
-                        <div class="flex flex-col gap-1">
-                            <label class="text-xs font-semibold flex items-center gap-1.5">
-                                <CheckCircle2 class="h-3.5 w-3.5 text-muted-foreground" /> Status <span class="text-red-500">*</span>
-                            </label>
-                            <select v-model="form.status" class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background">
-                                <option value="" disabled>-- Select Status --</option>
-                                <option v-for="(label, key) in statusLabels" :key="key" :value="key">{{ label }}</option>
-                            </select>
-                            <span v-if="form.errors.status" class="text-xs text-red-500">{{ form.errors.status }}</span>
-                        </div>
-                    </div>
-
-                    <!-- Position + Agency -->
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="flex flex-col gap-1">
-                            <label class="text-xs font-semibold flex items-center gap-1.5">
-                                <Award class="h-3.5 w-3.5 text-muted-foreground" /> Position <span class="text-red-500">*</span>
-                            </label>
-                            <input
-                                v-model="form.position"
-                                type="text"
-                                placeholder="e.g. Director III"
-                                class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                            <span v-if="form.errors.position" class="text-xs text-red-500">{{ form.errors.position }}</span>
-                        </div>
-                        <div class="flex flex-col gap-1">
-                            <label class="text-xs font-semibold flex items-center gap-1.5">
-                                <Building2 class="h-3.5 w-3.5 text-muted-foreground" /> Agency <span class="text-red-500">*</span>
-                            </label>
-                            <div class="flex gap-2">
-                                <select
-                                    v-model="form.agency"
-                                    class="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background"
-                                >
-                                    <option value="" disabled>-- Select Agency --</option>
-                                    <option v-for="a in agencies" :key="a" :value="a">{{ a }}</option>
-                                </select>
-                                <button
-                                    type="button"
-                                    class="shrink-0 px-2.5 rounded-lg border text-muted-foreground hover:text-blue-600 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
-                                    title="Manage agencies"
-                                    @click="showAgencyModal = true"
-                                >
-                                    <Settings2 class="h-4 w-4" />
-                                </button>
+                    <!-- Header -->
+                    <div class="flex items-center justify-between gap-3 px-5 py-4 border-b shrink-0">
+                        <div class="flex items-center gap-3">
+                            <div class="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                                <FileText class="h-4 w-4 text-blue-600" />
                             </div>
-                            <span v-if="form.errors.agency" class="text-xs text-red-500">{{ form.errors.agency }}</span>
+                            <div>
+                                <p class="font-bold text-sm">{{ displayName(viewNominee) }}</p>
+                                <p class="text-xs text-muted-foreground">{{ viewNominee.agency }} · {{ viewNominee.position }}</p>
+                            </div>
                         </div>
+                        <button class="text-muted-foreground hover:text-foreground p-1 rounded-lg" @click="viewNominee = null">
+                            <X class="h-4 w-4" />
+                        </button>
                     </div>
 
-                    <!-- Contact + Email -->
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="flex flex-col gap-1">
-                            <label class="text-xs font-semibold flex items-center gap-1.5">
-                                <Phone class="h-3.5 w-3.5 text-muted-foreground" /> Contact No.
-                            </label>
-                            <input
-                                v-model="form.contact_no"
-                                type="text"
-                                placeholder="e.g. 09XX XXX XXXX"
-                                class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
+                    <div class="overflow-y-auto flex-1 p-5 space-y-4">
+
+                        <!-- Profile summary -->
+                        <div class="rounded-xl bg-muted/30 border px-4 py-3 grid grid-cols-2 gap-2 text-xs">
+                            <div><span class="text-muted-foreground">Sex:</span> <span class="font-semibold capitalize">{{ viewNominee.sex }}</span></div>
+                            <div><span class="text-muted-foreground">Age:</span> <span class="font-semibold">{{ viewNominee.age }}</span></div>
+                            <div v-if="viewNominee.contact_number"><span class="text-muted-foreground">Contact:</span> <span class="font-semibold">{{ viewNominee.contact_number }}</span></div>
+                            <div v-if="viewNominee.email"><span class="text-muted-foreground">Email:</span> <span class="font-semibold">{{ viewNominee.email }}</span></div>
                         </div>
-                        <div class="flex flex-col gap-1">
-                            <label class="text-xs font-semibold flex items-center gap-1.5">
-                                <Mail class="h-3.5 w-3.5 text-muted-foreground" /> Email
-                            </label>
-                            <input
-                                v-model="form.email"
-                                type="email"
-                                placeholder="email@example.com"
-                                class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
+
+                        <!-- Submissions -->
+                        <div>
+                            <p class="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">Submitted Documents</p>
+                            <div v-if="viewNominee.submissions.length > 0" class="space-y-2">
+                                <a
+                                    v-for="sub in viewNominee.submissions"
+                                    :key="sub.id"
+                                    :href="fileUrl(sub.file_path)"
+                                    target="_blank"
+                                    class="flex items-center gap-2 rounded-xl border px-4 py-3 text-sm hover:bg-muted/40 transition-colors"
+                                >
+                                    <FileText class="h-4 w-4 text-blue-500 shrink-0" />
+                                    <div class="flex-1 min-w-0">
+                                        <p class="font-semibold text-xs truncate">{{ sub.requirement.question }}</p>
+                                        <p class="text-[10px] text-muted-foreground truncate">{{ sub.file_path.split('/').pop() }}</p>
+                                    </div>
+                                </a>
+                            </div>
+                            <p v-else class="text-xs text-muted-foreground italic">No documents submitted.</p>
                         </div>
+
+                        <!-- Accomplished form -->
+                        <div v-if="viewNominee.accomplished_form_path">
+                            <p class="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">Accomplished Application Form</p>
+                            <a
+                                :href="fileUrl(viewNominee.accomplished_form_path)"
+                                target="_blank"
+                                class="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm hover:bg-blue-100 transition-colors"
+                            >
+                                <FileText class="h-4 w-4 text-blue-600 shrink-0" />
+                                <span class="text-blue-700 font-semibold text-xs">View Accomplished Form (PDF)</span>
+                            </a>
+                        </div>
+
                     </div>
-
-                </div>
-
-                <!-- Footer -->
-                <div class="flex justify-end gap-2 px-6 py-4 border-t bg-background">
-                    <Button variant="outline" @click="showModal = false">Cancel</Button>
-                    <Button
-                        :class="editingId ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-blue-600 hover:bg-blue-700 dark:text-white'"
-                        :disabled="form.processing"
-                        @click="submit"
-                    >
-                        <Plus v-if="!editingId && !form.processing" class="h-4 w-4 mr-1" />
-                        <Pencil v-if="editingId && !form.processing" class="h-4 w-4 mr-1" />
-                        {{ form.processing ? 'Saving...' : (editingId ? 'Update Participant' : 'Add Participant') }}
-                    </Button>
                 </div>
             </div>
-        </div>
+        </Teleport>
 
     </AppLayout>
 </template>

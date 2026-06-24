@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\ForeignNominee;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ForeignProgram extends Model
 {
@@ -33,4 +35,12 @@ class ForeignProgram extends Model
     {
         return $this->hasMany(ForeignParticipant::class);
     }
+
+    public function nominees(): HasMany
+    {
+        return $this->hasMany(ForeignNominee::class, 'foreign_program_id')
+                    ->orderBy('surname')->orderBy('firstname');
+    }
+
+    
 }

@@ -6,13 +6,18 @@ import {
     Plus, Earth, Calendar, Users, Building2, Search, X,
     ChevronLeft, ChevronRight, Globe, MapPin, Clock, Banknote,
     Tag, FileText, CalendarDays, Building, Hash, AlignLeft,
-    CheckCircle2, SlidersHorizontal, Trash2, Eye, Pencil,BarChart3
+    CheckCircle2, SlidersHorizontal, Trash2, Eye, Pencil,BarChart3, Settings
 } from 'lucide-vue-next';
 import { ref, computed, watch } from 'vue';
 import ForeignProgramsDashboardModal from '@/components/ForeignProgramsDashboardModal.vue';
 import OrganizingSponsorModal from '@/components/OrganizingSponsorModal.vue';
+import SponsorConfigModal from '@/components/SponsorConfigModal.vue';
 
 const showDashboard = ref(false);
+const showFormSettingsDropdown = ref(false);
+function handleClickOutside(event: MouseEvent) {
+    showFormSettingsDropdown.value = false;
+}
 
 interface ForeignProgram {
     id: number;
@@ -23,7 +28,7 @@ interface ForeignProgram {
     modality: 'in-person' | 'online' | 'hybrid';
     organizing_sponsor: string;
     status: string;
-    participants_count: number;
+    nominees_count: number;
     submission_date?: string;
     embassy_deadline?: string;
     interview_date?: string;
@@ -322,6 +327,19 @@ const onSponsorSelected = (name: string) => {
 
 // Initial load
 fetchSponsors();
+
+const configModalOpen  = ref(false);
+const selectedSponsor  = ref('');
+
+function openConfigModal(sponsor: string) {
+    selectedSponsor.value = sponsor;
+    configModalOpen.value = true;
+}
+
+function onConfigSaved() {
+    // Optional: pwedeng mag-refresh ng page or mag-show ng toast
+    configModalOpen.value = false;
+}
 </script>
 
 <template>
@@ -332,6 +350,18 @@ fetchSponsors();
         @close="showSponsorModal = false"
         @select="onSponsorSelected"
         @updated="fetchSponsors"
+    />
+    <SponsorConfigModal
+        :open="configModalOpen"
+        :organizing-sponsor="selectedSponsor"
+        @close="configModalOpen = false"
+        @saved="onConfigSaved"
+    />
+
+    <div
+        v-if="showFormSettingsDropdown"
+        class="fixed inset-0 z-40"
+        @click="showFormSettingsDropdown = false"
     />
 
     <AppLayout>
@@ -354,6 +384,36 @@ fetchSponsors();
                     <Button variant="outline" class="border-indigo-200 text-indigo-700 hover:bg-indigo-50 shadow-sm" @click="showDashboard = true">
                     <BarChart3 class="h-4 w-4 mr-1" /> Dashboard
                     </Button>
+                    <div class="relative">
+                        <Button
+                            variant="outline"
+                            class="border-blue-200 text-blue-700 hover:bg-blue-50 shadow-sm"
+                            @click="showFormSettingsDropdown = !showFormSettingsDropdown"
+                        >
+                            <Settings class="h-4 w-4 mr-1" /> Requirements Form Settings
+                        </Button>
+
+                        <!-- Dropdown ng sponsors -->
+                        <div
+                            v-if="showFormSettingsDropdown"
+                            class="absolute right-0 top-full mt-1 z-50 bg-background border rounded-xl shadow-lg py-1 min-w-48"
+                        >
+                            <p class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-3 py-1.5">
+                                Select Organizing Sponsor
+                            </p>
+                            <button
+                                v-for="sponsor in sponsors"
+                                :key="sponsor"
+                                class="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors"
+                                @click="openConfigModal(sponsor); showFormSettingsDropdown = false"
+                            >
+                                {{ sponsor }}
+                            </button>
+                            <p v-if="sponsors.length === 0" class="px-3 py-2 text-xs text-muted-foreground">
+                                No sponsors found.
+                            </p>
+                        </div>
+                    </div>
                     <Button class="bg-blue-600 hover:bg-blue-700 dark:text-white shadow-sm" @click="showModal = true">
                         <Plus class="h-4 w-4 mr-1" /> Add Program
                     </Button>
@@ -488,7 +548,7 @@ fetchSponsors();
                     <div class="flex items-center justify-end gap-1.5 text-muted-foreground">
                         <Users class="h-3.5 w-3.5 text-blue-400" />
                         <span>
-                            <span class="font-semibold text-foreground">{{ program.participants_count }}</span>
+                            <span class="font-semibold text-foreground">{{ program.nominees_count }}</span>
                             <span> / {{ program.slots }}</span>
                         </span>
                     </div>
@@ -504,6 +564,7 @@ fetchSponsors();
                         <button @click="confirmDelete(program.id)" class="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors" title="Delete program">
                             <Trash2 class="h-4 w-4" />
                         </button>
+                       
                     </div>
                 </div>
 
@@ -571,7 +632,7 @@ fetchSponsors();
                         </div>
                         <div>
                             <p class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Slots</p>
-                            <p class="font-medium">{{ viewProgram.participants_count }} / {{ viewProgram.slots }}</p>
+                            <p class="font-medium">{{ viewProgram.nominees_count }} / {{ viewProgram.slots }}</p>
                         </div>
                         <div>
                             <p class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Modality</p>

@@ -2,7 +2,7 @@
 import UserInfo from '@/components/UserInfo.vue';
 import { DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import type { User } from '@/types';
-import { Link } from '@inertiajs/vue3';
+import { router, Link } from '@inertiajs/vue3';
 import { LogOut, Settings, House } from 'lucide-vue-next';
 
 interface Props {
@@ -10,6 +10,12 @@ interface Props {
 }
 
 defineProps<Props>();
+
+function logout() {
+    localStorage.setItem('appearance', 'light');
+    document.documentElement.classList.remove('dark');
+    router.post(route('logout'));
+}
 </script>
 
 <template>
@@ -42,10 +48,11 @@ defineProps<Props>();
     </DropdownMenuGroup>
 
     <DropdownMenuSeparator />
-    <DropdownMenuItem :as-child="true">
-        <Link class="block w-full" method="post" :href="route('logout')" as="button">
+
+    <DropdownMenuItem as-child>
+        <button class="flex w-full items-center px-2 py-1.5 text-sm" @click="logout">
             <LogOut class="mr-2 h-4 w-4" />
             Log out
-        </Link>
+        </button>
     </DropdownMenuItem>
 </template>

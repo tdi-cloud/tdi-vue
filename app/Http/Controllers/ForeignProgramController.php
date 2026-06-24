@@ -11,7 +11,7 @@ class ForeignProgramController extends Controller
 {
     public function index(Request $request)
     {
-        $query = ForeignProgram::withCount('participants')
+        $query = ForeignProgram::withCount('nominees')
         ->addSelect([
             'id', 'program_title', 'description', 'program_start', 'program_end',
             'slots', 'modality', 'organizing_sponsor', 'status', 'category',
@@ -79,7 +79,7 @@ class ForeignProgramController extends Controller
     public function show(ForeignProgram $foreignProgram)
     {
         return Inertia::render('ForeignPrograms/show', [
-            'program' => $foreignProgram->load('participants'),
+            'program' => $foreignProgram->load(['nominees.submissions.requirement']),
         ]);
     }
 
@@ -138,25 +138,26 @@ class ForeignProgramController extends Controller
         $year   = $request->input('year');
         $agency = $request->input('agency');
         $status = $request->input('status', 'accepted');
-
-        // ----- Participants -----
-        $participantsQuery = ForeignParticipant::query()
-        ->whereHas('foreignProgram', function ($q) use ($year) {
-            if ($year) {
-                $q->whereYear('program_start', $year);
-            }
-        });
-
+ 
+        // ----- Nominees -----
+        $nomineesQuery = \App\Models\ForeignNominee::query()
+            ->whereHas('program', function ($q) use ($year) {
+                if ($year) {
+                    $q->whereYear('program_start', $year);
+                }
+            });
+ 
         if ($agency) {
-            $participantsQuery->where('agency', 'like', '%' . $agency . '%');
+            $nomineesQuery->where('agency', 'like', '%' . $agency . '%');
         }
-
-        $statusBreakdown = (clone $participantsQuery)
+ 
+        $statusBreakdown = (clone $nomineesQuery)
             ->selectRaw('status, count(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status');
-
+ 
         $statusLabels = [
+            'for_interview'  => 'For Interview',
             'endorsed'       => 'Endorsed',
             'waiting_result' => 'Waiting Result',
             'not_endorsed'   => 'Not Endorsed',
@@ -164,29 +165,29 @@ class ForeignProgramController extends Controller
             'regret'         => 'Regret',
             'cancelled'      => 'Cancelled',
         ];
-
+ 
         $statusChartLabels = [];
-        $statusSeries = [];
+        $statusSeries      = [];
         foreach ($statusLabels as $key => $label) {
             $statusChartLabels[] = $label;
-            $statusSeries[] = (int) ($statusBreakdown[$key] ?? 0);
+            $statusSeries[]      = (int) ($statusBreakdown[$key] ?? 0);
         }
-
+ 
         $selectedStatusCount = (int) ($statusBreakdown[$status] ?? 0);
-        $totalParticipants = array_sum($statusSeries);
-
-        $agencies = ForeignParticipant::query()
+        $totalNominees       = array_sum($statusSeries);
+ 
+        $agencies = \App\Models\ForeignNominee::query()
             ->select('agency')->distinct()->orderBy('agency')->pluck('agency');
-
+ 
         $years = ForeignProgram::selectRaw('YEAR(program_start) as year')
             ->distinct()->orderByDesc('year')->pluck('year');
-
+ 
         // ----- Programs per organizing_sponsor -----
         $programQuery = ForeignProgram::query();
         if ($year) {
             $programQuery->whereYear('program_start', $year);
         }
-
+ 
         $bySponsor = (clone $programQuery)
             ->selectRaw("organizing_sponsor,
                 count(*) as received,
@@ -194,13 +195,13 @@ class ForeignProgramController extends Controller
             ->groupBy('organizing_sponsor')
             ->orderByDesc('received')
             ->get();
-
+ 
         return response()->json([
             'agencies' => $agencies,
             'years'    => $years,
             'participants' => [
                 'selectedStatusCount' => $selectedStatusCount,
-                'totalParticipants'   => $totalParticipants,
+                'totalParticipants'   => $totalNominees,
                 'statusLabels'        => $statusChartLabels,
                 'statusSeries'        => $statusSeries,
             ],
