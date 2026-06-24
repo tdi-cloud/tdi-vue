@@ -27,6 +27,7 @@ class AttendanceController extends Controller
                       ->orWhere('EMPCODE',   'LIKE', "%{$q}%");
                 });
             })
+            ->where('PLANTILLA STATUS', '!=', 'JOB ORDER')
             ->orderBy('LASTNAME')
             ->limit(10)
             ->get();
@@ -75,20 +76,40 @@ class AttendanceController extends Controller
         // Participants list — sorted, with employee data
         $participants = $batch->participants->map(function ($p, $index) {
             $emp = $p->employee;
+            if ($emp) {
+                $mi   = trim($emp->MI ?? '');
+                $name = trim($emp->FIRSTNAME . ($mi ? ' ' . $mi : '') . ' ' . $emp->LASTNAME);
+            } else {
+                $name = $p->empcode;
+            }
             return [
                 'no'       => $index + 1,
-                'name'     => $emp
-                    ? strtoupper("{$emp->LASTNAME}, {$emp->FIRSTNAME}" . ($emp->MI ? " {$emp->MI}." : ''))
-                    : strtoupper($p->empcode),
+                'name'     => strtoupper($name),
                 'position' => $emp?->POSITION ?? '',
                 'office'   => $emp?->{'OFFICE/DIVISION'} ?? '',
             ];
         })->values()->toArray();
 
-        // Pad rows to the next multiple of 10, minimum 10
+        // Dynamic row padding:
+        // < 10 participants  → pad to 10
+        // 10–19              → actual + 5 blank rows
+        // 20–49              → actual + 10 blank rows
+        // 50–99              → actual + 20 blank rows (total ~70)
+        // 100+               → actual + 30 blank rows (total ~130)
         $actualCount = count($participants);
-        $minRows     = max(10, (int) ceil($actualCount / 10) * 10);
-        while (count($participants) < $minRows) {
+        if ($actualCount < 10) {
+            $targetRows = 10;
+        } elseif ($actualCount < 20) {
+            $targetRows = $actualCount + 5;
+        } elseif ($actualCount < 50) {
+            $targetRows = $actualCount + 10;
+        } elseif ($actualCount < 100) {
+            $targetRows = $actualCount + 20;
+        } else {
+            $targetRows = $actualCount + 30;
+        }
+
+        while (count($participants) < $targetRows) {
             $participants[] = ['no' => count($participants) + 1, 'name' => '', 'position' => '', 'office' => ''];
         }
 

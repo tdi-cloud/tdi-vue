@@ -32,6 +32,8 @@ class Certificate extends Model
         'hours'       => 'decimal:1',
     ];
 
+    protected $appends = ['file_url'];
+
     public const TYPES = [
         'Participation',
         'Completion',

@@ -21,6 +21,7 @@ use App\Http\Controllers\OrganizingSponsorController;
 use App\Http\Controllers\EmailReminderController;
 use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\ForeignAgencyController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -192,6 +193,12 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function(){
     
     Route::get('/attendance/generate', [AttendanceController::class, 'generate'])
         ->name('attendance.generate');
+
+
+    // FOREIGN AGENCIES
+    Route::get('/foreign-agencies',                      [ForeignAgencyController::class, 'index'])->name('foreign-agencies.index');
+    Route::post('/foreign-agencies',                     [ForeignAgencyController::class, 'store'])->name('foreign-agencies.store');
+    Route::delete('/foreign-agencies/{foreignAgency}',   [ForeignAgencyController::class, 'destroy'])->name('foreign-agencies.destroy');
 
 
 

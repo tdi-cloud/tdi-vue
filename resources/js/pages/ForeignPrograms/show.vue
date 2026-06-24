@@ -6,9 +6,10 @@ import {
     Plus, Search, Pencil, Trash2, ArrowLeft, Users, Calendar,
     Building2, Mail, Phone, UserCircle2, X,
     CheckCircle2, ClipboardList, MapPin, Award,
-    UserRound
+    UserRound, Settings2,
 } from 'lucide-vue-next';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import ForeignAgencyModal from '@/components/ForeignAgencyModal.vue';
 
 interface Participant {
     id: number;
@@ -34,25 +35,41 @@ interface ForeignProgram {
     embassy_deadline: string | null;
     interview_date: string | null;
     category: string | null;
-    description: string | null;   
+    description: string | null;
     participants: Participant[];
 }
 
 const props = defineProps<{ program: ForeignProgram }>();
 
-const showModal = ref(false);
-const editingId = ref<number | null>(null);
-const searchQuery = ref('');
+const showModal      = ref(false);
+const showAgencyModal = ref(false);
+const editingId      = ref<number | null>(null);
+const searchQuery    = ref('');
+const agencies       = ref<string[]>([]);
 
 const form = useForm({
-    name: '',
-    sex: '' as '' | 'male' | 'female' | 'other',
-    position: '',
-    agency: '',
+    name:       '',
+    sex:        '' as '' | 'male' | 'female' | 'other',
+    position:   '',
+    agency:     '',
     contact_no: '',
-    email: '',
-    status: '' as string,
+    email:      '',
+    status:     '' as string,
 });
+
+// ─── Fetch agencies ───────────────────────────────────────────────────────────
+
+async function fetchAgencies() {
+    const res  = await fetch(route('foreign-agencies.index'), {
+        headers: { Accept: 'application/json' },
+    });
+    const data = await res.json();
+    agencies.value = data.map((a: { id: number; name: string }) => a.name);
+}
+
+onMounted(fetchAgencies);
+
+// ─── Computed ─────────────────────────────────────────────────────────────────
 
 const filteredParticipants = computed(() => {
     const q = searchQuery.value.toLowerCase().trim();
@@ -67,25 +84,29 @@ const filteredParticipants = computed(() => {
 const maleCount     = computed(() => props.program.participants.filter(p => p.sex === 'male').length);
 const femaleCount   = computed(() => props.program.participants.filter(p => p.sex === 'female').length);
 const acceptedCount = computed(() => props.program.participants.filter(p => p.status === 'accepted').length);
+const slotsUsed     = computed(() => props.program.participants.length);
+const slotsPercent  = computed(() => Math.min(100, Math.round((slotsUsed.value / props.program.slots) * 100)));
+
+// ─── Modal open/close ─────────────────────────────────────────────────────────
 
 const openAdd = () => {
     editingId.value = null;
     form.reset();
-    form.sex = '';
+    form.sex    = '';
     form.status = '';
     showModal.value = true;
 };
 
 const openEdit = (p: Participant) => {
-    editingId.value = p.id;
-    form.name       = p.name;
-    form.sex        = p.sex;
-    form.position   = p.position;
-    form.agency     = p.agency;
-    form.contact_no = p.contact_no ?? '';
-    form.email      = p.email ?? '';
-    form.status     = p.status;
-    showModal.value = true;
+    editingId.value  = p.id;
+    form.name        = p.name;
+    form.sex         = p.sex;
+    form.position    = p.position;
+    form.agency      = p.agency;
+    form.contact_no  = p.contact_no ?? '';
+    form.email       = p.email ?? '';
+    form.status      = p.status;
+    showModal.value  = true;
 };
 
 const submit = () => {
@@ -106,6 +127,14 @@ const remove = (p: Participant) => {
     if (!confirm('Remove this participant?')) return;
     router.delete(route('foreign-participants.destroy', p.id), { preserveScroll: true });
 };
+
+// ─── Agency modal ─────────────────────────────────────────────────────────────
+
+function onAgencySelected(name: string) {
+    form.agency = name;
+}
+
+// ─── Lookups ──────────────────────────────────────────────────────────────────
 
 const sexLabel: Record<string, string> = { male: 'Male', female: 'Female', other: 'Other' };
 
@@ -148,13 +177,8 @@ const formatDate = (date?: string | null) => {
     if (!date) return '—';
     const d = date.includes('T') ? new Date(date) : new Date(date + 'T00:00:00');
     if (isNaN(d.getTime())) return '—';
-    return d.toLocaleDateString('en-PH', {
-        month: 'short', day: 'numeric', year: 'numeric',
-    });
+    return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
 };
-
-const slotsUsed    = computed(() => props.program.participants.length);
-const slotsPercent = computed(() => Math.min(100, Math.round((slotsUsed.value / props.program.slots) * 100)));
 </script>
 
 <template>
@@ -262,7 +286,7 @@ const slotsPercent = computed(() => Math.min(100, Math.round((slotsUsed.value / 
                 </div>
                 <div class="rounded-xl border bg-background p-4 flex items-center gap-3 shadow-sm">
                     <div class="h-10 w-10 rounded-xl bg-pink-100 dark:bg-pink-950/50 flex items-center justify-center shrink-0">
-                        <UserRound  class="h-5 w-5 text-pink-500 dark:text-pink-400" />
+                        <UserRound class="h-5 w-5 text-pink-500 dark:text-pink-400" />
                     </div>
                     <div>
                         <p class="text-xs text-muted-foreground">Female</p>
@@ -330,14 +354,14 @@ const slotsPercent = computed(() => Math.min(100, Math.round((slotsUsed.value / 
                             <td class="px-4 py-3 text-muted-foreground text-xs">{{ index + 1 }}</td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2">
-                                    <div class="h-7 w-7 rounded-full flex items-center justify-center shrink-0"
-                                        :class="p.sex === 'female'
-                                            ? 'bg-pink-100 dark:bg-pink-950/50'
-                                            : 'bg-sky-100 dark:bg-sky-950/50'"
+                                    <div
+                                        class="h-7 w-7 rounded-full flex items-center justify-center shrink-0"
+                                        :class="p.sex === 'female' ? 'bg-pink-100 dark:bg-pink-950/50' : 'bg-sky-100 dark:bg-sky-950/50'"
                                     >
-                                        <UserRound  v-if="p.sex === 'female'" class="h-4 w-4 text-pink-500" />
-                                        <UserRound   v-else-if="p.sex === 'male'" class="h-4 w-4 text-sky-600" />
-                                        <UserRound v-else class="h-4 w-4 text-muted-foreground" />
+                                        <UserRound
+                                            class="h-4 w-4"
+                                            :class="p.sex === 'female' ? 'text-pink-500' : 'text-sky-600'"
+                                        />
                                     </div>
                                     <span class="font-semibold">{{ p.name }}</span>
                                 </div>
@@ -370,16 +394,16 @@ const slotsPercent = computed(() => Math.min(100, Math.round((slotsUsed.value / 
                             <td class="px-4 py-3">
                                 <div class="flex items-center justify-center gap-1">
                                     <button
-                                        @click="openEdit(p)"
                                         class="p-1.5 rounded-lg text-muted-foreground hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors"
                                         title="Edit"
+                                        @click="openEdit(p)"
                                     >
                                         <Pencil class="h-3.5 w-3.5" />
                                     </button>
                                     <button
-                                        @click="remove(p)"
                                         class="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
                                         title="Remove"
+                                        @click="remove(p)"
                                     >
                                         <Trash2 class="h-3.5 w-3.5" />
                                     </button>
@@ -402,6 +426,14 @@ const slotsPercent = computed(() => Math.min(100, Math.round((slotsUsed.value / 
 
         </div>
 
+        <!-- ===== Agency Modal ===== -->
+        <ForeignAgencyModal
+            v-if="showAgencyModal"
+            @close="showAgencyModal = false"
+            @select="onAgencySelected"
+            @updated="fetchAgencies"
+        />
+
         <!-- ===== Add/Edit Participant Modal ===== -->
         <div
             v-if="showModal"
@@ -423,7 +455,7 @@ const slotsPercent = computed(() => Math.min(100, Math.round((slotsUsed.value / 
                         <h2 class="text-base font-bold leading-none">{{ editingId ? 'Edit Participant' : 'Add Participant' }}</h2>
                         <p class="text-xs text-muted-foreground mt-0.5">{{ editingId ? 'Update participant details' : 'Fill in the participant information' }}</p>
                     </div>
-                    <button @click="showModal = false" class="ml-auto text-muted-foreground hover:text-foreground transition-colors">
+                    <button class="ml-auto text-muted-foreground hover:text-foreground transition-colors" @click="showModal = false">
                         <X class="h-5 w-5" />
                     </button>
                 </div>
@@ -488,12 +520,23 @@ const slotsPercent = computed(() => Math.min(100, Math.round((slotsUsed.value / 
                             <label class="text-xs font-semibold flex items-center gap-1.5">
                                 <Building2 class="h-3.5 w-3.5 text-muted-foreground" /> Agency <span class="text-red-500">*</span>
                             </label>
-                            <input
-                                v-model="form.agency"
-                                type="text"
-                                placeholder="e.g. DILG"
-                                class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
+                            <div class="flex gap-2">
+                                <select
+                                    v-model="form.agency"
+                                    class="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background"
+                                >
+                                    <option value="" disabled>-- Select Agency --</option>
+                                    <option v-for="a in agencies" :key="a" :value="a">{{ a }}</option>
+                                </select>
+                                <button
+                                    type="button"
+                                    class="shrink-0 px-2.5 rounded-lg border text-muted-foreground hover:text-blue-600 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
+                                    title="Manage agencies"
+                                    @click="showAgencyModal = true"
+                                >
+                                    <Settings2 class="h-4 w-4" />
+                                </button>
+                            </div>
                             <span v-if="form.errors.agency" class="text-xs text-red-500">{{ form.errors.agency }}</span>
                         </div>
                     </div>
