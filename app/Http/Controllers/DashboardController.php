@@ -43,11 +43,11 @@ class DashboardController extends Controller
             ->when($officeFilter === 'OPCR', function ($q) use ($prefix) {
                 $q->where(function ($query) use ($prefix) {
                     $query->where($prefix . 'OFFICE/DIVISION', 'LIKE', 'CO-%')
-                        ->orWhere($prefix . 'OFFICE/DIVISION', 'LIKE', '%ROD%')
-                        ->orWhere($prefix . 'OFFICE/DIVISION', 'LIKE', '%ORD%')
-                        ->orWhere($prefix . 'OFFICE/DIVISION', 'LIKE', '%PO-%')
-                        ->orWhere($prefix . 'OFFICE/DIVISION', 'LIKE', '%DO%')
-                        ->orWhere($prefix . 'OFFICE/DIVISION', 'LIKE', '%FASD%');
+                        ->orWhere($prefix . 'OFFICE/DIVISION', 'LIKE', '%-ORD')
+                        ->orWhere($prefix . 'OFFICE/DIVISION', 'LIKE', '%-ROD')
+                        ->orWhere($prefix . 'OFFICE/DIVISION', 'LIKE', '%-FASD')
+                        ->orWhere($prefix . 'OFFICE/DIVISION', 'LIKE', '%-PO-%')
+                        ->orWhere($prefix . 'OFFICE/DIVISION', 'LIKE', '%-DO-%');
                 });
             })
             // NEW: filter by OFFICE column
@@ -372,4 +372,227 @@ class DashboardController extends Controller
             'employees' => $employees,
         ]);
     }
+
+    public function treapCompliance(Request $request)
+    {
+        $region   = $request->region;
+        $statuses = $request->plant_status;
+        $office   = $request->office;
+        $year     = $request->year;
+ 
+        $allRegions = [
+            'CO','NCR','R1','R2','R3','R4A','R4B','R5',
+            'NIR','R6','R7','R8','R9','R10','R11','R12',
+            'CAR','CARAGA',
+        ];
+ 
+        $today = now()->toDateString();
+ 
+        // Subquery: participants with overdue TREAP requirement
+        $baseParticipants = DB::table('participants')
+            ->join('batches',      'participants.batch_id',  '=', 'batches.id')
+            ->join('requirements', 'requirements.batch_id',  '=', 'batches.id')
+            ->join('employees',    'participants.empcode',   '=', 'employees.EMPCODE')
+            ->where('requirements.title',              'TREAP')
+            ->where('requirements.due_date',           '<=', $today)
+            ->where('participants.attendance',         '!=', 'Absent');
+ 
+        // Apply shared filters
+        $baseParticipants = $this->applyEmployeeFilters(
+            $baseParticipants, $region, $statuses, null, $office, 'employees.'
+        );
+ 
+        // Year filter on batch
+        if ($year && $year !== 'ALL') {
+            $baseParticipants->where('batches.date_start', 'LIKE', $year . '%');
+        }
+ 
+        // Total unique employees required to submit
+        $totalEmployees = (clone $baseParticipants)
+            ->distinct()
+            ->count('participants.empcode');
+ 
+        // Submitted: may submission na may title match sa 'TREAP' sa same batch
+        $submittedEmployees = (clone $baseParticipants)
+            ->whereExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('submissions')
+                    ->whereColumn('submissions.participant_id', 'participants.id')
+                    ->whereColumn('submissions.batch_id',       'batches.id')
+                    ->whereColumn('submissions.program_code',   'batches.program_code')
+                    ->whereIn('submissions.requirement_id',
+                        DB::table('requirements')
+                            ->whereColumn('requirements.batch_id', 'batches.id')
+                            ->where('requirements.title', 'TREAP')
+                            ->select('requirements.id')
+                    );
+            })
+            ->distinct()
+            ->count('participants.empcode');
+ 
+        $notSubmitted        = $totalEmployees - $submittedEmployees;
+        $submittedPct        = $totalEmployees > 0 ? round(($submittedEmployees / $totalEmployees) * 100, 1) : 0;
+        $notSubmittedPct     = $totalEmployees > 0 ? round(($notSubmitted       / $totalEmployees) * 100, 1) : 0;
+ 
+        // ── Regional breakdown ────────────────────────────────────────────────
+        $regionsSubmitted    = [];
+        $regionsNotSubmitted = [];
+ 
+        foreach ($allRegions as $reg) {
+            if ($region && $region !== 'ALL' && $reg !== $region) {
+                $regionsSubmitted[]    = 0;
+                $regionsNotSubmitted[] = 0;
+                continue;
+            }
+ 
+            $regBase = DB::table('participants')
+                ->join('batches',      'participants.batch_id', '=', 'batches.id')
+                ->join('requirements', 'requirements.batch_id', '=', 'batches.id')
+                ->join('employees',    'participants.empcode',  '=', 'employees.EMPCODE')
+                ->where('requirements.title',      'TREAP')
+                ->where('requirements.due_date',   '<=', $today)
+                ->where('participants.attendance', '!=', 'Absent')
+                ->where('employees.REGION',        $reg);
+ 
+            $regBase = $this->applyEmployeeFilters(
+                $regBase, null, $statuses, null, $office, 'employees.'
+            );
+ 
+            if ($year && $year !== 'ALL') {
+                $regBase->where('batches.date_start', 'LIKE', $year . '%');
+            }
+ 
+            $regTotal = (clone $regBase)->distinct()->count('participants.empcode');
+ 
+            $regSubmitted = (clone $regBase)
+                ->whereExists(function ($q) {
+                    $q->select(DB::raw(1))
+                        ->from('submissions')
+                        ->whereColumn('submissions.participant_id', 'participants.id')
+                        ->whereColumn('submissions.batch_id',       'batches.id')
+                        ->whereColumn('submissions.program_code',   'batches.program_code')
+                        ->whereIn('submissions.requirement_id',
+                            DB::table('requirements')
+                                ->whereColumn('requirements.batch_id', 'batches.id')
+                                ->where('requirements.title', 'TREAP')
+                                ->select('requirements.id')
+                        );
+                })
+                ->distinct()
+                ->count('participants.empcode');
+ 
+            $regionsSubmitted[]    = $regSubmitted;
+            $regionsNotSubmitted[] = $regTotal - $regSubmitted;
+        }
+ 
+        return response()->json([
+            'total'                 => $totalEmployees,
+            'submitted'             => $submittedEmployees,
+            'not_submitted'         => $notSubmitted,
+            'submitted_pct'         => $submittedPct,
+            'not_submitted_pct'     => $notSubmittedPct,
+            'regions'               => $allRegions,
+            'regions_submitted'     => $regionsSubmitted,
+            'regions_not_submitted' => $regionsNotSubmitted,
+        ]);
+    }
+
+    public function treapComplianceList(Request $request)
+    {
+        $region   = $request->region;
+        $statuses = $request->plant_status;
+        $office   = $request->office;
+        $year     = $request->year;
+        $reg      = $request->reg;   // specific region para sa bar chart click
+        $type     = $request->type;  // 'submitted' o 'not_submitted'
+ 
+        $today = now()->toDateString();
+ 
+        $query = DB::table('participants')
+            ->join('batches',      'participants.batch_id', '=', 'batches.id')
+            ->join('requirements', 'requirements.batch_id', '=', 'batches.id')
+            ->join('employees',    'participants.empcode',  '=', 'employees.EMPCODE')
+            ->where('requirements.title',      'TREAP')
+            ->where('requirements.due_date',   '<=', $today)
+            ->where('participants.attendance', '!=', 'Absent');
+ 
+        $query = $this->applyEmployeeFilters(
+            $query, $region, $statuses, null, $office, 'employees.'
+        );
+ 
+        if ($year && $year !== 'ALL') {
+            $query->where('batches.date_start', 'LIKE', $year . '%');
+        }
+ 
+        // Filter by specific region (from bar chart click)
+        if ($reg && $reg !== 'ALL') {
+            $query->where('employees.REGION', $reg);
+        }
+ 
+        // Filter submitted vs not submitted
+        $submittedCondition = function ($q) {
+            $q->select(DB::raw(1))
+                ->from('submissions')
+                ->whereColumn('submissions.participant_id', 'participants.id')
+                ->whereColumn('submissions.batch_id',       'batches.id')
+                ->whereColumn('submissions.program_code',   'batches.program_code')
+                ->whereIn('submissions.requirement_id',
+                    DB::table('requirements')
+                        ->whereColumn('requirements.batch_id', 'batches.id')
+                        ->where('requirements.title', 'TREAP')
+                        ->select('requirements.id')
+                );
+        };
+ 
+        if ($type === 'submitted') {
+            $query->whereExists($submittedCondition);
+        } else {
+            $query->whereNotExists($submittedCondition);
+        }
+ 
+        $employees = $query
+            ->select(
+                'employees.EMPCODE as empcode',
+                'employees.LASTNAME as lastname',
+                'employees.FIRSTNAME as firstname',
+                'employees.MI as mi',
+                'employees.POSITION as position',
+                DB::raw('employees.`OFFICE/DIVISION` as office_division'),
+                'employees.OFFICE as office',
+                'employees.REGION as region',
+                DB::raw('employees.`PLANTILLA STATUS` as plantilla_status'),
+                'batches.batch as batch_name',
+                'batches.date_end as date_end',
+                'requirements.due_date as due_date',
+            )
+            ->distinct()
+            ->orderBy('employees.LASTNAME')
+            ->orderBy('employees.FIRSTNAME')
+            ->get()
+            ->map(function ($e) {
+                $mi   = trim($e->mi ?? '');
+                $name = trim($e->firstname . ($mi ? ' ' . $mi : '') . ' ' . $e->lastname);
+                return [
+                    'empcode'          => $e->empcode,
+                    'name'             => $name,
+                    'position'         => $e->position,
+                    'office_division'  => $e->office_division,
+                    'office'           => $e->office,
+                    'region'           => $e->region,
+                    'plantilla_status' => $e->plantilla_status,
+                    'batch_name'       => $e->batch_name,
+                    'date_end'         => $e->date_end,
+                    'due_date'         => $e->due_date,
+                ];
+            });
+ 
+        return response()->json([
+            'type'      => $type,
+            'region'    => $reg ?? 'ALL',
+            'count'     => $employees->count(),
+            'employees' => $employees,
+        ]);
+    }
+
+
 }

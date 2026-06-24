@@ -6,6 +6,7 @@ import { ref, onMounted, watch } from 'vue';
 import PlaceholderPattern from '../components/PlaceholderPattern.vue';
 import TrainingComplianceCard from '../components/TrainingComplianceCard.vue';
 import SupervisoryComplianceCard from '../components/SupervisoryComplianceCard.vue';
+import TreapComplianceCard from '../components/TreapComplianceCard.vue';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -28,11 +29,10 @@ const target           = ref<'Nationwide' | 'OPCR'>('Nationwide');
 const region           = ref('ALL');
 const selectedStatuses = ref<string[]>(STATUS_OPTIONS.filter((s) => s !== 'JOB ORDER'));
 
-// NEW
-const year             = ref('ALL');
-const office           = ref('ALL');
-const yearOptions      = ref<string[]>([]);
-const officeOptions    = ref<string[]>([]);
+const year          = ref('ALL');
+const office        = ref('ALL');
+const yearOptions   = ref<string[]>([]);
+const officeOptions = ref<string[]>([]);
 
 const toggleStatus = (status: string) => {
     if (selectedStatuses.value.includes(status)) {
@@ -48,11 +48,10 @@ const fetchOffices = async () => {
     office.value = 'ALL';
 };
 
-
 onMounted(async () => {
     const yearsRes = await fetch('/dashboard/batch-years');
     yearOptions.value = await yearsRes.json();
-    await fetchOffices(); 
+    await fetchOffices();
 });
 
 watch(region, fetchOffices);
@@ -124,8 +123,6 @@ watch(region, fetchOffices);
                     </SelectContent>
                 </Select>
 
-                
-
                 <!-- Divider -->
                 <div class="h-5 w-px bg-border"></div>
 
@@ -165,6 +162,15 @@ watch(region, fetchOffices);
                     :office="office"
                 />
             </div>
+
+            <!-- ===================== TREAP PANEL ===================== -->
+            <TreapComplianceCard
+                :target="target"
+                :region="region"
+                :selected-statuses="selectedStatuses"
+                :year="year"
+                :office="office"
+            />
 
             <div class="grid auto-rows-min gap-4 md:grid-cols-3">
                 <div class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
