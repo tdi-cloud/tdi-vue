@@ -24,6 +24,7 @@ import {
     ClipboardPaste,
     ChevronDown,
     ChevronUp,
+    Download,
 } from 'lucide-vue-next';
 import { ref, watch, computed } from 'vue';
 import BulkAddParticipants from '@/pages/programs/BulkAddParticipants.vue';
@@ -304,6 +305,78 @@ const formatDueDate = (d: string) => {
     return new Date(d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
+/* ---------- CSV Export ---------- */
+const exportCsv = () => {
+    const b = props.batch;
+    if (!b) return;
+
+    const reqs = requirements.value;
+    const rows: string[] = [];
+
+    const esc = (v: any) => {
+        const s = v === null || v === undefined ? '' : String(v);
+        return `"${s.replace(/"/g, '""')}"`;
+    };
+    const line = (cells: any[]) => rows.push(cells.map(esc).join(','));
+
+    const schedule = `${formatDueDate(b.date_start)} - ${formatDueDate(b.date_end)}`;
+    const generated = new Date().toLocaleString('en-PH');
+
+    // ── Single header row (lahat ng column sa isang linya) ──
+    const header = [
+        'Program Code', 'Batch', 'Status', 'Modality', 'Venue', 'Schedule', 'Total Hours',
+        '#', 'Employee Name', 'Employee Code', 'Position', 'Office', 'Attendance', 'Hours',
+    ];
+    for (const r of reqs) header.push(r.title ?? r.name ?? `Req ${r.id}`);
+    header.push('Generated');
+    line(header);
+
+    // ── Participant rows (inuulit ang program/batch info kada row) ──
+    participants.value.forEach((p: any, i: number) => {
+        const subMap: Record<number, string> = {};
+        for (const s of (p.submissions ?? [])) {
+            subMap[s.requirement_id] = normalizeStatus(s.status);
+        }
+
+        const row: any[] = [
+            b.program_code ?? '',
+            b.batch ?? '',
+            b.status ?? '',
+            b.modality ?? '',
+            b.venue ?? '',
+            schedule,
+            b.hours ?? '',
+            i + 1,
+            p.employee?.name ?? p.empcode,
+            p.empcode,
+            p.employee?.POSITION ?? '',
+            p.employee?.['OFFICE/DIVISION'] ?? p.employee?.OFFICE ?? '',
+            p.attendance ?? '',
+            p.attendance === 'Complete' ? (p.hours ?? '') : '',
+        ];
+
+        for (const r of reqs) {
+            row.push(subMap[r.id] ?? 'No submission');
+        }
+
+        row.push(generated);
+        line(row);
+    });
+
+    // ── Download ──
+    const csv = rows.join('\r\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const safeBatch = (b.batch ?? 'batch').replace(/[^a-z0-9]+/gi, '_');
+    a.download = `${b.program_code ?? 'program'}_${safeBatch}_participants.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+};
+
 watch(() => props.open, (isOpen) => {
     if (isOpen) {
         query.value = '';
@@ -493,6 +566,17 @@ const applyToAll = () => {
                     <h2 class="text-sm font-bold leading-tight">{{ batch?.batch }} — Participants</h2>
                     <p class="text-[11px] text-muted-foreground">Manage participants enrolled in this batch</p>
                 </div>
+
+                <Button
+                    v-if="participants.length"
+                    variant="outline"
+                    size="sm"
+                    class="ml-auto mr-5 text-xs border-emerald-200 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                    @click="exportCsv"
+                >
+                    <Download class="h-3.5 w-3.5 mr-1" />
+                    Export CSV
+                </Button>
             </div>
 
             <div class="flex flex-col gap-0 overflow-y-auto flex-1">

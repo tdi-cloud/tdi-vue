@@ -133,6 +133,25 @@ class ForeignNominationController extends Controller
             }
         }
 
+        try {
+            $recipients = array_filter(array_map(
+                'trim',
+                explode(',', config('mail.nomination_notify') ?? '')
+            ));
+
+            if (!empty($recipients)) {
+                \Illuminate\Support\Facades\Mail::to($recipients)
+                    ->send(new \App\Mail\NewNomineeNotification(
+                        $nominee->load(['program', 'sponsorConfig'])
+                    ));
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to send nominee notification email', [
+                'nominee_id' => $nominee->id,
+                'error'      => $e->getMessage(),
+            ]);
+        }
+
         return redirect()->route('nominate.success', $slug);
     }
 
