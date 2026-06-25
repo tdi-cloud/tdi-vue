@@ -9,10 +9,6 @@ use Illuminate\Support\Facades\Storage;
 
 class CertificateController extends Controller
 {
-    /**
-     * Store or update a certificate for a participant.
-     * Used by ADMIN from the batch/program management side.
-     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -24,21 +20,24 @@ class CertificateController extends Controller
             'issued_date'      => 'nullable|date',
             'issued_by'        => 'nullable|string|max:255',
             'remarks'          => 'nullable|string|max:1000',
-            'file'             => 'nullable|file|mimes:pdf|max:5120', // 5MB max
+            'file'             => 'nullable|file|mimes:pdf|max:5120', 
         ]);
 
         $participant = Participant::findOrFail($validated['participant_id']);
 
-        // Find or create certificate for this participant + batch + type
         $cert = Certificate::firstOrNew([
             'participant_id' => $validated['participant_id'],
             'batch_id'       => $validated['batch_id'],
             'type'           => $validated['type'],
         ]);
 
-        // Handle file upload
+        if (! $request->hasFile('file') && ! $cert->file_path) {
+            return back()
+                ->withErrors(['file' => 'A certificate PDF file is required.'])
+                ->withInput();
+        }
+
         if ($request->hasFile('file')) {
-            // Delete old file if exists
             if ($cert->file_path) {
                 Storage::disk('public')->delete($cert->file_path);
             }
@@ -64,10 +63,6 @@ class CertificateController extends Controller
         return back()->with('success', 'Certificate saved successfully.');
     }
 
-    /**
-     * Upload a certificate by the participant themselves.
-     * Used from the enrolled program / my-progress page.
-     */
     public function uploadByUser(Request $request, $batchId)
     {
         $request->validate([
@@ -77,7 +72,6 @@ class CertificateController extends Controller
 
         $user = $request->user();
 
-        // Find the participant record for this user in this batch
         $participant = Participant::where('batch_id', $batchId)
             ->where('empcode', $user->empcode)
             ->firstOrFail();
@@ -88,7 +82,6 @@ class CertificateController extends Controller
             'type'           => $request->type,
         ]);
 
-        // Delete old file
         if ($cert->file_path) {
             Storage::disk('public')->delete($cert->file_path);
         }
@@ -110,23 +103,16 @@ class CertificateController extends Controller
         return back()->with('success', 'Certificate uploaded successfully.');
     }
 
-    /**
-     * Delete a certificate and its file.
-     */
     public function destroy(Certificate $certificate)
     {
         $certificate->delete(); // booted() handles file deletion
         return back()->with('success', 'Certificate deleted successfully.');
     }
 
-    /**
-     * Delete a certificate by the user themselves (from my-progress page).
-     */
     public function destroyByUser(Request $request, $batchId, Certificate $certificate)
     {
         $user = $request->user();
 
-        // Make sure this cert belongs to the user
         abort_unless($certificate->empcode === $user->empcode, 403);
 
         $certificate->delete();

@@ -37,7 +37,7 @@ defineProps<{ config: Config }>();
                         <p class="font-semibold mb-1">What happens next:</p>
                         <ul class="list-disc list-inside space-y-1 text-blue-600">
                             <li>Your nomination has been submitted with status <strong>For Interview</strong>.</li>
-                            <li>You will receive a notification from your agency regarding the next steps.</li>
+                            <li>You will receive a notification from the sponsoring institution regarding the next steps.</li>
                             <li>Please ensure your contact number and email address are accessible.</li>
                         </ul>
                     </div>

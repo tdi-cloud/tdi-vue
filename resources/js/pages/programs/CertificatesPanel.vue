@@ -172,6 +172,11 @@ const stats = computed(() => {
     return { participants: allRows.value.length, total, issued, pending };
 });
 
+// Kailangan ng file: walang bagong na-select na file AT walang existing file na naka-save.
+const fileRequired = computed(() =>
+    !form.value.file && !editingCert.value?.file_name
+);
+
 watch([search, batchFilter, statusFilter], () => { page.value = 1; });
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -224,6 +229,10 @@ function handleFile(e: Event) {
 
 function saveCertificate() {
     if (!modalParticipant.value || !modalBatch.value) return;
+
+    // Guard: huwag mag-submit kung wala pang file at walang existing file.
+    if (fileRequired.value) return;
+
     processing.value = true;
     const data = new FormData();
     data.append('participant_id', String(modalParticipant.value.id));
@@ -576,12 +585,20 @@ function deleteCert(cert: Certificate) {
 
                     <!-- File upload -->
                     <div class="flex flex-col gap-1.5">
-                        <label class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Certificate PDF</label>
-                        <label class="flex items-center gap-2 h-10 px-3 rounded-md border border-dashed cursor-pointer hover:bg-muted transition-colors text-sm text-muted-foreground">
+                        <label class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                            Certificate PDF <span class="text-red-500">*</span>
+                        </label>
+                        <label
+                            class="flex items-center gap-2 h-10 px-3 rounded-md border border-dashed cursor-pointer hover:bg-muted transition-colors text-sm text-muted-foreground"
+                            :class="fileRequired ? 'border-red-300 dark:border-red-700' : ''"
+                        >
                             <Upload class="h-4 w-4 shrink-0" />
                             <span class="truncate">{{ form.file?.name ?? (editingCert?.file_name ?? 'Click to upload PDF…') }}</span>
                             <input ref="fileInput" type="file" accept=".pdf" class="hidden" @change="handleFile" />
                         </label>
+                        <p v-if="fileRequired" class="text-[11px] text-red-500">
+                            A certificate PDF is required before saving.
+                        </p>
                     </div>
 
                     <!-- Quick issue shortcut -->
@@ -601,7 +618,7 @@ function deleteCert(cert: Certificate) {
                     <Button variant="outline" @click="closeModal">Cancel</Button>
                     <Button
                         class="bg-violet-600 hover:bg-violet-700 text-white"
-                        :disabled="processing"
+                        :disabled="processing || fileRequired"
                         @click="saveCertificate"
                     >
                         <Award class="h-4 w-4 mr-1.5" />

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import { Upload, ExternalLink, ChevronDown, AlertCircle, Loader2 } from 'lucide-vue-next';
 
@@ -40,6 +40,13 @@ const props = defineProps<{
     config: Config;
     programs: Program[];
 }>();
+
+// ── Force light mode for public form ──────────────────────────────────────────
+// Tinatanggal ang .dark class para hindi maapektuhan ng system/browser dark mode
+// ang text color ng mga input at select (na umaasa sa --foreground variable).
+onMounted(() => {
+    document.documentElement.classList.remove('dark');
+});
 
 // ── Form fields ───────────────────────────────────────────────────────────────
 
@@ -138,7 +145,7 @@ function modalityLabel(m: string) {
 </script>
 
 <template>
-    <div class="min-h-screen bg-gray-100 py-8 px-4">
+    <div class="min-h-screen bg-gray-100 py-8 px-4 [color-scheme:light]">
         <div class="mx-auto max-w-2xl space-y-4">
 
             <!-- ── Banner ── -->
@@ -173,7 +180,7 @@ function modalityLabel(m: string) {
                         <div class="relative">
                             <select
                                 v-model="fields.foreign_program_id"
-                                class="w-full appearance-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 pr-10 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition"
+                                class="w-full appearance-none rounded-xl border border-gray-200 bg-gray-50 text-gray-900 px-4 py-2.5 pr-10 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition"
                                 required
                             >
                                 <option value="">— Select a program —</option>
@@ -212,20 +219,20 @@ function modalityLabel(m: string) {
                                     First Name <span class="text-red-500">*</span>
                                 </label>
                                 <input v-model="fields.firstname" type="text" required
-                                    class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
+                                    class="w-full rounded-xl border border-gray-200 bg-gray-50 text-gray-900 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
                                 <p v-if="errors.firstname" class="mt-1 text-xs text-red-500">{{ errors.firstname }}</p>
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-gray-600 mb-1">Middle Name</label>
                                 <input v-model="fields.middle_name" type="text"
-                                    class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
+                                    class="w-full rounded-xl border border-gray-200 bg-gray-50 text-gray-900 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-gray-600 mb-1">
                                     Surname <span class="text-red-500">*</span>
                                 </label>
                                 <input v-model="fields.surname" type="text" required
-                                    class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
+                                    class="w-full rounded-xl border border-gray-200 bg-gray-50 text-gray-900 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
                                 <p v-if="errors.surname" class="mt-1 text-xs text-red-500">{{ errors.surname }}</p>
                             </div>
                         </div>
@@ -237,7 +244,7 @@ function modalityLabel(m: string) {
                                 </label>
                                 <div class="relative">
                                     <select v-model="fields.sex" required
-                                        class="w-full appearance-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 pr-8 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition">
+                                        class="w-full appearance-none rounded-xl border border-gray-200 bg-gray-50 text-gray-900 px-3 py-2 pr-8 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition">
                                         <option value="">— Select —</option>
                                         <option value="male">Male</option>
                                         <option value="female">Female</option>
@@ -252,7 +259,7 @@ function modalityLabel(m: string) {
                                     Age <span class="text-red-500">*</span>
                                 </label>
                                 <input v-model="fields.age" type="number" min="18" max="100" required
-                                    class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
+                                    class="w-full rounded-xl border border-gray-200 bg-gray-50 text-gray-900 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
                                 <p v-if="errors.age" class="mt-1 text-xs text-red-500">{{ errors.age }}</p>
                             </div>
                         </div>
@@ -262,7 +269,7 @@ function modalityLabel(m: string) {
                                 Position / Designation <span class="text-red-500">*</span>
                             </label>
                             <input v-model="fields.position" type="text" required
-                                class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
+                                class="w-full rounded-xl border border-gray-200 bg-gray-50 text-gray-900 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
                             <p v-if="errors.position" class="mt-1 text-xs text-red-500">{{ errors.position }}</p>
                         </div>
 
@@ -272,20 +279,25 @@ function modalityLabel(m: string) {
                                 <span class="ml-1 font-normal text-gray-400">(Abbreviation only, e.g. TESDA, DOLE)</span>
                             </label>
                             <input v-model="fields.agency" type="text" required
-                                class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
+                                class="w-full rounded-xl border border-gray-200 bg-gray-50 text-gray-900 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
                             <p v-if="errors.agency" class="mt-1 text-xs text-red-500">{{ errors.agency }}</p>
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-xs font-semibold text-gray-600 mb-1">Contact Number</label>
-                                <input v-model="fields.contact_number" type="tel"
-                                    class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">
+                                    Contact Number <span class="text-red-500">*</span>
+                                </label>
+                                <input v-model="fields.contact_number" type="tel" required
+                                    class="w-full rounded-xl border border-gray-200 bg-gray-50 text-gray-900 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
+                                <p v-if="errors.contact_number" class="mt-1 text-xs text-red-500">{{ errors.contact_number }}</p>
                             </div>
                             <div>
-                                <label class="block text-xs font-semibold text-gray-600 mb-1">Email Address</label>
-                                <input v-model="fields.email" type="email"
-                                    class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">
+                                    Email Address <span class="text-red-500">*</span>
+                                </label>
+                                <input v-model="fields.email" type="email" required
+                                    class="w-full rounded-xl border border-gray-200 bg-gray-50 text-gray-900 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
                                 <p v-if="errors.email" class="mt-1 text-xs text-red-500">{{ errors.email }}</p>
                             </div>
                         </div>
@@ -408,6 +420,19 @@ function modalityLabel(m: string) {
                 </div>
 
             </form>
+
+            <!-- ── Footer ── -->
+            <footer class="flex items-center justify-center gap-2.5 pt-2 pb-4">
+                <!-- TODO: Palitan ang src ng totoong link ng logo -->
+                <img
+                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/TESDA_Seal.svg/1280px-TESDA_Seal.svg.png"
+                    alt="TESDA Development Institute"
+                    class="h-7 w-7 object-contain"
+                />
+                <span class="text-sm font-semibold text-gray-600">
+                    TESDA Development Institute
+                </span>
+            </footer>
         </div>
     </div>
 </template>

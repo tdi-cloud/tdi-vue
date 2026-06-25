@@ -54,8 +54,8 @@ class ForeignNominationController extends Controller
             'age'                => 'required|integer|min:18|max:100',
             'position'           => 'required|string|max:255',
             'agency'             => 'required|string|max:255',
-            'contact_number'     => 'nullable|string|max:50',
-            'email'              => 'nullable|email|max:255',
+            'contact_number'     => 'required|string|max:50',
+            'email'              => 'required|email|max:255',
             'accomplished_form'  => 'nullable|file|mimes:pdf|max:10240',
         ]);
 
