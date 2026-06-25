@@ -69,7 +69,7 @@ const props = defineProps({
 
 const slides = [
   { img: '/storage/hero/hrmo.jpg' },
-  { img: 'https://images.unsplash.com/photo-1557425529-b1ae9c141e7d?w=1600&q=80' },
+  { img: '/storage/hero/hrmo1.jpeg' },
   { img: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1600&q=80' },
 ]
 
