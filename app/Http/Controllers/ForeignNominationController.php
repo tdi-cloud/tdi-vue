@@ -17,9 +17,9 @@ class ForeignNominationController extends Controller
             ->where('is_active', true)
             ->with(['requirements' => fn($q) => $q->orderBy('sort_order')])
             ->firstOrFail();
-    
+
         $programsQuery = ForeignProgram::where('organizing_sponsor', $config->organizing_sponsor);
-    
+
         // If admin selected specific programs, show only those
         if (!empty($config->selected_program_ids)) {
             $programsQuery->whereIn('id', $config->selected_program_ids);
@@ -27,11 +27,20 @@ class ForeignNominationController extends Controller
             // Otherwise show all non-concluded programs
             $programsQuery->whereNotIn('status', ['concluded', 'no_nominee']);
         }
-    
+
+        // ── Itago ang mga programa na lampas na ang submission date kaysa ngayon ──
+        // Pinapakita pa rin ang mga walang submission_date (null = walang deadline).
+        // Kahit naka-save pa ito sa selected_program_ids, hindi na ito lalabas sa
+        // aplikante kapag lumagpas na ang deadline.
+        $programsQuery->where(function ($q) {
+            $q->whereNull('submission_date')
+              ->orWhereDate('submission_date', '>=', now()->toDateString());
+        });
+
         $programs = $programsQuery
             ->orderBy('program_start')
             ->get(['id', 'program_title', 'program_start', 'program_end', 'slots', 'modality']);
-    
+
         return Inertia::render('ForeignPrograms/NominationForm', [
             'config'   => $config,
             'programs' => $programs,
@@ -58,6 +67,21 @@ class ForeignNominationController extends Controller
             'email'              => 'required|email|max:255',
             'accomplished_form'  => 'nullable|file|mimes:pdf|max:10240',
         ]);
+
+        // ── Tiyakin na hindi expired ang piniling programa ──
+        // Depensa kung sakaling may magpadala ng program_id na lampas na ang deadline
+        // (hal. naka-cache na page o dev tools).
+        $program = ForeignProgram::findOrFail($request->foreign_program_id);
+        if (
+            $program->submission_date
+            && $program->submission_date->lt(now()->startOfDay())
+        ) {
+            return back()
+                ->withErrors([
+                    'foreign_program_id' => 'The submission period for this program has already ended.',
+                ])
+                ->withInput();
+        }
 
         // Validate requirement files
         foreach ($config->requirements as $req) {

@@ -178,7 +178,7 @@ watch(() => props.open, async (val) => {
                 requirements: [],
                 selected_program_ids: [],
             };
-            selectedPrograms.value = [];
+        selectedPrograms.value = [];
         }
     } finally {
         loading.value = false;
@@ -311,7 +311,7 @@ const nominationUrl = computed(() =>
                             <Settings class="h-4 w-4 text-blue-600" />
                         </div>
                         <div>
-                            <p class="font-bold text-sm">Sponsor Config — {{ organizingSponsor }}</p>
+                            <p class="font-bold text-sm">Nomination Form Setup — {{ organizingSponsor }}</p>
                             <p v-if="nominationUrl" class="text-xs text-muted-foreground">
                                 Form URL:
                                 <a :href="nominationUrl" target="_blank" class="text-blue-600 hover:underline font-mono">

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { router, usePage } from '@inertiajs/vue3';
-import { Upload, ExternalLink, ChevronDown, AlertCircle, Loader2 } from 'lucide-vue-next';
+import { router, usePage, Head } from '@inertiajs/vue3';
+import { Upload, ExternalLink, ChevronDown, AlertCircle, Loader2, Check, ArrowLeft, ArrowRight } from 'lucide-vue-next';
 
 interface Program {
     id: number;
@@ -42,8 +42,6 @@ const props = defineProps<{
 }>();
 
 // ── Force light mode for public form ──────────────────────────────────────────
-// Tinatanggal ang .dark class para hindi maapektuhan ng system/browser dark mode
-// ang text color ng mga input at select (na umaasa sa --foreground variable).
 onMounted(() => {
     document.documentElement.classList.remove('dark');
 });
@@ -69,10 +67,93 @@ const requirementFiles     = ref<Record<number, File | null>>({});
 const requirementFileNames = ref<Record<number, string>>({});
 const processing           = ref(false);
 
-// ── Errors from Inertia page props ────────────────────────────────────────────
+// ── Errors ────────────────────────────────────────────────────────────────────
+// Pinagsasama ang server errors (mula Inertia) at client-side per-step errors.
 
-const page   = usePage();
-const errors = computed(() => (page.props.errors as Record<string, string>) ?? {});
+const page        = usePage();
+const serverErrors = computed(() => (page.props.errors as Record<string, string>) ?? {});
+const stepErrors   = ref<Record<string, string>>({});
+
+function fieldError(key: string): string | undefined {
+    return stepErrors.value[key] ?? serverErrors.value[key];
+}
+
+// ── Steps (dynamic — conditional sections excluded kung wala) ──────────────────
+
+interface Step { key: string; label: string; }
+
+const steps = computed<Step[]>(() => {
+    const s: Step[] = [
+        { key: 'program', label: 'Program' },
+        { key: 'profile', label: 'Profile' },
+    ];
+    if (props.config.requirements.length > 0) {
+        s.push({ key: 'requirements', label: 'Requirements' });
+    }
+    if (props.config.available_courses && props.config.available_courses.length > 0) {
+        s.push({ key: 'courses', label: 'Courses' });
+    }
+    s.push({ key: 'accomplished', label: 'Application Form' });
+    return s;
+});
+
+const currentStep = ref(0);
+const currentKey   = computed(() => steps.value[currentStep.value]?.key);
+const isLastStep   = computed(() => currentStep.value === steps.value.length - 1);
+const progressPct  = computed(() => ((currentStep.value + 1) / steps.value.length) * 100);
+
+// ── Per-step validation ───────────────────────────────────────────────────────
+
+function validateCurrentStep(): boolean {
+    stepErrors.value = {};
+    const key = currentKey.value;
+
+    if (key === 'program') {
+        if (!fields.value.foreign_program_id) {
+            stepErrors.value.foreign_program_id = 'Please select a program.';
+        }
+    } else if (key === 'profile') {
+        if (!String(fields.value.firstname).trim()) stepErrors.value.firstname = 'First name is required.';
+        if (!String(fields.value.surname).trim())   stepErrors.value.surname   = 'Surname is required.';
+        if (!fields.value.sex)                       stepErrors.value.sex       = 'Please select.';
+        if (!fields.value.age) {
+            stepErrors.value.age = 'Age is required.';
+        } else if (Number(fields.value.age) < 18 || Number(fields.value.age) > 100) {
+            stepErrors.value.age = 'Age must be between 18 and 100.';
+        }
+        if (!String(fields.value.position).trim()) stepErrors.value.position = 'Position is required.';
+        if (!String(fields.value.agency).trim())   stepErrors.value.agency   = 'Agency is required.';
+        if (!String(fields.value.contact_number).trim()) {
+            stepErrors.value.contact_number = 'Contact number is required.';
+        }
+        if (!String(fields.value.email).trim()) {
+            stepErrors.value.email = 'Email is required.';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.value.email)) {
+            stepErrors.value.email = 'Please enter a valid email address.';
+        }
+    } else if (key === 'requirements') {
+        for (const req of props.config.requirements) {
+            if (req.file_required && !requirementFiles.value[req.id]) {
+                stepErrors.value[`requirement_${req.id}`] = 'This file is required.';
+            }
+        }
+    }
+    // 'courses' at 'accomplished' — walang required na validation
+
+    return Object.keys(stepErrors.value).length === 0;
+}
+
+function next() {
+    if (!validateCurrentStep()) return;
+    if (currentStep.value < steps.value.length - 1) currentStep.value++;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function back() {
+    stepErrors.value = {};
+    if (currentStep.value > 0) currentStep.value--;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
 // ── File handlers ─────────────────────────────────────────────────────────────
 
@@ -81,6 +162,7 @@ function handleRequirementFile(reqId: number, event: Event) {
     if (file) {
         requirementFiles.value[reqId]     = file;
         requirementFileNames.value[reqId] = file.name;
+        delete stepErrors.value[`requirement_${reqId}`];
     }
 }
 
@@ -95,6 +177,10 @@ function handleAccomplishedFile(event: Event) {
 // ── Submit via FormData ───────────────────────────────────────────────────────
 
 function submit() {
+    // Kung hindi pa huling step, Enter key = Next imbes na submit.
+    if (!isLastStep.value) { next(); return; }
+    if (!validateCurrentStep()) return;
+
     const data = new FormData();
 
     data.append('foreign_program_id', String(fields.value.foreign_program_id));
@@ -145,6 +231,8 @@ function modalityLabel(m: string) {
 </script>
 
 <template>
+    <Head :title="config.form_title" />
+
     <div class="min-h-screen bg-gray-100 py-8 px-4 [color-scheme:light]">
         <div class="mx-auto max-w-2xl space-y-4">
 
@@ -164,12 +252,48 @@ function modalityLabel(m: string) {
                 </div>
             </div>
 
+            <!-- ── Progress (step circles + fill bar) ── -->
+            <div class="bg-white rounded-2xl shadow-sm px-5 py-4">
+                <div class="flex items-start justify-between mb-3 gap-1">
+                    <div
+                        v-for="(s, i) in steps"
+                        :key="s.key"
+                        class="flex flex-col items-center flex-1 min-w-0"
+                    >
+                        <div
+                            class="h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all"
+                            :class="i < currentStep ? 'bg-blue-600 text-white'
+                                : i === currentStep ? 'bg-blue-600 text-white ring-4 ring-blue-100'
+                                : 'bg-gray-200 text-gray-500'"
+                        >
+                            <Check v-if="i < currentStep" class="h-4 w-4" />
+                            <span v-else>{{ i + 1 }}</span>
+                        </div>
+                        <span
+                            class="text-[10px] mt-1.5 text-center leading-tight w-full px-0.5"
+                            :class="i === currentStep ? 'text-blue-600 font-semibold' : 'text-gray-400'"
+                        >
+                            {{ s.label }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                        class="h-full bg-blue-600 rounded-full transition-all duration-300"
+                        :style="{ width: progressPct + '%' }"
+                    ></div>
+                </div>
+                <p class="text-center text-xs text-gray-500 mt-2">
+                    Step {{ currentStep + 1 }} of {{ steps.length }}
+                </p>
+            </div>
+
             <form @submit.prevent="submit" class="space-y-4">
 
-                <!-- ── Section 1: Program Selection ── -->
-                <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+                <!-- ── Step: Program Selection ── -->
+                <div v-show="currentKey === 'program'" class="bg-white rounded-2xl shadow-sm overflow-hidden">
                     <div class="bg-blue-50 border-l-4 border-blue-500 px-5 py-3">
-                        <p class="text-xs font-bold text-blue-600 uppercase tracking-wide">Section 1</p>
                         <h2 class="text-base font-extrabold text-gray-800">Program Selection</h2>
                         <p class="text-xs text-gray-500 mt-0.5">Select the program you wish to apply for.</p>
                     </div>
@@ -181,7 +305,6 @@ function modalityLabel(m: string) {
                             <select
                                 v-model="fields.foreign_program_id"
                                 class="w-full appearance-none rounded-xl border border-gray-200 bg-gray-50 text-gray-900 px-4 py-2.5 pr-10 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition"
-                                required
                             >
                                 <option value="">— Select a program —</option>
                                 <option v-for="p in programs" :key="p.id" :value="p.id">
@@ -190,11 +313,10 @@ function modalityLabel(m: string) {
                             </select>
                             <ChevronDown class="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                         </div>
-                        <p v-if="errors.foreign_program_id" class="mt-1 text-xs text-red-500">
-                            {{ errors.foreign_program_id }}
+                        <p v-if="fieldError('foreign_program_id')" class="mt-1 text-xs text-red-500">
+                            {{ fieldError('foreign_program_id') }}
                         </p>
 
-                        <!-- Selected program details -->
                         <div v-if="selectedProgram" class="mt-3 rounded-xl bg-blue-50 border border-blue-100 px-4 py-3 text-xs space-y-1">
                             <p><span class="font-semibold text-gray-600">Dates:</span>
                                 {{ formatDate(selectedProgram.program_start) }} — {{ formatDate(selectedProgram.program_end) }}
@@ -205,10 +327,9 @@ function modalityLabel(m: string) {
                     </div>
                 </div>
 
-                <!-- ── Section 2: Nominee's Profile ── -->
-                <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+                <!-- ── Step: Nominee's Profile ── -->
+                <div v-show="currentKey === 'profile'" class="bg-white rounded-2xl shadow-sm overflow-hidden">
                     <div class="bg-blue-50 border-l-4 border-blue-500 px-5 py-3">
-                        <p class="text-xs font-bold text-blue-600 uppercase tracking-wide">Section 2</p>
                         <h2 class="text-base font-extrabold text-gray-800">Nominee's Profile</h2>
                     </div>
                     <div class="px-5 py-5 space-y-4">
@@ -218,9 +339,9 @@ function modalityLabel(m: string) {
                                 <label class="block text-xs font-semibold text-gray-600 mb-1">
                                     First Name <span class="text-red-500">*</span>
                                 </label>
-                                <input v-model="fields.firstname" type="text" required
+                                <input v-model="fields.firstname" type="text"
                                     class="w-full rounded-xl border border-gray-200 bg-gray-50 text-gray-900 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
-                                <p v-if="errors.firstname" class="mt-1 text-xs text-red-500">{{ errors.firstname }}</p>
+                                <p v-if="fieldError('firstname')" class="mt-1 text-xs text-red-500">{{ fieldError('firstname') }}</p>
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-gray-600 mb-1">Middle Name</label>
@@ -231,9 +352,9 @@ function modalityLabel(m: string) {
                                 <label class="block text-xs font-semibold text-gray-600 mb-1">
                                     Surname <span class="text-red-500">*</span>
                                 </label>
-                                <input v-model="fields.surname" type="text" required
+                                <input v-model="fields.surname" type="text"
                                     class="w-full rounded-xl border border-gray-200 bg-gray-50 text-gray-900 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
-                                <p v-if="errors.surname" class="mt-1 text-xs text-red-500">{{ errors.surname }}</p>
+                                <p v-if="fieldError('surname')" class="mt-1 text-xs text-red-500">{{ fieldError('surname') }}</p>
                             </div>
                         </div>
 
@@ -243,7 +364,7 @@ function modalityLabel(m: string) {
                                     Sex <span class="text-red-500">*</span>
                                 </label>
                                 <div class="relative">
-                                    <select v-model="fields.sex" required
+                                    <select v-model="fields.sex"
                                         class="w-full appearance-none rounded-xl border border-gray-200 bg-gray-50 text-gray-900 px-3 py-2 pr-8 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition">
                                         <option value="">— Select —</option>
                                         <option value="male">Male</option>
@@ -252,15 +373,15 @@ function modalityLabel(m: string) {
                                     </select>
                                     <ChevronDown class="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
                                 </div>
-                                <p v-if="errors.sex" class="mt-1 text-xs text-red-500">{{ errors.sex }}</p>
+                                <p v-if="fieldError('sex')" class="mt-1 text-xs text-red-500">{{ fieldError('sex') }}</p>
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-gray-600 mb-1">
                                     Age <span class="text-red-500">*</span>
                                 </label>
-                                <input v-model="fields.age" type="number" min="18" max="100" required
+                                <input v-model="fields.age" type="number" min="18" max="100"
                                     class="w-full rounded-xl border border-gray-200 bg-gray-50 text-gray-900 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
-                                <p v-if="errors.age" class="mt-1 text-xs text-red-500">{{ errors.age }}</p>
+                                <p v-if="fieldError('age')" class="mt-1 text-xs text-red-500">{{ fieldError('age') }}</p>
                             </div>
                         </div>
 
@@ -268,9 +389,9 @@ function modalityLabel(m: string) {
                             <label class="block text-xs font-semibold text-gray-600 mb-1">
                                 Position / Designation <span class="text-red-500">*</span>
                             </label>
-                            <input v-model="fields.position" type="text" required
+                            <input v-model="fields.position" type="text"
                                 class="w-full rounded-xl border border-gray-200 bg-gray-50 text-gray-900 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
-                            <p v-if="errors.position" class="mt-1 text-xs text-red-500">{{ errors.position }}</p>
+                            <p v-if="fieldError('position')" class="mt-1 text-xs text-red-500">{{ fieldError('position') }}</p>
                         </div>
 
                         <div>
@@ -278,9 +399,9 @@ function modalityLabel(m: string) {
                                 Agency <span class="text-red-500">*</span>
                                 <span class="ml-1 font-normal text-gray-400">(Abbreviation only, e.g. TESDA, DOLE)</span>
                             </label>
-                            <input v-model="fields.agency" type="text" required
+                            <input v-model="fields.agency" type="text"
                                 class="w-full rounded-xl border border-gray-200 bg-gray-50 text-gray-900 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
-                            <p v-if="errors.agency" class="mt-1 text-xs text-red-500">{{ errors.agency }}</p>
+                            <p v-if="fieldError('agency')" class="mt-1 text-xs text-red-500">{{ fieldError('agency') }}</p>
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -288,27 +409,26 @@ function modalityLabel(m: string) {
                                 <label class="block text-xs font-semibold text-gray-600 mb-1">
                                     Contact Number <span class="text-red-500">*</span>
                                 </label>
-                                <input v-model="fields.contact_number" type="tel" required
+                                <input v-model="fields.contact_number" type="tel"
                                     class="w-full rounded-xl border border-gray-200 bg-gray-50 text-gray-900 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
-                                <p v-if="errors.contact_number" class="mt-1 text-xs text-red-500">{{ errors.contact_number }}</p>
+                                <p v-if="fieldError('contact_number')" class="mt-1 text-xs text-red-500">{{ fieldError('contact_number') }}</p>
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-gray-600 mb-1">
                                     Email Address <span class="text-red-500">*</span>
                                 </label>
-                                <input v-model="fields.email" type="email" required
+                                <input v-model="fields.email" type="email"
                                     class="w-full rounded-xl border border-gray-200 bg-gray-50 text-gray-900 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
-                                <p v-if="errors.email" class="mt-1 text-xs text-red-500">{{ errors.email }}</p>
+                                <p v-if="fieldError('email')" class="mt-1 text-xs text-red-500">{{ fieldError('email') }}</p>
                             </div>
                         </div>
 
                     </div>
                 </div>
 
-                <!-- ── Section 3: Documentary Requirements ── -->
-                <div v-if="config.requirements.length > 0" class="bg-white rounded-2xl shadow-sm overflow-hidden">
+                <!-- ── Step: Documentary Requirements ── -->
+                <div v-show="currentKey === 'requirements'" class="bg-white rounded-2xl shadow-sm overflow-hidden">
                     <div class="bg-blue-50 border-l-4 border-blue-500 px-5 py-3">
-                        <p class="text-xs font-bold text-blue-600 uppercase tracking-wide">Section 3</p>
                         <h2 class="text-base font-extrabold text-gray-800">Documentary Requirements</h2>
                         <p class="text-xs text-gray-500 mt-0.5">Upload the required documents. Maximum 10MB per file.</p>
                     </div>
@@ -343,18 +463,17 @@ function modalityLabel(m: string) {
                                     accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                                     @change="handleRequirementFile(req.id, $event)"
                                 />
-                                <p v-if="errors[`requirement_${req.id}`]" class="mt-1 text-xs text-red-500">
-                                    {{ errors[`requirement_${req.id}`] }}
+                                <p v-if="fieldError(`requirement_${req.id}`)" class="mt-1 text-xs text-red-500">
+                                    {{ fieldError(`requirement_${req.id}`) }}
                                 </p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- ── Section 4: Available Courses ── -->
-                <div v-if="config.available_courses && config.available_courses.length > 0" class="bg-white rounded-2xl shadow-sm overflow-hidden">
+                <!-- ── Step: Available Courses ── -->
+                <div v-show="currentKey === 'courses'" class="bg-white rounded-2xl shadow-sm overflow-hidden">
                     <div class="bg-blue-50 border-l-4 border-blue-500 px-5 py-3">
-                        <p class="text-xs font-bold text-blue-600 uppercase tracking-wide">Section 4</p>
                         <h2 class="text-base font-extrabold text-gray-800">Available Courses</h2>
                         <p class="text-xs text-gray-500 mt-0.5">
                             View the available courses offered by {{ config.organizing_sponsor }}.
@@ -362,7 +481,7 @@ function modalityLabel(m: string) {
                     </div>
                     <div class="px-5 py-5">
                         <ul class="space-y-2">
-                            <li v-for="(course, idx) in config.available_courses" :key="idx">
+                            <li v-for="(course, idx) in (config.available_courses ?? [])" :key="idx">
                                 <a :href="course.url" target="_blank"
                                     class="flex items-center gap-2 text-sm text-blue-700 hover:text-blue-900 hover:underline font-medium">
                                     <ExternalLink class="h-3.5 w-3.5 shrink-0" />
@@ -373,12 +492,9 @@ function modalityLabel(m: string) {
                     </div>
                 </div>
 
-                <!-- ── Section 5: Accomplished Application Form ── -->
-                <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+                <!-- ── Step: Accomplished Application Form ── -->
+                <div v-show="currentKey === 'accomplished'" class="bg-white rounded-2xl shadow-sm overflow-hidden">
                     <div class="bg-blue-50 border-l-4 border-blue-500 px-5 py-3">
-                        <p class="text-xs font-bold text-blue-600 uppercase tracking-wide">
-                            Section {{ config.available_courses?.length ? 5 : 4 }}
-                        </p>
                         <h2 class="text-base font-extrabold text-gray-800">
                             Accomplished {{ config.organizing_sponsor }} Application Form
                         </h2>
@@ -398,23 +514,44 @@ function modalityLabel(m: string) {
                         </label>
                         <input id="accomplished-form" type="file" accept=".pdf" class="hidden"
                             @change="handleAccomplishedFile" />
-                        <p v-if="errors.accomplished_form" class="mt-1 text-xs text-red-500">
-                            {{ errors.accomplished_form }}
+                        <p v-if="fieldError('accomplished_form')" class="mt-1 text-xs text-red-500">
+                            {{ fieldError('accomplished_form') }}
                         </p>
                     </div>
                 </div>
 
-                <!-- ── Submit ── -->
+                <!-- ── Navigation ── -->
                 <div class="bg-white rounded-2xl shadow-sm px-5 py-5">
-                    <button
-                        type="submit"
-                        :disabled="processing"
-                        class="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-700 hover:bg-blue-800 disabled:opacity-60 disabled:cursor-not-allowed text-white font-extrabold py-3 text-sm transition"
-                    >
-                        <Loader2 v-if="processing" class="h-4 w-4 animate-spin" />
-                        {{ processing ? 'Submitting…' : 'Submit Nomination' }}
-                    </button>
-                    <p class="text-center text-xs text-gray-400 mt-3">
+                    <div class="flex items-center gap-3">
+                        <button
+                            v-if="currentStep > 0"
+                            type="button"
+                            @click="back"
+                            class="flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-semibold py-3 px-5 text-sm transition"
+                        >
+                            <ArrowLeft class="h-4 w-4" /> Back
+                        </button>
+
+                        <button
+                            v-if="!isLastStep"
+                            type="button"
+                            @click="next"
+                            class="ml-auto flex items-center justify-center gap-1.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-extrabold py-3 px-6 text-sm transition"
+                        >
+                            Next <ArrowRight class="h-4 w-4" />
+                        </button>
+
+                        <button
+                            v-else
+                            type="submit"
+                            :disabled="processing"
+                            class="ml-auto flex items-center justify-center gap-2 rounded-xl bg-blue-700 hover:bg-blue-800 disabled:opacity-60 disabled:cursor-not-allowed text-white font-extrabold py-3 px-6 text-sm transition"
+                        >
+                            <Loader2 v-if="processing" class="h-4 w-4 animate-spin" />
+                            {{ processing ? 'Submitting…' : 'Submit Nomination' }}
+                        </button>
+                    </div>
+                    <p v-if="isLastStep" class="text-center text-xs text-gray-400 mt-3">
                         Please review all information carefully before submitting.
                     </p>
                 </div>

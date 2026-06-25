@@ -218,7 +218,14 @@ class ForeignProgramController extends Controller
         $sponsor = trim($request->query('sponsor'));
 
         $query = ForeignProgram::query()
-            ->where('organizing_sponsor', $sponsor); // exact match — ito ang madalas na sira
+            ->where('organizing_sponsor', $sponsor); // exact match
+
+        // ── Itago ang mga lampas na ang submission date kaysa ngayon ──
+        // Pinapakita pa rin ang mga walang submission_date (null = walang deadline).
+        $query->where(function ($q) {
+            $q->whereNull('submission_date')
+            ->orWhereDate('submission_date', '>=', now()->toDateString());
+        });
 
         // Year filter (optional)
         if ($request->filled('year')) {
@@ -227,7 +234,7 @@ class ForeignProgramController extends Controller
 
         $programs = $query
             ->orderBy('program_start', 'desc')
-            ->get(['id', 'program_title', 'program_start', 'program_end', 'modality', 'slots', 'status']);
+            ->get(['id', 'program_title', 'program_start', 'program_end', 'modality', 'slots', 'status', 'submission_date']);
 
         $years = ForeignProgram::where('organizing_sponsor', $sponsor)
             ->selectRaw('YEAR(program_start) as year')
