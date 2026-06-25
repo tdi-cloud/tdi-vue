@@ -12,6 +12,8 @@
         .row { padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
         .row:last-child { border-bottom: 0; }
         .label { color: #6b7280; font-weight: 600; display: inline-block; width: 150px; }
+        .btn-wrap { text-align: center; padding: 24px 0 8px; }
+        .btn { display: inline-block; background: #1d4ed8; color: #fff !important; text-decoration: none; font-weight: bold; font-size: 14px; padding: 12px 28px; border-radius: 10px; }
         .footer { padding: 16px 24px; font-size: 12px; color: #9ca3af; text-align: center; }
     </style>
 </head>
@@ -35,6 +37,12 @@
             <div class="row"><span class="label">Email:</span> {{ $nominee->email ?? '—' }}</div>
             <div class="row"><span class="label">Status:</span> {{ $nominee->status_label }}</div>
             <div class="row"><span class="label">Submitted:</span> {{ $nominee->created_at->format('M d, Y g:i A') }}</div>
+
+            @if ($programUrl)
+                <div class="btn-wrap">
+                    <a href="{{ $programUrl }}" class="btn" target="_blank">View Program &amp; Nominees</a>
+                </div>
+            @endif
         </div>
         <div class="footer">
             This is an automated notification from your nomination system.

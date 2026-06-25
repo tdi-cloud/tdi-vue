@@ -17,12 +17,18 @@ class NewNomineeNotification extends Mailable
     {
         $program = $this->nominee->program;
 
+        // Buong absolute URL papunta sa program show page (may list ng nominees)
+        $programUrl = $program
+            ? route('foreign-programs.show', $program->id)
+            : null;
+
         return $this->subject('New Nomination Submitted — ' . ($program->program_title ?? 'Foreign Program'))
             ->view('emails.new-nominee')
             ->with([
-                'nominee' => $this->nominee,
-                'program' => $program,
-                'config'  => $this->nominee->sponsorConfig,
+                'nominee'    => $this->nominee,
+                'program'    => $program,
+                'config'     => $this->nominee->sponsorConfig,
+                'programUrl' => $programUrl,
             ]);
     }
 }
