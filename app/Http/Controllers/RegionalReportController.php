@@ -135,7 +135,7 @@ class RegionalReportController extends Controller
             'month'  => 'required|string|max:20',
             'year'   => 'required|integer|min:2000|max:2100',
             'notes'  => 'nullable|string|max:1000',
-            'pdf'    => 'required|file|mimes:pdf|max:2097152',
+            'pdf'    => 'required|file|mimes:pdf|max:10240',
         ]);
 
         $exists = RegionalReport::where('region', $validated['region'])

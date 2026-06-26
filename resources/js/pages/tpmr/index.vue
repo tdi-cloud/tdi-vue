@@ -70,8 +70,18 @@ const selectedFile = ref<File | null>(null);
 
 const onFileChange = (e: Event) => {
     const f = (e.target as HTMLInputElement).files?.[0] ?? null;
+
+    if (f && f.size > 10 * 1024 * 1024) {  // 10MB
+        form.errors.pdf = 'File is too large. Maximum size is 10MB.';
+        selectedFile.value = null;
+        form.pdf = null;
+        if (fileInput.value) fileInput.value.value = '';  // i-reset ang input
+        return;
+    }
+
+    form.clearErrors('pdf');
     selectedFile.value = f;
-    form.pdf = f;  // ✅ fixed: was form.file
+    form.pdf = f;
 };
 
 const submit = () => {
@@ -444,7 +454,7 @@ const regionRate = (code: string) =>
                             <p class="text-sm font-semibold text-center" :class="selectedFile ? 'text-emerald-700 dark:text-emerald-400' : ''">
                                 {{ selectedFile ? selectedFile.name : 'Click to choose a PDF file' }}
                             </p>
-                            <p class="text-xs text-muted-foreground">PDF only, max ~2GB</p>
+                            <p class="text-xs text-muted-foreground">PDF only, max 10MB</p>
                         </div>
                         <input ref="fileInput" type="file" accept=".pdf" class="hidden" @change="onFileChange" />
                         <span v-if="form.errors.pdf" class="text-xs text-red-500">{{ form.errors.pdf }}</span>
