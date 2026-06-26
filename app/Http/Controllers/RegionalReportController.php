@@ -78,6 +78,7 @@ class RegionalReportController extends Controller
     {
         $year = $request->get('year', now()->year);
 
+        // --- Matrix: kailangan pa rin ng LAHAT ng reports sa taon ---
         $reports = RegionalReport::where('year', $year)->get();
 
         $matrix = [];
@@ -101,11 +102,23 @@ class RegionalReportController extends Controller
         $pending       = max(0, $totalRequired - $submitted);
         $rate          = $totalRequired > 0 ? round(($submitted / $totalRequired) * 100) : 0;
 
+        // --- Recent Submissions: may search + pagination ---
+        $search = trim((string) $request->get('search', ''));
+
         $recentSubmissions = RegionalReport::where('year', $year)
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('region',    'like', "%{$search}%")
+                        ->orWhere('month',     'like', "%{$search}%")
+                        ->orWhere('file_name', 'like', "%{$search}%")
+                        ->orWhere('added_by',  'like', "%{$search}%")
+                        ->orWhere('notes',     'like', "%{$search}%");
+                });
+            })
             ->orderByDesc('submitted_at')
-            ->take(10)
-            ->get()
-            ->map(fn($r) => $this->format($r));
+            ->paginate(8)
+            ->withQueryString()                       // panatilihin ang year + search sa page links
+            ->through(fn ($r) => $this->format($r));  // i-format bawat item
 
         $availableYears = RegionalReport::selectRaw('DISTINCT year')
             ->orderByDesc('year')
@@ -125,6 +138,7 @@ class RegionalReportController extends Controller
             'stats'             => compact('totalRequired', 'submitted', 'pending', 'rate'),
             'recentSubmissions' => $recentSubmissions,
             'availableYears'    => $availableYears,
+            'filters'           => ['search' => $search],
         ]);
     }
 

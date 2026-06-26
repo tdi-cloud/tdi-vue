@@ -2,10 +2,10 @@
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, useForm, router } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import {
     X, Upload, FileText, Trash2, ExternalLink,
-    CheckCircle2, AlertCircle
+    CheckCircle2, AlertCircle, Search
 } from 'lucide-vue-next';
 
 interface Report {
@@ -27,6 +27,22 @@ interface Stats {
     rate: number;
 }
 
+interface PaginationLink {
+    url: string | null;
+    label: string;
+    active: boolean;
+}
+
+interface Paginated<T> {
+    data: T[];
+    links: PaginationLink[];
+    current_page: number;
+    last_page: number;
+    from: number | null;
+    to: number | null;
+    total: number;
+}
+
 const props = defineProps<{
     matrix: Record<string, Record<number, Report | null>>;
     regions: Record<string, string>;
@@ -35,14 +51,40 @@ const props = defineProps<{
     year: number;
     currentMonth: number;
     stats: Stats;
-    recentSubmissions: Report[];
+    recentSubmissions: Paginated<Report>;
     availableYears: number[];
+    filters: { search: string };
 }>();
 
 // --- Year filter ---
 const selectedYear = ref(props.year);
 const changeYear = (y: number) => {
-    router.get(route('tpmr.index'), { year: y }, { preserveScroll: false });
+    router.get(
+        route('tpmr.index'),
+        { year: y, search: search.value || undefined },
+        { preserveScroll: false },
+    );
+};
+
+// --- Search (Recent Submissions) ---
+const search = ref(props.filters.search ?? '');
+let searchTimer: ReturnType<typeof setTimeout> | null = null;
+
+watch(search, (value) => {
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+        router.get(
+            route('tpmr.index'),
+            { year: props.year, search: value || undefined },
+            { preserveScroll: true, preserveState: true, replace: true },
+        );
+    }, 400);
+});
+
+// --- Pagination ---
+const goToPage = (url: string | null) => {
+    if (!url) return;
+    router.get(url, {}, { preserveScroll: true, preserveState: true });
 };
 
 // --- Modal ---
@@ -263,7 +305,7 @@ const regionRate = (code: string) =>
                                 >
                                     <!-- Submitted -->
                                     <template v-if="cellState(matrix[code]?.[parseInt(String(num))] ?? null, parseInt(String(num))) === 'submitted'">
-                                        
+
                                         <a :href="`/storage/${matrix[code][parseInt(String(num))]!.file_path}`"
                                             target="_blank"
                                             :title="`${regionName} – ${name}\nSubmitted: ${formatDate(matrix[code][parseInt(String(num))]!.submitted_at)}\nBy: ${matrix[code][parseInt(String(num))]!.added_by}\n\nClick to view file`"
@@ -311,14 +353,34 @@ const regionRate = (code: string) =>
 
             <!-- Recent Submissions -->
             <div class="rounded-2xl border bg-background shadow-sm overflow-hidden">
-                <div class="px-6 py-4 border-b">
-                    <h2 class="text-lg font-bold">Recent Submissions</h2>
-                    <p class="text-xs text-muted-foreground mt-0.5">Latest uploaded training monitoring reports</p>
+                <div class="px-6 py-4 border-b flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                        <h2 class="text-lg font-bold">Recent Submissions</h2>
+                        <p class="text-xs text-muted-foreground mt-0.5">Latest uploaded training monitoring reports</p>
+                    </div>
+
+                    <!-- Search box -->
+                    <div class="relative w-full sm:w-72">
+                        <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <input
+                            v-model="search"
+                            type="text"
+                            placeholder="Search region, file, by..."
+                            class="w-full border border-border rounded-xl pl-9 pr-9 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <button
+                            v-if="search"
+                            @click="search = ''"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                            <X class="h-4 w-4" />
+                        </button>
+                    </div>
                 </div>
 
                 <div class="divide-y">
                     <div
-                        v-for="r in recentSubmissions"
+                        v-for="r in recentSubmissions.data"
                         :key="r.id"
                         class="flex items-center gap-4 px-6 py-4 hover:bg-muted/20 transition-colors group"
                     >
@@ -335,7 +397,7 @@ const regionRate = (code: string) =>
                                     COMPLIANT
                                 </span>
                             </div>
-                            
+
                             <a :href="`/storage/${r.file_path}`"
                                 target="_blank"
                                 class="flex items-center gap-1 text-xs text-blue-600 hover:underline mt-0.5"
@@ -358,9 +420,40 @@ const regionRate = (code: string) =>
                         </button>
                     </div>
 
-                    <div v-if="recentSubmissions.length === 0" class="px-6 py-12 text-center text-muted-foreground">
+                    <!-- Empty state -->
+                    <div v-if="recentSubmissions.data.length === 0" class="px-6 py-12 text-center text-muted-foreground">
                         <FileText class="h-10 w-10 mx-auto mb-2 opacity-30" />
-                        <p class="text-sm font-semibold">No submissions yet for {{ year }}.</p>
+                        <p class="text-sm font-semibold">
+                            {{ search ? `No results for "${search}".` : `No submissions yet for ${year}.` }}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Pagination footer -->
+                <div
+                    v-if="recentSubmissions.total > 0"
+                    class="px-6 py-4 border-t flex items-center justify-between gap-4 flex-wrap"
+                >
+                    <p class="text-xs text-muted-foreground">
+                        Showing {{ recentSubmissions.from }}–{{ recentSubmissions.to }}
+                        of {{ recentSubmissions.total }}
+                    </p>
+
+                    <div class="flex items-center gap-1" v-if="recentSubmissions.last_page > 1">
+                        <button
+                            v-for="(link, i) in recentSubmissions.links"
+                            :key="i"
+                            :disabled="!link.url"
+                            @click="goToPage(link.url)"
+                            v-html="link.label"
+                            class="min-w-[34px] h-8 px-2 text-xs font-semibold rounded-lg border transition-colors"
+                            :class="[
+                                link.active
+                                    ? 'bg-foreground text-background border-foreground'
+                                    : 'bg-background text-foreground border-border hover:bg-muted',
+                                !link.url ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer',
+                            ]"
+                        />
                     </div>
                 </div>
             </div>
