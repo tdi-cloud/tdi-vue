@@ -7,24 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
-    Users,
-    Search,
-    X,
-    UserPlus,
-    LoaderCircle,
-    Trash2,
-    ChevronLeft,
-    ChevronRight,
-    ListFilter,
-    ClipboardCheck,
-    ClipboardList,
-    FileText,
-    Save,
-    Upload,
-    ClipboardPaste,
-    ChevronDown,
-    ChevronUp,
-    Download,
+    Users, Search, X, UserPlus, LoaderCircle, Trash2, ChevronLeft, ChevronRight,
+    ListFilter, ClipboardCheck, ClipboardList, FileText, Save, Upload,
+    ClipboardPaste, ChevronDown, ChevronUp, Download,
+    CheckCircle2, XCircle, Clock, FileX, CloudUpload,
 } from 'lucide-vue-next';
 import { ref, watch, computed } from 'vue';
 import BulkAddParticipants from '@/pages/programs/BulkAddParticipants.vue';
@@ -551,6 +537,41 @@ const applyToAll = () => {
     );
 };
 
+// Icon + kulay para sa bawat submission state
+const statusMeta = (status: string | null | undefined, hasSubmission: boolean) => {
+    if (!hasSubmission) {
+        return {
+            label: 'No submission',
+            icon: FileX,
+            badge: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
+            ring: 'border-slate-200 dark:border-slate-700',
+        };
+    }
+    switch (normalizeStatus(status)) {
+        case 'Approved':
+            return { label: 'Approved', icon: CheckCircle2,
+                badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+                ring: 'border-emerald-200 dark:border-emerald-800' };
+        case 'Rejected':
+            return { label: 'Rejected', icon: XCircle,
+                badge: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+                ring: 'border-red-200 dark:border-red-800' };
+        default:
+            return { label: 'Pending', icon: Clock,
+                badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+                ring: 'border-amber-200 dark:border-amber-800' };
+    }
+};
+
+// Buod ng approved/total para sa header
+const submissionSummary = computed(() => {
+    if (!submissionsTarget.value) return { done: 0, total: 0 };
+    const subs = submissionsTarget.value.submissions ?? [];
+    const approved = subs.filter((s: any) => normalizeStatus(s.status) === 'Approved').length;
+    return { done: approved, total: requirements.value.length };
+});
+
+
 </script>
 
 <template>
@@ -989,22 +1010,39 @@ const applyToAll = () => {
 
             <!-- ── Submissions Dialog ── -->
             <Dialog :open="showSubmissions" @update:open="showSubmissions = $event">
-                <DialogContent class="max-w-2xl flex flex-col max-h-[90vh] overflow-hidden !rounded-2xl">
-                    <DialogHeader class="shrink-0">
-                        <DialogTitle>
-                            <span class="flex gap-2 items-center">
-                                <ClipboardList class="h-5 w-5 text-blue-600" /> Submissions
-                            </span>
-                        </DialogTitle>
-                        <DialogDescription class="text-xs text-muted-foreground">
-                            {{ submissionsTarget?.employee?.name ?? submissionsTarget?.empcode }}
-                            — {{ batch?.batch }}
-                        </DialogDescription>
+                <DialogContent class="max-w-2xl flex flex-col max-h-[90vh] overflow-hidden border-0 p-0 !rounded-2xl shadow-2xl gap-0">
+
+                    <!-- Gradient header -->
+                    <DialogHeader class="relative shrink-0 overflow-hidden bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-500 px-6 pb-5 pt-5 text-left">
+                        <div class="pointer-events-none absolute inset-0 opacity-20"
+                            style="background-image: radial-gradient(circle at 20% 20%, white 1px, transparent 1px); background-size: 18px 18px;"></div>
+                        <div class="pointer-events-none absolute -right-6 -top-8 h-28 w-28 rounded-full bg-white/10 blur-2xl"></div>
+
+                        <div class="relative z-10 flex items-center gap-3">
+                            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/30 backdrop-blur">
+                                <ClipboardList class="h-5 w-5 text-white" />
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <DialogTitle class="text-base font-bold text-white truncate">
+                                    {{ submissionsTarget?.employee?.name ?? submissionsTarget?.empcode }}
+                                </DialogTitle>
+                                <DialogDescription class="text-xs text-blue-100">
+                                    Submissions — {{ batch?.batch }}
+                                </DialogDescription>
+                            </div>
+
+                            <!-- Approved/total pill -->
+                            <div v-if="requirements.length" class="relative z-10 shrink-0 rounded-xl bg-white/15 px-3 py-1.5 text-center ring-1 ring-white/25 backdrop-blur">
+                                <p class="text-sm font-extrabold leading-none text-white">{{ submissionSummary.done }}/{{ submissionSummary.total }}</p>
+                                <p class="text-[9px] font-semibold uppercase tracking-wide text-blue-100">Approved</p>
+                            </div>
+                        </div>
                     </DialogHeader>
 
-                    <div class="overflow-y-auto flex-1 px-1 py-1">
+                    <div class="overflow-y-auto flex-1 px-5 py-4 bg-muted/20">
+                        <!-- Empty: walang requirements -->
                         <div v-if="!requirements.length"
-                            class="flex flex-col items-center justify-center rounded-2xl border border-dashed py-10 px-6 text-center gap-2">
+                            class="flex flex-col items-center justify-center rounded-2xl border border-dashed py-10 px-6 text-center gap-2 bg-card">
                             <svg viewBox="0 0 120 100" class="h-20 w-auto" xmlns="http://www.w3.org/2000/svg">
                                 <ellipse cx="60" cy="92" rx="44" ry="6" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
                                 <rect x="22" y="10" width="76" height="76" rx="8" fill="currentColor" class="text-blue-100 dark:text-blue-900/40" />
@@ -1013,61 +1051,75 @@ const applyToAll = () => {
                                 <rect x="50" y="35" width="34" height="5" rx="2.5" fill="currentColor" class="text-slate-300 dark:text-slate-700" />
                                 <rect x="34" y="52" width="8" height="8" rx="2" stroke="currentColor" stroke-width="2" fill="none" class="text-slate-300 dark:text-slate-600" />
                                 <rect x="50" y="53" width="26" height="5" rx="2.5" fill="currentColor" class="text-slate-300 dark:text-slate-700" />
-                                <rect x="34" y="70" width="8" height="8" rx="2" stroke="currentColor" stroke-width="2" fill="none" class="text-slate-300 dark:text-slate-600" />
-                                <rect x="50" y="71" width="30" height="5" rx="2.5" fill="currentColor" class="text-slate-300 dark:text-slate-700" />
                             </svg>
                             <p class="text-sm font-bold text-slate-500">No requirements set</p>
                             <p class="text-xs text-slate-400 max-w-xs">Add requirements to this batch in the Requirements tab to track participant submissions here.</p>
                         </div>
 
-                        <div v-else class="rounded-xl border divide-y">
-                            <div v-for="row in mergedSubmissions" :key="row.requirement.id" class="px-3 py-2.5">
-                                <div v-if="editingRow !== row.requirement.id" class="flex items-center justify-between gap-2">
-                                    <div class="min-w-0">
-                                        <p class="text-xs font-bold leading-4 truncate">
-                                            {{ row.requirement.name }}
-                                            <span class="text-[10px] font-semibold text-slate-400">({{ row.requirement.title }})</span>
-                                        </p>
-                                        <p class="text-[11px] text-muted-foreground">
-                                            Due: {{ formatDueDate(row.requirement.due_date) }}
-                                            <span v-if="!row.requirement.is_required" class="ml-1 text-slate-400">(optional)</span>
-                                        </p>
-                                        <p v-if="row.submission?.remarks" class="text-[11px] text-slate-500 mt-0.5">
-                                            Remarks: {{ row.submission.remarks }}
-                                        </p>
-                                        <a v-if="row.submission?.file_path" :href="`/storage/${row.submission.file_path}`"
-                                            target="_blank" class="inline-flex items-center gap-0.5 text-[11px] text-blue-600 hover:underline font-semibold mt-0.5">
-                                            <FileText class="h-3 w-3" /> View file
-                                        </a>
+                        <div v-else class="flex flex-col gap-2.5">
+                            <div v-for="row in mergedSubmissions" :key="row.requirement.id"
+                                class="rounded-xl border bg-card shadow-sm transition hover:shadow-md"
+                                :class="statusMeta(row.submission?.status, !!row.submission).ring">
+
+                                <!-- VIEW MODE -->
+                                <div v-if="editingRow !== row.requirement.id" class="flex items-center justify-between gap-2 p-3">
+                                    <div class="flex items-start gap-3 min-w-0">
+                                        <!-- Status icon chip -->
+                                        <div class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                                            :class="statusMeta(row.submission?.status, !!row.submission).badge">
+                                            <component :is="statusMeta(row.submission?.status, !!row.submission).icon" class="h-4 w-4" />
+                                        </div>
+
+                                        <div class="min-w-0">
+                                            <p class="text-xs font-bold leading-4 truncate">
+                                                {{ row.requirement.name }}
+                                                <span class="text-[10px] font-semibold text-blue-500">({{ row.requirement.title }})</span>
+                                            </p>
+                                            <p class="text-[11px] text-muted-foreground">
+                                                Due: {{ formatDueDate(row.requirement.due_date) }}
+                                                <span v-if="!row.requirement.is_required" class="ml-1 text-slate-400">(optional)</span>
+                                            </p>
+                                            <p v-if="row.submission?.remarks" class="text-[11px] text-slate-500 mt-0.5 italic">
+                                                "{{ row.submission.remarks }}"
+                                            </p>
+                                            <a v-if="row.submission?.file_path" :href="`/storage/${row.submission.file_path}`"
+                                                target="_blank" class="inline-flex items-center gap-0.5 text-[11px] text-blue-600 hover:underline font-semibold mt-0.5">
+                                                <FileText class="h-3 w-3" /> View file
+                                            </a>
+                                        </div>
                                     </div>
+
                                     <div class="flex items-center gap-2 shrink-0">
-                                        <Badge :class="submissionStatusColor(row.submission?.status)" class="text-[10px] font-bold border-0">
-                                            {{ row.submission ? submissionStatusLabel(row.submission.status) : 'No submission' }}
+                                        <Badge :class="statusMeta(row.submission?.status, !!row.submission).badge" class="text-[10px] font-bold border-0 gap-1">
+                                            <component :is="statusMeta(row.submission?.status, !!row.submission).icon" class="h-3 w-3" />
+                                            {{ statusMeta(row.submission?.status, !!row.submission).label }}
                                         </Badge>
-                                        <Button variant="ghost" size="sm" class="h-7 px-2 text-xs" @click="startEdit(row)">
+                                        <Button variant="ghost" size="sm" class="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/30" @click="startEdit(row)">
                                             <Upload class="h-3 w-3 mr-1" /> Set
                                         </Button>
                                         <Button v-if="row.submission" variant="ghost" size="sm"
-                                            class="h-7 w-7 p-0 text-red-500 hover:text-red-600"
+                                            class="h-7 w-7 p-0 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
                                             @click="deleteSubmission(row.submission.id)">
                                             <Trash2 class="h-3.5 w-3.5" />
                                         </Button>
                                     </div>
                                 </div>
 
-                                <div v-else class="grid gap-2">
+                                <!-- EDIT MODE -->
+                                <div v-else class="grid gap-2 p-3 bg-blue-50/50 dark:bg-blue-950/20 rounded-xl">
                                     <p class="text-xs font-bold leading-4 flex items-center gap-2">
+                                        <CloudUpload class="h-4 w-4 text-blue-600" />
                                         {{ row.requirement.name }}
-                                        <span class="text-[10px] font-semibold text-slate-400">({{ row.requirement.title }})</span>
-                                        <Badge v-if="row.submission?.file_path" variant="outline" class="text-[9px] font-bold gap-0.5">
+                                        <span class="text-[10px] font-semibold text-blue-500">({{ row.requirement.title }})</span>
+                                        <Badge v-if="row.submission?.file_path" variant="outline" class="text-[9px] font-bold gap-0.5 border-emerald-300 text-emerald-700">
                                             <FileText class="h-3 w-3" /> File on record
                                         </Badge>
                                     </p>
                                     <div class="grid grid-cols-2 gap-2">
                                         <div class="grid gap-1">
-                                            <Label class="text-xs">Status</Label>
+                                            <Label class="text-xs flex items-center gap-1"><ClipboardCheck class="h-3 w-3 text-slate-400" /> Status</Label>
                                             <Select v-model="subStatus">
-                                                <SelectTrigger class="text-xs h-8"><SelectValue placeholder="Select status" /></SelectTrigger>
+                                                <SelectTrigger class="text-xs h-8 bg-white dark:bg-slate-900"><SelectValue placeholder="Select status" /></SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem class="text-xs" value="Pending">Pending</SelectItem>
                                                     <SelectItem class="text-xs" value="Approved">Approved</SelectItem>
@@ -1076,7 +1128,7 @@ const applyToAll = () => {
                                             </Select>
                                         </div>
                                         <div class="grid gap-1">
-                                            <Label class="text-xs">File (PDF)</Label>
+                                            <Label class="text-xs flex items-center gap-1"><FileText class="h-3 w-3 text-slate-400" /> File (PDF)</Label>
                                             <input type="file" accept=".pdf"
                                                 class="text-xs file:mr-2 file:rounded-md file:border-0 file:bg-blue-600 file:px-2.5 file:py-1.5 file:text-[11px] file:font-bold file:text-white hover:file:bg-blue-500 cursor-pointer"
                                                 @change="onSubFileChange" />
@@ -1087,12 +1139,12 @@ const applyToAll = () => {
                                         </div>
                                     </div>
                                     <div class="grid gap-1">
-                                        <Label class="text-xs">Remarks</Label>
-                                        <Input class="text-xs h-8" v-model="subRemarks" placeholder="e.g. Needs revision on section 3" />
+                                        <Label class="text-xs flex items-center gap-1"><ListFilter class="h-3 w-3 text-slate-400" /> Remarks</Label>
+                                        <Input class="text-xs h-8 bg-white dark:bg-slate-900" v-model="subRemarks" placeholder="e.g. Needs revision on section 3" />
                                     </div>
                                     <div class="flex justify-end gap-2 pt-1">
                                         <Button variant="outline" size="sm" @click="cancelEdit">Cancel</Button>
-                                        <Button class="bg-blue-600 hover:bg-blue-700 dark:text-white" size="sm"
+                                        <Button class="bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md shadow-blue-500/25 hover:from-blue-700 hover:to-blue-600" size="sm"
                                             :disabled="subProcessing" @click="saveSubmission(row)">
                                             <LoaderCircle v-if="subProcessing" class="h-3 w-3 animate-spin mr-1" />
                                             <Save v-else class="h-3.5 w-3.5 mr-1" />
@@ -1104,7 +1156,7 @@ const applyToAll = () => {
                         </div>
                     </div>
 
-                    <div class="shrink-0 flex justify-end pt-2 border-t">
+                    <div class="shrink-0 flex justify-end px-5 py-3 border-t bg-card">
                         <Button variant="outline" size="sm" @click="showSubmissions = false">Close</Button>
                     </div>
                 </DialogContent>

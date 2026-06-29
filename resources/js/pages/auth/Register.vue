@@ -43,7 +43,13 @@ const verify = async () => {
         showConfirmModal.value = true;
     } catch (err: any) {
         if (err.response?.data?.errors) {
-            verifyErrors.value = err.response.data.errors;
+            const raw = err.response.data.errors;
+            verifyErrors.value = Object.fromEntries(
+                Object.entries(raw).map(([key, val]) => [
+                    key,
+                    Array.isArray(val) ? val[0] : val,
+                ])
+            ) as Record<string, string>;
         }
     } finally {
         isVerifying.value = false;

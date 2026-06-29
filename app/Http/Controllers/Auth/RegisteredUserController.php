@@ -39,6 +39,9 @@ class RegisteredUserController extends Controller
             ],
             'email'    => 'required|string|lowercase|email|max:255|unique:users,email',
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        ], [
+            'empcode.unique' => 'The empcode has already been registered.',
+            'email.unique'   => 'The email has already been registered.',
         ]);
 
         // Get employee info
