@@ -15,10 +15,10 @@
 
       <!-- Desktop Nav Links -->
       <div class="navbar__links">
-        <a href="#about"         class="nav-link" @click.prevent="scrollTo('about')">About TDI</a>
-        <a href="#programs"      class="nav-link" @click.prevent="scrollTo('programs')">Programs</a>
-        <a href="#scholarships"  class="nav-link" @click.prevent="scrollTo('scholarships')">Scholarships</a>
-        <a href="#resources"     class="nav-link" @click.prevent="scrollTo('resources')">Resources</a>
+        <a href="#about"                class="nav-link" @click.prevent="scrollTo('about')">About TDI</a>
+        <a href="#programs"             class="nav-link" @click.prevent="scrollTo('programs')">Programs</a>
+        <a href="#foreign-scholarships" class="nav-link" @click.prevent="scrollTo('foreign-scholarships')">FSTP</a>
+        <a href="#resources"            class="nav-link" @click.prevent="scrollTo('resources')">Resources</a>
         <Link v-if="auth?.user" href="/#my-programs" class="nav-link nav-link--mine">
           <GraduationCap class="w-3.5 h-3.5" /> My Programs
         </Link>
@@ -76,10 +76,10 @@
       <Link v-if="auth?.user" href="/#my-programs" class="nav-link nav-link--mine" @click="mobileMenuOpen = false">
         <GraduationCap class="w-3.5 h-3.5" /> My Programs
       </Link>
-      <a href="#about"         class="nav-link" @click="close('about')">About TDI</a>
-      <a href="#programs"      class="nav-link" @click="close('programs')">Programs</a>
-      <a href="#scholarships"  class="nav-link" @click="close('scholarships')">Scholarships</a>
-      <a href="#resources"     class="nav-link" @click="close('resources')">Resources</a>
+      <a href="#about"                class="nav-link" @click="close('about')">About TDI</a>
+      <a href="#programs"             class="nav-link" @click="close('programs')">Programs</a>
+      <a href="#foreign-scholarships" class="nav-link" @click="close('foreign-scholarships')">FSTP</a>
+      <a href="#resources"            class="nav-link" @click="close('resources')">Resources</a>
 
       <div class="mobile-menu__actions">
         <template v-if="auth?.user">
@@ -190,11 +190,12 @@ onBeforeUnmount(() => {
 .brand-sub  { display: block; font-size: 0.7rem; color: rgba(255,255,255,0.6); }
 
 /* Links */
-.navbar__links { display: flex; align-items: center; gap: 1.75rem; margin-left: auto; }
+.navbar__links { display: flex; align-items: center; gap: 1.5rem; margin-left: auto; }
 .nav-link {
   color: rgba(255,255,255,0.85);
   text-decoration: none; font-size: 0.88rem; font-weight: 500;
   transition: color 0.2s;
+  white-space: nowrap;
 }
 .nav-link:hover { color: #fff; }
 

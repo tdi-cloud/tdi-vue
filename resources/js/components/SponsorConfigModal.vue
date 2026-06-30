@@ -67,6 +67,25 @@ const config = ref<Config>({
     selected_program_ids: [],
 });
 
+// ── Shared URL validator (ginagamit ng Requirements at Courses tabs) ───────────
+
+function isValidUrl(value: string) {
+    try {
+        const url = new URL(value);
+        return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch {
+        return false;
+    }
+}
+
+function normalizeUrl(value: string) {
+    let url = value.trim();
+    if (url && !/^https?:\/\//i.test(url)) {
+        url = 'https://' + url;
+    }
+    return url;
+}
+
 // ── Programs tab state ────────────────────────────────────────────────────────
 
 const programYear      = ref('');
@@ -227,26 +246,70 @@ const newReq    = ref({ question: '', description: '', link: '', file_required: 
 const addingReq = ref(false);
 const editingReq = ref<Requirement | null>(null);
 
+const newReqLinkError  = ref('');
+const editReqLinkError = ref('');
+
+function validateNewReqLink() {
+    if (!newReq.value.link.trim()) {
+        newReqLinkError.value = '';
+        return;
+    }
+    newReqLinkError.value = isValidUrl(newReq.value.link.trim())
+        ? ''
+        : 'Please enter a valid URL (must start with https:// or http://).';
+}
+
+function validateEditReqLink() {
+    if (!editingReq.value || !editingReq.value.link.trim()) {
+        editReqLinkError.value = '';
+        return;
+    }
+    editReqLinkError.value = isValidUrl(editingReq.value.link.trim())
+        ? ''
+        : 'Please enter a valid URL (must start with https:// or http://).';
+}
+
 async function addRequirement() {
     if (!config.value.id || !newReq.value.question) return;
+
+    if (newReq.value.link.trim()) {
+        const normalized = normalizeUrl(newReq.value.link);
+        if (!isValidUrl(normalized)) {
+            newReqLinkError.value = 'Please enter a valid URL (must start with https:// or http://).';
+            return;
+        }
+        newReq.value.link = normalized;
+    }
+
     saving.value = true;
     try {
         const res = await axios.post(`/foreign-sponsor-configs/${config.value.id}/requirements`, newReq.value);
         config.value.requirements.push(res.data);
-        newReq.value  = { question: '', description: '', link: '', file_required: true };
-        addingReq.value = false;
+        newReq.value           = { question: '', description: '', link: '', file_required: true };
+        newReqLinkError.value  = '';
+        addingReq.value        = false;
     } finally {
         saving.value = false;
     }
 }
 
 async function saveRequirement(req: Requirement) {
+    if (req.link.trim()) {
+        const normalized = normalizeUrl(req.link);
+        if (!isValidUrl(normalized)) {
+            editReqLinkError.value = 'Please enter a valid URL (must start with https:// or http://).';
+            return;
+        }
+        req.link = normalized;
+    }
+
     saving.value = true;
     try {
         const res = await axios.put(`/foreign-nominee-requirements/${req.id}`, req);
         const idx  = config.value.requirements.findIndex(r => r.id === req.id);
         if (idx >= 0) config.value.requirements[idx] = res.data;
-        editingReq.value = null;
+        editingReq.value       = null;
+        editReqLinkError.value = '';
     } finally {
         saving.value = false;
     }
@@ -260,12 +323,33 @@ async function deleteRequirement(req: Requirement) {
 
 // ── Courses ───────────────────────────────────────────────────────────────────
 
-const newCourse = ref({ title: '', url: '' });
+const newCourse       = ref({ title: '', url: '' });
+const courseUrlError  = ref('');
+
+function validateCourseUrl() {
+    const value = newCourse.value.url.trim();
+    if (!value) {
+        courseUrlError.value = '';
+        return;
+    }
+    courseUrlError.value = isValidUrl(value)
+        ? ''
+        : 'Please enter a valid URL (must start with https:// or http://).';
+}
 
 function addCourse() {
     if (!newCourse.value.title || !newCourse.value.url) return;
-    config.value.available_courses.push({ ...newCourse.value });
-    newCourse.value = { title: '', url: '' };
+
+    const url = normalizeUrl(newCourse.value.url);
+
+    if (!isValidUrl(url)) {
+        courseUrlError.value = 'Please enter a valid URL (must start with https:// or http://).';
+        return;
+    }
+
+    config.value.available_courses.push({ title: newCourse.value.title, url });
+    newCourse.value      = { title: '', url: '' };
+    courseUrlError.value = '';
 }
 
 function removeCourse(idx: number) {
@@ -505,8 +589,11 @@ const nominationUrl = computed(() =>
                                                 class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none" />
                                             <textarea v-model="editingReq.description" rows="2" placeholder="Description (optional)"
                                                 class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none resize-none" />
-                                            <input v-model="editingReq.link" type="url" placeholder="Link (optional)"
-                                                class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none" />
+                                            <input v-model="editingReq.link" type="text" placeholder="Link (optional)"
+                                                @blur="validateEditReqLink"
+                                                class="w-full rounded-lg border bg-background px-3 py-1.5 text-sm outline-none"
+                                                :class="editReqLinkError ? 'border-red-400 focus:border-red-500' : 'border-border'" />
+                                            <p v-if="editReqLinkError" class="text-xs text-red-500">{{ editReqLinkError }}</p>
                                             <div class="flex items-center gap-2">
                                                 <input v-model="editingReq.file_required" type="checkbox" class="h-4 w-4 rounded" id="fr-edit" />
                                                 <label for="fr-edit" class="text-xs font-semibold">File upload required</label>
@@ -550,8 +637,11 @@ const nominationUrl = computed(() =>
                                         class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none" autofocus />
                                     <textarea v-model="newReq.description" rows="2" placeholder="Description (optional)"
                                         class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none resize-none" />
-                                    <input v-model="newReq.link" type="url" placeholder="Link to form/document (optional)"
-                                        class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none" />
+                                    <input v-model="newReq.link" type="text" placeholder="Link to form/document (optional)"
+                                        @blur="validateNewReqLink"
+                                        class="w-full rounded-lg border bg-background px-3 py-1.5 text-sm outline-none"
+                                        :class="newReqLinkError ? 'border-red-400 focus:border-red-500' : 'border-border'" />
+                                    <p v-if="newReqLinkError" class="text-xs text-red-500">{{ newReqLinkError }}</p>
                                     <div class="flex items-center gap-2">
                                         <input v-model="newReq.file_required" type="checkbox" class="h-4 w-4 rounded" id="fr-new" />
                                         <label for="fr-new" class="text-xs font-semibold">File upload required</label>
@@ -591,9 +681,14 @@ const nominationUrl = computed(() =>
                                     <p class="text-xs font-semibold text-muted-foreground">Add Course Link</p>
                                     <input v-model="newCourse.title" type="text" placeholder="Course title"
                                         class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none" />
-                                    <input v-model="newCourse.url" type="url" placeholder="https://..."
-                                        class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none" />
-                                    <button :disabled="!newCourse.title || !newCourse.url"
+
+                                    <input v-model="newCourse.url" type="text" placeholder="https://..."
+                                        @blur="validateCourseUrl"
+                                        class="w-full rounded-lg border bg-background px-3 py-1.5 text-sm outline-none"
+                                        :class="courseUrlError ? 'border-red-400 focus:border-red-500' : 'border-border'" />
+                                    <p v-if="courseUrlError" class="text-xs text-red-500">{{ courseUrlError }}</p>
+
+                                    <button :disabled="!newCourse.title || !newCourse.url || !!courseUrlError"
                                         class="flex items-center gap-1 text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50 transition"
                                         @click="addCourse">
                                         <Plus class="h-3.5 w-3.5" /> Add Course

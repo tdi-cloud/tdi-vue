@@ -23,7 +23,6 @@
           <div class="footer__col-title">Quick Links</div>
           <a href="#about"        @click.prevent="scrollTo('about')">About TDI</a>
           <a href="#programs"     @click.prevent="scrollTo('programs')">Programs</a>
-          <a href="#scholarships" @click.prevent="scrollTo('scholarships')">Scholarships</a>
           <a href="#resources"    @click.prevent="scrollTo('resources')">Resources</a>
         </div>
 
