@@ -34,20 +34,20 @@
           delegates during their training abroad once available, saved to
           public/storage/fstp/<filename>.jpg
         -->
-        <div class="fstp__media">
-          <div class="snap snap--1">
+        <div class="fstp__media" ref="mediaRef">
+          <div class="snap snap--1" :class="{ 'snap--visible': snapVisible }">
             <img src="https://images.unsplash.com/photo-1523580494863-6f3031224c94?w=500&q=80" alt="Delegates during a foreign training session" />
           </div>
-          <div class="snap snap--2">
+          <div class="snap snap--2" :class="{ 'snap--visible': snapVisible }">
             <img src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=500&q=80" alt="Group photo of Filipino delegates abroad" />
           </div>
-          <div class="snap snap--3">
+          <div class="snap snap--3" :class="{ 'snap--visible': snapVisible }">
             <img src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=500&q=80" alt="Nominees in a classroom setting abroad" />
           </div>
-          <div class="snap snap--4">
+          <div class="snap snap--4" :class="{ 'snap--visible': snapVisible }">
             <img src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=500&q=80" alt="Delegates posing at a foreign training venue" />
           </div>
-          <span class="fstp__media-tag">FSTP nominees abroad</span>
+          <span class="fstp__media-tag" :class="{ 'fstp__media-tag--visible': snapVisible }">FSTP nominees abroad</span>
         </div>
       </div>
 
@@ -114,6 +114,27 @@
 </template>
 
 <script setup>
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+
+const mediaRef    = ref(null)
+const snapVisible = ref(false)
+let observer       = null
+
+onMounted(() => {
+  observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        snapVisible.value = true
+        observer.unobserve(entry.target)
+      }
+    })
+  }, { threshold: 0.25 })
+
+  if (mediaRef.value) observer.observe(mediaRef.value)
+})
+
+onBeforeUnmount(() => observer?.disconnect())
+
 /**
  * NOTE FOR ADMIN: Save each organization's official logo to:
  *   public/storage/sponsors/<filename>.png
@@ -207,7 +228,8 @@ function handleLogoError(e) {
   border-radius: 6px;
   padding: 0.4rem 0.4rem 1.4rem;
   box-shadow: 0 14px 34px rgba(0,0,0,0.35);
-  transition: transform 0.35s ease, box-shadow 0.35s ease;
+  opacity: 0;
+  transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease;
 }
 .snap img {
   display: block; width: 100%; height: 100%;
@@ -218,37 +240,47 @@ function handleLogoError(e) {
 .snap--1 {
   width: 47%; aspect-ratio: 4/5;
   top: 0; left: 4%;
-  transform: rotate(-6deg);
+  transform: rotate(-6deg) translateY(40px) scale(0.9);
+  transition-delay: 0s;
 }
-.snap--1:hover { transform: rotate(-6deg) translateY(-6px) scale(1.03); }
+.snap--1.snap--visible { transform: rotate(-6deg); opacity: 1; }
+.snap--1.snap--visible:hover { transform: rotate(-6deg) translateY(-6px) scale(1.03); }
 
 .snap--2 {
   width: 40%; aspect-ratio: 1/1;
   top: 6%; right: 0;
-  transform: rotate(5deg);
+  transform: rotate(5deg) translateY(40px) scale(0.9);
+  transition-delay: 0.12s;
 }
-.snap--2:hover { transform: rotate(5deg) translateY(-6px) scale(1.03); }
+.snap--2.snap--visible { transform: rotate(5deg); opacity: 1; }
+.snap--2.snap--visible:hover { transform: rotate(5deg) translateY(-6px) scale(1.03); }
 
 .snap--3 {
   width: 38%; aspect-ratio: 1/1;
   bottom: 2%; left: 0;
-  transform: rotate(4deg);
+  transform: rotate(4deg) translateY(40px) scale(0.9);
+  transition-delay: 0.24s;
 }
-.snap--3:hover { transform: rotate(4deg) translateY(-6px) scale(1.03); }
+.snap--3.snap--visible { transform: rotate(4deg); opacity: 1; }
+.snap--3.snap--visible:hover { transform: rotate(4deg) translateY(-6px) scale(1.03); }
 
 .snap--4 {
   width: 44%; aspect-ratio: 4/5;
   bottom: -6%; right: 8%;
-  transform: rotate(-4deg);
+  transform: rotate(-4deg) translateY(40px) scale(0.9);
+  transition-delay: 0.36s;
 }
-.snap--4:hover { transform: rotate(-4deg) translateY(-6px) scale(1.03); }
+.snap--4.snap--visible { transform: rotate(-4deg); opacity: 1; }
+.snap--4.snap--visible:hover { transform: rotate(-4deg) translateY(-6px) scale(1.03); }
 
 .fstp__media-tag {
   position: absolute;
   bottom: -2.25rem; left: 4%;
   font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em;
   color: rgba(255,255,255,0.4); text-transform: uppercase;
+  opacity: 0; transition: opacity 0.6s ease 0.55s;
 }
+.fstp__media-tag--visible { opacity: 1; }
 .eyebrow {
   font-size: 0.72rem; font-weight: 700; letter-spacing: 0.15em;
   color: #f5d76e; text-transform: uppercase; display: block; margin-bottom: 0.9rem;
@@ -384,5 +416,14 @@ a.sponsor-card { cursor: pointer; }
 @media (max-width: 640px) {
   .fstp__sponsors-grid { grid-template-columns: repeat(2, 1fr); }
   .fstp__sponsors { padding: 1.75rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .snap { transition: none; opacity: 1; }
+  .snap--1 { transform: rotate(-6deg); }
+  .snap--2 { transform: rotate(5deg); }
+  .snap--3 { transform: rotate(4deg); }
+  .snap--4 { transform: rotate(-4deg); }
+  .fstp__media-tag { transition: none; opacity: 1; }
 }
 </style>
