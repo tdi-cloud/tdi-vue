@@ -228,6 +228,28 @@ function formatDate(d: string) {
 function modalityLabel(m: string) {
     return { 'in-person': 'In-Person', online: 'Online', hybrid: 'Hybrid' }[m] ?? m;
 }
+
+const sponsorLogos: Record<string, string> = {
+    'jica':  '/storage/sponsors/jica.png',
+    'koica': '/storage/sponsors/koica.png',
+    'mtcp':  '/storage/sponsors/mtcp.png',
+    'scp':   '/storage/sponsors/scp.png',
+    'tica':  '/storage/sponsors/tica.png',
+    'itec':  '/storage/sponsors/itec.png',
+};
+
+const logoLoadFailed = ref(false);
+
+const sponsorLogo = computed(() => {
+    const key = props.config.slug?.toLowerCase() ?? '';
+    return sponsorLogos[key] ?? null;
+});
+
+function handleSponsorLogoError() {
+    logoLoadFailed.value = true;
+}
+
+
 </script>
 
 <template>
@@ -239,12 +261,27 @@ function modalityLabel(m: string) {
             <!-- ── Banner ── -->
             <div class="rounded-2xl overflow-hidden shadow-md">
                 <div class="bg-blue-700 px-6 pt-6 pb-4">
-                    <p class="text-blue-200 text-xs font-semibold uppercase tracking-widest mb-1">
-                        {{ config.organizing_sponsor }}
-                    </p>
-                    <h1 class="text-white text-2xl font-extrabold leading-tight">
-                        {{ config.form_title }}
-                    </h1>
+                    <div class="flex items-center gap-4">
+                        <div
+                            v-if="sponsorLogo && !logoLoadFailed"
+                            class="h-16 w-16 rounded-xl bg-white flex items-center justify-center shrink-0 p-2 shadow-sm"
+                        >
+                            <img
+                                :src="sponsorLogo"
+                                :alt="`${config.organizing_sponsor} logo`"
+                                class="h-full w-full object-contain"
+                                @error="handleSponsorLogoError"
+                            />
+                        </div>
+                        <div>
+                            <p class="text-blue-200 text-xs font-semibold uppercase tracking-widest mb-1">
+                                {{ config.organizing_sponsor }}
+                            </p>
+                            <h1 class="text-white text-2xl font-extrabold leading-tight">
+                                {{ config.form_title }}
+                            </h1>
+                        </div>
+                    </div>
                 </div>
                 <div class="bg-white px-6 py-3 border-t-4 border-blue-500 text-xs text-gray-500">
                     All fields marked with <span class="text-red-500 font-bold">*</span> are required.

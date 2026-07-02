@@ -25,7 +25,8 @@ import {
     HandCoins,
     Flag,
     Megaphone ,
-    Award
+    Award,
+    FileSignature
 } from 'lucide-vue-next';
 import { Link } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
@@ -37,6 +38,7 @@ import SupportingDocuments from '@/pages/programs/SupportingDocuments.vue';
 import ResourceSpeakers from '@/pages/programs/ResourceSpeakers.vue';
 import CoverPagePanel from '@/pages/programs/CoverPagePanel.vue';
 import CertificatesPanel from '@/pages/programs/CertificatesPanel.vue';
+import TesdaOrderPanel from '@/pages/programs/TesdaOrderPanel.vue';
 
 
 interface Requirement {
@@ -252,6 +254,13 @@ const removeCompetency = (competency: Competency) => {
                         </TabsTrigger>
 
                         <TabsTrigger
+                            value="tesda-order"
+                            class="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-1 text-sm font-medium"
+                        >
+                            <span class="flex items-center gap-1"><FileSignature class="h-4 w-4" /> TESDA Order</span>
+                        </TabsTrigger>
+
+                        <TabsTrigger
                             value="Supporting"
                             class="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-1 text-sm font-medium"
                         >
@@ -430,6 +439,10 @@ const removeCompetency = (competency: Competency) => {
                 <!-- Resource Speakers Tab -->
                 <TabsContent value="resource" class="flex flex-col gap-4 px-6 py-4 mt-0">
                     <ResourceSpeakers :program="program" />
+                </TabsContent>
+
+                <TabsContent value="tesda-order" class="flex flex-col gap-4 px-6 py-4 mt-0">
+                    <TesdaOrderPanel :program="program" />
                 </TabsContent>
 
             </Tabs>

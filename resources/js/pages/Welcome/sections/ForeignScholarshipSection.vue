@@ -36,13 +36,13 @@
         -->
         <div class="fstp__media" ref="mediaRef">
           <div class="snap snap--1" :class="{ 'snap--visible': snapVisible }">
-            <img src="https://images.unsplash.com/photo-1523580494863-6f3031224c94?w=500&q=80" alt="Delegates during a foreign training session" />
+            <img src="https://c-korea.vn/wp-content/uploads/2024/10/TUK-3-768x392.jpg" alt="Delegates during a foreign training session" />
           </div>
           <div class="snap snap--2" :class="{ 'snap--visible': snapVisible }">
             <img src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=500&q=80" alt="Group photo of Filipino delegates abroad" />
           </div>
           <div class="snap snap--3" :class="{ 'snap--visible': snapVisible }">
-            <img src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=500&q=80" alt="Nominees in a classroom setting abroad" />
+            <img src="https://marvel-b1-cdn.bc0a.com/f00000000290162/images.ctfassets.net/2htm8llflwdx/59339XFWyVJlC424edZsWo/4a683e5a909cdefbc1fe8278c047d1c6/SL_Benefits_of_Studying_Abroad_-_SEO.jpg?fit=thumb" alt="Nominees in a classroom setting abroad" />
           </div>
           <div class="snap snap--4" :class="{ 'snap--visible': snapVisible }">
             <img src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=500&q=80" alt="Delegates posing at a foreign training venue" />

@@ -24,6 +24,7 @@ use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\ForeignAgencyController;
 use App\Http\Controllers\ForeignNominationController;
 use App\Http\Controllers\ForeignSponsorConfigController;
+use App\Http\Controllers\TesdaOrderController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -242,6 +243,16 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function(){
         $nominee->delete();
         return back();
     })->name('foreign-nominees.destroy')->middleware('auth');
+
+
+    // TESDA ORDER
+    Route::get('/programs/{program}/tesda-orders',         [TesdaOrderController::class, 'index'])->name('tesda-orders.index');
+    Route::post('/programs/{program}/tesda-orders',        [TesdaOrderController::class, 'store'])->name('tesda-orders.store');
+    Route::get('/tesda-orders/{tesdaOrder}/download',       [TesdaOrderController::class, 'download'])->name('tesda-orders.download');
+    Route::delete('/tesda-orders/{tesdaOrder}',             [TesdaOrderController::class, 'destroy'])->name('tesda-orders.destroy');
+    Route::get('/tesda-orders/search-signatory',            [TesdaOrderController::class, 'searchSignatory'])->name('tesda-orders.search-signatory');
+    Route::get('/programs/{program}/tesda-orders/participants', [TesdaOrderController::class, 'participants'])
+    ->name('tesda-orders.participants');
 
     
 

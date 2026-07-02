@@ -50,4 +50,9 @@ class Program extends Model
     {
         return $this->hasOne(CoverPage::class);
     }
+
+    public function tesdaOrders()
+    {
+        return $this->hasMany(TesdaOrder::class)->latest();
+    }
 }
