@@ -121,6 +121,8 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function(){
         ->name('programs.supporting-documents.update');
     Route::delete('/programs/{program}/supporting-documents/{supportingDocument}', [SupportingDocumentController::class, 'destroy'])
         ->name('programs.supporting-documents.destroy');
+        Route::get('/supporting-documents', [SupportingDocumentController::class, 'index'])
+        ->name('supporting-documents.index');
 
     // RESOURCE SPEAKERS    
     Route::post('/programs/{program}/resource-speakers', [ResourceSpeakerController::class, 'store'])
@@ -253,6 +255,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function(){
     Route::get('/tesda-orders/search-signatory',            [TesdaOrderController::class, 'searchSignatory'])->name('tesda-orders.search-signatory');
     Route::get('/programs/{program}/tesda-orders/participants', [TesdaOrderController::class, 'participants'])
     ->name('tesda-orders.participants');
+
 
     
 

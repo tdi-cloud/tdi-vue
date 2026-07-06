@@ -22,7 +22,8 @@ import {
     CalendarRange,
     Users,
     ChartBarStacked,
-    Earth
+    Earth,
+    FileStack
 } from 'lucide-vue-next';
 import { useFlash } from '@/composables/useFlash';
 import { Toaster } from '@/components/ui/toast';
@@ -32,7 +33,6 @@ useFlash();
 
 const page = usePage();
 
-// ⚠️ I-verify: 'admin' ba talaga ang eksaktong value ng `access` column.
 const isAdmin = computed(() => (page.props.auth as any)?.user?.access === 'admin');
 
 const allNavItems: NavItem[] = [
@@ -77,10 +77,14 @@ const allNavItems: NavItem[] = [
         icon: Earth,
         color: 'text-blue-600',
     },
+    {
+        title: 'Supporting Docs',
+        url: '/supporting-documents',
+        icon: FileStack,
+        color: 'text-amber-500',
+    },
 ];
 
-// ✅ Admin-only ang lahat ng links na 'to (lahat naka-gate sa 'admin'
-// middleware sa routes/web.php), kaya itago kapag hindi admin ang naka-login.
 const mainNavItems = computed<NavItem[]>(() => isAdmin.value ? allNavItems : []);
 
 const footerNavItems: NavItem[] = [
