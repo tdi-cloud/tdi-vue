@@ -10,6 +10,7 @@ use App\Models\Submission;
 use App\Models\Requirement;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class EmployeeProgressController extends Controller
 {
@@ -51,44 +52,31 @@ class EmployeeProgressController extends Controller
         ]);
     }
 
-    public function show(string $empcode)
+    private function buildProgress(string $empcode): array
     {
         $employee = Employee::where('EMPCODE', $empcode)->firstOrFail();
 
-        // Get all participant records for this employee
         $participants = Participant::with(['batch.program.coverPage'])
-        ->where('empcode', $empcode)  
-        ->get();
+            ->where('empcode', $empcode)
+            ->get();
 
         $enrolledPrograms = $participants->map(function ($participant) {
             $batch   = $participant->batch;
             $program = $batch?->program;
-
             if (!$program) return null;
 
-            // Requirements are keyed by batch_id, NOT program_code
             $requirements = Requirement::where('batch_id', $batch->id)->get();
-
-            // Load submissions for this specific participant
-            $submissions = Submission::where('participant_id', $participant->id)->get();
+            $submissions  = Submission::where('participant_id', $participant->id)->get();
 
             $totalReqs    = $requirements->count();
             $approvedSubs = $submissions->where('status', 'Approved')->count();
             $pendingSubs  = $submissions->whereIn('status', ['Pending', 'Rejected'])->count();
 
-           
-
-            // Kunin ang lahat ng requirement IDs ng parehong title across all batches
-            $requirementDetails = $requirements->map(function ($req) use ($submissions, $participant, $batch) {
-                // Una, try exact match sa requirement_id
+            $requirementDetails = $requirements->map(function ($req) use ($submissions, $participant) {
                 $sub = $submissions->firstWhere('requirement_id', $req->id);
 
-                // Kung wala, hanapin lahat ng requirements na parehong title
-                // sa lahat ng batches ng parehong program, tapos i-match ang submission
                 if (!$sub) {
-                    $sameTitle = Requirement::where('title', $req->title)
-                        ->pluck('id');
-
+                    $sameTitle = Requirement::where('title', $req->title)->pluck('id');
                     $sub = Submission::where('participant_id', $participant->id)
                         ->whereIn('requirement_id', $sameTitle)
                         ->first();
@@ -97,6 +85,8 @@ class EmployeeProgressController extends Controller
                 return [
                     'id'          => $req->id,
                     'title'       => $req->title,
+                    'name'        => $req->name,
+                    'due_date'    => $req->due_date,
                     'description' => $req->note,
                     'required'    => $req->is_required,
                     'submission'  => $sub ? [
@@ -116,54 +106,138 @@ class EmployeeProgressController extends Controller
                 && ($totalReqs === 0 || $approvedSubs >= $totalReqs);
 
             return [
-                'participant_id'      => $participant->id,
-                'batch_id'            => $batch->id,
-                'program_id'          => $program->id,
-                'program_code'        => $program->program_code,
-                'program_title'       => $program->title,
-                'batch_label'         => $batch->batch,
-                'date_start'          => $batch->date_start,
-                'date_end'            => $batch->date_end,
-                'hours'               => $participant->hours ?? $batch->hours,
-                'attendance'          => $participant->attendance,
-                'batch_status'        => $batch->status,
-                'is_completed'        => $isCompleted,
-                'total_requirements'  => $totalReqs,
-                'approved_submissions'=> $approvedSubs,
-                'pending_submissions' => $pendingSubs,
-                'cover_image'         => $program->coverPage?->image,
-                'requirements'        => $requirementDetails,
+                'participant_id'       => $participant->id,
+                'batch_id'             => $batch->id,
+                'program_id'           => $program->id,
+                'program_code'         => $program->program_code,
+                'program_title'        => $program->title,
+                'batch_label'          => $batch->batch,
+                'date_start'           => $batch->date_start,
+                'date_end'             => $batch->date_end,
+                'hours'                => $participant->hours ?? $batch->hours,
+                'attendance'           => $participant->attendance,
+                'batch_status'         => $batch->status,
+                'is_completed'         => $isCompleted,
+                'total_requirements'   => $totalReqs,
+                'approved_submissions' => $approvedSubs,
+                'pending_submissions'  => $pendingSubs,
+                'cover_image'          => $program->coverPage?->image,
+                'requirements'         => $requirementDetails,
             ];
         })->filter()->values();
 
         $programsAttended  = $enrolledPrograms->count();
         $programsCompleted = $enrolledPrograms->where('is_completed', true)->count();
-        $totalHours        = $enrolledPrograms->sum('hours');
-        $totalSubmissions  = $enrolledPrograms->sum('approved_submissions');
-        $notApproved       = $enrolledPrograms->sum('pending_submissions');
 
-        $allSubmissions = Submission::where(function ($q) use ($empcode) {
-            $q->whereHas('participant', fn($p) => $p->where('empcode', $empcode));
-        })->count();
-
-        $approvedAll = Submission::whereHas('participant', fn($p) => $p->where('empcode', $empcode))
+        $allSubmissions = Submission::whereHas('participant', fn($p) => $p->where('empcode', $empcode))->count();
+        $approvedAll    = Submission::whereHas('participant', fn($p) => $p->where('empcode', $empcode))
             ->where('status', 'Approved')->count();
 
         $completionRate = $allSubmissions > 0
             ? round(($approvedAll / $allSubmissions) * 100)
             : ($programsAttended > 0 && $programsCompleted === $programsAttended ? 100 : 0);
 
-        return response()->json([
-            'employee'          => $employee,
-            'stats'             => [
+        return [
+            'employee' => $employee,
+            'stats'    => [
                 'programs_attended'  => $programsAttended,
                 'programs_completed' => $programsCompleted,
-                'total_hours'        => $totalHours,
-                'total_submissions'  => $totalSubmissions,
-                'not_approved'       => $notApproved,
+                'total_hours'        => $enrolledPrograms->sum('hours'),
+                'total_submissions'  => $enrolledPrograms->sum('approved_submissions'),
+                'not_approved'       => $enrolledPrograms->sum('pending_submissions'),
                 'completion_rate'    => $completionRate,
             ],
             'enrolled_programs' => $enrolledPrograms,
-        ]);
+        ];
+    }
+
+    public function show(string $empcode)
+    {
+        return response()->json($this->buildProgress($empcode));
+    }
+
+    public function exportCsv(string $empcode): StreamedResponse
+    {
+        $data      = $this->buildProgress($empcode);
+        $employee  = $data['employee'];
+        $programs  = $data['enrolled_programs'];
+
+        $filename = 'employee_' . $employee->EMPCODE . '_programs_' . now()->format('Ymd_His') . '.csv';
+
+        $headers = [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Pragma'              => 'no-cache',
+            'Cache-Control'       => 'no-store, no-cache, must-revalidate',
+        ];
+
+        return response()->stream(function () use ($employee, $programs) {
+            $out = fopen('php://output', 'w');
+
+            // Excel UTF-8 BOM
+            fwrite($out, "\xEF\xBB\xBF");
+
+            fputcsv($out, [
+                'EMPCODE', 'Employee Name', 'Position', 'Office/Division', 'Region',
+                'Plantilla Status',
+                'Program Code', 'Program Title', 'Batch', 'Date Start', 'Date End',
+                'Hours', 'Attendance', 'Program Completed',
+                'Requirement', 'Requirement Name', 'Due Date', 'Is Required',
+                'Submission Status', 'Submitted At', 'Reviewed By', 'Reviewed At',
+                'File Path', 'Remarks',
+            ]);
+
+            $base = [
+                $employee->EMPCODE,
+                $employee->name,
+                $employee->POSITION,
+                $employee->{'OFFICE/DIVISION'},
+                $employee->REGION,
+                $employee->{'PLANTILLA STATUS'},
+            ];
+
+            if ($programs->isEmpty()) {
+                fputcsv($out, array_merge($base, array_fill(0, 18, '')));
+            }
+
+            foreach ($programs as $prog) {
+                $progCols = [
+                    $prog['program_code'],
+                    $prog['program_title'],
+                    $prog['batch_label'],
+                    $prog['date_start'],
+                    $prog['date_end'],
+                    $prog['hours'],
+                    $prog['attendance'],
+                    $prog['is_completed'] ? 'Yes' : 'No',
+                ];
+
+                // Walang requirement — isang row pa rin para lumabas ang program
+                if (count($prog['requirements']) === 0) {
+                    fputcsv($out, array_merge($base, $progCols, [
+                        'No requirements', '', '', '', 'N/A', '', '', '', '', '',
+                    ]));
+                    continue;
+                }
+
+                foreach ($prog['requirements'] as $req) {
+                    $sub = $req['submission'];
+                    fputcsv($out, array_merge($base, $progCols, [
+                        $req['title'],
+                        $req['name'] ?? '',
+                        $req['due_date'] ?? '',
+                        $req['required'] ? 'Required' : 'Optional',
+                        $sub['status'] ?? 'Not Submitted',
+                        $sub['submitted_at'] ?? '',
+                        $sub['reviewed_by'] ?? '',
+                        $sub['reviewed_at'] ?? '',
+                        $sub['file_path'] ?? '',
+                        $sub['remarks'] ?? '',
+                    ]));
+                }
+            }
+
+            fclose($out);
+        }, 200, $headers);
     }
 }

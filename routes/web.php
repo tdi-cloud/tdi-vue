@@ -25,6 +25,7 @@ use App\Http\Controllers\ForeignAgencyController;
 use App\Http\Controllers\ForeignNominationController;
 use App\Http\Controllers\ForeignSponsorConfigController;
 use App\Http\Controllers\TesdaOrderController;
+use App\Http\Controllers\TnaController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -35,6 +36,8 @@ Route::get('/', function () {
         'enrolledPrograms' => auth()->check()
             ? EnrolledProgramController::forUser(auth()->user())
             : [],
+        'tna' => TnaController::bannerData(auth()->user()),
+        'supervisorTna' => TnaController::supervisorBannerData(auth()->user()),
     ]);
 })->name('home');
 
@@ -169,6 +172,8 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function(){
 
     // EMPLOYEES PROGRESS
     Route::get('/employees', [EmployeeProgressController::class, 'index'])->name('employees.index');
+    Route::get('/employees/{empcode}/export', [EmployeeProgressController::class, 'exportCsv'])
+    ->name('employees.export');
     Route::get('/employees/{empcode}/progress', [EmployeeProgressController::class, 'show'])->name('employees.progress');
     
 
@@ -256,9 +261,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function(){
     Route::get('/programs/{program}/tesda-orders/participants', [TesdaOrderController::class, 'participants'])
     ->name('tesda-orders.participants');
 
-
-    
-
+   
 
 });
 
@@ -282,6 +285,39 @@ Route::middleware(['auth', 'verified'])->group(function () {
  
     Route::delete('/my-programs/{batch}/certificates/{certificate}', [CertificateController::class, 'destroyByUser'])
     ->name('certificates.destroy-by-user');
+
+    // SELF RATING
+
+    Route::get('/tna/self-rating',       [TnaController::class, 'selfRating'])
+    ->name('tna.self-rating');
+ 
+    Route::post('/tna/self-rating',      [TnaController::class, 'store'])
+        ->name('tna.self-rating.store');
+    
+    Route::get('/tna/supervisor-search', [TnaController::class, 'searchSupervisor'])
+        ->name('tna.supervisor.search');
+    
+    Route::get('/tna/assessments/{assessment}/pdf', [TnaController::class, 'pdf'])
+        ->name('tna.self-rating.pdf');
+    
+    Route::delete('/tna/assessments/{assessment}', [TnaController::class, 'destroy'])
+        ->name('tna.self-rating.destroy');
+    
+    Route::patch('/tna/assessments/{assessment}/supervisor', [TnaController::class, 'updateSupervisor'])
+        ->name('tna.self-rating.supervisor');
+
+        // SUPERVISORY
+    Route::get('/tna/supervisory', [TnaController::class, 'supervisoryIndex'])
+        ->name('tna.supervisory.index');
+    
+    Route::get('/tna/supervisory/{assessment}', [TnaController::class, 'supervisoryShow'])
+        ->name('tna.supervisory.show');
+    
+    Route::post('/tna/supervisory/{assessment}', [TnaController::class, 'supervisoryStore'])
+        ->name('tna.supervisory.store');
+    
+    Route::get('/tna/supervisory/{assessment}/pdf', [TnaController::class, 'supervisoryPdf'])
+        ->name('tna.supervisory.pdf');
 });
 
 // PUBLIC USER 

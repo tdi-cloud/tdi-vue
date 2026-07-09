@@ -3,6 +3,13 @@
   <div class="tdi-home">
     <TheNavbar />
     <HeroSection />
+
+    <!-- Lalabas lang kung naka-login AT may TNA Tool (tna !== null) -->
+    <TnaBanner v-if="tna" :data="tna" />
+
+    <!-- Lalabas lang kung may pending na ira-rate ang supervisor -->
+    <SupervisorBanner v-if="supervisorTna" :data="supervisorTna" />
+
     <EnrolledProgramsSection :programs="enrolledPrograms" />
     <ImagePanels />
     <AboutSection />
@@ -19,6 +26,8 @@
 import { Head } from '@inertiajs/vue3'
 import TheNavbar          from './sections/TheNavbar.vue'
 import HeroSection        from './sections/HeroSection.vue'
+import TnaBanner          from './sections/TnaBanner.vue'
+import SupervisorBanner   from './sections/SupervisorBanner.vue'
 import EnrolledProgramsSection from './sections/EnrolledProgramsSection.vue'
 import ImagePanels        from './sections/ImagePanels.vue'
 import AboutSection       from './sections/AboutSection.vue'
@@ -33,6 +42,8 @@ import ForeignScholarshipSection from './sections/ForeignScholarshipSection.vue'
 
 defineProps({
   enrolledPrograms: { type: Array, default: () => [] },
+  tna: { type: Object, default: null },
+  supervisorTna: { type: Object, default: null },
 })
 </script>
 

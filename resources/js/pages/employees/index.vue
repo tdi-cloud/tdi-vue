@@ -6,7 +6,8 @@ import {
     Search, Users, ChevronLeft, ChevronRight,
     X, CheckCircle2, Clock, Award, FileText,
     Building2, MapPin, Hash, Star, AlertCircle,
-    ExternalLink
+    ExternalLink,
+    Download
 } from 'lucide-vue-next';
 import axios from 'axios';
 
@@ -481,9 +482,21 @@ const submissionStatusColor = (status?: string) => {
 
                         <!-- Enrolled Programs -->
                         <div>
-                            <p class="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 mb-3">
-                                <Award class="h-3.5 w-3.5" /> Enrolled Programs
-                            </p>
+
+                            <div class="flex w-full items-center justify-between mb-3">
+                                <p class="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                                    <Award class="h-3.5 w-3.5" /> Enrolled Programs
+                                </p>
+
+                                
+                                <a    v-if="progress.enrolled_programs?.length"
+                                    :href="route('employees.export', { empcode: progress.employee.EMPCODE })"
+                                    class="inline-flex items-center gap-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg shadow-sm transition-colors"
+                                >
+                                    <Download class="h-3.5 w-3.5" /> Export CSV
+                                </a>
+                            </div>
+                            
 
                             <div v-if="progress.enrolled_programs?.length === 0" class="text-center py-8 text-muted-foreground">
                                 <Award class="h-8 w-8 mx-auto mb-2 opacity-30" />
