@@ -504,7 +504,7 @@ const submissionStatusColor = (status?: string) => {
                             </div>
 
                             <div v-else class="flex flex-col gap-2">
-                                <div
+                                <div``
                                     v-for="prog in progress.enrolled_programs"
                                     :key="prog.participant_id"
                                     class="rounded-xl border p-4 hover:border-blue-300 transition-colors cursor-pointer"

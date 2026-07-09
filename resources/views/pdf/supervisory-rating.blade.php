@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Supervisory Rating - {{ $form['subordinate_name'] ?? $a->name }} - {{ $form['subordinate_position'] ?? $a->position }}</title>
+<title>Supervisor Rating - {{ $form['subordinate_name'] ?? $a->name }} - {{ $form['subordinate_position'] ?? $a->position }}</title>
 <style>
     @page { margin: 0.5in 0.9in; }
     * { box-sizing: border-box; }
@@ -104,7 +104,7 @@
     @endphp
 
     <div class="code">
-        TESDA-OP-AS-01-F01<br>
+        TESDA-OP-AS-01-F02<br>
         Rev. No. 00 - 03/01/17
     </div>
 
@@ -112,7 +112,7 @@
     <div class="title-block">
         <div class="agency">TECHNICAL EDUCATION AND SKILLS DEVELOPMENT AUTHORITY</div>
         <div class="t1">ASSESSMENT OF CURRENT COMPETENCIES</div>
-        <div class="t2">[Supervisory Rating]</div>
+        <div class="t2">[Supervisor Rating]</div>
         <div class="period">
             for the period
             <span class="blank">{!! e($a->period) ?: '&nbsp;' !!}</span>
@@ -128,16 +128,18 @@
         </tr>
         <tr>
             <td colspan="2"><span class="bold">Name of Subordinate:</span> {{ $form['subordinate_name'] ?? $a->name }}</td>
-            <td><span class="bold">Position:</span> {{ $form['subordinate_position'] ?? $a->position }}</td>
+            <td><span class="bold">Position of Subordinate:</span> {{ $form['subordinate_position'] ?? $a->position }}</td>
         </tr>
     </table>
 
     {{-- ===== Instructions ===== --}}
     <div class="instructions">
-        <span class="bold">INSTRUCTIONS:</span> Below are the units of competencies required in the
-        performance of your job. Using the scale below, rate the competency units according to its
-        CRITICALITY to your job, your level of COMPETENCY, and FREQUENCY of utilization. Please answer
-        carefully as this assessment will determine your Professional Development Plan.
+        <span class="bold">INSTRUCTIONS:</span> Below are the units of competencies required of your
+        subordinate. Using the scale below, rate the competency units according to its CRITICALITY to
+        his/her job, his/her level of COMPETENCY, and the FREQUENCY by which your subordinate performs
+        the competency. Aside from the list, choose any of the elective competencies which you believe
+        he/she needs. Please answer carefully as this assessment will determine your subordinate's
+        Professional Development Plan.
     </div>
 
     {{-- ===== Scale guide ===== --}}
@@ -274,7 +276,7 @@
         <tr>
             <td style="width:52%">&nbsp;</td>
             <td>
-                <div class="name">{{ $form['name'] ?? $a->supervisor_name }}</div>
+                <div class="name">{{ $form['signature'] ?? $form['name'] ?? $a->supervisor_name }}</div>
                 <div class="line">Signature over printed name</div>
             </td>
         </tr>

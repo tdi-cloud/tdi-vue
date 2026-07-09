@@ -1,17 +1,29 @@
 <script setup>
-import { Head, Link } from '@inertiajs/vue3'
+import { Head, Link, usePage, router } from '@inertiajs/vue3'
+import TnaBackdrop from './TnaBackdrop.vue'
+import BackToTop from './BackToTop.vue'
+import { computed } from 'vue'
 
 defineProps({
   assessments: { type: Array, default: () => [] },
   pendingCount: { type: Number, default: 0 },
 })
+
+const page = usePage()
+const flashSuccess = computed(() => page.props.flash?.success)
+
+function redoRating(id) {
+  if (!confirm('Clear your rating and start over? Your ratings for this subordinate will be deleted.')) return
+  router.delete(route('tna.supervisory.redo', id), { preserveScroll: true })
+}
 </script>
 
 <template>
   <Head title="Supervisory Rating" />
 
-  <div class="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 px-4 py-8">
-    <div class="mx-auto max-w-4xl space-y-6">
+  <div class="tna-page relative min-h-screen px-4 py-8">
+    <TnaBackdrop />
+    <div class="relative z-10 mx-auto max-w-4xl space-y-6">
 
       <Link
         :href="route('home')"
@@ -22,6 +34,13 @@ defineProps({
         </svg>
         Back to Home
       </Link>
+
+      <div
+        v-if="flashSuccess"
+        class="rounded-xl border border-green-200 bg-green-50 px-5 py-4 text-sm font-medium text-green-800 shadow"
+      >
+        {{ flashSuccess }}
+      </div>
 
       <!-- Header -->
       <div class="rounded-2xl bg-white p-8 shadow-xl">
@@ -72,6 +91,12 @@ defineProps({
           <div class="flex items-center gap-3">
             <template v-if="a.reviewed">
               <span class="text-xs text-gray-400">Rated {{ a.reviewed_at }}</span>
+              <Link
+                :href="route('tna.result.show', a.id)"
+                class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+              >
+                View Result
+              </Link>
               <a
                 :href="route('tna.supervisory.pdf', a.id)"
                 target="_blank"
@@ -83,6 +108,16 @@ defineProps({
                 </svg>
                 View PDF
               </a>
+              <button
+                type="button"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50"
+                @click="redoRating(a.id)"
+              >
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                </svg>
+                Redo
+              </button>
             </template>
 
             <!-- Rate button -->
@@ -98,5 +133,6 @@ defineProps({
       </div>
 
     </div>
-  </div>
+    <BackToTop />
+</div>
 </template>

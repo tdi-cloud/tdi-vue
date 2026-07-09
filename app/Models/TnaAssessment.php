@@ -21,10 +21,14 @@ class TnaAssessment extends Model
         'supervisor_position',
         'signature',
         'submitted_at',
+        'supervisor_reviewed_at',
+        'supervisor_form',
     ];
 
     protected $casts = [
         'submitted_at' => 'datetime',
+        'supervisor_reviewed_at' => 'datetime',
+        'supervisor_form' => 'array',
     ];
 
     public function user(): BelongsTo

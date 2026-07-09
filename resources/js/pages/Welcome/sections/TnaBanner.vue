@@ -64,10 +64,24 @@ function deleteAssessment() {
           <template v-else>
             <div class="tna-banner__done">
               <ShieldCheck :size="18" />
-              <span>You have submitted your self-rating for {{ data.period }}.</span>
+              <span v-if="data.reviewed">
+                Your TNA result for {{ data.period }} is ready.
+              </span>
+              <span v-else>
+                You have submitted your self-rating for {{ data.period }}.
+              </span>
             </div>
+
+            <Link
+              v-if="data.reviewed && data.assessment_id"
+              :href="route('tna.result.show', data.assessment_id)"
+              class="tna-banner__cta"
+            >
+              View TNA Result
+              <ArrowRight :size="17" />
+            </Link>
             <a
-              v-if="data.assessment_id"
+              v-else-if="data.assessment_id"
               :href="route('tna.self-rating.pdf', data.assessment_id)"
               target="_blank"
               rel="noopener"
@@ -76,6 +90,7 @@ function deleteAssessment() {
               View / Print PDF
               <ArrowRight :size="17" />
             </a>
+
             <div class="tna-banner__subactions">
               <Link :href="route('tna.self-rating')" class="tna-banner__link">
                 <Settings2 :size="14" /> Manage
@@ -90,7 +105,12 @@ function deleteAssessment() {
               </button>
             </div>
             <p class="tna-banner__note">
-              Please wait for the supervisory rating from your selected supervisor.
+              <span v-if="data.reviewed">
+                Your supervisor has completed the supervisory rating.
+              </span>
+              <span v-else>
+                Please wait for the supervisory rating from your selected supervisor.
+              </span>
             </p>
           </template>
         </div>

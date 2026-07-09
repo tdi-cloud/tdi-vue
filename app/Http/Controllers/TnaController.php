@@ -62,16 +62,22 @@ class TnaController extends Controller
             return null;
         }
 
-        $pending = TnaAssessment::where('supervisor_empcode', $user->empcode)
-            ->whereNotNull('submitted_at')
-            ->whereNull('supervisor_reviewed_at')
-            ->count();
+        $base = TnaAssessment::where('supervisor_empcode', $user->empcode)
+            ->whereNotNull('submitted_at');
 
-        if ($pending === 0) {
+        $total = (clone $base)->count();
+
+        if ($total === 0) {
             return null;
         }
 
-        return ['pending' => $pending];
+        $pending = (clone $base)->whereNull('supervisor_reviewed_at')->count();
+
+        return [
+            'pending' => $pending,
+            'rated'   => $total - $pending,
+            'total'   => $total,
+        ];
     }
 
     /**
@@ -188,6 +194,7 @@ class TnaController extends Controller
             'division'                => ['nullable', 'string', 'max:255'],
             'subordinate_name'        => ['required', 'string', 'max:255'],
             'subordinate_position'    => ['required', 'string', 'max:255'],
+            'signature'               => ['required', 'string', 'max:255'],
             'ratings'                 => ['required', 'array', 'min:1'],
             'ratings.*.competency_id' => ['required', 'integer'],
             'ratings.*.criticality'   => ['required', 'integer', 'between:1,3'],
@@ -226,6 +233,7 @@ class TnaController extends Controller
                     'division'             => $data['division'] ?? null,
                     'subordinate_name'     => $data['subordinate_name'],
                     'subordinate_position' => $data['subordinate_position'],
+                    'signature'            => $data['signature'],
                 ],
                 'supervisor_reviewed_at' => now(),
             ]);
@@ -234,6 +242,44 @@ class TnaController extends Controller
         return redirect()
             ->route('tna.supervisory.index')
             ->with('success', 'Supervisory rating submitted. Thank you!');
+    }
+
+    /**
+     * Burahin ang supervisory rating para makapag-rate ulit.
+     * Ang napiling supervisor lang ang makakagawa nito.
+     */
+    public function supervisoryRedo(TnaAssessment $assessment)
+    {
+        $user = auth()->user();
+        abort_unless(
+            ! empty($user->empcode) && $assessment->supervisor_empcode === $user->empcode,
+            403
+        );
+
+        if ($assessment->supervisor_reviewed_at === null) {
+            return back()->withErrors([
+                'ratings' => 'This assessment has not been rated yet.',
+            ]);
+        }
+
+        DB::transaction(function () use ($assessment) {
+            // I-clear ang mga rating ng supervisor (hindi hinahawakan ang self-rating)
+            $assessment->ratings()->update([
+                'sup_criticality' => null,
+                'sup_competence'  => null,
+                'sup_frequency'   => null,
+            ]);
+
+            // I-unlock: mababalik ang assessment sa "Pending"
+            $assessment->update([
+                'supervisor_form'        => null,
+                'supervisor_reviewed_at' => null,
+            ]);
+        });
+
+        return redirect()
+            ->route('tna.supervisory.index')
+            ->with('success', 'Supervisory rating cleared. You may rate this assessment again.');
     }
 
     /**
@@ -277,8 +323,167 @@ class TnaController extends Controller
         ])->setPaper('a4', 'portrait');
 
         $clean = fn ($s) => trim(str_replace(['/', '\\', '"'], '-', (string) $s));
-        $filename = 'Supervisory-Rating - ' . $clean($form['subordinate_name'] ?? $assessment->name)
+        $filename = 'Supervisor-Rating - ' . $clean($form['subordinate_name'] ?? $assessment->name)
             . ' - ' . $clean($form['subordinate_position'] ?? $assessment->position)
+            . ' - ' . $clean($assessment->period) . '.pdf';
+
+        return $pdf->stream($filename);
+    }
+
+    /**
+     * ── TNA RESULT ────────────────────────────────────────────────
+     * Weighted score kada element:
+     *   w = 0.4*self + 0.6*supervisor  (kada scale)
+     *   Competency Profile Result = w_criticality × w_competence × w_frequency
+     * Max = 3 × 4 × 3 = 36.
+     */
+    public const RESULT_BANDS = [
+        [0,   4,  'Not Competent',        true],
+        [5,   12, 'Slightly Competent',   true],
+        [13,  20, 'Moderately Competent', true],
+        [21,  28, 'Competent',            false],
+        [29,  36, 'Highly Competent',     false],
+    ];
+
+    protected function bandFor(float $score): array
+    {
+        foreach (self::RESULT_BANDS as [$lo, $hi, $label, $needsTraining]) {
+            if ($score >= $lo && $score <= $hi) {
+                return ['label' => $label, 'needs_training' => $needsTraining];
+            }
+        }
+        return ['label' => '—', 'needs_training' => false];
+    }
+
+    /**
+     * Buuin ang buong result data ng isang assessment.
+     */
+    protected function buildResult(TnaAssessment $assessment): array
+    {
+        $w = fn ($self, $sup) => (0.4 * (float) $self) + (0.6 * (float) $sup);
+
+        $ratings = $assessment->ratings()->with('competency')->get()
+            ->filter(fn ($r) => $r->competency)
+            ->sortBy(fn ($r) => $r->competency->sort_order)
+            ->values();
+
+        $rows = $ratings->map(function ($r) use ($w) {
+            $wc = $w($r->criticality,  $r->sup_criticality);
+            $wl = $w($r->competence,   $r->sup_competence);
+            $wf = $w($r->frequency,    $r->sup_frequency);
+            $score = round($wc * $wl * $wf, 1);
+            $band  = $this->bandFor($score);
+
+            return [
+                'competency_id' => $r->competency_id,
+                'unit'          => $r->competency->unit,
+                'element'       => $r->competency->element,
+                'type'          => $r->competency->type,
+                'crit_self'     => $r->criticality,
+                'crit_sup'      => $r->sup_criticality,
+                'comp_self'     => $r->competence,
+                'comp_sup'      => $r->sup_competence,
+                'freq_self'     => $r->frequency,
+                'freq_sup'      => $r->sup_frequency,
+                'score'         => $score,
+                'label'         => $band['label'],
+                'needs_training' => $band['needs_training'],
+            ];
+        });
+
+        // Group by unit (para sa merged na Unit cell)
+        $units = $rows->groupBy('unit')
+            ->map(fn ($group, $unit) => ['unit' => $unit, 'rows' => $group->values()])
+            ->values();
+
+        // Top 3 UNIT na pinakamababa ang competency (base sa pinakamababang
+        // element score sa loob ng unit) at nangangailangan ng training.
+        $priority = $rows
+            ->groupBy('unit')
+            ->map(fn ($group, $unit) => [
+                'unit'  => $unit,
+                'score' => $group->min('score'),
+                'label' => $this->bandFor((float) $group->min('score'))['label'],
+                'needs_training' => $this->bandFor((float) $group->min('score'))['needs_training'],
+            ])
+            ->filter(fn ($u) => $u['needs_training'])
+            ->sortBy('score')
+            ->take(3)
+            ->values();
+
+        return [
+            'units'    => $units,
+            'priority' => $priority,
+        ];
+    }
+
+    /**
+     * Access check: subordinate (may-ari) o ang napiling supervisor.
+     */
+    protected function canViewResult(TnaAssessment $assessment): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+        if ($assessment->user_id === $user->id) {
+            return true;
+        }
+        return ! empty($user->empcode) && $assessment->supervisor_empcode === $user->empcode;
+    }
+
+    /**
+     * Result page (nakikita ng subordinate at ng supervisor).
+     */
+    public function resultShow(TnaAssessment $assessment)
+    {
+        abort_unless($this->canViewResult($assessment), 403);
+        abort_if($assessment->supervisor_reviewed_at === null, 404);
+
+        $result = $this->buildResult($assessment);
+        $form   = $assessment->supervisor_form ?? [];
+
+        return Inertia::render('Tna/Result', [
+            'assessment' => [
+                'id'               => $assessment->id,
+                'period'           => $assessment->period,
+                'employee_name'    => $assessment->name,
+                'position'         => $assessment->position,
+                'office'           => $assessment->office,
+                'division'         => $assessment->division,
+                'supervisor_name'  => $form['name'] ?? $assessment->supervisor_name,
+                'reviewed_at'      => $assessment->supervisor_reviewed_at->format('M d, Y g:i A'),
+            ],
+            'units'    => $result['units'],
+            'priority' => $result['priority'],
+            'bands'    => collect(self::RESULT_BANDS)->map(fn ($b) => [
+                'range' => $b[0] . '-' . $b[1],
+                'label' => $b[2],
+            ]),
+        ]);
+    }
+
+    /**
+     * PDF ng TNA Result (ISO form F03).
+     */
+    public function resultPdf(TnaAssessment $assessment)
+    {
+        abort_unless($this->canViewResult($assessment), 403);
+        abort_if($assessment->supervisor_reviewed_at === null, 404);
+
+        $result = $this->buildResult($assessment);
+        $form   = $assessment->supervisor_form ?? [];
+
+        $pdf = Pdf::loadView('pdf.tna-result', [
+            'a'        => $assessment,
+            'form'     => $form,
+            'units'    => $result['units'],
+            'priority' => $result['priority'],
+        ])->setPaper('a4', 'portrait');
+
+        $clean = fn ($s) => trim(str_replace(['/', '\\', '"'], '-', (string) $s));
+        $filename = 'TNA-Result - ' . $clean($assessment->name)
+            . ' - ' . $clean($assessment->position)
             . ' - ' . $clean($assessment->period) . '.pdf';
 
         return $pdf->stream($filename);

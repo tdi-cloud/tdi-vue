@@ -308,7 +308,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // SUPERVISORY
     Route::get('/tna/supervisory', [TnaController::class, 'supervisoryIndex'])
-        ->name('tna.supervisory.index');
+    ->name('tna.supervisory.index');
     
     Route::get('/tna/supervisory/{assessment}', [TnaController::class, 'supervisoryShow'])
         ->name('tna.supervisory.show');
@@ -318,6 +318,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     Route::get('/tna/supervisory/{assessment}/pdf', [TnaController::class, 'supervisoryPdf'])
         ->name('tna.supervisory.pdf');
+    
+    Route::delete('/tna/supervisory/{assessment}/rating', [TnaController::class, 'supervisoryRedo'])
+        ->name('tna.supervisory.redo');
+
+    // TNA RESULT 
+    Route::get('/tna/results/{assessment}', [TnaController::class, 'resultShow'])->name('tna.result.show');
+    Route::get('/tna/results/{assessment}/pdf', [TnaController::class, 'resultPdf'])->name('tna.result.pdf');
+
+
 });
 
 // PUBLIC USER 

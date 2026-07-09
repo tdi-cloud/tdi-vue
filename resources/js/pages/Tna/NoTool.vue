@@ -1,5 +1,6 @@
 <script setup>
 import { Head } from '@inertiajs/vue3'
+import TnaBackdrop from './TnaBackdrop.vue'
 
 const props = defineProps({
   reason: { type: String, default: 'no_competencies' },
@@ -10,8 +11,9 @@ const props = defineProps({
 <template>
   <Head title="Self Rating" />
 
-  <div class="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center p-6">
-    <div class="w-full max-w-lg rounded-2xl bg-white p-10 text-center shadow-xl">
+  <div class="tna-page relative min-h-screen flex items-center justify-center p-6">
+    <TnaBackdrop />
+    <div class="relative z-10 w-full max-w-lg rounded-2xl bg-white p-10 text-center shadow-xl">
       <div class="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-blue-50">
         <svg class="h-7 w-7 text-blue-600" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round"

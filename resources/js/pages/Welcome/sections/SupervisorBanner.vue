@@ -21,18 +21,26 @@ const props = defineProps({
           <span class="sup-banner__eyebrow">
             <ClipboardList :size="14" /> Supervisory Rating
           </span>
-          <h2 class="sup-banner__title">
+
+          <h2 v-if="data.pending" class="sup-banner__title">
             You have {{ data.pending }} self-rating<span v-if="data.pending > 1">s</span>
             awaiting your review
           </h2>
-          <p class="sup-banner__lead">
+          <h2 v-else class="sup-banner__title">
+            You have rated {{ data.rated }} team member<span v-if="data.rated > 1">s</span>
+          </h2>
+
+          <p v-if="data.pending" class="sup-banner__lead">
             Some of your team members selected you as their supervisor. Please
             review and rate their competency assessment.
+          </p>
+          <p v-else class="sup-banner__lead">
+            All caught up. You can review the results of the team members you have rated.
           </p>
         </div>
 
         <Link :href="route('tna.supervisory.index')" class="sup-banner__cta">
-          Review Now
+          {{ data.pending ? 'Review Now' : 'View Ratings' }}
           <ArrowRight :size="17" />
         </Link>
       </div>

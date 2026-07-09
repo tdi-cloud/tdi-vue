@@ -1,5 +1,7 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3'
+import TnaBackdrop from './TnaBackdrop.vue'
+import BackToTop from './BackToTop.vue'
 import { computed, reactive, ref } from 'vue'
 
 const props = defineProps({
@@ -48,10 +50,11 @@ const form = useForm({
   division: props.supervisor.division ?? '',
   subordinate_name: props.assessment.subordinate_name ?? '',
   subordinate_position: props.assessment.subordinate_position ?? '',
+  signature: '',
   ratings: [],
 })
 
-const canSubmit = computed(() => donePct.value === 100)
+const canSubmit = computed(() => donePct.value === 100 && !!form.signature.trim())
 
 const submit = () => {
   form
@@ -64,15 +67,22 @@ const submit = () => {
         frequency: a.frequency,
       })),
     }))
-    .post(route('tna.supervisory.store', props.assessment.id), { preserveScroll: true })
+    .post(route('tna.supervisory.store', props.assessment.id), {
+      preserveScroll: true,
+      // Pagka-submit, buksan ang generated PDF sa bagong tab
+      onSuccess: () => {
+        window.open(route('tna.supervisory.pdf', props.assessment.id), '_blank', 'noopener')
+      },
+    })
 }
 </script>
 
 <template>
   <Head title="Supervisory Rating" />
 
-  <div class="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 px-4 py-8">
-    <div class="mx-auto max-w-5xl space-y-6">
+  <div class="tna-page relative min-h-screen px-4 py-8">
+    <TnaBackdrop />
+    <div class="relative z-10 mx-auto max-w-5xl space-y-6">
 
       <Link
         :href="route('tna.supervisory.index')"
@@ -296,17 +306,30 @@ const submit = () => {
         </section>
       </div>
 
-      <!-- SUBMIT -->
+      <!-- SIGNATURE + SUBMIT -->
       <div class="rounded-2xl bg-white p-8 shadow-xl">
-        <p v-if="form.errors.ratings" class="mb-2 text-xs text-red-600">{{ form.errors.ratings }}</p>
-        <div class="flex flex-wrap items-center gap-4">
+        <label class="block text-sm font-medium leading-relaxed text-gray-700">
+          By typing my name below, I understand and agree that this form of
+          electronic signature has the same legal force and effect as a manual
+          signature.
+        </label>
+        <input v-model="form.signature" type="text" placeholder="e.g. Juan D. Dela Cruz"
+          aria-label="Electronic signature"
+          class="mt-1.5 w-full max-w-md rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" />
+        <p v-if="form.errors.signature" class="mt-1 text-xs text-red-600">{{ form.errors.signature }}</p>
+        <p v-if="form.errors.ratings" class="mt-1 text-xs text-red-600">{{ form.errors.ratings }}</p>
+
+        <div class="mt-6 flex flex-wrap items-center gap-4">
           <button type="button" :disabled="form.processing || !canSubmit"
             class="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-60"
             @click="submit">
-            {{ form.processing ? 'Submitting…' : 'Submit Supervisory Rating' }}
+            {{ form.processing ? 'Submitting…' : 'Submit Supervisor Rating' }}
           </button>
           <span v-if="donePct < 100" class="text-xs text-gray-500">
             {{ requiredIds.length - doneCount }} more element(s) to answer.
+          </span>
+          <span v-else-if="!form.signature.trim()" class="text-xs text-gray-500">
+            Please type your name to sign.
           </span>
         </div>
       </div>
@@ -322,5 +345,6 @@ const submit = () => {
       </footer>
 
     </div>
-  </div>
+    <BackToTop />
+</div>
 </template>

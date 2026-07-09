@@ -13,6 +13,9 @@ class TnaRating extends Model
         'criticality',
         'competence',
         'frequency',
+        'sup_criticality',
+        'sup_competence',
+        'sup_frequency',
     ];
 
     public function assessment(): BelongsTo
