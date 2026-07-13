@@ -3,6 +3,7 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import type { BreadcrumbItemType } from '@/types';
 import NavUser from '@/components/NavUser.vue';
+import NotificationBell from '@/components/NotificationBell.vue';
 
 defineProps<{
     breadcrumbs?: BreadcrumbItemType[];
@@ -36,7 +37,8 @@ defineProps<{
             </template>
         </div>
 
-        <div class="ml-auto flex items-center">
+        <div class="ml-auto flex items-center gap-1">
+            <NotificationBell />
             <NavUser />
         </div>
     </header>

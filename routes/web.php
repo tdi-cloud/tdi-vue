@@ -15,6 +15,7 @@ use App\Http\Controllers\ForeignNominationController;
 use App\Http\Controllers\ForeignParticipantController;
 use App\Http\Controllers\ForeignProgramController;
 use App\Http\Controllers\ForeignSponsorConfigController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrganizingSponsorController;
 use App\Http\Controllers\ParticipantController;
 use App\Http\Controllers\ProgramController;
@@ -267,6 +268,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::delete('/my-programs/{batch}/certificates/{certificate}', [CertificateController::class, 'destroyByUser'])
         ->name('certificates.destroy-by-user');
+
+    // NOTIFICATIONS
+    Route::get('/notifications', [NotificationController::class, 'index'])
+        ->name('notifications.index');
+
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead'])
+        ->name('notifications.read');
+
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])
+        ->name('notifications.read-all');
 
     // SELF RATING
 

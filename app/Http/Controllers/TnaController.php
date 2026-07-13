@@ -5,6 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Competency;
 use App\Models\Employee;
 use App\Models\TnaAssessment;
+use App\Models\User;
+use App\Notifications\FasdAssigned;
+use App\Notifications\NewSubordinateToRate;
+use App\Notifications\SelfRatingReviewed;
+use App\Notifications\SelfRatingSubmitted;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -262,6 +267,9 @@ class TnaController extends Controller
             ]);
         });
 
+        $assessment->user?->notify(new SelfRatingReviewed($assessment));
+        $assessment->user?->notify(new FasdAssigned($assessment));
+
         return redirect()
             ->route('tna.supervisory.index')
             ->with('success', 'Supervisory rating submitted. Thank you!');
@@ -361,6 +369,8 @@ class TnaController extends Controller
         $assessment->update([
             'supervisor_form' => array_merge($assessment->supervisor_form ?? [], $data),
         ]);
+
+        $assessment->user?->notify(new FasdAssigned($assessment));
 
         return redirect()
             ->route('tna.supervisory.index')
@@ -922,7 +932,7 @@ class TnaController extends Controller
             ]);
         }
 
-        DB::transaction(function () use ($data, $user, $position, $period, $competencies) {
+        $assessment = DB::transaction(function () use ($data, $user, $position, $period, $competencies) {
             $assessment = TnaAssessment::create([
                 'user_id' => $user->id,
                 'position' => $position,
@@ -958,7 +968,16 @@ class TnaController extends Controller
                     'frequency' => $r['frequency'] ?? null,
                 ]);
             }
+
+            return $assessment;
         });
+
+        $user->notify(new SelfRatingSubmitted($assessment));
+
+        $supervisorUser = User::where('empcode', $data['supervisor_empcode'])->first();
+        if ($supervisorUser) {
+            $supervisorUser->notify(new NewSubordinateToRate($assessment));
+        }
 
         return redirect()
             ->route('tna.self-rating')

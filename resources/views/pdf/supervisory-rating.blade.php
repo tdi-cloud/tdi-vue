@@ -73,6 +73,7 @@
     .sign .sig-img-wrap { text-align: center; margin-bottom: 4px; }
     .sign .sig-img-wrap img { height: 70px; }
     .sign .name { font-weight: bold; text-transform: uppercase; text-align: center; padding-bottom: 2px; }
+    .sign .name.no-img { margin-top: 56px; }
     .sign .line { border-top: 1px solid #000; text-align: center; padding-top: 2px; }
 </style>
 </head>
@@ -281,7 +282,7 @@
                 @if ($form['signature'] ?? null)
                     <div class="sig-img-wrap"><img src="{{ $form['signature'] }}"></div>
                 @endif
-                <div class="name">{{ $form['name'] ?? $a->supervisor_name }}</div>
+                <div class="name @if (! ($form['signature'] ?? null)) no-img @endif">{{ $form['name'] ?? $a->supervisor_name }}</div>
                 <div class="line">Signature over printed name</div>
             </td>
         </tr>

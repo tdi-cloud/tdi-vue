@@ -27,13 +27,10 @@
       <!-- Auth Buttons -->
       <div class="navbar__actions">
         <template v-if="auth?.user">
-          <!-- Admin: Dashboard button -->
-          <Link v-if="isAdmin" :href="route('dashboard')" class="btn btn--primary">
-            <ChartPie class="w-4 mr-2"/> Dashboard
-          </Link>
+          <NotificationBell button-class="text-white/85 hover:bg-white/10 hover:text-white" />
 
-          <!-- Regular user: name + dropdown (Settings, Logout) -->
-          <div v-else class="user-menu" ref="userMenuRef">
+          <!-- Name + dropdown (Dashboard [admin only], Settings, Logout) -->
+          <div class="user-menu" ref="userMenuRef">
             <button class="user-menu__trigger" @click="userMenuOpen = !userMenuOpen">
               <span class="user-menu__avatar">{{ initials }}</span>
               <span class="user-menu__name">{{ auth.user.name }}</span>
@@ -49,6 +46,9 @@
                 </div>
               </div>
               <div class="user-menu__divider"></div>
+              <Link v-if="isAdmin" :href="route('dashboard')" class="user-menu__item" @click="userMenuOpen = false">
+                <ChartPie :size="15" /> Dashboard
+              </Link>
               <Link :href="route('profile.edit')" class="user-menu__item" @click="userMenuOpen = false">
                 <Settings :size="15" /> Settings
               </Link>
@@ -83,17 +83,17 @@
 
       <div class="mobile-menu__actions">
         <template v-if="auth?.user">
+          <NotificationBell button-class="text-white/85 hover:bg-white/10 hover:text-white" />
+
           <Link v-if="isAdmin" :href="route('dashboard')" class="btn btn--primary" @click="mobileMenuOpen = false">
             <ChartPie /> Dashboard
           </Link>
-          <template v-else>
-            <Link :href="route('profile.edit')" class="btn btn--outline" @click="mobileMenuOpen = false">
-              <Settings class="w-4 h-4 mr-1" /> Settings
-            </Link>
-            <button type="button" class="btn btn--outline" @click="logout">
-              <LogOut class="w-4 h-4 mr-1" /> Log out
-            </button>
-          </template>
+          <Link :href="route('profile.edit')" class="btn btn--outline" @click="mobileMenuOpen = false">
+            <Settings class="w-4 h-4 mr-1" /> Settings
+          </Link>
+          <button type="button" class="btn btn--outline" @click="logout">
+            <LogOut class="w-4 h-4 mr-1" /> Log out
+          </button>
         </template>
         <template v-else>
           <Link :href="route('login')"    class="btn btn--outline" @click="mobileMenuOpen = false">Login</Link>
@@ -108,6 +108,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { Link, usePage, router } from '@inertiajs/vue3'
 import { useScrollTo } from '@/composables/useScrollTo'
+import NotificationBell from '@/components/NotificationBell.vue'
 import { ChartPie, GraduationCap, ChevronsUpDown, Settings, LogOut } from 'lucide-vue-next'
 
 const { scrollTo } = useScrollTo()

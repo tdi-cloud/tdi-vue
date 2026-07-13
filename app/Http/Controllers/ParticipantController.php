@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Batch;
 use App\Models\Employee;
 use App\Models\Participant;
+use App\Models\User;
+use App\Notifications\ParticipantAdded;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -40,7 +42,7 @@ class ParticipantController extends Controller
      */
     public function search(Request $request)
     {
-        $q       = $request->query('q');
+        $q = $request->query('q');
         $batchId = $request->query('batch_id');
 
         $batch = Batch::find($batchId);
@@ -53,8 +55,8 @@ class ParticipantController extends Controller
             ->when($q, function ($query) use ($q) {
                 $query->where(function ($w) use ($q) {
                     $w->where('LASTNAME', 'LIKE', "%{$q}%")
-                      ->orWhere('FIRSTNAME', 'LIKE', "%{$q}%")
-                      ->orWhere('EMPCODE', 'LIKE', "%{$q}%");
+                        ->orWhere('FIRSTNAME', 'LIKE', "%{$q}%")
+                        ->orWhere('EMPCODE', 'LIKE', "%{$q}%");
                 });
             })
             ->whereNotIn('EMPCODE', $existing)
@@ -65,7 +67,7 @@ class ParticipantController extends Controller
         return response()->json(
             $employees->map(fn ($e) => [
                 'empcode' => $e->EMPCODE,
-                'name'    => $e->name,
+                'name' => $e->name,
             ])->values()
         );
     }
@@ -77,8 +79,8 @@ class ParticipantController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'batch_id'   => 'required|exists:batches,id',
-            'empcodes'   => 'required|array|min:1',
+            'batch_id' => 'required|exists:batches,id',
+            'empcodes' => 'required|array|min:1',
             'empcodes.*' => 'required|string|exists:employees,EMPCODE',
         ]);
 
@@ -88,23 +90,26 @@ class ParticipantController extends Controller
 
         $sort = Participant::where('batch_id', $batch->id)->count();
 
-        $added   = 0;
+        $added = 0;
         $skipped = [];
 
         foreach ($request->empcodes as $empcode) {
             if (in_array($empcode, $enrolled)) {
                 $skipped[] = $empcode;
+
                 continue;
             }
 
-            Participant::create([
+            $participant = Participant::create([
                 'sort_order' => ++$sort,
-                'batch_id'   => $batch->id,
-                'empcode'    => $empcode,
+                'batch_id' => $batch->id,
+                'empcode' => $empcode,
                 'attendance' => 'Pending',
-                'hours'      => 0,
-                'added_by'   => auth()->user()->name ?? 'system',
+                'hours' => 0,
+                'added_by' => auth()->user()->name ?? 'system',
             ]);
+
+            User::where('empcode', $empcode)->first()?->notify(new ParticipantAdded($participant));
 
             $enrolled[] = $empcode;
             $added++;
@@ -140,10 +145,10 @@ class ParticipantController extends Controller
     public function updateAttendance(Request $request, Participant $participant)
     {
         $request->validate([
-            'attendance'    => 'required|in:Pending,Complete,Absent',
+            'attendance' => 'required|in:Pending,Complete,Absent',
 
             // I-validate lang ang hours kapag Complete; kapag hindi, huwag pansinin
-            'hours'         => 'exclude_unless:attendance,Complete|required|numeric|min:0.5',
+            'hours' => 'exclude_unless:attendance,Complete|required|numeric|min:0.5',
 
             // I-validate lang ang file kapag Absent; required lang kung wala pang naka-upload na memo
             'justification' => [
@@ -154,11 +159,11 @@ class ParticipantController extends Controller
                 'max:5120',
             ],
         ], [
-            'hours.required'         => 'Please enter the completed hours.',
+            'hours.required' => 'Please enter the completed hours.',
             'justification.required' => 'Please upload the justification memo for the absence.',
         ]);
 
-        $batch    = $participant->batch;
+        $batch = $participant->batch;
         $maxHours = (float) ($batch->hours ?? 0);
 
         switch ($request->attendance) {
@@ -167,7 +172,7 @@ class ParticipantController extends Controller
                 $this->deleteJustification($participant); // ✅ linisin ang memo
                 $participant->update([
                     'attendance' => 'Pending',
-                    'hours'      => 0,
+                    'hours' => 0,
                 ]);
                 break;
 
@@ -183,7 +188,7 @@ class ParticipantController extends Controller
                 $this->deleteJustification($participant); // ✅ linisin ang memo
                 $participant->update([
                     'attendance' => 'Complete',
-                    'hours'      => $hours,
+                    'hours' => $hours,
                 ]);
                 break;
 
@@ -202,7 +207,7 @@ class ParticipantController extends Controller
 
                 $participant->update([
                     'attendance' => 'Absent',
-                    'hours'      => 0,
+                    'hours' => 0,
                 ]);
                 break;
         }
@@ -210,17 +215,16 @@ class ParticipantController extends Controller
         return back()->with('success', 'Attendance updated.');
     }
 
-
     public function applyToAll(Request $request, Participant $participant)
     {
         $request->validate([
             'attendance' => 'required|in:Complete',
-            'hours'      => 'required|numeric|min:0.5',
+            'hours' => 'required|numeric|min:0.5',
         ]);
 
-        $batch    = $participant->batch;
+        $batch = $participant->batch;
         $maxHours = (float) ($batch->hours ?? 0);
-        $hours    = (float) $request->hours;
+        $hours = (float) $request->hours;
 
         if ($maxHours > 0 && $hours > $maxHours) {
             return back()->withErrors([
@@ -232,7 +236,7 @@ class ParticipantController extends Controller
             ->where('attendance', '!=', 'Absent')
             ->update([
                 'attendance' => 'Complete',
-                'hours'      => $hours,
+                'hours' => $hours,
             ]);
 
         return back()->with('success', 'Attendance applied to all eligible participants.');
@@ -274,49 +278,53 @@ class ParticipantController extends Controller
             if (! $employee) {
                 $results[] = [
                     'empcode' => $code,
-                    'name'    => null,
-                    'status'  => 'failed',
-                    'reason'  => 'Employee code not found.',
+                    'name' => null,
+                    'status' => 'failed',
+                    'reason' => 'Employee code not found.',
                 ];
+
                 continue;
             }
 
             if (in_array($employee->EMPCODE, $enrolled)) {
                 $results[] = [
                     'empcode' => $employee->EMPCODE,
-                    'name'    => $employee->name,
-                    'status'  => 'failed',
-                    'reason'  => 'Already enrolled in another batch of this program.',
+                    'name' => $employee->name,
+                    'status' => 'failed',
+                    'reason' => 'Already enrolled in another batch of this program.',
                 ];
+
                 continue;
             }
 
-            Participant::create([
+            $participant = Participant::create([
                 'sort_order' => ++$sort,
-                'batch_id'   => $batch->id,
-                'empcode'    => $employee->EMPCODE,
+                'batch_id' => $batch->id,
+                'empcode' => $employee->EMPCODE,
                 'attendance' => 'Pending',
-                'hours'      => 0,
-                'added_by'   => auth()->user()->name ?? 'system',
+                'hours' => 0,
+                'added_by' => auth()->user()->name ?? 'system',
             ]);
+
+            User::where('empcode', $employee->EMPCODE)->first()?->notify(new ParticipantAdded($participant));
 
             $enrolled[] = $employee->EMPCODE;
 
             $results[] = [
                 'empcode' => $employee->EMPCODE,
-                'name'    => $employee->name,
-                'status'  => 'success',
-                'reason'  => null,
+                'name' => $employee->name,
+                'status' => 'success',
+                'reason' => null,
             ];
         }
 
         $successCount = count(array_filter($results, fn ($r) => $r['status'] === 'success'));
-        $failedCount  = count($results) - $successCount;
+        $failedCount = count($results) - $successCount;
 
         return back()->with('bulkResult', [
             'results' => $results,
             'success' => $successCount,
-            'failed'  => $failedCount,
+            'failed' => $failedCount,
         ]);
     }
 
@@ -332,7 +340,7 @@ class ParticipantController extends Controller
             ->orderBy('id')
             ->get();
 
-        $index = $siblings->search(fn($p) => $p->id === $participant->id);
+        $index = $siblings->search(fn ($p) => $p->id === $participant->id);
 
         if ($request->direction === 'up' && $index > 0) {
             $swap = $siblings[$index - 1];

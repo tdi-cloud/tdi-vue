@@ -1,4 +1,5 @@
 {
+    "name": "tdi-vue",
     "private": true,
     "type": "module",
     "scripts": {
