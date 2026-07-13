@@ -23,6 +23,10 @@ class TnaAssessment extends Model
         'submitted_at',
         'supervisor_reviewed_at',
         'supervisor_form',
+        'self_rating_scan_path',
+        'supervisor_rating_scan_path',
+        'result_scan_subordinate_path',
+        'result_scan_supervisor_path',
     ];
 
     protected $casts = [

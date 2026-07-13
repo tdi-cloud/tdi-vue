@@ -23,6 +23,7 @@
     table.grid thead th { text-align: center; font-weight: bold; vertical-align: middle; font-size: 7pt; padding: 3px 1px; line-height: 1.15; }
     table.grid th.sf { width: 7.5%; font-size: 8pt; font-style: normal; font-weight: bold; padding: 1px 0; }
     table.grid td.unit { width: 20%; font-weight: normal; vertical-align: middle; text-align: center; padding: 4px 4px; }
+    table.grid td.unit-cont { border-top: 0; }
     table.grid th.h-unit { width: 20%; }
     table.grid th.h-elem { width: 25%; }
     table.grid th.h-grp  { width: 15%; }
@@ -62,7 +63,10 @@
     table.sign { width: 100%; border-collapse: collapse; margin-top: 16px; page-break-inside: avoid; }
     table.sign td { border: 1px solid #000; padding: 6px 8px; font-size: 10pt; vertical-align: top; height: 110px; }
     .sign-label { font-weight: normal; }
-    .sign-name { margin-top: 56px; font-weight: bold; text-transform: uppercase; }
+    .sign-img-wrap { text-align: center; margin-top: 10px; }
+    .sign-img-wrap img { height: 55px; }
+    .sign-name { margin-top: 4px; font-weight: bold; text-transform: uppercase; }
+    .sign-name.no-img { margin-top: 56px; }
     .sign-pos { font-size: 9pt; }
 </style>
 </head>
@@ -145,8 +149,13 @@
                 <tbody>
                     @foreach ($unit['rows'] as $row)
                         <tr>
+                            {{-- Walang rowspan: iniiwasan ang dompdf bug kapag
+                                 nahati ang unit sa page break. Blangko + walang
+                                 top border = mukhang merged pa rin. --}}
                             @if ($loop->first)
-                                <td class="unit" rowspan="{{ count($unit['rows']) }}">{{ $unit['unit'] }}</td>
+                                <td class="unit">{{ $unit['unit'] }}</td>
+                            @else
+                                <td class="unit unit-cont"></td>
                             @endif
                             <td class="elem">{{ $row['element'] }}</td>
                             <td class="num">{{ $n($row['crit_self']) }}</td>
@@ -203,13 +212,16 @@
     <tr>
         <td style="width:50%">
             <div class="sign-label">Prepared by:</div>
-            <div class="sign-name">{{ $a->name }}</div>
-            <div class="sign-pos">{{ $a->position }}, {{ $a->office }}</div>
+            @if ($form['signature'] ?? null)
+                <div class="sign-img-wrap"><img src="{{ $form['signature'] }}"></div>
+            @endif
+            <div class="sign-name @if (! ($form['signature'] ?? null)) no-img @endif">{{ $form['name'] ?? $a->supervisor_name }}</div>
+            <div class="sign-pos">{{ $a->supervisor_position }}{{ ($form['office'] ?? null) ? ', ' . $form['office'] : '' }}</div>
         </td>
         <td style="width:50%">
             <div class="sign-label">Noted by:</div>
-            <div class="sign-name">{{ $form['name'] ?? $a->supervisor_name }}</div>
-            <div class="sign-pos">{{ $a->supervisor_position }}{{ ($form['office'] ?? null) ? ', ' . $form['office'] : '' }}</div>
+            <div class="sign-name no-img">{{ $form['fasd_name'] ?? '' }}</div>
+            <div class="sign-pos">{{ $form['fasd_position'] ?? '' }}{{ ($form['fasd_office'] ?? null) ? ', ' . $form['fasd_office'] : '' }}</div>
         </td>
     </tr>
 </table>

@@ -2,7 +2,8 @@
 import { Head, Link, useForm } from '@inertiajs/vue3'
 import TnaBackdrop from './TnaBackdrop.vue'
 import BackToTop from './BackToTop.vue'
-import { computed, reactive, ref } from 'vue'
+import SignaturePad from '@/components/ui/signature-pad/SignaturePad.vue'
+import { computed, reactive, ref, watch } from 'vue'
 
 const props = defineProps({
   assessment: { type: Object, required: true },   // { id, period, subordinate_name, subordinate_position }
@@ -44,17 +45,76 @@ const donePct = computed(() =>
   requiredIds.length ? Math.round((doneCount.value / requiredIds.length) * 100) : 100,
 )
 
+/* FASD search (Noted by signatory sa TNA Result) */
+const fasdQuery = ref('')
+const fasdResults = ref([])
+const fasdLoading = ref(false)
+const fasdOpen = ref(false)
+const selectedFasd = ref(null)
+let fasdTimer = null
+
+watch(fasdQuery, (val) => {
+  clearTimeout(fasdTimer)
+  if (val.trim().length < 2) {
+    fasdResults.value = []
+    fasdOpen.value = false
+    return
+  }
+  fasdTimer = setTimeout(runFasdSearch, 300)
+})
+
+async function runFasdSearch() {
+  fasdLoading.value = true
+  fasdOpen.value = true
+  try {
+    const res = await fetch(
+      route('tna.fasd.search') + '?q=' + encodeURIComponent(fasdQuery.value),
+      { headers: { Accept: 'application/json' } },
+    )
+    fasdResults.value = res.ok ? await res.json() : []
+  } catch {
+    fasdResults.value = []
+  } finally {
+    fasdLoading.value = false
+  }
+}
+
+function pickFasd(f) {
+  selectedFasd.value = f
+  fasdQuery.value = ''
+  fasdResults.value = []
+  fasdOpen.value = false
+  form.fasd_empcode = f.empcode
+  form.fasd_name = f.name
+  form.fasd_position = f.position ?? ''
+  form.fasd_office = f.office ?? ''
+}
+
+function clearFasd() {
+  selectedFasd.value = null
+  fasdQuery.value = ''
+  fasdResults.value = []
+  form.fasd_empcode = ''
+  form.fasd_name = ''
+  form.fasd_position = ''
+  form.fasd_office = ''
+}
+
 const form = useForm({
   name: props.supervisor.name ?? '',
   office: props.supervisor.office ?? '',
   division: props.supervisor.division ?? '',
   subordinate_name: props.assessment.subordinate_name ?? '',
   subordinate_position: props.assessment.subordinate_position ?? '',
-  signature: '',
+  signature: null,
+  fasd_empcode: '',
+  fasd_name: '',
+  fasd_position: '',
+  fasd_office: '',
   ratings: [],
 })
 
-const canSubmit = computed(() => donePct.value === 100 && !!form.signature.trim())
+const canSubmit = computed(() => donePct.value === 100 && !!form.fasd_empcode)
 
 const submit = () => {
   form
@@ -306,16 +366,77 @@ const submit = () => {
         </section>
       </div>
 
+      <!-- FASD SIGNATORY (Noted by, TNA Result) -->
+      <div class="rounded-2xl bg-white p-8 shadow-xl">
+        <h2 class="text-lg font-bold text-gray-900">FASD Signatory for TNA Result</h2>
+        <p class="mb-4 text-sm text-gray-500">
+          Select the FASD of your region who will be the "Noted by" signatory on the
+          TNA Result. This is required before you can submit.
+        </p>
+
+        <div class="relative max-w-xl">
+          <input
+            v-model="fasdQuery"
+            type="text"
+            placeholder="Search by name or empcode…"
+            autocomplete="off"
+            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            @focus="fasdResults.length && (fasdOpen = true)"
+          />
+
+          <!-- Dropdown -->
+          <div
+            v-if="fasdOpen && (fasdLoading || fasdResults.length)"
+            class="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg"
+          >
+            <div v-if="fasdLoading" class="px-4 py-3 text-sm text-gray-400">Searching…</div>
+            <button
+              v-for="f in fasdResults"
+              :key="f.empcode"
+              type="button"
+              class="flex w-full flex-col items-start border-b border-gray-50 px-4 py-2.5 text-left last:border-0 hover:bg-blue-50"
+              @click="pickFasd(f)"
+            >
+              <span class="text-sm font-semibold text-gray-900">{{ f.name }}</span>
+              <span class="text-xs text-gray-500">{{ f.position }} · {{ f.office }}</span>
+            </button>
+          </div>
+          <div
+            v-else-if="fasdOpen && !fasdLoading && fasdQuery.length >= 2"
+            class="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-400 shadow-lg"
+          >
+            No matching results found.
+          </div>
+        </div>
+
+        <!-- Selected chip -->
+        <div
+          v-if="selectedFasd"
+          class="mt-4 flex items-center justify-between rounded-xl border border-green-200 bg-green-50 px-4 py-3"
+        >
+          <div>
+            <p class="text-xs font-medium uppercase tracking-wide text-green-700">Selected FASD</p>
+            <p class="text-sm font-semibold text-gray-900">{{ selectedFasd.name }}</p>
+            <p class="text-xs text-gray-500">{{ selectedFasd.position }} · {{ selectedFasd.office }}</p>
+          </div>
+          <button type="button" class="text-xs font-semibold text-red-600 hover:underline" @click="clearFasd">
+            Change
+          </button>
+        </div>
+        <p v-if="form.errors.fasd_empcode" class="mt-2 text-xs text-red-600">
+          {{ form.errors.fasd_empcode }}
+        </p>
+      </div>
+
       <!-- SIGNATURE + SUBMIT -->
       <div class="rounded-2xl bg-white p-8 shadow-xl">
         <label class="block text-sm font-medium leading-relaxed text-gray-700">
-          By typing my name below, I understand and agree that this form of
-          electronic signature has the same legal force and effect as a manual
-          signature.
+          You may sign below using your mouse, finger, or an uploaded photo. By
+          signing, you understand and agree that this form of electronic
+          signature has the same legal force and effect as a manual signature.
+          This step is optional — you may leave it blank and add your signature later.
         </label>
-        <input v-model="form.signature" type="text" placeholder="e.g. Juan D. Dela Cruz"
-          aria-label="Electronic signature"
-          class="mt-1.5 w-full max-w-md rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" />
+        <SignaturePad v-model="form.signature" class="mt-1.5" />
         <p v-if="form.errors.signature" class="mt-1 text-xs text-red-600">{{ form.errors.signature }}</p>
         <p v-if="form.errors.ratings" class="mt-1 text-xs text-red-600">{{ form.errors.ratings }}</p>
 
@@ -328,8 +449,8 @@ const submit = () => {
           <span v-if="donePct < 100" class="text-xs text-gray-500">
             {{ requiredIds.length - doneCount }} more element(s) to answer.
           </span>
-          <span v-else-if="!form.signature.trim()" class="text-xs text-gray-500">
-            Please type your name to sign.
+          <span v-else-if="!form.fasd_empcode" class="text-xs text-gray-500">
+            Please select the FASD signatory above.
           </span>
         </div>
       </div>

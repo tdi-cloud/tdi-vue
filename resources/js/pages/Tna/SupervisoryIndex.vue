@@ -2,6 +2,7 @@
 import { Head, Link, usePage, router } from '@inertiajs/vue3'
 import TnaBackdrop from './TnaBackdrop.vue'
 import BackToTop from './BackToTop.vue'
+import TnaScanUpload from '@/components/TnaScanUpload.vue'
 import { computed } from 'vue'
 
 defineProps({
@@ -63,8 +64,9 @@ function redoRating(id) {
         <div
           v-for="a in assessments"
           :key="a.id"
-          class="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-white p-5 shadow-xl"
+          class="rounded-2xl bg-white p-5 shadow-xl"
         >
+        <div class="flex flex-wrap items-center justify-between gap-4">
           <div class="min-w-0">
             <div class="flex items-center gap-2">
               <p class="text-base font-semibold text-gray-900">{{ a.name }}</p>
@@ -108,6 +110,12 @@ function redoRating(id) {
                 </svg>
                 View PDF
               </a>
+              <Link
+                :href="route('tna.supervisory.fasd.edit', a.id)"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
+              >
+                Change FASD
+              </Link>
               <button
                 type="button"
                 class="inline-flex items-center gap-1.5 rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50"
@@ -129,6 +137,16 @@ function redoRating(id) {
               Rate
             </Link>
           </div>
+        </div>
+
+        <div v-if="a.reviewed" class="mt-4 border-t border-gray-100 pt-4">
+          <TnaScanUpload
+            :assessment-id="a.id"
+            type="supervisory"
+            label="Supervisory Rating"
+            :has-file="a.supervisor_scan_uploaded"
+          />
+        </div>
         </div>
       </div>
 

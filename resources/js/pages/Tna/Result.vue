@@ -2,13 +2,17 @@
 import { Head, Link } from '@inertiajs/vue3'
 import TnaBackdrop from './TnaBackdrop.vue'
 import BackToTop from './BackToTop.vue'
+import TnaScanUpload from '@/components/TnaScanUpload.vue'
 
 defineProps({
   assessment: { type: Object, required: true },
   units: { type: Array, default: () => [] },
   priority: { type: Array, default: () => [] },
+  revisedPriority: { type: Array, default: () => [] },
   bands: { type: Array, default: () => [] },
 })
+
+const weighted = (self, sup) => (0.4 * Number(self)) + (0.6 * Number(sup))
 
 const badgeClass = (label) => ({
   'Not Competent': 'bg-red-100 text-red-700',
@@ -81,6 +85,60 @@ const fmt = (n) => Number(n).toFixed(1)
           <div>
             <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Rated on</p>
             <p class="text-sm font-semibold text-gray-900">{{ assessment.reviewed_at }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- SIGNED COPIES -->
+      <div class="rounded-2xl bg-white p-8 shadow-xl">
+        <h2 class="text-sm font-bold uppercase tracking-wide text-blue-700">Signed Copies</h2>
+        <p class="mt-1 text-sm text-gray-500">
+          Optional attachments — the auto-generated PDF above remains the official record.
+        </p>
+        <div class="mt-4 grid grid-cols-1 gap-6 border-t border-gray-100 pt-5 md:grid-cols-2">
+          <div>
+            <TnaScanUpload
+              v-if="assessment.is_owner"
+              :assessment-id="assessment.id"
+              type="result-subordinate"
+              label="Subordinate's Copy"
+              :has-file="assessment.result_scan_subordinate_uploaded"
+            />
+            <template v-else>
+              <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Subordinate's Copy</p>
+              <a
+                v-if="assessment.result_scan_subordinate_uploaded"
+                :href="route('tna.scans.download', [assessment.id, 'result-subordinate'])"
+                target="_blank"
+                rel="noopener"
+                class="mt-1.5 inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-600 shadow-sm transition hover:bg-blue-50"
+              >
+                View Signed Copy
+              </a>
+              <p v-else class="mt-1.5 text-xs text-gray-400">Not yet uploaded.</p>
+            </template>
+          </div>
+          <div>
+            <TnaScanUpload
+              v-if="assessment.is_supervisor"
+              :assessment-id="assessment.id"
+              type="result-supervisor"
+              label="Supervisor's Copy"
+              :has-file="assessment.result_scan_supervisor_uploaded"
+            />
+            <template v-else>
+              <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Supervisor's Copy</p>
+              <a
+                v-if="assessment.result_scan_supervisor_uploaded"
+                :href="route('tna.scans.download', [assessment.id, 'result-supervisor'])"
+                target="_blank"
+                rel="noopener"
+                class="mt-1.5 inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-600 shadow-sm transition hover:bg-blue-50"
+              >
+                View Signed Copy
+              </a>
+              <p v-else class="mt-1.5 text-xs text-gray-400">Not yet uploaded.</p>
+            </template>
           </div>
         </div>
       </div>
@@ -179,6 +237,78 @@ const fmt = (n) => Number(n).toFixed(1)
         <p class="mt-3 text-xs text-gray-400">
           <b>Sf</b> = Self rating · <b>Sp</b> = Supervisor rating
         </p>
+      </div>
+
+      <!-- REVISED RESULT (NEW FORMULA) -->
+      <div class="rounded-2xl bg-white p-8 shadow-xl">
+        <h2 class="text-sm font-bold uppercase tracking-wide text-purple-700">Revised Result (New Formula)</h2>
+        <p class="mt-2 text-sm leading-relaxed text-gray-600">
+          Score = Criticality × (4 − Competence). Unlike the result above, a
+          <b>higher</b> score here means a <b>higher</b> training need.
+        </p>
+
+        <div class="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-5">
+          <div class="lg:col-span-3">
+            <h3 class="text-xs font-bold uppercase tracking-wide text-purple-700">Revised Training Priority</h3>
+            <ol v-if="revisedPriority.length" class="mt-3 space-y-2">
+              <li
+                v-for="(p, i) in revisedPriority"
+                :key="p.unit"
+                class="flex items-start gap-3 rounded-xl bg-purple-50/70 p-3"
+              >
+                <span class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-purple-600 text-xs font-bold text-white">
+                  {{ i + 1 }}
+                </span>
+                <div class="min-w-0">
+                  <p class="text-sm font-semibold text-gray-800">{{ p.unit }}</p>
+                  <p class="mt-0.5 text-xs text-gray-500">
+                    Highest score <span class="font-semibold">{{ fmt(p.revised_score) }}</span>
+                  </p>
+                </div>
+              </li>
+            </ol>
+            <p v-else class="mt-3 text-sm text-gray-500">No data available.</p>
+          </div>
+
+          <div class="rounded-xl border border-purple-100 bg-purple-50/40 p-4 text-xs leading-relaxed text-gray-600 lg:col-span-2">
+            <p><b>Criticality</b>: 1 (slightly) – 3 (highly important)</p>
+            <p class="mt-1"><b>Competence</b>: 0 (not competent) – 4 (highly competent)</p>
+            <p class="mt-1">Max score = 3 × 4 = 12.</p>
+          </div>
+        </div>
+
+        <div class="mt-6 overflow-x-auto">
+          <table class="w-full border-collapse text-sm">
+            <thead>
+              <tr class="border-b-2 border-gray-200 text-xs uppercase text-gray-500">
+                <th class="px-3 py-2 text-left">Unit of Competency</th>
+                <th class="px-3 py-2 text-left">Elements of Unit</th>
+                <th class="border-l border-gray-200 px-3 py-2 text-center">Criticality</th>
+                <th class="border-l border-gray-200 px-3 py-2 text-center">Competence</th>
+                <th class="border-l border-gray-200 px-3 py-2 text-center">Revised Score</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template v-for="(u, ui) in units" :key="`revised-${ui}`">
+                <tr v-for="(r, ri) in u.rows" :key="`revised-${r.competency_id}`" class="border-b border-gray-100">
+                  <td v-if="ri === 0" :rowspan="u.rows.length" class="px-3 py-2 align-middle font-semibold text-gray-700">
+                    {{ u.unit }}
+                  </td>
+                  <td class="px-3 py-2 text-gray-700">{{ r.element }}</td>
+                  <td class="border-l border-gray-100 px-3 py-2 text-center text-gray-900">
+                    {{ fmt(weighted(r.crit_self, r.crit_sup)) }}
+                  </td>
+                  <td class="border-l border-gray-100 px-3 py-2 text-center text-gray-900">
+                    {{ fmt(weighted(r.comp_self, r.comp_sup)) }}
+                  </td>
+                  <td class="border-l border-gray-100 px-3 py-2 text-center font-bold text-purple-700">
+                    {{ fmt(r.revised_score) }}
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <!-- FOOTER -->

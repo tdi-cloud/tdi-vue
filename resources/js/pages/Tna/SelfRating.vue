@@ -2,6 +2,8 @@
 import { Head, Link, useForm, usePage, router } from '@inertiajs/vue3'
 import TnaBackdrop from './TnaBackdrop.vue'
 import BackToTop from './BackToTop.vue'
+import SignaturePad from '@/components/ui/signature-pad/SignaturePad.vue'
+import TnaScanUpload from '@/components/TnaScanUpload.vue'
 import { computed, reactive, ref, watch } from 'vue'
 
 const props = defineProps({
@@ -111,12 +113,12 @@ const form = useForm({
   supervisor_empcode: '',
   supervisor_name: '',
   supervisor_position: '',
-  signature: '',
+  signature: null,
   ratings: [],
 })
 
 const canSubmit = computed(
-  () => !!form.supervisor_empcode && corePct.value === 100 && !!form.signature.trim(),
+  () => !!form.supervisor_empcode && corePct.value === 100,
 )
 
 const submit = () => {
@@ -284,6 +286,16 @@ function saveSupervisor() {
         <p v-if="alreadySubmitted.reviewed" class="mt-3 text-xs text-gray-400">
           This self-rating has been reviewed by your supervisor and can no longer be edited.
         </p>
+
+        <!-- Signed copy -->
+        <div class="mx-auto mt-6 max-w-md border-t border-gray-100 pt-5 text-left">
+          <TnaScanUpload
+            :assessment-id="alreadySubmitted.id"
+            type="self"
+            label="Self-Rating"
+            :has-file="alreadySubmitted.self_scan_uploaded"
+          />
+        </div>
 
         <!-- Change supervisor -->
         <div v-if="!alreadySubmitted.reviewed" class="mx-auto mt-6 max-w-md border-t border-gray-100 pt-5 text-left">
@@ -569,13 +581,12 @@ function saveSupervisor() {
         <!-- SIGNATURE + SUBMIT -->
         <div class="rounded-2xl bg-white p-8 shadow-xl">
           <label class="block text-sm font-medium leading-relaxed text-gray-700">
-            By typing my name below, I understand and agree that this form of
-            electronic signature has the same legal force and effect as a manual
-            signature.
+            You may sign below using your mouse, finger, or an uploaded photo. By
+            signing, you understand and agree that this form of electronic
+            signature has the same legal force and effect as a manual signature.
+            This step is optional — you may leave it blank and add your signature later.
           </label>
-          <input v-model="form.signature" type="text" placeholder="e.g. Juan D. Dela Cruz"
-            aria-label="Electronic signature"
-            class="mt-1.5 w-full max-w-md rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" />
+          <SignaturePad v-model="form.signature" class="mt-1.5" />
           <p v-if="form.errors.signature" class="mt-1 text-xs text-red-600">{{ form.errors.signature }}</p>
           <p v-if="form.errors.ratings" class="mt-1 text-xs text-red-600">{{ form.errors.ratings }}</p>
 

@@ -68,8 +68,10 @@
     .elective-heading { font-size: 10pt; font-weight: bold; margin: 16px 0 0 0; }
 
     /* ===== Signature ===== */
-    .sign { width: 100%; margin-top: 40px; }
+    .sign { width: 100%; margin-top: 14px; }
     .sign td { font-size: 10pt; }
+    .sign .sig-img-wrap { text-align: center; margin-bottom: 4px; }
+    .sign .sig-img-wrap img { height: 70px; }
     .sign .name { font-weight: bold; text-transform: uppercase; text-align: center; padding-bottom: 2px; }
     .sign .line { border-top: 1px solid #000; text-align: center; padding-top: 2px; }
 </style>
@@ -274,6 +276,9 @@
         <tr>
             <td style="width:52%">&nbsp;</td>
             <td>
+                @if ($a->signature)
+                    <div class="sig-img-wrap"><img src="{{ $a->signature }}"></div>
+                @endif
                 <div class="name">{{ $a->name }}</div>
                 <div class="line">Signature over printed name</div>
             </td>
