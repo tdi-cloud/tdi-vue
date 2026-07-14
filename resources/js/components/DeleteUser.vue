@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Trash2 } from 'lucide-vue-next';
 
 const passwordInput = ref<HTMLInputElement | null>(null);
 
@@ -43,9 +44,14 @@ const closeModal = () => {
 </script>
 
 <template>
-    <div class="space-y-6">
-        <HeadingSmall title="Delete account" description="Delete your account and all of its resources" />
-        <div class="space-y-4 rounded-lg border border-red-100 bg-red-50 p-4 dark:border-red-200/10 dark:bg-red-700/10">
+    <div class="rounded-2xl border p-5 md:p-6">
+        <HeadingSmall
+            title="Delete account"
+            description="Delete your account and all of its resources"
+            :icon="Trash2"
+            icon-class="bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400"
+        />
+        <div class="mt-5 space-y-4 rounded-lg border border-red-100 bg-red-50 p-4 dark:border-red-200/10 dark:bg-red-700/10">
             <div class="relative space-y-0.5 text-red-600 dark:text-red-100">
                 <p class="font-medium">Warning</p>
                 <p class="text-sm">Please proceed with caution, this cannot be undone.</p>

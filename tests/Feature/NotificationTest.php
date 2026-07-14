@@ -3,12 +3,16 @@
 use App\Models\Batch;
 use App\Models\Competency;
 use App\Models\Employee;
+use App\Models\Participant;
 use App\Models\Program;
+use App\Models\Requirement;
+use App\Models\Submission;
 use App\Models\TnaAssessment;
 use App\Models\User;
 use App\Notifications\FasdAssigned;
 use App\Notifications\NewSubordinateToRate;
 use App\Notifications\ParticipantAdded;
+use App\Notifications\ParticipantRemoved;
 use App\Notifications\SelfRatingReviewed;
 use App\Notifications\SelfRatingSubmitted;
 use Illuminate\Support\Facades\Notification;
@@ -214,6 +218,115 @@ test('adding a participant notifies them if they have a user account', function 
     ]);
 
     Notification::assertSentTo($user, ParticipantAdded::class);
+});
+
+test('removing a participant notifies the employee', function () {
+    Notification::fake();
+
+    $employee = notifTestEmployee('EMP-412', 'Test Position');
+    $adminEmployee = notifTestEmployee('EMP-413', 'Admin', 'Reyes');
+    $user = User::factory()->create(['empcode' => $employee->EMPCODE]);
+    $admin = User::factory()->create(['empcode' => $adminEmployee->EMPCODE, 'access' => 'admin']);
+
+    $program = Program::create([
+        'title' => 'Test Program',
+        'modality' => 'Onsite',
+        'pax' => '20',
+        'category' => 'Test',
+        'type' => 'Test',
+        'initiated' => 'Test',
+        'cost' => '0',
+        'fund' => 'Test',
+        'origin' => 'Test',
+    ]);
+    $batch = Batch::create([
+        'program_code' => $program->program_code,
+        'batch' => 'Batch 1',
+        'status' => 'Open',
+        'modality' => 'Onsite',
+        'date_start' => '2026-01-01',
+        'date_end' => '2026-01-02',
+        'time_start' => '08:00',
+        'time_end' => '17:00',
+        'days' => '2',
+        'hours' => '16',
+    ]);
+
+    $participant = Participant::create([
+        'sort_order' => 1, 'batch_id' => $batch->id, 'empcode' => $employee->EMPCODE,
+        'attendance' => 'Pending', 'hours' => 0, 'added_by' => 'system',
+    ]);
+
+    $this->actingAs($admin)->delete(route('participants.destroy', $participant));
+
+    Notification::assertSentTo(
+        $user,
+        ParticipantRemoved::class,
+        fn ($notification) => ! str_contains($notification->toArray($user)['message'], 'pending submission')
+    );
+});
+
+test('removing a participant with a pending submission mentions it in the notification', function () {
+    Notification::fake();
+
+    $employee = notifTestEmployee('EMP-414', 'Test Position');
+    $adminEmployee = notifTestEmployee('EMP-415', 'Admin', 'Reyes');
+    $user = User::factory()->create(['empcode' => $employee->EMPCODE]);
+    $admin = User::factory()->create(['empcode' => $adminEmployee->EMPCODE, 'access' => 'admin']);
+
+    $program = Program::create([
+        'title' => 'Test Program',
+        'modality' => 'Onsite',
+        'pax' => '20',
+        'category' => 'Test',
+        'type' => 'Test',
+        'initiated' => 'Test',
+        'cost' => '0',
+        'fund' => 'Test',
+        'origin' => 'Test',
+    ]);
+    $batch = Batch::create([
+        'program_code' => $program->program_code,
+        'batch' => 'Batch 1',
+        'status' => 'Open',
+        'modality' => 'Onsite',
+        'date_start' => '2026-01-01',
+        'date_end' => '2026-01-02',
+        'time_start' => '08:00',
+        'time_end' => '17:00',
+        'days' => '2',
+        'hours' => '16',
+    ]);
+
+    $requirement = Requirement::create([
+        'batch_id' => $batch->id,
+        'title' => 'TREAP',
+        'name' => Requirement::nameFor('TREAP'),
+        'due_date' => now()->addDays(5)->toDateString(),
+        'is_required' => true,
+    ]);
+
+    $participant = Participant::create([
+        'sort_order' => 1, 'batch_id' => $batch->id, 'empcode' => $employee->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+    ]);
+
+    Submission::create([
+        'participant_id' => $participant->id,
+        'program_code' => $program->program_code,
+        'batch_id' => $batch->id,
+        'requirement_id' => $requirement->id,
+        'status' => 'Pending',
+        'submitted_at' => now(),
+    ]);
+
+    $this->actingAs($admin)->delete(route('participants.destroy', $participant));
+
+    Notification::assertSentTo(
+        $user,
+        ParticipantRemoved::class,
+        fn ($notification) => str_contains($notification->toArray($user)['message'], 'TREAP')
+    );
 });
 
 test('notification index only returns notifications belonging to the authenticated user', function () {

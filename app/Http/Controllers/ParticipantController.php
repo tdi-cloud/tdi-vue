@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\Participant;
 use App\Models\User;
 use App\Notifications\ParticipantAdded;
+use App\Notifications\ParticipantRemoved;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -246,7 +247,25 @@ class ParticipantController extends Controller
     {
         $this->deleteJustification($participant);
 
+        $program = $participant->batch?->program;
+        $batchLabel = $participant->batch?->batch ?? '';
+
+        $pendingRequirementTitles = $participant->submissions()
+            ->where('status', 'Pending')
+            ->with('requirement')
+            ->get()
+            ->map(fn ($submission) => $submission->requirement?->title)
+            ->filter()
+            ->values()
+            ->all();
+
+        $user = User::where('empcode', $participant->empcode)->first();
+
         $participant->delete();
+
+        if ($user && $program) {
+            $user->notify(new ParticipantRemoved($program->title, $batchLabel, $pendingRequirementTitles));
+        }
 
         return back()->with('success', 'Participant removed.');
     }

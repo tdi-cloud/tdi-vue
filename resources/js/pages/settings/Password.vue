@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { type BreadcrumbItem } from '@/types';
+import { KeyRound, ShieldCheck } from 'lucide-vue-next';
 
 interface Props {
     className?: string;
@@ -62,10 +63,15 @@ const updatePassword = () => {
         <Head title="Profile settings" />
 
         <SettingsLayout>
-            <div class="space-y-6">
-                <HeadingSmall title="Update password" description="Ensure your account is using a long, random password to stay secure" />
+            <div class="rounded-2xl border p-5 md:p-6">
+                <HeadingSmall
+                    title="Update password"
+                    description="Ensure your account is using a long, random password to stay secure"
+                    :icon="KeyRound"
+                    icon-class="bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400"
+                />
 
-                <form @submit.prevent="updatePassword" class="space-y-6">
+                <form @submit.prevent="updatePassword" class="mt-5 space-y-6">
                     <div class="grid gap-2">
                         <Label for="current_password">Current Password</Label>
                         <Input
@@ -105,6 +111,11 @@ const updatePassword = () => {
                             placeholder="Confirm password"
                         />
                         <InputError :message="form.errors.password_confirmation" />
+                    </div>
+
+                    <div class="flex items-center gap-2 rounded-xl bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">
+                        <ShieldCheck class="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        Use at least 8 characters with a mix of letters, numbers, and symbols.
                     </div>
 
                     <div class="flex items-center gap-4">

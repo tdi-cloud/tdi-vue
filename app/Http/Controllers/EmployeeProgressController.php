@@ -4,11 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Employee;
 use App\Models\Participant;
-use App\Models\Batch;
 use App\Models\Program;
-use App\Models\Submission;
 use App\Models\Requirement;
+use App\Models\Submission;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -22,9 +22,9 @@ class EmployeeProgressController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('EMPCODE', 'like', "%$search%")
-                  ->orWhere('FIRSTNAME', 'like', "%$search%")
-                  ->orWhere('LASTNAME', 'like', "%$search%")
-                  ->orWhere('OFFICE/DIVISION', 'like', "%$search%");
+                    ->orWhere('FIRSTNAME', 'like', "%$search%")
+                    ->orWhere('LASTNAME', 'like', "%$search%")
+                    ->orWhere('OFFICE/DIVISION', 'like', "%$search%");
             });
         }
 
@@ -41,14 +41,41 @@ class EmployeeProgressController extends Controller
             ->paginate($request->get('per_page', 10))
             ->withQueryString();
 
+        $empcodes = $employees->getCollection()->pluck('EMPCODE');
+
+        $progressStats = DB::table('participants as p')
+            ->join('batches as b', 'p.batch_id', '=', 'b.id')
+            ->whereIn('p.empcode', $empcodes)
+            ->selectRaw('p.empcode,
+                COUNT(*) as total_programs,
+                SUM(CASE WHEN p.attendance = "Complete" THEN 1 ELSE 0 END) as completed_programs,
+                SUM(b.hours) as total_hours,
+                SUM(COALESCE(p.hours, 0)) as hours_completed')
+            ->groupBy('p.empcode')
+            ->get()
+            ->keyBy('empcode');
+
+        $employees->through(function (Employee $employee) use ($progressStats) {
+            $stats = $progressStats->get($employee->EMPCODE);
+
+            return array_merge($employee->toArray(), [
+                'progress_stats' => [
+                    'total_programs' => (int) ($stats->total_programs ?? 0),
+                    'completed_programs' => (int) ($stats->completed_programs ?? 0),
+                    'total_hours' => (float) ($stats->total_hours ?? 0),
+                    'hours_completed' => (float) ($stats->hours_completed ?? 0),
+                ],
+            ]);
+        });
+
         $regions = Employee::distinct()->orderBy('REGION')->pluck('REGION');
         $plantillaStatuses = Employee::distinct()->orderBy('PLANTILLA STATUS')->pluck('PLANTILLA STATUS');
 
         return Inertia::render('employees/index', [
-            'employees'        => $employees,
-            'regions'          => $regions,
-            'plantillaStatuses'=> $plantillaStatuses,
-            'filters'          => $request->only(['search', 'region', 'plantilla', 'per_page']),
+            'employees' => $employees,
+            'regions' => $regions,
+            'plantillaStatuses' => $plantillaStatuses,
+            'filters' => $request->only(['search', 'region', 'plantilla', 'per_page']),
         ]);
     }
 
@@ -61,21 +88,23 @@ class EmployeeProgressController extends Controller
             ->get();
 
         $enrolledPrograms = $participants->map(function ($participant) {
-            $batch   = $participant->batch;
+            $batch = $participant->batch;
             $program = $batch?->program;
-            if (!$program) return null;
+            if (! $program) {
+                return null;
+            }
 
             $requirements = Requirement::where('batch_id', $batch->id)->get();
-            $submissions  = Submission::where('participant_id', $participant->id)->get();
+            $submissions = Submission::where('participant_id', $participant->id)->get();
 
-            $totalReqs    = $requirements->count();
+            $totalReqs = $requirements->count();
             $approvedSubs = $submissions->where('status', 'Approved')->count();
-            $pendingSubs  = $submissions->whereIn('status', ['Pending', 'Rejected'])->count();
+            $pendingSubs = $submissions->whereIn('status', ['Pending', 'Rejected'])->count();
 
             $requirementDetails = $requirements->map(function ($req) use ($submissions, $participant) {
                 $sub = $submissions->firstWhere('requirement_id', $req->id);
 
-                if (!$sub) {
+                if (! $sub) {
                     $sameTitle = Requirement::where('title', $req->title)->pluck('id');
                     $sub = Submission::where('participant_id', $participant->id)
                         ->whereIn('requirement_id', $sameTitle)
@@ -83,21 +112,21 @@ class EmployeeProgressController extends Controller
                 }
 
                 return [
-                    'id'          => $req->id,
-                    'title'       => $req->title,
-                    'name'        => $req->name,
-                    'due_date'    => $req->due_date,
+                    'id' => $req->id,
+                    'title' => $req->title,
+                    'name' => $req->name,
+                    'due_date' => $req->due_date,
                     'description' => $req->note,
-                    'required'    => $req->is_required,
-                    'submission'  => $sub ? [
-                        'id'           => $sub->id,
-                        'status'       => $sub->status,
-                        'file_path'    => $sub->file_path,
+                    'required' => $req->is_required,
+                    'submission' => $sub ? [
+                        'id' => $sub->id,
+                        'status' => $sub->status,
+                        'file_path' => $sub->file_path,
                         'submitted_at' => $sub->submitted_at,
-                        'reviewed_at'  => $sub->reviewed_at,
-                        'reviewed_by'  => $sub->reviewed_by,
-                        'notes'        => $sub->notes,
-                        'remarks'      => $sub->remarks,
+                        'reviewed_at' => $sub->reviewed_at,
+                        'reviewed_by' => $sub->reviewed_by,
+                        'notes' => $sub->notes,
+                        'remarks' => $sub->remarks,
                     ] : null,
                 ];
             });
@@ -106,31 +135,31 @@ class EmployeeProgressController extends Controller
                 && ($totalReqs === 0 || $approvedSubs >= $totalReqs);
 
             return [
-                'participant_id'       => $participant->id,
-                'batch_id'             => $batch->id,
-                'program_id'           => $program->id,
-                'program_code'         => $program->program_code,
-                'program_title'        => $program->title,
-                'batch_label'          => $batch->batch,
-                'date_start'           => $batch->date_start,
-                'date_end'             => $batch->date_end,
-                'hours'                => $participant->hours ?? $batch->hours,
-                'attendance'           => $participant->attendance,
-                'batch_status'         => $batch->status,
-                'is_completed'         => $isCompleted,
-                'total_requirements'   => $totalReqs,
+                'participant_id' => $participant->id,
+                'batch_id' => $batch->id,
+                'program_id' => $program->id,
+                'program_code' => $program->program_code,
+                'program_title' => $program->title,
+                'batch_label' => $batch->batch,
+                'date_start' => $batch->date_start,
+                'date_end' => $batch->date_end,
+                'hours' => $participant->hours ?? $batch->hours,
+                'attendance' => $participant->attendance,
+                'batch_status' => $batch->status,
+                'is_completed' => $isCompleted,
+                'total_requirements' => $totalReqs,
                 'approved_submissions' => $approvedSubs,
-                'pending_submissions'  => $pendingSubs,
-                'cover_image'          => $program->coverPage?->image,
-                'requirements'         => $requirementDetails,
+                'pending_submissions' => $pendingSubs,
+                'cover_image' => $program->coverPage?->image,
+                'requirements' => $requirementDetails,
             ];
         })->filter()->values();
 
-        $programsAttended  = $enrolledPrograms->count();
+        $programsAttended = $enrolledPrograms->count();
         $programsCompleted = $enrolledPrograms->where('is_completed', true)->count();
 
-        $allSubmissions = Submission::whereHas('participant', fn($p) => $p->where('empcode', $empcode))->count();
-        $approvedAll    = Submission::whereHas('participant', fn($p) => $p->where('empcode', $empcode))
+        $allSubmissions = Submission::whereHas('participant', fn ($p) => $p->where('empcode', $empcode))->count();
+        $approvedAll = Submission::whereHas('participant', fn ($p) => $p->where('empcode', $empcode))
             ->where('status', 'Approved')->count();
 
         $completionRate = $allSubmissions > 0
@@ -139,13 +168,13 @@ class EmployeeProgressController extends Controller
 
         return [
             'employee' => $employee,
-            'stats'    => [
-                'programs_attended'  => $programsAttended,
+            'stats' => [
+                'programs_attended' => $programsAttended,
                 'programs_completed' => $programsCompleted,
-                'total_hours'        => $enrolledPrograms->sum('hours'),
-                'total_submissions'  => $enrolledPrograms->sum('approved_submissions'),
-                'not_approved'       => $enrolledPrograms->sum('pending_submissions'),
-                'completion_rate'    => $completionRate,
+                'total_hours' => $enrolledPrograms->sum('hours'),
+                'total_submissions' => $enrolledPrograms->sum('approved_submissions'),
+                'not_approved' => $enrolledPrograms->sum('pending_submissions'),
+                'completion_rate' => $completionRate,
             ],
             'enrolled_programs' => $enrolledPrograms,
         ];
@@ -158,17 +187,17 @@ class EmployeeProgressController extends Controller
 
     public function exportCsv(string $empcode): StreamedResponse
     {
-        $data      = $this->buildProgress($empcode);
-        $employee  = $data['employee'];
-        $programs  = $data['enrolled_programs'];
+        $data = $this->buildProgress($empcode);
+        $employee = $data['employee'];
+        $programs = $data['enrolled_programs'];
 
-        $filename = 'employee_' . $employee->EMPCODE . '_programs_' . now()->format('Ymd_His') . '.csv';
+        $filename = 'employee_'.$employee->EMPCODE.'_programs_'.now()->format('Ymd_His').'.csv';
 
         $headers = [
-            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-            'Pragma'              => 'no-cache',
-            'Cache-Control'       => 'no-store, no-cache, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate',
         ];
 
         return response()->stream(function () use ($employee, $programs) {
@@ -217,6 +246,7 @@ class EmployeeProgressController extends Controller
                     fputcsv($out, array_merge($base, $progCols, [
                         'No requirements', '', '', '', 'N/A', '', '', '', '', '',
                     ]));
+
                     continue;
                 }
 

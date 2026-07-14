@@ -24,9 +24,15 @@ interface Employee {
     OFFICE: string;
     SEX: string;
     SG: string;
-    name: string;          
-    initials: string;      
-    avatar_color: string;  
+    name: string;
+    initials: string;
+    avatar_color: string;
+    progress_stats: {
+        total_programs: number;
+        completed_programs: number;
+        total_hours: number;
+        hours_completed: number;
+    };
 }
 
 interface PaginatedEmployees {
@@ -119,7 +125,7 @@ watch([search, region, plantilla, perPage], () => {
             region:    region.value !== 'all' ? region.value : undefined,
             plantilla: plantilla.value !== 'all' ? plantilla.value : undefined,
             per_page:  perPage.value !== '10' ? perPage.value : undefined,
-        }, { preserveScroll: true, replace: true });
+        }, { preserveScroll: true, preserveState: true, replace: true });
     }, 350);
 });
 
@@ -195,6 +201,10 @@ const formatDate = (d?: string | null) => {
     });
 };
 
+const progressPercent = (num: number, denom: number) => (denom > 0 ? Math.min(100, Math.round((num / denom) * 100)) : 0);
+
+const formatHours = (hours: number) => (Number.isInteger(hours) ? hours : Number(hours.toFixed(1)));
+
 const submissionStatusColor = (status?: string) => {
     if (status === 'Approved') return 'bg-emerald-100 text-emerald-700';
     if (status === 'Pending')  return 'bg-amber-100 text-amber-700';
@@ -225,12 +235,12 @@ const submissionStatusColor = (status?: string) => {
                             v-model="search"
                             type="text"
                             placeholder="Search by Name, Office, or Empcode..."
-                            class="w-full border rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background"
+                            class="w-full border rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background shadow-lg"
                         />
                     </div>
 
                     <!-- Region -->
-                    <select v-model="region" class="border rounded-xl px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <select v-model="region" class="border rounded-xl px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-lg">
                         <option value="all">All Regions</option>
                         <option v-for="r in regions" :key="r" :value="r">{{ r }}</option>
                     </select>
@@ -238,7 +248,7 @@ const submissionStatusColor = (status?: string) => {
                     <!-- Per page -->
                     <div class="flex items-center gap-2 text-sm text-muted-foreground">
                         <span>Show</span>
-                        <select v-model="perPage" class="border rounded-xl px-2 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-blue-500 w-16">
+                        <select v-model="perPage" class="border rounded-xl px-2 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-blue-500 w-16 shadow-lg">
                             <option value="10">10</option>
                             <option value="25">25</option>
                             <option value="50">50</option>
@@ -277,6 +287,8 @@ const submissionStatusColor = (status?: string) => {
                             <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide">Empcode</th>
                             <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide">Employee</th>
                             <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide">Plantilla</th>
+                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide">Program Progress</th>
+                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide">Hours Progress</th>
                             <th class="text-right font-bold px-4 py-3 text-xs uppercase tracking-wide">Action</th>
                         </tr>
                     </thead>
@@ -304,6 +316,34 @@ const submissionStatusColor = (status?: string) => {
                                     {{ emp['PLANTILLA STATUS'] }}
                                 </span>
                             </td>
+                            <td class="px-4 py-3 min-w-[140px]">
+                                <div class="flex items-center justify-between text-xs mb-1">
+                                    <span class="font-semibold">
+                                        {{ emp.progress_stats.completed_programs }}/{{ emp.progress_stats.total_programs }}
+                                    </span>
+                                    <span class="text-muted-foreground">{{ progressPercent(emp.progress_stats.completed_programs, emp.progress_stats.total_programs) }}%</span>
+                                </div>
+                                <div class="h-1.5 rounded-full bg-muted overflow-hidden">
+                                    <div
+                                        class="h-full rounded-full bg-emerald-500 transition-all"
+                                        :style="{ width: progressPercent(emp.progress_stats.completed_programs, emp.progress_stats.total_programs) + '%' }"
+                                    />
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 min-w-[140px]">
+                                <div class="flex items-center justify-between text-xs mb-1">
+                                    <span class="font-semibold">
+                                        {{ formatHours(emp.progress_stats.hours_completed) }}/{{ formatHours(emp.progress_stats.total_hours) }} hrs
+                                    </span>
+                                    <span class="text-muted-foreground">{{ progressPercent(emp.progress_stats.hours_completed, emp.progress_stats.total_hours) }}%</span>
+                                </div>
+                                <div class="h-1.5 rounded-full bg-muted overflow-hidden">
+                                    <div
+                                        class="h-full rounded-full bg-blue-500 transition-all"
+                                        :style="{ width: progressPercent(emp.progress_stats.hours_completed, emp.progress_stats.total_hours) + '%' }"
+                                    />
+                                </div>
+                            </td>
                             <td class="px-4 py-3 text-right">
                                 <button
                                     @click="openDetails(emp)"
@@ -315,7 +355,7 @@ const submissionStatusColor = (status?: string) => {
                         </tr>
 
                         <tr v-if="employees.data?.length === 0">
-                            <td colspan="4" class="px-4 py-16 text-center text-muted-foreground">
+                            <td colspan="6" class="px-4 py-16 text-center text-muted-foreground">
                                 <Users class="h-10 w-10 mx-auto mb-2 opacity-30" />
                                 <p class="text-sm font-semibold">No employees found.</p>
                             </td>
@@ -504,7 +544,7 @@ const submissionStatusColor = (status?: string) => {
                             </div>
 
                             <div v-else class="flex flex-col gap-2">
-                                <div``
+                                <div
                                     v-for="prog in progress.enrolled_programs"
                                     :key="prog.participant_id"
                                     class="rounded-xl border p-4 hover:border-blue-300 transition-colors cursor-pointer"

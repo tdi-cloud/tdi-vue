@@ -97,7 +97,7 @@ const applyFilters = () => {
         category:         filterCategory.value || undefined,
         embassy_deadline: filterEmbassy.value || undefined,
         interview_date:   filterInterview.value || undefined,
-    }, { preserveScroll: true, replace: true });
+    }, { preserveScroll: true, preserveState: true, replace: true });
 };
 
 let debounce: ReturnType<typeof setTimeout>;
