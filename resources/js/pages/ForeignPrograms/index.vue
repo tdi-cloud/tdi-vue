@@ -136,8 +136,6 @@ const editForm = useForm({
     modality: 'in-person' as 'in-person' | 'online' | 'hybrid',
     online_start: '',
     online_end: '',
-    inperson_start: '',
-    inperson_end: '',
     program_cost: '',
     fund_source: '',
     category: 'Foreign',
@@ -167,8 +165,6 @@ const openEdit = (program: ForeignProgram) => {
     editForm.modality           = program.modality;
     editForm.online_start       = toDateInput(program.online_start);
     editForm.online_end         = toDateInput(program.online_end);
-    editForm.inperson_start     = toDateInput(program.inperson_start);
-    editForm.inperson_end       = toDateInput(program.inperson_end);
     editForm.program_cost       = program.program_cost ?? '';
     editForm.fund_source        = program.fund_source ?? '';
     editForm.category           = program.category ?? 'Foreign';
@@ -196,12 +192,10 @@ const submitEdit = () => {
     });
 };
 
-const showEditOnlineDates   = computed(() => editForm.modality === 'online'    || editForm.modality === 'hybrid');
-const showEditInpersonDates = computed(() => editForm.modality === 'in-person' || editForm.modality === 'hybrid');
+const showEditOnlineDates = computed(() => editForm.modality === 'online' || editForm.modality === 'hybrid');
 
 watch(() => editForm.modality, (val) => {
-    if (val === 'in-person') { editForm.online_start = '';   editForm.online_end = '';   }
-    if (val === 'online')    { editForm.inperson_start = ''; editForm.inperson_end = ''; }
+    if (val === 'in-person') { editForm.online_start = ''; editForm.online_end = ''; }
 });
 
 // --- Add Modal & Form ---
@@ -216,8 +210,6 @@ const form = useForm({
     modality: 'in-person',
     online_start: '',
     online_end: '',
-    inperson_start: '',
-    inperson_end: '',
     program_cost: '',
     fund_source: '',
     category: 'Foreign',
@@ -230,12 +222,10 @@ const form = useForm({
     attached_agency: '',
 });
 
-const showOnlineDates   = computed(() => form.modality === 'online'    || form.modality === 'hybrid');
-const showInpersonDates = computed(() => form.modality === 'in-person' || form.modality === 'hybrid');
+const showOnlineDates = computed(() => form.modality === 'online' || form.modality === 'hybrid');
 
 watch(() => form.modality, (val) => {
-    if (val === 'in-person') { form.online_start = '';   form.online_end = '';   }
-    if (val === 'online')    { form.inperson_start = ''; form.inperson_end = ''; }
+    if (val === 'in-person') { form.online_start = ''; form.online_end = ''; }
 });
 
 const submit = () => {
@@ -770,22 +760,6 @@ function onConfigSaved() {
                                 </div>
                             </div>
                         </template>
-
-                        <template v-if="showEditInpersonDates">
-                            <div class="rounded-xl bg-emerald-50 border border-emerald-200 p-4 dark:bg-emerald-950/30 dark:border-emerald-900">
-                                <p class="text-xs font-extrabold uppercase tracking-wide text-emerald-600 dark:text-emerald-400 mb-3">🏢 In-person Schedule</p>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div class="flex flex-col gap-1">
-                                        <label class="text-xs font-semibold">In-person Start</label>
-                                        <input v-model="editForm.inperson_start" type="date" class="border rounded-lg px-3 py-2 text-sm bg-white dark:bg-background focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-                                    </div>
-                                    <div class="flex flex-col gap-1">
-                                        <label class="text-xs font-semibold">In-person End</label>
-                                        <input v-model="editForm.inperson_end" type="date" class="border rounded-lg px-3 py-2 text-sm bg-white dark:bg-background focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-                                    </div>
-                                </div>
-                            </div>
-                        </template>
                     </div>
 
                     <!-- Classification & Funding -->
@@ -877,15 +851,15 @@ function onConfigSaved() {
                             </div>
                             <div class="flex flex-col gap-1">
                                 <label class="text-xs font-semibold flex items-center gap-1.5">
-                                    <MapPin class="h-3.5 w-3.5 text-muted-foreground" /> Embassy Deadline
-                                </label>
-                                <input v-model="editForm.embassy_deadline" type="date" class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
-                            </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="text-xs font-semibold flex items-center gap-1.5">
                                     <Users class="h-3.5 w-3.5 text-muted-foreground" /> Interview Date
                                 </label>
                                 <input v-model="editForm.interview_date" type="date" class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                            </div>
+                            <div class="flex flex-col gap-1">
+                                <label class="text-xs font-semibold flex items-center gap-1.5">
+                                    <MapPin class="h-3.5 w-3.5 text-muted-foreground" /> Embassy Deadline
+                                </label>
+                                <input v-model="editForm.embassy_deadline" type="date" class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
                             </div>
                         </div>
                     </div>
@@ -1008,22 +982,6 @@ function onConfigSaved() {
                                 </div>
                             </div>
                         </template>
-
-                        <template v-if="showInpersonDates">
-                            <div class="rounded-xl bg-emerald-50 border border-emerald-200 p-4 dark:bg-emerald-950/30 dark:border-emerald-900">
-                                <p class="text-xs font-extrabold uppercase tracking-wide text-emerald-600 dark:text-emerald-400 mb-3">🏢 In-person Schedule</p>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div class="flex flex-col gap-1">
-                                        <label class="text-xs font-semibold">In-person Start</label>
-                                        <input v-model="form.inperson_start" type="date" class="border rounded-lg px-3 py-2 text-sm bg-white dark:bg-background focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-                                    </div>
-                                    <div class="flex flex-col gap-1">
-                                        <label class="text-xs font-semibold">In-person End</label>
-                                        <input v-model="form.inperson_end" type="date" class="border rounded-lg px-3 py-2 text-sm bg-white dark:bg-background focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-                                    </div>
-                                </div>
-                            </div>
-                        </template>
                     </div>
 
                     <!-- Classification & Funding -->
@@ -1115,15 +1073,15 @@ function onConfigSaved() {
                             </div>
                             <div class="flex flex-col gap-1">
                                 <label class="text-xs font-semibold flex items-center gap-1.5">
-                                    <MapPin class="h-3.5 w-3.5 text-muted-foreground" /> Embassy Deadline
-                                </label>
-                                <input v-model="form.embassy_deadline" type="date" class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                            </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="text-xs font-semibold flex items-center gap-1.5">
                                     <Users class="h-3.5 w-3.5 text-muted-foreground" /> Interview Date
                                 </label>
                                 <input v-model="form.interview_date" type="date" class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                            </div>
+                            <div class="flex flex-col gap-1">
+                                <label class="text-xs font-semibold flex items-center gap-1.5">
+                                    <MapPin class="h-3.5 w-3.5 text-muted-foreground" /> Embassy Deadline
+                                </label>
+                                <input v-model="form.embassy_deadline" type="date" class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                             </div>
                         </div>
                     </div>
