@@ -21,6 +21,7 @@ use App\Http\Controllers\ParticipantController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\RegionalReportController;
 use App\Http\Controllers\RequirementController;
+use App\Http\Controllers\RequirementsTrackerController;
 use App\Http\Controllers\ResourceSpeakerController;
 use App\Http\Controllers\SubmissionController;
 use App\Http\Controllers\SupportingDocumentController;
@@ -172,6 +173,11 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
 
     Route::get('/reports/tpmr', [TPMRController::class, 'generate'])->name('reports.tpmr');
     Route::get('/employees/search', [TPMRController::class, 'searchEmployees'])->name('employees.search');
+
+    // POST-TRAINING REQUIREMENTS TRACKER
+    Route::get('/requirements-tracker', [RequirementsTrackerController::class, 'index'])->name('requirements-tracker.index');
+    Route::get('/requirements-tracker/export', [RequirementsTrackerController::class, 'exportCsv'])
+        ->name('requirements-tracker.export');
 
     // DECLARATION OF COMPLETERS:
     Route::get('/declarations/signatories/search', [DeclarationController::class, 'searchSignatory'])

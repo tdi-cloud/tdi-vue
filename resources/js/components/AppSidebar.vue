@@ -23,7 +23,8 @@ import {
     Users,
     ChartBarStacked,
     Earth,
-    FileStack
+    FileStack,
+    ClipboardList
 } from 'lucide-vue-next';
 import { useFlash } from '@/composables/useFlash';
 import { Toaster } from '@/components/ui/toast';
@@ -82,6 +83,13 @@ const allNavItems: NavItem[] = [
         url: '/supporting-documents',
         icon: FileStack,
         color: 'text-amber-500',
+    },
+
+    {
+        title: 'Requirements Tracker',
+        url: '/requirements-tracker',
+        icon: ClipboardList,
+        color: 'text-rose-500',
     },
 ];
 
