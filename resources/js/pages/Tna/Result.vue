@@ -186,9 +186,6 @@ const fmt = (n) => Number(n).toFixed(1)
             Not Competent, Slightly Competent, and Moderately Competent results
             <b>automatically require trainings</b>.
           </p>
-          <p class="mt-3 text-xs text-gray-400">
-            Score = (0.4 × Self + 0.6 × Supervisor) for each scale, multiplied together. Max 36.
-          </p>
         </div>
       </div>
 
@@ -241,40 +238,28 @@ const fmt = (n) => Number(n).toFixed(1)
 
       <!-- REVISED RESULT (NEW FORMULA) -->
       <div class="rounded-2xl bg-white p-8 shadow-xl">
-        <h2 class="text-sm font-bold uppercase tracking-wide text-purple-700">Revised Result (New Formula)</h2>
-        <p class="mt-2 text-sm leading-relaxed text-gray-600">
-          Score = Criticality × (4 − Competence). Unlike the result above, a
-          <b>higher</b> score here means a <b>higher</b> training need.
-        </p>
+        <h2 class="text-sm font-bold uppercase tracking-wide text-purple-700">Revised Result</h2>
 
-        <div class="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-5">
-          <div class="lg:col-span-3">
-            <h3 class="text-xs font-bold uppercase tracking-wide text-purple-700">Revised Training Priority</h3>
-            <ol v-if="revisedPriority.length" class="mt-3 space-y-2">
-              <li
-                v-for="(p, i) in revisedPriority"
-                :key="p.unit"
-                class="flex items-start gap-3 rounded-xl bg-purple-50/70 p-3"
-              >
-                <span class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-purple-600 text-xs font-bold text-white">
-                  {{ i + 1 }}
-                </span>
-                <div class="min-w-0">
-                  <p class="text-sm font-semibold text-gray-800">{{ p.unit }}</p>
-                  <p class="mt-0.5 text-xs text-gray-500">
-                    Highest score <span class="font-semibold">{{ fmt(p.revised_score) }}</span>
-                  </p>
-                </div>
-              </li>
-            </ol>
-            <p v-else class="mt-3 text-sm text-gray-500">No data available.</p>
-          </div>
-
-          <div class="rounded-xl border border-purple-100 bg-purple-50/40 p-4 text-xs leading-relaxed text-gray-600 lg:col-span-2">
-            <p><b>Criticality</b>: 1 (slightly) – 3 (highly important)</p>
-            <p class="mt-1"><b>Competence</b>: 0 (not competent) – 4 (highly competent)</p>
-            <p class="mt-1">Max score = 3 × 4 = 12.</p>
-          </div>
+        <div class="mt-4">
+          <h3 class="text-xs font-bold uppercase tracking-wide text-purple-700">Revised Training Priority</h3>
+          <ol v-if="revisedPriority.length" class="mt-3 space-y-2">
+            <li
+              v-for="(p, i) in revisedPriority"
+              :key="p.unit"
+              class="flex items-start gap-3 rounded-xl bg-purple-50/70 p-3"
+            >
+              <span class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-purple-600 text-xs font-bold text-white">
+                {{ i + 1 }}
+              </span>
+              <div class="min-w-0">
+                <p class="text-sm font-semibold text-gray-800">{{ p.unit }}</p>
+                <p class="mt-0.5 text-xs text-gray-500">
+                  Highest score <span class="font-semibold">{{ fmt(p.revised_score) }}</span>
+                </p>
+              </div>
+            </li>
+          </ol>
+          <p v-else class="mt-3 text-sm text-gray-500">No data available.</p>
         </div>
 
         <div class="mt-6 overflow-x-auto">

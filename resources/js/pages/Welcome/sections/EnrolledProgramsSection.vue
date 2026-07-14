@@ -17,6 +17,13 @@
               <option v-for="y in years" :key="y" :value="y">{{ y }}</option>
             </select>
           </div>
+          <div class="filter">
+            <Layers3 class="filter__icon" :size="15" />
+            <select v-model="selectedType">
+              <option value="">All types</option>
+              <option v-for="t in TYPE_OPTIONS" :key="t" :value="t">{{ t }}</option>
+            </select>
+          </div>
           <button
             class="filter filter--toggle"
             :class="{ 'filter--active': missingOnly }"
@@ -126,15 +133,18 @@
 import { ref, computed } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import {
-  GraduationCap, Clock, FileWarning, CalendarDays,
+  GraduationCap, Clock, FileWarning, CalendarDays, Layers3,
   CheckCircle2, AlertCircle, ChevronRight, BookOpen,
 } from 'lucide-vue-next'
+
+const TYPE_OPTIONS = ['ADMIN', 'TECHNICAL', 'SUPERVISORY/MANAGERIAL', 'TEAM-BUILDING', 'OTHER']
 
 const props = defineProps({
   programs: { type: Array, default: () => [] },
 })
 
 const selectedYear = ref('')
+const selectedType = ref('')
 const missingOnly  = ref(false)
 
 const years = computed(() =>
@@ -144,6 +154,7 @@ const years = computed(() =>
 const filteredPrograms = computed(() =>
   props.programs.filter(p => {
     if (selectedYear.value && p.year !== Number(selectedYear.value)) return false
+    if (selectedType.value && p.program_type !== selectedType.value) return false
     if (missingOnly.value && p.requirements_missing === 0) return false
     return true
   })

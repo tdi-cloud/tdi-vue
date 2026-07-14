@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, LoaderCircle, Save } from 'lucide-vue-next';
-import { watch } from 'vue';
+import { computed, watch } from 'vue';
 
 interface Program {
     id: number;
@@ -28,7 +28,45 @@ interface Program {
 
 const props = defineProps<{
     program: Program;
+    userRegion: string | null;
 }>();
+
+// Regional HRMOs (hindi "CO") ay limitado lang sa "Regional" category at sa
+// NTTA / Other Training Provider na Office Initiated. Kung hindi malaman ang
+// region (walang naka-link na Employee record), ituring na CO (buong options).
+const isRegionRestricted = computed(() => !!props.userRegion && props.userRegion !== 'CO');
+
+const CATEGORY_OPTIONS = [
+    { value: 'Benchmarking', label: 'Benchmarking' },
+    { value: 'Capability Building', label: 'Capability Building' },
+    { value: 'Executive-Office', label: 'Executive-Office' },
+    { value: 'Foreign-Bilateral', label: 'Foreign-Bilateral' },
+    { value: 'Foreign-FSTP', label: 'Foreign-FSTP' },
+    { value: 'Local-In-House', label: 'Local-In-House' },
+    { value: 'Local-Public', label: 'Local-Public' },
+    { value: 'Other-Foreign', label: 'Other Foreign Program' },
+    { value: 'Regional', label: 'Regional' },
+    { value: 'Team-Building', label: 'Team-Building' },
+];
+
+const INITIATED_OPTIONS = [
+    { value: 'TDI', label: 'TESDA Development Institute (TDI)' },
+    { value: 'NTTA', label: 'National TVET Trainors Academy (NTTA)' },
+    { value: 'Other Executive Office', label: 'Other Executive Office' },
+    { value: 'Other Training Provider', label: 'Other Training Provider' },
+];
+
+const availableCategoryOptions = computed(() =>
+    isRegionRestricted.value
+        ? CATEGORY_OPTIONS.filter((o) => o.value === 'Regional')
+        : CATEGORY_OPTIONS,
+);
+
+const availableInitiatedOptions = computed(() =>
+    isRegionRestricted.value
+        ? INITIATED_OPTIONS.filter((o) => ['NTTA', 'Other Training Provider'].includes(o.value))
+        : INITIATED_OPTIONS,
+);
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Programs', href: '/programs' },
@@ -138,18 +176,12 @@ const submit = () => {
                                 <SelectValue placeholder="Select category" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem class="text-xs" value="Benchmarking">Benchmarking</SelectItem>
-                                <SelectItem class="text-xs" value="Capability Building">Capability Building</SelectItem>
-                                <SelectItem class="text-xs" value="Executive-Office">Executive-Office</SelectItem>
-                                <SelectItem class="text-xs" value="Foreign-Bilateral">Foreign-Bilateral</SelectItem>
-                                <SelectItem class="text-xs" value="Foreign-FSTP">Foreign-FSTP</SelectItem>
-                                <SelectItem class="text-xs" value="Local-In-House">Local-In-House</SelectItem>
-                                <SelectItem class="text-xs" value="Local-Public">Local-Public</SelectItem>
-                                <SelectItem class="text-xs" value="Other-Foreign">Other Foreign Program</SelectItem>
-                                <SelectItem class="text-xs" value="Regional">Regional</SelectItem>
-                                <SelectItem class="text-xs" value="Team-Building">Team-Building</SelectItem>
+                                <SelectItem v-for="o in availableCategoryOptions" :key="o.value" class="text-xs" :value="o.value">{{ o.label }}</SelectItem>
                             </SelectContent>
                         </Select>
+                        <p v-if="isRegionRestricted" class="text-[11px] text-gray-400">
+                            Limited to "Regional" for your region.
+                        </p>
                         <p class="text-xs text-red-500">{{ form.errors.category }}</p>
                     </div>
 
@@ -179,12 +211,12 @@ const submit = () => {
                                 <SelectValue placeholder="Select office" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem class="text-xs" value="TDI">TESDA Development Institute (TDI)</SelectItem>
-                                <SelectItem class="text-xs" value="NTTA">National TVET Trainors Academy (NTTA)</SelectItem>
-                                <SelectItem class="text-xs" value="Other Executive Office">Other Executive Office</SelectItem>
-                                <SelectItem class="text-xs" value="Other Training Provider">Other Training Provider</SelectItem>
+                                <SelectItem v-for="o in availableInitiatedOptions" :key="o.value" class="text-xs" :value="o.value">{{ o.label }}</SelectItem>
                             </SelectContent>
                         </Select>
+                        <p v-if="isRegionRestricted" class="text-[11px] text-gray-400">
+                            Limited to NTTA / Other Training Provider for your region.
+                        </p>
                         <p class="text-xs text-red-500">{{ form.errors.initiated }}</p>
                     </div>
 

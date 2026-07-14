@@ -181,7 +181,7 @@ class TnaController extends Controller
             'supervisor' => [
                 'name' => $supEmployee ? $this->fullName($supEmployee) : $assessment->supervisor_name,
                 'office' => $supEmployee?->OFFICE,
-                'division' => $supEmployee?->SECTION,
+                'division' => $this->divisionLabel($supEmployee),
             ],
             'coreUnits' => $toUnits('core'),
             'electiveUnits' => $toUnits('elective'),
@@ -769,7 +769,7 @@ class TnaController extends Controller
             'employee' => [
                 'name' => $this->fullName($employee),
                 'office' => $employee->OFFICE,
-                'division' => $employee->SECTION,
+                'division' => $this->divisionLabel($employee),
                 'position' => $position,
             ],
             'coreUnits' => $toUnits($competencies->where('type', 'core')),
@@ -1096,5 +1096,25 @@ class TnaController extends Controller
         return trim(preg_replace('/\s+/', ' ',
             "{$e->FIRSTNAME} {$mi} {$e->LASTNAME}"
         ));
+    }
+
+    /**
+     * Default na "division" na ipapasok sa form: "SECTION/UNIT", o SECTION
+     * lang kung walang UNIT.
+     */
+    protected function divisionLabel(?Employee $e): ?string
+    {
+        if (! $e) {
+            return null;
+        }
+
+        $section = trim((string) $e->SECTION);
+        $unit = trim((string) $e->UNIT);
+
+        if ($section === '') {
+            return $unit !== '' ? $unit : null;
+        }
+
+        return $unit !== '' ? "{$section}/{$unit}" : $section;
     }
 }

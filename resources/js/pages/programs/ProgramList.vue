@@ -147,7 +147,7 @@ const dateRange = (program: Program) => {
                     >
                         <!-- Text -->
                         <div class="flex-1 min-w-0 overflow-hidden">
-                            <p class="text-sm font-extrabold dark:text-yellow-500 text-sky-900 line-clamp-1 break-words">
+                            <p class="text-sm font-extrabold dark:text-cyan-400 text-sky-900 line-clamp-1 break-words">
                                 {{ program.title }}
                             </p>
                             <p class="text-xs text-muted-foreground line-clamp-1 break-words">

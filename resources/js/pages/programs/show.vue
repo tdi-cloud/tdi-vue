@@ -195,7 +195,7 @@ const removeCompetency = (competency: Competency) => {
                     </Button>
                     <div>
                         <!-- <p class="text-xs text-slate-400 font-semibold">{{ program.program_code }}</p> -->
-                        <h1 class="text-xl font-extrabold dark:text-yellow-500 leading-tight text-sky-900">{{ program.title }}</h1>
+                        <h1 class="text-xl font-extrabold dark:text-cyan-400 leading-tight text-sky-900">{{ program.title }}</h1>
                     </div>
                 </div>
                 <!-- Header buttons -->

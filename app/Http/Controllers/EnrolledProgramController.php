@@ -36,11 +36,11 @@ class EnrolledProgramController extends Controller
         abort_if(empty($user->empcode), 404);
 
         $participant = Participant::with([
-                'batch.program.coverPage',
-                'batch.program.resourceSpeakers',
-                'batch.requirements',
-                'submissions',
-            ])
+            'batch.program.coverPage',
+            'batch.program.resourceSpeakers',
+            'batch.requirements',
+            'submissions',
+        ])
             ->where('empcode', $user->empcode)
             ->where('batch_id', $batch->id)
             ->firstOrFail();
@@ -51,17 +51,17 @@ class EnrolledProgramController extends Controller
             ->orderBy('created_at')
             ->get()
             ->map(fn ($c) => [
-                'id'                 => $c->id,
-                'type'               => $c->type,
+                'id' => $c->id,
+                'type' => $c->type,
                 'certificate_number' => $c->certificate_number,
-                'status'             => $c->status,
-                'issued_date'        => $c->issued_date?->toDateString(),
-                'hours'              => (float) $c->hours,
-                'file_url'           => $c->file_path ? '/storage/' . $c->file_path : null,
-                'file_name'          => $c->file_name,
-                'uploaded_by'        => $c->uploaded_by,
-                'issued_by'          => $c->issued_by,
-                'remarks'            => $c->remarks,
+                'status' => $c->status,
+                'issued_date' => $c->issued_date?->toDateString(),
+                'hours' => (float) $c->hours,
+                'file_url' => $c->file_path ? '/storage/'.$c->file_path : null,
+                'file_name' => $c->file_name,
+                'uploaded_by' => $c->uploaded_by,
+                'issued_by' => $c->issued_by,
+                'remarks' => $c->remarks,
             ])
             ->values();
 
@@ -90,7 +90,7 @@ class EnrolledProgramController extends Controller
         $participant = $this->ownParticipant($request, $batch);
 
         $request->validate([
-            'file'  => ['nullable', 'mimes:pdf', 'max:20480'],
+            'file' => ['nullable', 'mimes:pdf', 'max:20480'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
@@ -104,16 +104,16 @@ class EnrolledProgramController extends Controller
             return back()->withErrors(['file' => 'Please attach a PDF file.'])->withInput();
         }
 
-        $path            = $submission->file_path ?? null;
+        $path = $submission->file_path ?? null;
         $newFileUploaded = $request->hasFile('file');
 
         if ($newFileUploaded) {
             if ($path) {
                 Storage::disk('public')->delete($path);
             }
-            $file     = $request->file('file');
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $path     = $file->storeAs('submissions', $filename, 'public');
+            $file = $request->file('file');
+            $filename = time().'_'.$file->getClientOriginalName();
+            $path = $file->storeAs('submissions', $filename, 'public');
         }
 
         Submission::updateOrCreate(
@@ -123,13 +123,13 @@ class EnrolledProgramController extends Controller
             ],
             [
                 'program_code' => $batch->program_code,
-                'batch_id'     => $batch->id,
-                'status'       => $newFileUploaded ? 'Pending' : ($submission->status ?? 'Pending'),
-                'file_path'    => $path,
-                'notes'        => $request->filled('notes') ? $request->input('notes') : ($submission->notes ?? null),
+                'batch_id' => $batch->id,
+                'status' => $newFileUploaded ? 'Pending' : ($submission->status ?? 'Pending'),
+                'file_path' => $path,
+                'notes' => $request->filled('notes') ? $request->input('notes') : ($submission->notes ?? null),
                 'submitted_at' => $newFileUploaded ? now() : ($submission->submitted_at ?? now()),
-                'reviewed_at'  => $newFileUploaded ? null : ($submission->reviewed_at ?? null),
-                'reviewed_by'  => $newFileUploaded ? null : ($submission->reviewed_by ?? null),
+                'reviewed_at' => $newFileUploaded ? null : ($submission->reviewed_at ?? null),
+                'reviewed_by' => $newFileUploaded ? null : ($submission->reviewed_by ?? null),
             ]
         );
 
@@ -160,49 +160,51 @@ class EnrolledProgramController extends Controller
 
     protected static function transform(Participant $participant, bool $withRequirements = false): array
     {
-        $batch        = $participant->batch;
-        $program      = $batch->program;
+        $batch = $participant->batch;
+        $program = $batch->program;
         $requirements = $batch->requirements;
-        $submissions  = $participant->submissions->keyBy('requirement_id');
+        $submissions = $participant->submissions->keyBy('requirement_id');
 
         $reqList = $requirements->map(function ($req) use ($submissions) {
             $sub = $submissions->get($req->id);
+
             return [
-                'id'           => $req->id,
-                'title'        => $req->title,
-                'name'         => $req->name,
-                'due_date'     => optional($req->due_date)->toDateString() ?? $req->due_date,
-                'is_required'  => (bool) $req->is_required,
-                'status'       => $sub->status ?? null,
+                'id' => $req->id,
+                'title' => $req->title,
+                'name' => $req->name,
+                'due_date' => optional($req->due_date)->toDateString() ?? $req->due_date,
+                'is_required' => (bool) $req->is_required,
+                'status' => $sub->status ?? null,
                 'submitted_at' => $sub->submitted_at ?? null,
-                'remarks'      => $sub->remarks ?? null,
-                'notes'        => $sub->notes ?? null,
-                'file_url'     => $sub && $sub->file_path ? '/storage/' . $sub->file_path : null,
-                'file_name'    => $sub && $sub->file_path ? basename($sub->file_path) : null,
+                'remarks' => $sub->remarks ?? null,
+                'notes' => $sub->notes ?? null,
+                'file_url' => $sub && $sub->file_path ? '/storage/'.$sub->file_path : null,
+                'file_name' => $sub && $sub->file_path ? basename($sub->file_path) : null,
             ];
         });
 
         $data = [
-            'batch_id'              => $batch->id,
-            'program_id'            => $program->id,
-            'program_title'         => $program->title,
-            'program_code'          => $program->program_code,
-            'batch_label'           => $batch->batch,
-            'modality'              => $batch->modality,
-            'venue'                 => $batch->venue,
-            'date_start'            => $batch->date_start,
-            'date_end'              => $batch->date_end,
-            'year'                  => Carbon::parse($batch->date_start)->year,
-            'total_hours'           => (float) $batch->hours,
-            'hours_completed'       => (float) ($participant->hours ?? 0),
-            'attendance'            => $participant->attendance ?? 'Pending',
-            'cover_image'           => $program->coverPage ? '/storage/' . $program->coverPage->image : null,
-            'requirements_total'    => $reqList->count(),
-            'requirements_missing'  => $reqList->filter(fn ($r) => $r['is_required'] && is_null($r['status']))->count(),
-            'requirements_pending'  => $reqList->filter(fn ($r) => $r['status'] === 'Pending')->count(),
+            'batch_id' => $batch->id,
+            'program_id' => $program->id,
+            'program_title' => $program->title,
+            'program_code' => $program->program_code,
+            'program_type' => $program->type,
+            'batch_label' => $batch->batch,
+            'modality' => $batch->modality,
+            'venue' => $batch->venue,
+            'date_start' => $batch->date_start,
+            'date_end' => $batch->date_end,
+            'year' => Carbon::parse($batch->date_start)->year,
+            'total_hours' => (float) $batch->hours,
+            'hours_completed' => (float) ($participant->hours ?? 0),
+            'attendance' => $participant->attendance ?? 'Pending',
+            'cover_image' => $program->coverPage ? '/storage/'.$program->coverPage->image : null,
+            'requirements_total' => $reqList->count(),
+            'requirements_missing' => $reqList->filter(fn ($r) => $r['is_required'] && is_null($r['status']))->count(),
+            'requirements_pending' => $reqList->filter(fn ($r) => $r['status'] === 'Pending')->count(),
             'requirements_approved' => $reqList->filter(fn ($r) => $r['status'] === 'Approved')->count(),
             'requirements_rejected' => $reqList->filter(fn ($r) => $r['status'] === 'Rejected')->count(),
-            'certificates'          => [],
+            'certificates' => [],
         ];
 
         if ($withRequirements) {
@@ -210,12 +212,12 @@ class EnrolledProgramController extends Controller
 
             $data['resource_speakers'] = $program->resourceSpeakers
                 ? $program->resourceSpeakers->map(fn ($s) => [
-                    'id'           => $s->id,
-                    'name'         => $s->name,
-                    'designation'  => $s->designation,
-                    'affiliation'  => $s->affiliation,
-                    'topic'        => $s->topic,
-                    'expertise'    => $s->expertise,
+                    'id' => $s->id,
+                    'name' => $s->name,
+                    'designation' => $s->designation,
+                    'affiliation' => $s->affiliation,
+                    'topic' => $s->topic,
+                    'expertise' => $s->expertise,
                     'date_engaged' => optional($s->date_engaged)->toDateString() ?? $s->date_engaged,
                 ])->values()->toArray()
                 : [];
