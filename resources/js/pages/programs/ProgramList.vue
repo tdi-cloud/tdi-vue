@@ -196,7 +196,7 @@ const dateRange = (program: Program) => {
                 </span>
                 <div class="flex gap-1 flex-wrap">
                     <button
-                        class="px-3 py-1 rounded border text-xs disabled:opacity-40 hover:bg-muted transition-colors"
+                        class="px-3 py-1 rounded border text-xs disabled:opacity-40 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40 transition-colors"
                         :disabled="currentPage === 1"
                         @click="changePage(currentPage - 1)"
                     >
@@ -206,13 +206,15 @@ const dateRange = (program: Program) => {
                         v-for="page in totalPages"
                         :key="page"
                         class="px-3 py-1 rounded border text-xs transition-colors"
-                        :class="page === currentPage ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'"
+                        :class="page === currentPage
+                            ? 'bg-blue-600 border-blue-600 text-white'
+                            : 'border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40'"
                         @click="changePage(page)"
                     >
                         {{ page }}
                     </button>
                     <button
-                        class="px-3 py-1 rounded border text-xs disabled:opacity-40 hover:bg-muted transition-colors"
+                        class="px-3 py-1 rounded border text-xs disabled:opacity-40 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40 transition-colors"
                         :disabled="currentPage === totalPages"
                         @click="changePage(currentPage + 1)"
                     >

@@ -58,6 +58,7 @@ interface PaginatedPrograms {
 const props = defineProps<{
     programs: PaginatedPrograms;
     years: number[];
+    sponsorOptions: string[];
     filters: {
         search?: string;
         status?: string;
@@ -422,7 +423,7 @@ function onConfigSaved() {
                             v-model="search"
                             type="text"
                             placeholder="Search programs..."
-                            class="w-full border rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background"
+                            class="w-full border rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background shadow-sm"
                         />
                     </div>
                     <div class="flex items-center gap-1.5 text-xs text-muted-foreground px-2 py-1.5 rounded-lg border bg-muted/30">
@@ -439,7 +440,7 @@ function onConfigSaved() {
                         <label class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
                             <CheckCircle2 class="h-3 w-3" /> Status
                         </label>
-                        <select v-model="filterStatus" class="border rounded-lg px-2 py-1.5 text-xs bg-background">
+                        <select v-model="filterStatus" class="border rounded-lg px-2 py-1.5 text-xs bg-background shadow-sm">
                             <option value="">All</option>
                             <option v-for="(label, key) in statusLabels" :key="key" :value="key">{{ label }}</option>
                         </select>
@@ -448,7 +449,7 @@ function onConfigSaved() {
                         <label class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
                             <CalendarDays class="h-3 w-3" /> Year
                         </label>
-                        <select v-model="filterYear" class="border rounded-lg px-2 py-1.5 text-xs bg-background">
+                        <select v-model="filterYear" class="border rounded-lg px-2 py-1.5 text-xs bg-background shadow-sm">
                             <option value="">All</option>
                             <option v-for="y in years" :key="y" :value="y">{{ y }}</option>
                         </select>
@@ -457,7 +458,7 @@ function onConfigSaved() {
                         <label class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
                             <Clock class="h-3 w-3" /> Semester
                         </label>
-                        <select v-model="filterSemester" class="border rounded-lg px-2 py-1.5 text-xs bg-background">
+                        <select v-model="filterSemester" class="border rounded-lg px-2 py-1.5 text-xs bg-background shadow-sm">
                             <option value="">All</option>
                             <option value="1">1st (Jan–Jun)</option>
                             <option value="2">2nd (Jul–Dec)</option>
@@ -467,7 +468,7 @@ function onConfigSaved() {
                         <label class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
                             <Tag class="h-3 w-3" /> Category
                         </label>
-                        <select v-model="filterCategory" class="border rounded-lg px-2 py-1.5 text-xs bg-background">
+                        <select v-model="filterCategory" class="border rounded-lg px-2 py-1.5 text-xs bg-background shadow-sm">
                             <option value="">All</option>
                             <option value="Foreign">Foreign</option>
                             <option value="Bilateral">Bilateral</option>
@@ -477,19 +478,22 @@ function onConfigSaved() {
                         <label class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
                             <Building class="h-3 w-3" /> Organization
                         </label>
-                        <input v-model="filterOrg" type="text" placeholder="e.g. JICA" class="border rounded-lg px-2 py-1.5 text-xs bg-background" />
+                        <select v-model="filterOrg" class="border rounded-lg px-2 py-1.5 text-xs bg-background shadow-sm">
+                            <option value="">All</option>
+                            <option v-for="s in props.sponsorOptions" :key="s" :value="s">{{ s }}</option>
+                        </select>
                     </div>
                     <div class="flex flex-col gap-1">
                         <label class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
                             <MapPin class="h-3 w-3" /> Embassy Deadline
                         </label>
-                        <input v-model="filterEmbassy" type="date" class="border rounded-lg px-2 py-1.5 text-xs bg-background" />
+                        <input v-model="filterEmbassy" type="date" class="border rounded-lg px-2 py-1.5 text-xs bg-background shadow-sm" />
                     </div>
                     <div class="flex flex-col gap-1">
                         <label class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
                             <Users class="h-3 w-3" /> Interview Date
                         </label>
-                        <input v-model="filterInterview" type="date" class="border rounded-lg px-2 py-1.5 text-xs bg-background" />
+                        <input v-model="filterInterview" type="date" class="border rounded-lg px-2 py-1.5 text-xs bg-background shadow-sm" />
                     </div>
                 </div>
 
@@ -500,63 +504,101 @@ function onConfigSaved() {
 
             <!-- List -->
             <div class="rounded-2xl border overflow-hidden shadow-sm">
-                <div class="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr_auto] gap-4 px-4 py-2.5 bg-muted/50 border-b text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    <span>Program</span>
-                    <span>Sponsor</span>
-                    <span>Schedule</span>
-                    <span>Modality</span>
-                    <span class="text-right">Slots</span>
-                    <span class="text-center w-28">Actions</span>
-                </div>
+                <table v-if="programs.data.length" class="w-full table-fixed border-collapse text-sm">
+                    <colgroup>
+                        <col style="width: 32%">
+                        <col style="width: 8%">
+                        <col style="width: 19%">
+                        <col style="width: 11%">
+                        <col style="width: 11%">
+                        <col style="width: 11%">
+                        <col style="width: 8%">
+                        <col style="width: 112px">
+                    </colgroup>
+                    <thead>
+                        <tr class="bg-muted/50 border-b text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                            <th class="px-4 py-2.5 text-left font-semibold">Program</th>
+                            <th class="px-4 py-2.5 text-left font-semibold">Sponsor</th>
+                            <th class="px-4 py-2.5 text-left font-semibold">Schedule</th>
+                            <th class="px-4 py-2.5 text-left font-semibold">Modality</th>
+                            <th class="px-4 py-2.5 text-left font-semibold">Interview Date</th>
+                            <th class="px-4 py-2.5 text-left font-semibold">Embassy Deadline</th>
+                            <th class="px-4 py-2.5 text-right font-semibold">Slots</th>
+                            <th class="px-4 py-2.5 text-center font-semibold">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr
+                            v-for="program in programs.data"
+                            :key="program.id"
+                            class="border-b last:border-b-0 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-colors group"
+                        >
+                            <td class="px-4 py-3 align-middle">
+                                <Link :href="route('foreign-programs.show', program.id)" class="flex flex-col gap-0.5 min-w-0">
+                                    <span class="font-semibold leading-snug truncate group-hover:text-blue-600 transition-colors">{{ program.program_title }}</span>
+                                    <span class="w-fit text-[10px] font-semibold px-2 py-0.5 rounded-full" :class="statusColors[program.status]">
+                                        {{ statusLabels[program.status] }}
+                                    </span>
+                                </Link>
+                            </td>
 
-                <div
-                    v-for="program in programs.data"
-                    :key="program.id"
-                    class="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr_auto] gap-4 px-4 py-3 items-center border-b last:border-b-0 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-colors text-sm group"
-                >
-                  
-                    <Link :href="route('foreign-programs.show', program.id)" class="flex flex-col gap-0.5 min-w-0">
-                        <span class="font-semibold leading-snug truncate group-hover:text-blue-600 transition-colors">{{ program.program_title }}</span>
-                        <span class="w-fit text-[10px] font-semibold px-2 py-0.5 rounded-full" :class="statusColors[program.status]">
-                            {{ statusLabels[program.status] }}
-                        </span>
-                    </Link>
-               
+                            <td class="px-4 py-3 align-middle text-xs text-muted-foreground">
+                                <div class="flex items-center gap-1.5 truncate">
+                                    <Building2 class="h-3.5 w-3.5 shrink-0 text-blue-400" />
+                                    <span class="truncate">{{ program.organizing_sponsor }}</span>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 align-middle text-xs text-muted-foreground">
+                                <div class="flex items-center gap-1.5 whitespace-nowrap">
+                                    <Calendar class="h-3.5 w-3.5 shrink-0 text-blue-400" />
+                                    <span>{{ formatDate(program.program_start) }} – {{ formatDate(program.program_end) }}</span>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 align-middle text-xs text-muted-foreground capitalize">
+                                <div class="flex items-center gap-1.5">
+                                    <span>{{ modalityIcons[program.modality] }}</span>
+                                    <span>{{ program.modality }}</span>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 align-middle text-xs whitespace-nowrap" :class="program.interview_date ? 'text-violet-600' : 'text-muted-foreground'">
+                                <div class="flex items-center gap-1.5">
+                                    <Users class="h-3.5 w-3.5 shrink-0" />
+                                    <span>{{ formatDate(program.interview_date) }}</span>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 align-middle text-xs whitespace-nowrap" :class="program.embassy_deadline ? 'text-red-600' : 'text-muted-foreground'">
+                                <div class="flex items-center gap-1.5">
+                                    <MapPin class="h-3.5 w-3.5 shrink-0" />
+                                    <span>{{ formatDate(program.embassy_deadline) }}</span>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 align-middle text-right text-muted-foreground">
+                                <div class="flex items-center justify-end gap-1.5">
+                                    <Users class="h-3.5 w-3.5 text-blue-400" />
+                                    <span>
+                                        <span class="font-semibold text-foreground">{{ program.nominees_count }}</span>
+                                        <span> / {{ program.slots }}</span>
+                                    </span>
+                                </div>
+                            </td>
 
-                    <div class="flex items-center gap-1.5 text-muted-foreground truncate">
-                        <Building2 class="h-3.5 w-3.5 shrink-0 text-blue-400" />
-                        <span class="truncate">{{ program.organizing_sponsor }}</span>
-                    </div>
-                    <div class="flex items-center gap-1.5 text-muted-foreground">
-                        <Calendar class="h-3.5 w-3.5 shrink-0 text-blue-400" />
-                        <span class="whitespace-nowrap">{{ formatDate(program.program_start) }} – {{ formatDate(program.program_end) }}</span>
-                    </div>
-                    <div class="flex items-center gap-1.5 text-muted-foreground capitalize">
-                        <span>{{ modalityIcons[program.modality] }}</span>
-                        <span>{{ program.modality }}</span>
-                    </div>
-                    <div class="flex items-center justify-end gap-1.5 text-muted-foreground">
-                        <Users class="h-3.5 w-3.5 text-blue-400" />
-                        <span>
-                            <span class="font-semibold text-foreground">{{ program.nominees_count }}</span>
-                            <span> / {{ program.slots }}</span>
-                        </span>
-                    </div>
-
-                    <!-- Actions -->
-                    <div class="flex items-center justify-center gap-1 w-28">
-                        <button @click="openView(program)" class="p-1.5 rounded-lg text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors" title="View details">
-                            <Eye class="h-4 w-4" />
-                        </button>
-                        <button @click="openEdit(program)" class="p-1.5 rounded-lg text-muted-foreground hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors" title="Edit program">
-                            <Pencil class="h-4 w-4" />
-                        </button>
-                        <button @click="confirmDelete(program.id)" class="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors" title="Delete program">
-                            <Trash2 class="h-4 w-4" />
-                        </button>
-                       
-                    </div>
-                </div>
+                            <!-- Actions -->
+                            <td class="px-4 py-3 align-middle">
+                                <div class="flex items-center justify-center gap-1">
+                                    <button @click="openView(program)" class="p-1.5 rounded-lg text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors" title="View details">
+                                        <Eye class="h-4 w-4" />
+                                    </button>
+                                    <button @click="openEdit(program)" class="p-1.5 rounded-lg text-muted-foreground hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors" title="Edit program">
+                                        <Pencil class="h-4 w-4" />
+                                    </button>
+                                    <button @click="confirmDelete(program.id)" class="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors" title="Delete program">
+                                        <Trash2 class="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
 
                 <div v-if="programs.data.length === 0" class="flex flex-col items-center justify-center py-24 text-muted-foreground gap-3">
                     <div class="relative">
