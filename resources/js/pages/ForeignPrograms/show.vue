@@ -6,7 +6,8 @@ import {
     ArrowLeft, Users, Calendar, Building2, Mail, Phone,
     UserCircle2, X, CheckCircle2, ClipboardList, MapPin,
     UserRound, Search, FileText, Eye, Loader2, ChevronDown,
-    Trash2, RefreshCw,
+    Trash2, RefreshCw, Plus, Upload, Sparkles, Briefcase,
+    IdCard, ShieldCheck, FileCheck2, PlaneTakeoff,
 } from 'lucide-vue-next';
 import { ref, computed } from 'vue';
 import axios from 'axios';
@@ -16,7 +17,16 @@ import axios from 'axios';
 interface Submission {
     id: number;
     file_path: string;
+    foreign_nominee_requirement_id: number;
     requirement: { question: string };
+}
+
+interface NomineeRequirement {
+    id: number;
+    question: string;
+    description: string | null;
+    link: string | null;
+    file_required: boolean;
 }
 
 interface Nominee {
@@ -33,6 +43,7 @@ interface Nominee {
     status: string;
     accomplished_form_path: string | null;
     submissions: Submission[];
+    sponsor_config: { id: number; requirements: NomineeRequirement[] } | null;
 }
 
 interface ForeignProgram {
@@ -52,7 +63,23 @@ interface ForeignProgram {
     nominees: Nominee[];
 }
 
-const props = defineProps<{ program: ForeignProgram }>();
+interface SponsorRequirement {
+    id: number;
+    question: string;
+    description: string | null;
+    link: string | null;
+    file_required: boolean;
+    sort_order: number;
+}
+
+interface SponsorConfig {
+    id: number;
+    organizing_sponsor: string;
+    form_title: string;
+    requirements: SponsorRequirement[];
+}
+
+const props = defineProps<{ program: ForeignProgram; sponsorConfigs: SponsorConfig[] }>();
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -118,6 +145,35 @@ function confirmDelete(nominee: Nominee) {
     router.delete(route('foreign-nominees.destroy', nominee.id), { preserveScroll: true });
 }
 
+// ── Missing requirement documents (upload for the first time) ───────────────────
+
+const missingRequirements = computed(() => {
+    if (!viewNominee.value?.sponsor_config) return [];
+    const submittedIds = new Set(viewNominee.value.submissions.map(s => s.foreign_nominee_requirement_id));
+    return viewNominee.value.sponsor_config.requirements.filter(r => !submittedIds.has(r.id));
+});
+
+const uploadingRequirementId = ref<number | null>(null);
+
+async function handleUploadMissingRequirement(reqId: number, event: Event) {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
+    target.value = '';
+    if (!file || !viewNominee.value) return;
+
+    const nominee = viewNominee.value;
+    uploadingRequirementId.value = reqId;
+    const data = new FormData();
+    data.append('file', file);
+
+    try {
+        const res = await axios.post(route('foreign-nominee-submissions.store', [nominee.id, reqId]), data);
+        nominee.submissions.push(res.data);
+    } finally {
+        uploadingRequirementId.value = null;
+    }
+}
+
 // ── Replace submitted document ────────────────────────────────────────────────
 
 const replaceInput  = ref<HTMLInputElement | null>(null);
@@ -175,6 +231,127 @@ async function handleReplaceAccomplishedForm(e: Event) {
     } finally {
         replacingAccomplishedForm.value = false;
     }
+}
+
+// ── Add Participant (admin) ─────────────────────────────────────────────────────
+
+const showAddModal = ref(false);
+const addProcessing = ref(false);
+const addErrors = ref<Record<string, string>>({});
+
+const addForm = ref({
+    foreign_sponsor_config_id: '' as string | number,
+    firstname:       '',
+    middle_name:     '',
+    surname:         '',
+    sex:             '',
+    age:             '' as string | number,
+    position:        '',
+    agency:          '',
+    contact_number:  '',
+    email:           '',
+    status:          'for_interview',
+});
+
+const addAccomplishedFile      = ref<File | null>(null);
+const addAccomplishedFileName  = ref('');
+const addRequirementFiles      = ref<Record<number, File | null>>({});
+const addRequirementFileNames  = ref<Record<number, string>>({});
+
+const selectedAddConfig = computed(() =>
+    props.sponsorConfigs.find(c => c.id === Number(addForm.value.foreign_sponsor_config_id)) ?? null
+);
+
+const addInitials = computed(() => {
+    const f = addForm.value.firstname?.trim()?.[0] ?? '';
+    const s = addForm.value.surname?.trim()?.[0] ?? '';
+    return (f + s).toUpperCase() || '?';
+});
+
+const addAvatarClasses = computed(() => {
+    if (addForm.value.sex === 'female') return 'bg-gradient-to-br from-pink-500 to-rose-500';
+    if (addForm.value.sex === 'other') return 'bg-gradient-to-br from-violet-500 to-indigo-500';
+    return 'bg-gradient-to-br from-sky-500 to-blue-600';
+});
+
+function removeAddRequirementFile(reqId: number) {
+    addRequirementFiles.value[reqId] = null;
+    delete addRequirementFileNames.value[reqId];
+}
+
+function removeAddAccomplishedFile() {
+    addAccomplishedFile.value = null;
+    addAccomplishedFileName.value = '';
+}
+
+function openAddModal() {
+    addForm.value = {
+        foreign_sponsor_config_id: props.sponsorConfigs.length === 1 ? props.sponsorConfigs[0].id : '',
+        firstname: '', middle_name: '', surname: '', sex: '', age: '',
+        position: '', agency: '', contact_number: '', email: '', status: 'for_interview',
+    };
+    addAccomplishedFile.value = null;
+    addAccomplishedFileName.value = '';
+    addRequirementFiles.value = {};
+    addRequirementFileNames.value = {};
+    addErrors.value = {};
+    showAddModal.value = true;
+}
+
+function closeAddModal() {
+    showAddModal.value = false;
+}
+
+function handleAddRequirementFile(reqId: number, event: Event) {
+    const file = (event.target as HTMLInputElement).files?.[0] ?? null;
+    if (file) {
+        addRequirementFiles.value[reqId]     = file;
+        addRequirementFileNames.value[reqId] = file.name;
+    }
+}
+
+function handleAddAccomplishedFile(event: Event) {
+    const file = (event.target as HTMLInputElement).files?.[0] ?? null;
+    if (file) {
+        addAccomplishedFile.value     = file;
+        addAccomplishedFileName.value = file.name;
+    }
+}
+
+function submitAddParticipant() {
+    const data = new FormData();
+
+    if (addForm.value.foreign_sponsor_config_id) {
+        data.append('foreign_sponsor_config_id', String(addForm.value.foreign_sponsor_config_id));
+    }
+    data.append('firstname', addForm.value.firstname);
+    data.append('middle_name', addForm.value.middle_name ?? '');
+    data.append('surname', addForm.value.surname);
+    data.append('sex', addForm.value.sex);
+    data.append('age', String(addForm.value.age));
+    data.append('position', addForm.value.position);
+    data.append('agency', addForm.value.agency);
+    data.append('contact_number', addForm.value.contact_number ?? '');
+    data.append('email', addForm.value.email ?? '');
+    data.append('status', addForm.value.status);
+
+    if (addAccomplishedFile.value) {
+        data.append('accomplished_form', addAccomplishedFile.value);
+    }
+
+    for (const [reqId, file] of Object.entries(addRequirementFiles.value)) {
+        if (file) {
+            data.append(`requirement_${reqId}`, file);
+        }
+    }
+
+    addProcessing.value = true;
+    router.post(route('foreign-nominees.store', props.program.id), data, {
+        preserveScroll: true,
+        onSuccess: () => { showAddModal.value = false; },
+        onError: (errors) => { addErrors.value = errors as Record<string, string>; },
+        onFinish: () => { addProcessing.value = false; },
+    });
 }
 
 // ── Lookups ───────────────────────────────────────────────────────────────────
@@ -349,9 +526,18 @@ const modalityLabels: Record<string, string> = {
                         {{ program.nominees.length }}
                     </span>
                 </div>
-                <p class="text-xs text-muted-foreground">
-                    Nominees are submitted through the public nomination form.
-                </p>
+                <div class="flex items-center gap-3">
+                    <p class="text-xs text-muted-foreground hidden sm:block">
+                        Nominees are submitted through the public nomination form, or added directly below.
+                    </p>
+                    <Button
+                        size="sm"
+                        class="gap-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md shadow-blue-600/20"
+                        @click="openAddModal"
+                    >
+                        <Plus class="h-4 w-4" /> Add Participant
+                    </Button>
+                </div>
             </div>
 
             <!-- Search -->
@@ -553,14 +739,46 @@ const modalityLabels: Record<string, string> = {
                                     </button>
                                 </div>
                             </div>
-                            <p v-else class="text-xs text-muted-foreground italic">No documents submitted.</p>
+                            <p v-else class="text-xs text-muted-foreground italic">No documents submitted yet.</p>
                             <input ref="replaceInput" type="file" class="hidden" @change="handleReplaceFile" />
                         </div>
 
+                        <!-- Missing requirement documents — upload for the first time -->
+                        <div v-if="missingRequirements.length > 0">
+                            <p class="text-xs font-bold uppercase tracking-wide text-blue-600 mb-2">
+                                Not Yet Submitted <span class="font-normal normal-case text-muted-foreground">— upload once available</span>
+                            </p>
+                            <div class="space-y-2">
+                                <div
+                                    v-for="req in missingRequirements"
+                                    :key="req.id"
+                                    class="flex items-center gap-2 rounded-xl border border-dashed border-blue-300 bg-blue-50/60 dark:bg-blue-950/30 px-4 py-3 text-sm"
+                                >
+                                    <FileText class="h-4 w-4 text-blue-400 shrink-0" />
+                                    <p class="flex-1 min-w-0 font-semibold text-xs truncate text-foreground">{{ req.question }}</p>
+                                    <label
+                                        :for="`upload-req-${req.id}`"
+                                        class="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 dark:text-blue-300 border border-blue-300 rounded-lg px-2 py-1 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors cursor-pointer disabled:opacity-50"
+                                    >
+                                        <Loader2 v-if="uploadingRequirementId === req.id" class="h-3 w-3 animate-spin" />
+                                        <Upload v-else class="h-3 w-3" />
+                                        Upload
+                                    </label>
+                                    <input
+                                        :id="`upload-req-${req.id}`"
+                                        type="file"
+                                        class="hidden"
+                                        :disabled="uploadingRequirementId === req.id"
+                                        @change="handleUploadMissingRequirement(req.id, $event)"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Accomplished form -->
-                        <div v-if="viewNominee.accomplished_form_path">
+                        <div>
                             <p class="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">Accomplished Application Form</p>
-                            <div class="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm hover:bg-blue-100 transition-colors">
+                            <div v-if="viewNominee.accomplished_form_path" class="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm hover:bg-blue-100 transition-colors">
                                 <FileText class="h-4 w-4 text-blue-600 shrink-0" />
                                 <a :href="fileUrl(viewNominee.accomplished_form_path)" target="_blank" class="flex-1">
                                     <span class="text-blue-700 font-semibold text-xs">View Accomplished Form (PDF)</span>
@@ -576,12 +794,303 @@ const modalityLabels: Record<string, string> = {
                                     Replace
                                 </button>
                             </div>
-                            <input ref="replaceAccomplishedFormInput" type="file" class="hidden" @change="handleReplaceAccomplishedForm" />
+                            <label
+                                v-else
+                                for="upload-accomplished-form"
+                                class="flex items-center justify-center gap-2 cursor-pointer rounded-xl border-2 border-dashed border-blue-300 bg-blue-50/60 dark:bg-blue-950/30 px-4 py-3 text-xs font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                            >
+                                <Loader2 v-if="replacingAccomplishedForm" class="h-3.5 w-3.5 animate-spin" />
+                                <Upload v-else class="h-3.5 w-3.5" />
+                                {{ replacingAccomplishedForm ? 'Uploading…' : 'Not yet submitted — upload PDF' }}
+                            </label>
+                            <input
+                                id="upload-accomplished-form"
+                                ref="replaceAccomplishedFormInput"
+                                type="file"
+                                accept=".pdf"
+                                class="hidden"
+                                @change="handleReplaceAccomplishedForm"
+                            />
                         </div>
 
                     </div>
                 </div>
             </div>
+        </Teleport>
+
+        <!-- ===== Add Participant Modal ===== -->
+        <Teleport to="body">
+            <Transition
+                enter-active-class="transition duration-200 ease-out"
+                enter-from-class="opacity-0"
+                enter-to-class="opacity-100"
+                leave-active-class="transition duration-150 ease-in"
+                leave-from-class="opacity-100"
+                leave-to-class="opacity-0"
+            >
+                <div
+                    v-if="showAddModal"
+                    class="fixed inset-0 z-50 flex items-center justify-center bg-blue-950/40 backdrop-blur-sm p-4"
+                    @click.self="closeAddModal"
+                >
+                    <Transition
+                        appear
+                        enter-active-class="transition duration-200 ease-out"
+                        enter-from-class="opacity-0 scale-95 translate-y-2"
+                        enter-to-class="opacity-100 scale-100 translate-y-0"
+                    >
+                        <div class="relative bg-background rounded-3xl shadow-2xl ring-1 ring-blue-900/10 w-full max-w-xl flex flex-col max-h-[92vh] overflow-hidden">
+
+                            <!-- Gradient hero header -->
+                            <div class="relative shrink-0 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 px-6 pt-6 pb-8 text-white overflow-hidden">
+                                <div class="absolute inset-0 pointer-events-none overflow-hidden">
+                                    <div class="absolute -top-10 -right-10 h-40 w-40 rounded-full bg-white/10" />
+                                    <div class="absolute -bottom-16 -left-6 h-48 w-48 rounded-full bg-white/5" />
+                                    <PlaneTakeoff class="absolute right-6 bottom-2 h-16 w-16 text-white/10 rotate-12" />
+                                </div>
+
+                                <button
+                                    class="absolute right-4 top-4 text-white/80 hover:text-white hover:bg-white/10 p-1.5 rounded-full transition-colors"
+                                    @click="closeAddModal"
+                                >
+                                    <X class="h-4 w-4" />
+                                </button>
+
+                                <div class="relative flex items-center gap-4">
+                                    <div class="h-14 w-14 shrink-0 rounded-2xl flex items-center justify-center text-lg font-extrabold shadow-lg ring-2 ring-white/30 transition-colors"
+                                        :class="addAvatarClasses">
+                                        {{ addInitials }}
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-blue-100">
+                                            <Sparkles class="h-3 w-3" /> New Participant
+                                        </p>
+                                        <h2 class="text-xl font-extrabold leading-tight truncate">
+                                            {{ addForm.firstname || addForm.surname ? `${addForm.firstname} ${addForm.surname}`.trim() : 'Add Participant' }}
+                                        </h2>
+                                        <p class="text-xs text-blue-100/90 truncate">{{ program.program_title }}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <form id="add-participant-form" @submit.prevent="submitAddParticipant" class="overflow-y-auto flex-1 px-6 py-5 space-y-6 -mt-4">
+
+                                <div class="flex items-start gap-2.5 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900 px-4 py-3 text-xs text-blue-800 dark:text-blue-200 shadow-sm">
+                                    <ShieldCheck class="h-4 w-4 shrink-0 mt-0.5 text-blue-500" />
+                                    <span>Requirement documents are <strong>optional</strong> for admin-added entries — you can save this participant now and attach files anytime later.</span>
+                                </div>
+
+                                <!-- Personal Information -->
+                                <section class="space-y-3">
+                                    <div class="flex items-center gap-2">
+                                        <div class="h-7 w-7 rounded-lg bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center">
+                                            <IdCard class="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                                        </div>
+                                        <h3 class="text-sm font-bold text-foreground">Personal Information</h3>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                        <div>
+                                            <label class="block text-xs font-semibold text-muted-foreground mb-1">First Name *</label>
+                                            <input v-model="addForm.firstname" type="text" required
+                                                class="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition" />
+                                            <p v-if="addErrors.firstname" class="mt-1 text-xs text-red-500">{{ addErrors.firstname }}</p>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-semibold text-muted-foreground mb-1">Middle Name</label>
+                                            <input v-model="addForm.middle_name" type="text"
+                                                class="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-semibold text-muted-foreground mb-1">Surname *</label>
+                                            <input v-model="addForm.surname" type="text" required
+                                                class="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition" />
+                                            <p v-if="addErrors.surname" class="mt-1 text-xs text-red-500">{{ addErrors.surname }}</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-xs font-semibold text-muted-foreground mb-1">Sex *</label>
+                                            <div class="grid grid-cols-3 gap-1.5">
+                                                <button
+                                                    v-for="opt in ['male', 'female', 'other']"
+                                                    :key="opt"
+                                                    type="button"
+                                                    class="rounded-xl border px-2 py-2 text-xs font-semibold capitalize transition-colors"
+                                                    :class="addForm.sex === opt
+                                                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                                                        : 'bg-background hover:bg-blue-50 dark:hover:bg-blue-950/40 text-muted-foreground border-input'"
+                                                    @click="addForm.sex = opt"
+                                                >
+                                                    {{ opt }}
+                                                </button>
+                                            </div>
+                                            <p v-if="addErrors.sex" class="mt-1 text-xs text-red-500">{{ addErrors.sex }}</p>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-semibold text-muted-foreground mb-1">Age *</label>
+                                            <input v-model="addForm.age" type="number" min="18" max="100" required
+                                                class="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition" />
+                                            <p v-if="addErrors.age" class="mt-1 text-xs text-red-500">{{ addErrors.age }}</p>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <!-- Assignment -->
+                                <section class="space-y-3">
+                                    <div class="flex items-center gap-2">
+                                        <div class="h-7 w-7 rounded-lg bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center">
+                                            <Briefcase class="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                                        </div>
+                                        <h3 class="text-sm font-bold text-foreground">Assignment & Contact</h3>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-xs font-semibold text-muted-foreground mb-1">Position *</label>
+                                            <input v-model="addForm.position" type="text" required
+                                                class="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition" />
+                                            <p v-if="addErrors.position" class="mt-1 text-xs text-red-500">{{ addErrors.position }}</p>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-semibold text-muted-foreground mb-1">Agency *</label>
+                                            <input v-model="addForm.agency" type="text" required
+                                                class="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition" />
+                                            <p v-if="addErrors.agency" class="mt-1 text-xs text-red-500">{{ addErrors.agency }}</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-xs font-semibold text-muted-foreground mb-1">Contact Number</label>
+                                            <input v-model="addForm.contact_number" type="tel"
+                                                class="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-semibold text-muted-foreground mb-1">Email</label>
+                                            <input v-model="addForm.email" type="email"
+                                                class="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition" />
+                                            <p v-if="addErrors.email" class="mt-1 text-xs text-red-500">{{ addErrors.email }}</p>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-semibold text-muted-foreground mb-1.5">Status</label>
+                                        <div class="flex flex-wrap gap-1.5">
+                                            <button
+                                                v-for="(label, key) in statusLabels"
+                                                :key="key"
+                                                type="button"
+                                                class="rounded-full px-3 py-1 text-[11px] font-semibold border transition-all"
+                                                :class="addForm.status === key
+                                                    ? [statusColors[key], 'border-transparent ring-2 ring-blue-500/40 shadow-sm']
+                                                    : 'bg-background text-muted-foreground border-input hover:border-blue-300'"
+                                                @click="addForm.status = key"
+                                            >
+                                                {{ label }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <!-- Sponsor requirement checklist (optional) -->
+                                <section v-if="sponsorConfigs.length > 0" class="space-y-3">
+                                    <div class="flex items-center gap-2">
+                                        <div class="h-7 w-7 rounded-lg bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center">
+                                            <FileCheck2 class="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                                        </div>
+                                        <h3 class="text-sm font-bold text-foreground">Documents</h3>
+                                        <span class="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-300">
+                                            Optional
+                                        </span>
+                                    </div>
+
+                                    <div v-if="sponsorConfigs.length > 1">
+                                        <label class="block text-xs font-semibold text-muted-foreground mb-1">Requirement Checklist</label>
+                                        <select v-model="addForm.foreign_sponsor_config_id"
+                                            class="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition">
+                                            <option value="">— None —</option>
+                                            <option v-for="c in sponsorConfigs" :key="c.id" :value="c.id">{{ c.form_title }}</option>
+                                        </select>
+                                    </div>
+
+                                    <div v-if="selectedAddConfig && selectedAddConfig.requirements.length > 0" class="space-y-2">
+                                        <div
+                                            v-for="req in selectedAddConfig.requirements"
+                                            :key="req.id"
+                                            class="rounded-2xl border px-4 py-3 bg-gradient-to-br from-blue-50/80 to-transparent dark:from-blue-950/30 hover:border-blue-300 transition-colors"
+                                        >
+                                            <p class="text-xs font-semibold text-foreground">{{ req.question }}</p>
+
+                                            <div v-if="addRequirementFileNames[req.id]" class="mt-2 flex items-center gap-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 px-3 py-1.5">
+                                                <CheckCircle2 class="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                                                <span class="text-[11px] font-medium text-emerald-700 dark:text-emerald-300 truncate flex-1">{{ addRequirementFileNames[req.id] }}</span>
+                                                <button type="button" class="text-emerald-600 hover:text-emerald-800 shrink-0" @click="removeAddRequirementFile(req.id)">
+                                                    <X class="h-3 w-3" />
+                                                </button>
+                                            </div>
+                                            <label
+                                                v-else
+                                                :for="`add-req-file-${req.id}`"
+                                                class="mt-2 inline-flex items-center gap-1.5 cursor-pointer rounded-lg border border-dashed border-blue-300 bg-blue-50 dark:bg-blue-950/40 px-3 py-1.5 text-[11px] font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+                                            >
+                                                <Upload class="h-3 w-3" />
+                                                Choose File
+                                            </label>
+                                            <input
+                                                :id="`add-req-file-${req.id}`"
+                                                type="file"
+                                                class="hidden"
+                                                @change="handleAddRequirementFile(req.id, $event)"
+                                            />
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <!-- Accomplished form (optional) -->
+                                <section class="space-y-2">
+                                    <label class="block text-xs font-semibold text-muted-foreground">
+                                        Accomplished Application Form <span class="font-normal">(optional)</span>
+                                    </label>
+
+                                    <div v-if="addAccomplishedFileName" class="flex items-center gap-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 px-4 py-2.5">
+                                        <CheckCircle2 class="h-4 w-4 text-emerald-600 shrink-0" />
+                                        <span class="text-xs font-medium text-emerald-700 dark:text-emerald-300 truncate flex-1">{{ addAccomplishedFileName }}</span>
+                                        <button type="button" class="text-emerald-600 hover:text-emerald-800 shrink-0" @click="removeAddAccomplishedFile">
+                                            <X class="h-3.5 w-3.5" />
+                                        </button>
+                                    </div>
+                                    <label
+                                        v-else
+                                        for="add-accomplished-form"
+                                        class="flex items-center justify-center gap-2 cursor-pointer rounded-xl border-2 border-dashed border-blue-300 bg-blue-50/70 dark:bg-blue-950/30 px-5 py-4 text-sm font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                                    >
+                                        <Upload class="h-4 w-4" />
+                                        Upload PDF
+                                    </label>
+                                    <input id="add-accomplished-form" type="file" accept=".pdf" class="hidden" @change="handleAddAccomplishedFile" />
+                                </section>
+                            </form>
+
+                            <!-- Footer -->
+                            <div class="shrink-0 flex items-center justify-end gap-2 px-6 py-4 border-t bg-muted/20">
+                                <Button type="button" variant="outline" @click="closeAddModal">Cancel</Button>
+                                <Button
+                                    type="submit"
+                                    form="add-participant-form"
+                                    :disabled="addProcessing"
+                                    class="gap-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md shadow-blue-600/20"
+                                >
+                                    <Loader2 v-if="addProcessing" class="h-4 w-4 animate-spin" />
+                                    <Plus v-else class="h-4 w-4" />
+                                    {{ addProcessing ? 'Adding…' : 'Add Participant' }}
+                                </Button>
+                            </div>
+                        </div>
+                    </Transition>
+                </div>
+            </Transition>
         </Teleport>
 
     </AppLayout>

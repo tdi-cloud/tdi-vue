@@ -244,6 +244,11 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
         [ForeignSponsorConfigController::class, 'destroyRequirement']
     )->name('foreign-nominee-requirements.destroy');
 
+    // Admin-added nominee (participant)
+    Route::post('/foreign-programs/{foreignProgram}/nominees',
+        [ForeignSponsorConfigController::class, 'storeNominee']
+    )->name('foreign-nominees.store');
+
     // Nominee Status Update
     Route::patch('/foreign-nominees/{nominee}/status',
         [ForeignSponsorConfigController::class, 'updateNomineeStatus']
@@ -256,6 +261,10 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     })->name('foreign-nominees.destroy')->middleware('auth');
 
     // Submissions
+    Route::post('/foreign-nominees/{nominee}/requirements/{requirement}/submission',
+        [ForeignSponsorConfigController::class, 'storeSubmission']
+    )->name('foreign-nominee-submissions.store');
+
     Route::post('/foreign-nominee-submissions/{submission}/replace',
         [ForeignSponsorConfigController::class, 'replaceSubmission']
     )->name('foreign-nominee-submissions.replace');

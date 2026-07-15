@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ForeignNominee;
 use App\Models\ForeignProgram;
+use App\Models\ForeignSponsorConfig;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -85,7 +86,14 @@ class ForeignProgramController extends Controller
     public function show(ForeignProgram $foreignProgram)
     {
         return Inertia::render('ForeignPrograms/show', [
-            'program' => $foreignProgram->load(['nominees.submissions.requirement']),
+            'program' => $foreignProgram->load([
+                'nominees.submissions.requirement',
+                'nominees.sponsorConfig.requirements' => fn ($q) => $q->orderBy('sort_order'),
+            ]),
+            'sponsorConfigs' => ForeignSponsorConfig::where('organizing_sponsor', $foreignProgram->organizing_sponsor)
+                ->where('is_active', true)
+                ->with(['requirements' => fn ($q) => $q->orderBy('sort_order')])
+                ->get(),
         ]);
     }
 
