@@ -560,6 +560,9 @@ class TnaController extends Controller
         if (! $user) {
             return false;
         }
+        if ($user->access === 'admin') {
+            return true;
+        }
         if ($assessment->user_id === $user->id) {
             return true;
         }
@@ -712,6 +715,152 @@ class TnaController extends Controller
             .' - '.$clean($assessment->period).'.pdf';
 
         return $pdf->stream($filename);
+    }
+
+    /**
+     * Base query: pinaka-huling finalized (supervisor-reviewed) na TNA
+     * assessment kada empleyado, naka-join sa users/employees para pwedeng
+     * i-filter base sa REGION/OFFICE.
+     */
+    protected function summaryBaseQuery(Request $request)
+    {
+        $latestIds = TnaAssessment::whereNotNull('supervisor_reviewed_at')
+            ->selectRaw('MAX(id) as id')
+            ->groupBy('user_id');
+
+        $query = TnaAssessment::query()
+            ->joinSub($latestIds, 'latest', fn ($join) => $join->on('tna_assessments.id', '=', 'latest.id'))
+            ->join('users', 'users.id', '=', 'tna_assessments.user_id')
+            ->leftJoin('employees', 'employees.EMPCODE', '=', 'users.empcode');
+
+        if ($request->filled('search')) {
+            $search = $request->string('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('tna_assessments.name', 'like', "%{$search}%")
+                    ->orWhere('users.empcode', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('region')) {
+            $query->where('employees.REGION', $request->string('region'));
+        }
+
+        if ($request->filled('office')) {
+            $query->where('employees.OFFICE', $request->string('office'));
+        }
+
+        return $query;
+    }
+
+    /**
+     * Admin-only: listahan ng lahat ng empleyado na may finalized TNA
+     * Result, kasama ang kanilang top 3 training priorities.
+     */
+    public function summaryIndex(Request $request)
+    {
+        $query = $this->summaryBaseQuery($request);
+
+        // Ang "unit" filter ay nangangailangan ng computed top-3 priority
+        // (hindi direktang column), kaya kailangan munang i-resolve ang mga
+        // ID na tugma bago mag-paginate, para tama ang total/pages.
+        if ($request->filled('unit')) {
+            $unit = $request->string('unit');
+
+            $matchingIds = (clone $query)
+                ->select('tna_assessments.*')
+                ->get()
+                ->filter(fn (TnaAssessment $assessment) => $this->buildResult($assessment)['priority']
+                    ->contains(fn ($p) => $p['unit'] === (string) $unit))
+                ->pluck('id');
+
+            $query->whereIn('tna_assessments.id', $matchingIds);
+        }
+
+        $assessments = $query
+            ->select(
+                'tna_assessments.*',
+                'users.empcode as user_empcode',
+                'employees.REGION as region',
+                'employees.OFFICE as office',
+                DB::raw('employees.`OFFICE/DIVISION` as office_division')
+            )
+            ->orderBy('tna_assessments.name')
+            ->paginate($request->get('per_page', 10))
+            ->withQueryString();
+
+        $assessments->through(function (TnaAssessment $row) {
+            $priority = $this->buildResult($row)['priority'];
+
+            return [
+                'id' => $row->id,
+                'name' => $row->name,
+                'position' => $row->position,
+                'period' => $row->period,
+                'empcode' => $row->user_empcode,
+                'region' => $row->region,
+                'office' => $row->office,
+                'office_division' => $row->office_division,
+                'reviewed_at' => $row->supervisor_reviewed_at?->format('M d, Y'),
+                'top_priorities' => $priority->values(),
+            ];
+        });
+
+        return Inertia::render('TnaSummary/index', [
+            'assessments' => $assessments,
+            'regions' => Employee::query()->whereNotNull('REGION')->distinct()->orderBy('REGION')->pluck('REGION'),
+            'officesByRegion' => Employee::query()
+                ->whereNotNull('REGION')
+                ->whereNotNull('OFFICE')
+                ->distinct()
+                ->orderBy('OFFICE')
+                ->get(['REGION', 'OFFICE'])
+                ->groupBy('REGION')
+                ->map(fn ($rows) => $rows->pluck('OFFICE')->values()),
+            'units' => Competency::query()->distinct()->orderBy('unit')->pluck('unit'),
+            'filters' => $request->only(['search', 'region', 'office', 'unit', 'per_page']),
+        ]);
+    }
+
+    /**
+     * Admin-only: aggregate na buod ng lahat ng finalized TNA Results —
+     * competency band distribution at pinaka-madalas na training priorities.
+     */
+    public function summaryDashboardData(Request $request)
+    {
+        $assessments = $this->summaryBaseQuery($request)
+            ->select('tna_assessments.*')
+            ->get();
+
+        $bandLabels = collect(self::RESULT_BANDS)->pluck(2)->all();
+        $bandCounts = array_fill_keys($bandLabels, 0);
+        $unitPriorityCounts = [];
+
+        foreach ($assessments as $assessment) {
+            $result = $this->buildResult($assessment);
+
+            foreach ($result['units'] as $unit) {
+                foreach ($unit['rows'] as $row) {
+                    if (array_key_exists($row['label'], $bandCounts)) {
+                        $bandCounts[$row['label']]++;
+                    }
+                }
+            }
+
+            foreach ($result['priority'] as $p) {
+                $unitPriorityCounts[$p['unit']] = ($unitPriorityCounts[$p['unit']] ?? 0) + 1;
+            }
+        }
+
+        arsort($unitPriorityCounts);
+        $topUnits = array_slice($unitPriorityCounts, 0, 5, true);
+
+        return response()->json([
+            'total_employees' => $assessments->count(),
+            'band_labels' => array_keys($bandCounts),
+            'band_series' => array_values($bandCounts),
+            'top_units' => array_keys($topUnits),
+            'top_units_series' => array_values($topUnits),
+        ]);
     }
 
     /**

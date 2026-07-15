@@ -189,7 +189,7 @@ const calendarOptions: CalendarOptions = {
                 </div>
 
                 <DialogFooter v-if="selected?.program_id">
-                    <Button as-child class="w-full sm:w-auto">
+                    <Button as-child class="w-full bg-blue-600 hover:bg-blue-700 dark:text-white sm:w-auto">
                         <Link :href="`/programs/${selected.program_id}`">
                             <ExternalLink class="mr-2 h-4 w-4" />
                             View Program
@@ -207,12 +207,12 @@ const calendarOptions: CalendarOptions = {
     --fc-border-color: hsl(var(--border));
     --fc-page-bg-color: transparent;
     --fc-today-bg-color: hsl(var(--accent) / 0.4);
-    --fc-button-bg-color: hsl(var(--primary));
-    --fc-button-border-color: hsl(var(--primary));
-    --fc-button-hover-bg-color: hsl(var(--primary) / 0.9);
-    --fc-button-hover-border-color: hsl(var(--primary) / 0.9);
-    --fc-button-active-bg-color: hsl(var(--primary) / 0.8);
-    --fc-button-active-border-color: hsl(var(--primary) / 0.8);
+    --fc-button-bg-color: #2563eb;
+    --fc-button-border-color: #2563eb;
+    --fc-button-hover-bg-color: #1d4ed8;
+    --fc-button-hover-border-color: #1d4ed8;
+    --fc-button-active-bg-color: #1e40af;
+    --fc-button-active-border-color: #1e40af;
     font-size: 0.875rem;
 }
 

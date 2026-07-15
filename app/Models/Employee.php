@@ -13,7 +13,7 @@ class Employee extends Model
     public function getNameAttribute(): string
     {
         $mi = trim($this->MI ?? '');
-        $mi = $mi !== '' ? ' ' . rtrim($mi, '.') . '.' : '';
+        $mi = $mi !== '' ? ' '.rtrim($mi, '.').'.' : '';
 
         return trim("{$this->FIRSTNAME}{$mi} {$this->LASTNAME}");
     }
@@ -22,7 +22,8 @@ class Employee extends Model
     {
         $f = strtoupper(substr($this->FIRSTNAME ?? '', 0, 1));
         $l = strtoupper(substr($this->LASTNAME ?? '', 0, 1));
-        return $f . $l;
+
+        return $f.$l;
     }
 
     public function getAvatarColorAttribute(): string
@@ -33,11 +34,17 @@ class Employee extends Model
             'bg-teal-500', 'bg-pink-500',
         ];
         $idx = ord($this->EMPCODE[0] ?? 'A') % count($colors);
+
         return $colors[$idx];
     }
 
     public function participants()
     {
         return $this->hasMany(Participant::class, 'empcode', 'EMPCODE');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'EMPCODE', 'empcode');
     }
 }

@@ -8,6 +8,7 @@ use App\Http\Controllers\CoverPageController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeclarationController;
 use App\Http\Controllers\EmailReminderController;
+use App\Http\Controllers\EmployeeMapController;
 use App\Http\Controllers\EmployeeProgressController;
 use App\Http\Controllers\EnrolledProgramController;
 use App\Http\Controllers\ForeignAgencyController;
@@ -179,6 +180,15 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('/requirements-tracker/export', [RequirementsTrackerController::class, 'exportCsv'])
         ->name('requirements-tracker.export');
 
+    // TNA SUMMARY
+    Route::get('/tna-summary', [TnaController::class, 'summaryIndex'])->name('tna-summary.index');
+    Route::get('/tna-summary/dashboard-data', [TnaController::class, 'summaryDashboardData'])
+        ->name('tna-summary.dashboard-data');
+
+    // EMPLOYEES MAP
+    Route::get('/employees-map', [EmployeeMapController::class, 'index'])->name('employees-map.index');
+    Route::get('/employees-map/region', [EmployeeMapController::class, 'byRegion'])->name('employees-map.region');
+
     // DECLARATION OF COMPLETERS:
     Route::get('/declarations/signatories/search', [DeclarationController::class, 'searchSignatory'])
         ->name('declarations.signatories.search');
@@ -244,6 +254,15 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
 
         return back();
     })->name('foreign-nominees.destroy')->middleware('auth');
+
+    // Submissions
+    Route::post('/foreign-nominee-submissions/{submission}/replace',
+        [ForeignSponsorConfigController::class, 'replaceSubmission']
+    )->name('foreign-nominee-submissions.replace');
+
+    Route::post('/foreign-nominees/{nominee}/accomplished-form/replace',
+        [ForeignSponsorConfigController::class, 'replaceAccomplishedForm']
+    )->name('foreign-nominees.accomplished-form.replace');
 
     // TESDA ORDER
     Route::get('/programs/{program}/tesda-orders', [TesdaOrderController::class, 'index'])->name('tesda-orders.index');

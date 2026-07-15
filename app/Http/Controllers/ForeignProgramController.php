@@ -189,7 +189,9 @@ class ForeignProgramController extends Controller
             ->distinct()->orderByDesc('year')->pluck('year');
 
         // ----- Programs per organizing_sponsor -----
-        $programQuery = ForeignProgram::query();
+        // Hindi na kasama sa dashboard counts ang mga program na hindi na
+        // concern ng NFP (National Focal Point).
+        $programQuery = ForeignProgram::query()->where('status', '!=', 'not_nfp_concern');
         if ($year) {
             $programQuery->whereYear('program_start', $year);
         }

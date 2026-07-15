@@ -23,7 +23,6 @@
     table.grid thead th { text-align: center; font-weight: bold; vertical-align: middle; font-size: 7pt; padding: 3px 1px; line-height: 1.15; }
     table.grid th.sf { width: 7.5%; font-size: 8pt; font-style: normal; font-weight: bold; padding: 1px 0; }
     table.grid td.unit { width: 20%; font-weight: normal; vertical-align: middle; text-align: center; padding: 4px 4px; }
-    table.grid td.unit-cont { border-top: 0; }
     table.grid th.h-unit { width: 20%; }
     table.grid th.h-elem { width: 25%; }
     table.grid th.h-grp  { width: 15%; }
@@ -42,6 +41,19 @@
         line-height: 0 !important;
         font-size: 0 !important;
     }
+
+    /* Nested table per unit: tunay na merged ang unit cell, at hindi
+       hinahati ng dompdf ang isang outer row sa page break */
+    table.grid td.nest { padding: 0; vertical-align: top; }
+    table.inner { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    table.inner td { border: 1px solid #000; padding: 4px 5px; font-size: 9.5pt; line-height: 1.15; }
+    table.inner td.elem { vertical-align: middle; padding: 4px 5px; }
+    table.inner td.num  { text-align: center; vertical-align: middle; padding: 4px 0; }
+    table.inner td.res  { text-align: center; vertical-align: middle; font-weight: bold; font-size: 9.5pt; padding: 4px 2px; }
+    table.inner tr.r-first td { border-top: 0; }
+    table.inner tr.r-last td  { border-bottom: 0; }
+    table.inner td.c-first { border-left: 0; }
+    table.inner td.c-last  { border-right: 0; }
 
     .elective-heading { font-size: 10pt; font-weight: bold; margin: 12px 0 4px 0; }
 
@@ -147,26 +159,25 @@
 
             @foreach ($group as $unit)
                 <tbody>
-                    @foreach ($unit['rows'] as $row)
-                        <tr>
-                            {{-- Walang rowspan: iniiwasan ang dompdf bug kapag
-                                 nahati ang unit sa page break. Blangko + walang
-                                 top border = mukhang merged pa rin. --}}
-                            @if ($loop->first)
-                                <td class="unit">{{ $unit['unit'] }}</td>
-                            @else
-                                <td class="unit unit-cont"></td>
-                            @endif
-                            <td class="elem">{{ $row['element'] }}</td>
-                            <td class="num">{{ $n($row['crit_self']) }}</td>
-                            <td class="num">{{ $n($row['crit_sup']) }}</td>
-                            <td class="num">{{ $n($row['comp_self']) }}</td>
-                            <td class="num">{{ $n($row['comp_sup']) }}</td>
-                            <td class="num">{{ $n($row['freq_self']) }}</td>
-                            <td class="num">{{ $n($row['freq_sup']) }}</td>
-                            <td class="res">{{ $fmt($row['score']) }}</td>
-                        </tr>
-                    @endforeach
+                    <tr>
+                        <td class="unit">{{ $unit['unit'] }}</td>
+                        <td class="nest" colspan="8">
+                            <table class="inner">
+                                @foreach ($unit['rows'] as $row)
+                                    <tr class="{{ $loop->first ? 'r-first' : '' }} {{ $loop->last ? 'r-last' : '' }}">
+                                        <td class="elem c-first" style="width:31.25%">{{ $row['element'] }}</td>
+                                        <td class="num" style="width:9.375%">{{ $n($row['crit_self']) }}</td>
+                                        <td class="num" style="width:9.375%">{{ $n($row['crit_sup']) }}</td>
+                                        <td class="num" style="width:9.375%">{{ $n($row['comp_self']) }}</td>
+                                        <td class="num" style="width:9.375%">{{ $n($row['comp_sup']) }}</td>
+                                        <td class="num" style="width:9.375%">{{ $n($row['freq_self']) }}</td>
+                                        <td class="num" style="width:9.375%">{{ $n($row['freq_sup']) }}</td>
+                                        <td class="res c-last" style="width:12.5%">{{ $fmt($row['score']) }}</td>
+                                    </tr>
+                                @endforeach
+                            </table>
+                        </td>
+                    </tr>
                 </tbody>
             @endforeach
         </table>

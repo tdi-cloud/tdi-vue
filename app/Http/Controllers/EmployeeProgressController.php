@@ -16,7 +16,7 @@ class EmployeeProgressController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Employee::query();
+        $query = Employee::with('user:id,empcode,avatar');
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -55,15 +55,38 @@ class EmployeeProgressController extends Controller
             ->get()
             ->keyBy('empcode');
 
-        $employees->through(function (Employee $employee) use ($progressStats) {
+        $submissionStats = DB::table('participants as p')
+            ->join('batches as b', 'p.batch_id', '=', 'b.id')
+            ->join('requirements as r', 'r.batch_id', '=', 'b.id')
+            ->leftJoin('submissions as s', function ($join) {
+                $join->on('s.requirement_id', '=', 'r.id')
+                    ->on('s.participant_id', '=', 'p.id');
+            })
+            ->whereIn('p.empcode', $empcodes)
+            ->where('p.attendance', '!=', 'Absent')
+            ->where('r.is_required', true)
+            ->selectRaw('p.empcode,
+                COUNT(*) as total_requirements,
+                SUM(CASE WHEN s.status = "Approved" THEN 1 ELSE 0 END) as approved_submissions')
+            ->groupBy('p.empcode')
+            ->get()
+            ->keyBy('empcode');
+
+        $employees->through(function (Employee $employee) use ($progressStats, $submissionStats) {
             $stats = $progressStats->get($employee->EMPCODE);
+            $subs = $submissionStats->get($employee->EMPCODE);
 
             return array_merge($employee->toArray(), [
+                'avatar' => $employee->user?->avatar,
                 'progress_stats' => [
                     'total_programs' => (int) ($stats->total_programs ?? 0),
                     'completed_programs' => (int) ($stats->completed_programs ?? 0),
                     'total_hours' => (float) ($stats->total_hours ?? 0),
                     'hours_completed' => (float) ($stats->hours_completed ?? 0),
+                ],
+                'submission_stats' => [
+                    'total_requirements' => (int) ($subs->total_requirements ?? 0),
+                    'approved_submissions' => (int) ($subs->approved_submissions ?? 0),
                 ],
             ]);
         });
@@ -81,7 +104,8 @@ class EmployeeProgressController extends Controller
 
     private function buildProgress(string $empcode): array
     {
-        $employee = Employee::where('EMPCODE', $empcode)->firstOrFail();
+        $employee = Employee::with('user:id,empcode,avatar')->where('EMPCODE', $empcode)->firstOrFail();
+        $employee->avatar = $employee->user?->avatar;
 
         $participants = Participant::with(['batch.program.coverPage'])
             ->where('empcode', $empcode)

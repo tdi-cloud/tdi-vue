@@ -253,6 +253,7 @@ const statusLabels: Record<string, string> = {
     waiting_for_result:   'Waiting for Result',
     ongoing:              'Ongoing',
     concluded:            'Concluded',
+    not_nfp_concern:      'Not NFP Concern',
 };
 
 const statusColors: Record<string, string> = {
@@ -264,6 +265,7 @@ const statusColors: Record<string, string> = {
     waiting_for_result:   'bg-cyan-100 text-cyan-700',
     ongoing:              'bg-emerald-100 text-emerald-700',
     concluded:            'bg-gray-200 text-gray-600',
+    not_nfp_concern:      'bg-neutral-200 text-neutral-500',
 };
 
 const modalityColors: Record<string, string> = {

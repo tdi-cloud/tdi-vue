@@ -24,7 +24,9 @@ import {
     ChartBarStacked,
     Earth,
     FileStack,
-    ClipboardList
+    ClipboardList,
+    Gauge,
+    Map
 } from 'lucide-vue-next';
 import { useFlash } from '@/composables/useFlash';
 import { Toaster } from '@/components/ui/toast';
@@ -90,6 +92,20 @@ const allNavItems: NavItem[] = [
         url: '/requirements-tracker',
         icon: ClipboardList,
         color: 'text-rose-500',
+    },
+
+    {
+        title: 'TNA Summary',
+        url: '/tna-summary',
+        icon: Gauge,
+        color: 'text-indigo-500',
+    },
+
+    {
+        title: 'Employees Map',
+        url: '/employees-map',
+        icon: Map,
+        color: 'text-teal-500',
     },
 ];
 

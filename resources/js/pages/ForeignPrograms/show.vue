@@ -6,7 +6,7 @@ import {
     ArrowLeft, Users, Calendar, Building2, Mail, Phone,
     UserCircle2, X, CheckCircle2, ClipboardList, MapPin,
     UserRound, Search, FileText, Eye, Loader2, ChevronDown,
-    Trash2,
+    Trash2, RefreshCw,
 } from 'lucide-vue-next';
 import { ref, computed } from 'vue';
 import axios from 'axios';
@@ -116,6 +116,65 @@ async function updateStatus(nominee: Nominee, newStatus: string) {
 function confirmDelete(nominee: Nominee) {
     if (!confirm(`Remove nominee "${fullName(nominee)}"?`)) return;
     router.delete(route('foreign-nominees.destroy', nominee.id), { preserveScroll: true });
+}
+
+// ── Replace submitted document ────────────────────────────────────────────────
+
+const replaceInput  = ref<HTMLInputElement | null>(null);
+const replacingId    = ref<number | null>(null);
+const replaceTarget  = ref<Submission | null>(null);
+
+function triggerReplace(sub: Submission) {
+    replaceTarget.value = sub;
+    replaceInput.value?.click();
+}
+
+async function handleReplaceFile(e: Event) {
+    const target = e.target as HTMLInputElement;
+    const file = target.files?.[0];
+    target.value = '';
+    const sub = replaceTarget.value;
+    if (!file || !sub) return;
+
+    replacingId.value = sub.id;
+    const data = new FormData();
+    data.append('file', file);
+
+    try {
+        const res = await axios.post(route('foreign-nominee-submissions.replace', sub.id), data);
+        sub.file_path = res.data.file_path;
+    } finally {
+        replacingId.value = null;
+        replaceTarget.value = null;
+    }
+}
+
+// ── Replace accomplished application form ──────────────────────────────────────
+
+const replaceAccomplishedFormInput = ref<HTMLInputElement | null>(null);
+const replacingAccomplishedForm    = ref(false);
+
+function triggerReplaceAccomplishedForm() {
+    replaceAccomplishedFormInput.value?.click();
+}
+
+async function handleReplaceAccomplishedForm(e: Event) {
+    const target = e.target as HTMLInputElement;
+    const file = target.files?.[0];
+    target.value = '';
+    if (!file || !viewNominee.value) return;
+
+    const nominee = viewNominee.value;
+    replacingAccomplishedForm.value = true;
+    const data = new FormData();
+    data.append('file', file);
+
+    try {
+        const res = await axios.post(route('foreign-nominees.accomplished-form.replace', nominee.id), data);
+        nominee.accomplished_form_path = res.data.accomplished_form_path;
+    } finally {
+        replacingAccomplishedForm.value = false;
+    }
 }
 
 // ── Lookups ───────────────────────────────────────────────────────────────────
@@ -472,34 +531,52 @@ const modalityLabels: Record<string, string> = {
                         <div>
                             <p class="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">Submitted Documents</p>
                             <div v-if="viewNominee.submissions.length > 0" class="space-y-2">
-                                <a
+                                <div
                                     v-for="sub in viewNominee.submissions"
                                     :key="sub.id"
-                                    :href="fileUrl(sub.file_path)"
-                                    target="_blank"
                                     class="flex items-center gap-2 rounded-xl border px-4 py-3 text-sm hover:bg-muted/40 transition-colors"
                                 >
                                     <FileText class="h-4 w-4 text-blue-500 shrink-0" />
-                                    <div class="flex-1 min-w-0">
+                                    <a :href="fileUrl(sub.file_path)" target="_blank" class="flex-1 min-w-0">
                                         <p class="font-semibold text-xs truncate">{{ sub.requirement.question }}</p>
                                         <p class="text-[10px] text-muted-foreground truncate">{{ sub.file_path.split('/').pop() }}</p>
-                                    </div>
-                                </a>
+                                    </a>
+                                    <button
+                                        type="button"
+                                        :disabled="replacingId === sub.id"
+                                        class="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600 hover:text-amber-700 border border-amber-200 rounded-lg px-2 py-1 hover:bg-amber-50 transition-colors disabled:opacity-50"
+                                        @click="triggerReplace(sub)"
+                                    >
+                                        <Loader2 v-if="replacingId === sub.id" class="h-3 w-3 animate-spin" />
+                                        <RefreshCw v-else class="h-3 w-3" />
+                                        Replace
+                                    </button>
+                                </div>
                             </div>
                             <p v-else class="text-xs text-muted-foreground italic">No documents submitted.</p>
+                            <input ref="replaceInput" type="file" class="hidden" @change="handleReplaceFile" />
                         </div>
 
                         <!-- Accomplished form -->
                         <div v-if="viewNominee.accomplished_form_path">
                             <p class="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">Accomplished Application Form</p>
-                            <a
-                                :href="fileUrl(viewNominee.accomplished_form_path)"
-                                target="_blank"
-                                class="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm hover:bg-blue-100 transition-colors"
-                            >
+                            <div class="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm hover:bg-blue-100 transition-colors">
                                 <FileText class="h-4 w-4 text-blue-600 shrink-0" />
-                                <span class="text-blue-700 font-semibold text-xs">View Accomplished Form (PDF)</span>
-                            </a>
+                                <a :href="fileUrl(viewNominee.accomplished_form_path)" target="_blank" class="flex-1">
+                                    <span class="text-blue-700 font-semibold text-xs">View Accomplished Form (PDF)</span>
+                                </a>
+                                <button
+                                    type="button"
+                                    :disabled="replacingAccomplishedForm"
+                                    class="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600 hover:text-amber-700 border border-amber-200 rounded-lg px-2 py-1 hover:bg-amber-50 transition-colors disabled:opacity-50"
+                                    @click="triggerReplaceAccomplishedForm"
+                                >
+                                    <Loader2 v-if="replacingAccomplishedForm" class="h-3 w-3 animate-spin" />
+                                    <RefreshCw v-else class="h-3 w-3" />
+                                    Replace
+                                </button>
+                            </div>
+                            <input ref="replaceAccomplishedFormInput" type="file" class="hidden" @change="handleReplaceAccomplishedForm" />
                         </div>
 
                     </div>

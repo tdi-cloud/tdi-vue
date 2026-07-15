@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Head, router } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 import {
@@ -27,11 +28,16 @@ interface Employee {
     name: string;
     initials: string;
     avatar_color: string;
+    avatar: string | null;
     progress_stats: {
         total_programs: number;
         completed_programs: number;
         total_hours: number;
         hours_completed: number;
+    };
+    submission_stats: {
+        total_requirements: number;
+        approved_submissions: number;
     };
 }
 
@@ -289,6 +295,7 @@ const submissionStatusColor = (status?: string) => {
                             <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide">Plantilla</th>
                             <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide">Program Progress</th>
                             <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide">Hours Progress</th>
+                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide">Submission Progress</th>
                             <th class="text-right font-bold px-4 py-3 text-xs uppercase tracking-wide">Action</th>
                         </tr>
                     </thead>
@@ -301,10 +308,12 @@ const submissionStatusColor = (status?: string) => {
                             <td class="px-4 py-3 text-muted-foreground font-mono text-xs">{{ emp.EMPCODE }}</td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-3">
-                                    <div class="h-9 w-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                                        :class="emp.avatar_color">
-                                        {{ emp.initials }}
-                                    </div>
+                                    <Avatar class="h-9 w-9 shrink-0 overflow-hidden rounded-full" :class="emp.avatar_color">
+                                        <AvatarImage v-if="emp.avatar" :src="emp.avatar" :alt="emp.name" />
+                                        <AvatarFallback class="flex h-full w-full items-center justify-center rounded-full bg-transparent text-xs font-bold text-white">
+                                            {{ emp.initials }}
+                                        </AvatarFallback>
+                                    </Avatar>
                                     <div>
                                         <p class="font-bold text-sm leading-tight">{{ emp.name?.toUpperCase() }}</p>
                                         <p class="text-xs text-muted-foreground">{{ emp['OFFICE/DIVISION'] }}</p>
@@ -344,6 +353,20 @@ const submissionStatusColor = (status?: string) => {
                                     />
                                 </div>
                             </td>
+                            <td class="px-4 py-3 min-w-[140px]">
+                                <div class="flex items-center justify-between text-xs mb-1">
+                                    <span class="font-semibold">
+                                        {{ emp.submission_stats.approved_submissions }}/{{ emp.submission_stats.total_requirements }}
+                                    </span>
+                                    <span class="text-muted-foreground">{{ progressPercent(emp.submission_stats.approved_submissions, emp.submission_stats.total_requirements) }}%</span>
+                                </div>
+                                <div class="h-1.5 rounded-full bg-muted overflow-hidden">
+                                    <div
+                                        class="h-full rounded-full bg-violet-500 transition-all"
+                                        :style="{ width: progressPercent(emp.submission_stats.approved_submissions, emp.submission_stats.total_requirements) + '%' }"
+                                    />
+                                </div>
+                            </td>
                             <td class="px-4 py-3 text-right">
                                 <button
                                     @click="openDetails(emp)"
@@ -355,7 +378,7 @@ const submissionStatusColor = (status?: string) => {
                         </tr>
 
                         <tr v-if="employees.data?.length === 0">
-                            <td colspan="6" class="px-4 py-16 text-center text-muted-foreground">
+                            <td colspan="7" class="px-4 py-16 text-center text-muted-foreground">
                                 <Users class="h-10 w-10 mx-auto mb-2 opacity-30" />
                                 <p class="text-sm font-semibold">No employees found.</p>
                             </td>
@@ -418,10 +441,12 @@ const submissionStatusColor = (status?: string) => {
 
                         <!-- Employee Card -->
                         <div class="rounded-xl border p-4 flex items-center gap-4">
-                            <div class="h-16 w-16 rounded-xl flex items-center justify-center text-white text-xl font-extrabold shrink-0"
-                                :class="progress.employee.avatar_color">
-                                {{ progress.employee.initials }}
-                            </div>
+                            <Avatar class="h-16 w-16 shrink-0 overflow-hidden rounded-xl" :class="progress.employee.avatar_color">
+                                <AvatarImage v-if="progress.employee.avatar" :src="progress.employee.avatar" :alt="progress.employee.name" />
+                                <AvatarFallback class="flex h-full w-full items-center justify-center rounded-xl bg-transparent text-xl font-extrabold text-white">
+                                    {{ progress.employee.initials }}
+                                </AvatarFallback>
+                            </Avatar>
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2 flex-wrap">
                                     <h2 class="text-lg font-extrabold leading-tight">{{ progress.employee.name?.toUpperCase() }}</h2>
