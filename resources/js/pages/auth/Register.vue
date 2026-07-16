@@ -6,10 +6,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import AuthBase from '@/layouts/AuthLayout.vue';
+import { updateTheme } from '@/composables/useAppearance';
 import { Head, useForm, router } from '@inertiajs/vue3';
 import { LoaderCircle, ShieldCheck, User, Hash, Building2, MailCheck, Eye, EyeOff } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import axios from 'axios';
+
+// ── Force light mode on the register page ───────────────────────────────────
+onMounted(() => {
+    document.documentElement.classList.remove('dark');
+});
+
+onBeforeUnmount(() => {
+    updateTheme((localStorage.getItem('appearance') as 'light' | 'dark' | 'system' | null) || 'system');
+});
 
 const form = useForm({
     name: '',

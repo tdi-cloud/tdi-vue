@@ -6,14 +6,24 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthBase from '@/layouts/AuthLayout.vue';
+import { updateTheme } from '@/composables/useAppearance';
 import { Head, useForm } from '@inertiajs/vue3';
 import { LoaderCircle, Mail, Lock, Eye, EyeOff } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 
 defineProps<{
     status?: string;
     canResetPassword: boolean;
 }>();
+
+// ── Force light mode on the login page ──────────────────────────────────────
+onMounted(() => {
+    document.documentElement.classList.remove('dark');
+});
+
+onBeforeUnmount(() => {
+    updateTheme((localStorage.getItem('appearance') as 'light' | 'dark' | 'system' | null) || 'system');
+});
 
 const form = useForm({
     email: '',

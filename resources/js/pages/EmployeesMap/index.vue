@@ -61,13 +61,29 @@ const PIN_MARKER_HEIGHT = 2.2;
 const ISLET_AREA_THRESHOLD = 1.5; // shape-space sq. units (~SCALE=9/degree)
 const ISLET_HEIGHT = 0.4;
 
+// Default/"reset" na camera position — halos diretsong nakatingin pababa
+// (top-down/"naka-tapat" sa buong mapa) sa halip na malaki ang tilt/anggulo
+// (na parang "nakahiga" ang mapa). Bahagyang Z offset lang para may
+// kaunting pakiramdam ng depth/relief, hindi ito literal na 90° top-down.
+const DEFAULT_CAMERA_POSITION = new THREE.Vector3(0, 108, 18);
+const DEFAULT_CAMERA_TARGET = new THREE.Vector3(0, 0, 0);
+
 const maxCount = Math.max(1, ...props.regionCounts.map((r) => r.total));
 
-const heatColor = (ratio: number): THREE.Color => {
-    // Hue mula 220 (blue, mababa) papuntang 0 (red, mataas).
-    const hue = 220 - Math.min(1, Math.max(0, ratio)) * 220;
-    return new THREE.Color(`hsl(${hue}, 75%, 52%)`);
-};
+/**
+ * Kategoryang (categorical) na palette — bawat rehiyon ay may sariling
+ * kulay (parang mga karaniwang "region map" na larawan), sa halip na
+ * data-driven na heat-color. Na-validate ang 4 na kulay na ito gamit ang
+ * dataviz palette validator (all-pairs CVD/contrast checks, light mode) —
+ * ligtas itong paikot-ikutin sa mga rehiyon dahil may sariling text label
+ * (region code + bilang) naman ang bawat isa sa mapa mismo.
+ */
+const REGION_PALETTE = ['#ec4899', '#06b6d4', '#8b5cf6', '#f59e0b'].map((hex) => new THREE.Color(hex));
+const PASTEL_MIX = 0.4; // gaano ka-lapit sa puti — mas mataas = mas pastel/light
+
+/** Ibinabalik ang pastel (light, washed-out papuntang puti) na bersyon ng slot sa REGION_PALETTE. */
+const categoricalColor = (index: number): THREE.Color =>
+    new THREE.Color().copy(REGION_PALETTE[index % REGION_PALETTE.length]).lerp(new THREE.Color(0xffffff), PASTEL_MIX);
 
 const canvasWrap = ref<HTMLDivElement | null>(null);
 const loading = ref(true);
@@ -140,11 +156,15 @@ function terrainNoise(x: number, y: number): number {
 }
 
 /**
- * Nagbibigay ng per-vertex na kulay sa isang region geometry: berde/tan na
- * "terrain" sa itaas (may noise variation), mas madilim na brown/soil sa
- * mga tagiliran (parang cliff) — tapos banayad na hina-blend ang
- * data-driven na kulay (base sa bilang ng empleyado) sa terrain color sa
- * itaas, para informative pa rin ito kahit "realistic" ang itsura.
+ * Nagbibigay ng per-vertex na kulay sa isang region geometry: ang itaas
+ * (top face) ay dominant na sa (pastel) na kategoryang kulay ng rehiyon
+ * (may kaunting noise variation pa rin para hindi flat/patag ang
+ * peke-terrain look), at ang mga tagiliran (cliff/side) ay mas madilim na
+ * bersyon ng parehong kulay — para malinaw na "may sariling kulay ang
+ * bawat rehiyon" (tulad ng karaniwang region map), habang may kaunti pa
+ * ring 3D relief na texture. Ang `dataColor` na dumarating dito ay
+ * pastel na ('categoricalColor()' na ang nagpapagaan/nag-lelerp papuntang
+ * puti), kaya dito ay shading/relief na lang ang idinadagdag.
  */
 function colorizeRegionGeometry(geometry: THREE.BufferGeometry, dataColor: THREE.Color) {
     geometry.computeVertexNormals();
@@ -153,12 +173,9 @@ function colorizeRegionGeometry(geometry: THREE.BufferGeometry, dataColor: THREE
     const colorArr = new Float32Array(pos.count * 3);
     const uvArr = new Float32Array(pos.count * 2);
 
-    // Muted, natural na palette — halintulad ng Google Maps terrain layer
-    // (soft green sa lowland, tan/khaki sa mas mataas), hindi masyadong
-    // saturated/cartoon.
-    const topLow = new THREE.Color(0xa9c97e);
-    const topHigh = new THREE.Color(0xcdbd8f);
-    const sideColor = new THREE.Color(0xa68a63);
+    const white = new THREE.Color(0xffffff);
+    const topLow = new THREE.Color().copy(dataColor).multiplyScalar(0.94);
+    const topHigh = new THREE.Color().copy(dataColor).lerp(white, 0.18);
     const tmp = new THREE.Color();
 
     for (let i = 0; i < pos.count; i++) {
@@ -167,13 +184,10 @@ function colorizeRegionGeometry(geometry: THREE.BufferGeometry, dataColor: THREE
         if (nz > 0.5) {
             const n = terrainNoise(pos.getX(i), pos.getY(i));
             tmp.copy(topLow).lerp(topHigh, n);
-            // Napaka-banayad na data-tint lang (parang Google Maps data-overlay
-            // layer), para hindi mawala ang natural/realistic na kulay ng lupa.
-            tmp.lerp(dataColor, 0.12);
         } else if (nz < -0.5) {
-            tmp.copy(sideColor).multiplyScalar(0.6);
+            tmp.copy(dataColor).multiplyScalar(0.75);
         } else {
-            tmp.copy(sideColor);
+            tmp.copy(dataColor).multiplyScalar(0.85);
         }
 
         colorArr[i * 3] = tmp.r;
@@ -427,13 +441,13 @@ async function buildScene(container: HTMLDivElement) {
     terrainTexture = makeTerrainTexture();
 
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xaadaff);
+    scene.background = new THREE.Color(0xffffff);
 
     const width = container.clientWidth;
     const height = container.clientHeight;
 
     camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 500);
-    camera.position.set(35, 60, 90);
+    camera.position.copy(DEFAULT_CAMERA_POSITION);
 
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(width, height);
@@ -454,7 +468,7 @@ async function buildScene(container: HTMLDivElement) {
     // banayad lang ang shadow) sa halip na dramatic na "game" lighting, para
     // mas parang totoong satellite/terrain map view (hal. Google Maps).
     scene.add(new THREE.AmbientLight(0xffffff, 0.85));
-    scene.add(new THREE.HemisphereLight(0xaadaff, 0x4a3c28, 0.5));
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x4a3c28, 0.5));
     const sun = new THREE.DirectionalLight(0xffffff, 0.55);
     sun.position.set(60, 90, 40);
     sun.castShadow = true;
@@ -465,14 +479,18 @@ async function buildScene(container: HTMLDivElement) {
     sun.shadow.camera.bottom = -120;
     scene.add(sun);
 
-    // Ocean
+    // Ocean — pinagawang "unlit" na plain white (MeshBasicMaterial, hindi
+    // apektado ng scene lighting) sa halip na MeshStandardMaterial. Dahil
+    // paakyat/patagilid ang anggulo ng camera, ang ocean plane na ito ang
+    // sumasakop sa halos buong background na nakikita — kung PBR-lit
+    // material ito, lalabas itong gray kahit puti ang base color nito
+    // (hindi sapat ang liwanag para umabot sa "puro puti").
     const ocean = new THREE.Mesh(
         new THREE.PlaneGeometry(400, 400),
-        new THREE.MeshStandardMaterial({ color: 0xaadaff, roughness: 0.4, metalness: 0.02 })
+        new THREE.MeshBasicMaterial({ color: 0xffffff })
     );
     ocean.rotation.x = -Math.PI / 2;
     ocean.position.set(0, -0.3, 0);
-    ocean.receiveShadow = true;
     scene.add(ocean);
 
     // Region landmasses — extruded sa taas na proporsyonal sa bilang ng empleyado
@@ -488,11 +506,12 @@ async function buildScene(container: HTMLDivElement) {
             .map((code, i) => [code, i + 1])
     );
 
+    let colorIndex = 0;
     for (const region of regionsData.regions) {
         const total = countsByRegion[region.code] ?? 0;
         const ratio = total / maxCount;
         const regionHeight = MIN_HEIGHT + ratio * (MAX_HEIGHT - MIN_HEIGHT);
-        const color = heatColor(ratio);
+        const color = categoricalColor(colorIndex++);
 
         const meshes = buildRegionMesh(region.polygons, project, color, regionHeight);
         meshes.forEach((mesh) => {
@@ -515,8 +534,7 @@ async function buildScene(container: HTMLDivElement) {
     // parang tumataas na tore/spike sa mapa.
     for (const [code, pin] of Object.entries(PIN_MARKERS)) {
         const total = countsByRegion[code] ?? 0;
-        const ratio = total / maxCount;
-        const color = heatColor(ratio);
+        const color = categoricalColor(colorIndex++);
 
         const [x, z] = project(pin.lng, pin.lat);
         const mesh = buildPinMarker(x, z, color, PIN_MARKER_HEIGHT);
@@ -709,7 +727,7 @@ function resetCamera() {
         sprite.visible = true;
     });
     clearFocusOutline();
-    flyCameraTo(new THREE.Vector3(35, 60, 90), new THREE.Vector3(0, 0, 0), 1000);
+    flyCameraTo(DEFAULT_CAMERA_POSITION, DEFAULT_CAMERA_TARGET, 1000);
 }
 
 function handleResize() {
@@ -751,9 +769,9 @@ onBeforeUnmount(() => {
 
     <AppLayout>
         <div class="relative flex flex-1 flex-col overflow-hidden">
-            <div ref="canvasWrap" class="absolute inset-0 bg-slate-100 dark:bg-slate-900 cursor-grab" />
+            <div ref="canvasWrap" class="absolute inset-0 bg-white cursor-grab" />
 
-            <div v-if="loading" class="absolute inset-0 z-10 flex items-center justify-center bg-slate-100 dark:bg-slate-900">
+            <div v-if="loading" class="absolute inset-0 z-10 flex items-center justify-center bg-white">
                 <p class="text-sm text-muted-foreground">Loading 3D map...</p>
             </div>
 
