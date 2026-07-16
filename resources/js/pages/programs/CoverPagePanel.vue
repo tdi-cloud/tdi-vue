@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
-import { ImagePlus, Trash2, Upload, Loader2 } from 'lucide-vue-next';
+import { ImagePlus, Trash2, Upload, Loader2, Maximize2, X } from 'lucide-vue-next';
 
 interface CoverPage {
     id: number;
@@ -18,6 +18,7 @@ const props = defineProps<{
 const fileInput = ref<HTMLInputElement | null>(null);
 const previewUrl = ref<string | null>(null);
 const uploading = ref(false);
+const showLightbox = ref(false);
 
 // Ipapakita: bagong preview kung may pinili, kung wala, yung naka-save na
 const displayImage = computed(() => previewUrl.value ?? props.coverPage?.image_url ?? null);
@@ -89,7 +90,8 @@ const removeCover = () => {
             <img
                 :src="displayImage"
                 alt="Program cover"
-                class="w-full h-48 md:h-56 object-cover"
+                class="w-full h-48 md:h-56 object-cover cursor-zoom-in"
+                @click="showLightbox = true"
             />
 
             <!-- Loading overlay -->
@@ -98,6 +100,13 @@ const removeCover = () => {
                 class="absolute inset-0 bg-black/50 flex items-center justify-center"
             >
                 <Loader2 class="h-6 w-6 text-white animate-spin" />
+            </div>
+
+            <!-- Hint na pwedeng i-click para lumaki (hover) -->
+            <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                <span class="flex items-center gap-1.5 rounded-full bg-black/50 backdrop-blur px-3 py-1.5 text-xs font-semibold text-white">
+                    <Maximize2 class="h-3.5 w-3.5" /> View larger
+                </span>
             </div>
 
             <!-- Action buttons (hover) -->
@@ -137,5 +146,24 @@ const removeCover = () => {
             class="hidden"
             @change="handleFileChange"
         />
+
+        <!-- ===== Cover Page Lightbox ===== -->
+        <Teleport to="body">
+            <div
+                v-if="showLightbox && displayImage"
+                class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4"
+                @click.self="showLightbox = false"
+            >
+                <button
+                    type="button"
+                    class="absolute right-4 top-4 text-white/80 transition-colors hover:text-white"
+                    aria-label="Close preview"
+                    @click="showLightbox = false"
+                >
+                    <X class="h-7 w-7" />
+                </button>
+                <img :src="displayImage" alt="Program cover" class="max-h-[85vh] max-w-[90vw] rounded-lg object-contain shadow-2xl" />
+            </div>
+        </Teleport>
     </div>
 </template>

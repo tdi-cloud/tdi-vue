@@ -369,6 +369,7 @@ const formatTime = (t: string) => {
         <BatchParticipants
             :open="showParticipants"
             :batch="viewingBatch"
+            :program="program"
             @update:open="showParticipants = $event"
         />
 

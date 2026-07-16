@@ -23,6 +23,7 @@ interface EmployeeOption {
 const props = defineProps<{
     open: boolean;
     batch: any | null;
+    program?: any | null;
 }>();
 
 const emit = defineEmits<{
@@ -310,7 +311,7 @@ const exportCsv = () => {
 
     // ── Single header row (lahat ng column sa isang linya) ──
     const header = [
-        'Program Code', 'Batch', 'Status', 'Modality', 'Venue', 'Schedule', 'Total Hours',
+        'Program Code', 'Program Title', 'Batch', 'Status', 'Modality', 'Venue', 'Schedule', 'Total Hours',
         '#', 'Employee Name', 'Employee Code', 'Position', 'Office', 'Attendance', 'Hours',
     ];
     for (const r of reqs) header.push(r.title ?? r.name ?? `Req ${r.id}`);
@@ -326,6 +327,7 @@ const exportCsv = () => {
 
         const row: any[] = [
             b.program_code ?? '',
+            props.program?.title ?? '',
             b.batch ?? '',
             b.status ?? '',
             b.modality ?? '',
