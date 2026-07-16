@@ -76,6 +76,30 @@ test('admin can add a participant without any requirement files', function () {
     expect($nominee->status)->toBe('for_interview');
 });
 
+test('admin can add a participant without age, email, or contact number', function () {
+    $admin = adminAddTestAdmin('EMP-AADD-05');
+    $program = adminAddTestProgram();
+
+    $response = $this->actingAs($admin)->post(
+        route('foreign-nominees.store', $program),
+        [
+            'firstname' => 'Juan',
+            'surname' => 'Dela Cruz',
+            'sex' => 'male',
+            'position' => 'Test Position',
+            'agency' => 'Test Agency',
+        ]
+    );
+
+    $response->assertRedirect();
+    $response->assertSessionHasNoErrors();
+
+    $nominee = ForeignNominee::where('foreign_program_id', $program->id)->first();
+    expect($nominee->age)->toBeNull();
+    expect($nominee->email)->toBeNull();
+    expect($nominee->contact_number)->toBeNull();
+});
+
 test('admin can add a participant and attach optional requirement files', function () {
     Storage::fake('public');
 

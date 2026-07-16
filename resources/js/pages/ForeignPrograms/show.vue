@@ -929,8 +929,8 @@ const modalityLabels: Record<string, string> = {
                                             <p v-if="addErrors.sex" class="mt-1 text-xs text-red-500">{{ addErrors.sex }}</p>
                                         </div>
                                         <div>
-                                            <label class="block text-xs font-semibold text-muted-foreground mb-1">Age *</label>
-                                            <input v-model="addForm.age" type="number" min="18" max="100" required
+                                            <label class="block text-xs font-semibold text-muted-foreground mb-1">Age</label>
+                                            <input v-model="addForm.age" type="number" min="18" max="100"
                                                 class="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition" />
                                             <p v-if="addErrors.age" class="mt-1 text-xs text-red-500">{{ addErrors.age }}</p>
                                         </div>
