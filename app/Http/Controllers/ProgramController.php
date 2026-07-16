@@ -66,10 +66,13 @@ class ProgramController extends Controller
         $programs = Program::orderBy('sort_order')
             ->orderByDesc('created_at')
             ->withCount('batches')
-            ->with(['batches' => function ($q) {
-                $q->select('id', 'program_code', 'date_start', 'date_end', 'status')
-                    ->withCount(['participants', 'requirements']);
-            }])
+            ->with([
+                'coverPage',
+                'batches' => function ($q) {
+                    $q->select('id', 'program_code', 'date_start', 'date_end', 'status')
+                        ->withCount(['participants', 'requirements']);
+                },
+            ])
             ->get()
             ->map(function ($program) {
                 $program->participants_count = $program->batches->sum('participants_count');

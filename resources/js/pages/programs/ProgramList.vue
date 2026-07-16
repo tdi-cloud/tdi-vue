@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, ChevronRight, Layers, Users, ClipboardList, CalendarDays } from 'lucide-vue-next';
+import { Trash2, ChevronRight, Layers, Users, ClipboardList, CalendarDays, BookOpen } from 'lucide-vue-next';
 import { router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
@@ -20,6 +20,7 @@ interface Program {
     date_end: string | null;
     batch_statuses: string[];
     months: string[];
+    cover_page: { image_url: string | null } | null;
 }
 
 
@@ -145,6 +146,14 @@ const dateRange = (program: Program) => {
                         :style="{ animationDelay: `${index * 60}ms` }"
                         @click="viewProgram(program.id)"
                     >
+                        <!-- Cover image / book placeholder -->
+                        <div class="cover-ring shrink-0">
+                            <div class="cover-ring__inner">
+                                <img v-if="program.cover_page?.image_url" :src="program.cover_page.image_url" :alt="program.title" />
+                                <BookOpen v-else class="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                            </div>
+                        </div>
+
                         <!-- Text -->
                         <div class="flex-1 min-w-0 overflow-hidden">
                             <p class="text-sm font-extrabold dark:text-cyan-400 text-sky-900 line-clamp-1 break-words">
@@ -228,6 +237,32 @@ const dateRange = (program: Program) => {
 </template>
 
 <style scoped>
+.cover-ring {
+    width: 48px;
+    height: 48px;
+    border-radius: 9999px;
+    padding: 2px;
+    background: linear-gradient(135deg, #60a5fa, #1d3fc4);
+}
+.cover-ring__inner {
+    width: 100%;
+    height: 100%;
+    border-radius: 9999px;
+    overflow: hidden;
+    background: #eef1fc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+:global(.dark) .cover-ring__inner {
+    background: rgba(37, 99, 235, 0.15);
+}
+.cover-ring__inner img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
 .v-enter-active {
     animation: slideIn 0.3s ease both;
 }

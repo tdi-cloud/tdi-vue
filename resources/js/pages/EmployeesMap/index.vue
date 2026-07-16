@@ -727,7 +727,7 @@ function resetCamera() {
         sprite.visible = true;
     });
     clearFocusOutline();
-    flyCameraTo(DEFAULT_CAMERA_POSITION, DEFAULT_CAMERA_TARGET, 1000);
+    flyCameraTo(new THREE.Vector3(35, 60, 90), new THREE.Vector3(0, 0, 0), 1000);
 }
 
 function handleResize() {

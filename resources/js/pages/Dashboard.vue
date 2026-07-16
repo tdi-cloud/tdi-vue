@@ -8,6 +8,7 @@ import TrainingComplianceCard from '../components/TrainingComplianceCard.vue';
 import SupervisoryComplianceCard from '../components/SupervisoryComplianceCard.vue';
 import TreapComplianceCard from '../components/TreapComplianceCard.vue';
 import ReapComplianceCard from '../components/ReapComplianceCard.vue';
+import TdorComplianceCard from '../components/TdorComplianceCard.vue';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -175,6 +176,15 @@ watch(region, fetchOffices);
             />
 
             <ReapComplianceCard
+                :target="target"
+                :region="region"
+                :selected-statuses="selectedStatuses"
+                :year="year"
+                :office="office"
+            />
+
+            <!-- ===================== TDOR PANEL ===================== -->
+            <TdorComplianceCard
                 :target="target"
                 :region="region"
                 :selected-statuses="selectedStatuses"

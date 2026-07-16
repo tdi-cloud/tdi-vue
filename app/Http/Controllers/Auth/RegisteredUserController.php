@@ -4,19 +4,20 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Mail\RegistrationOtpMail;
+use App\Models\PendingNotification;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Support\Facades\DB;
 
 class RegisteredUserController extends Controller
 {
@@ -29,19 +30,19 @@ class RegisteredUserController extends Controller
     public function verify(Request $request)
     {
         $request->validate([
-            'name'     => 'required|string|max:255',
-            'empcode'  => [
+            'name' => 'required|string|max:255',
+            'empcode' => [
                 'required', 'string', 'max:255',
                 'unique:users,empcode',
                 Rule::exists('employees', 'EMPCODE')->where(function ($query) use ($request) {
                     $query->whereRaw('LOWER(EMPCODE) = ?', [strtolower($request->empcode)]);
                 }),
             ],
-            'email'    => 'required|string|lowercase|email|max:255|unique:users,email',
+            'email' => 'required|string|lowercase|email|max:255|unique:users,email',
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ], [
             'empcode.unique' => 'The empcode has already been registered.',
-            'email.unique'   => 'The email has already been registered.',
+            'email.unique' => 'The email has already been registered.',
         ]);
 
         // Get employee info
@@ -51,10 +52,10 @@ class RegisteredUserController extends Controller
 
         return response()->json([
             'employee' => [
-                'fullname'       => trim($employee->FIRSTNAME . ' ' . $employee->MI . ' ' . $employee->LASTNAME),
-                'empcode'        => $employee->EMPCODE,
-                'office_division'=> $employee->{'OFFICE/DIVISION'},
-            ]
+                'fullname' => trim($employee->FIRSTNAME.' '.$employee->MI.' '.$employee->LASTNAME),
+                'empcode' => $employee->EMPCODE,
+                'office_division' => $employee->{'OFFICE/DIVISION'},
+            ],
         ]);
     }
 
@@ -63,7 +64,7 @@ class RegisteredUserController extends Controller
     {
         try {
             $request->validate([
-                'email'   => 'required|email',
+                'email' => 'required|email',
                 'empcode' => 'required|string',
             ]);
 
@@ -72,8 +73,8 @@ class RegisteredUserController extends Controller
             DB::table('registration_otps')->updateOrInsert(
                 ['email' => $request->email],
                 [
-                    'otp'        => Hash::make($otp),
-                    'form_data'  => json_encode($request->all()),
+                    'otp' => Hash::make($otp),
+                    'form_data' => json_encode($request->all()),
                     'expires_at' => Carbon::now()->addMinutes(10),
                     'created_at' => Carbon::now(),
                     'updated_at' => Carbon::now(),
@@ -94,37 +95,43 @@ class RegisteredUserController extends Controller
     {
         $request->validate([
             'email' => 'required|email',
-            'otp'   => 'required|string',
+            'otp' => 'required|string',
         ]);
 
         $record = DB::table('registration_otps')
             ->where('email', $request->email)
             ->first();
 
-        if (!$record) {
+        if (! $record) {
             return back()->withErrors(['otp' => 'OTP not found. Please register again.']);
         }
 
         if (Carbon::now()->isAfter($record->expires_at)) {
             DB::table('registration_otps')->where('email', $request->email)->delete();
+
             return back()->withErrors(['otp' => 'OTP has expired. Please register again.']);
         }
 
-        if (!Hash::check($request->otp, $record->otp)) {
+        if (! Hash::check($request->otp, $record->otp)) {
             return back()->withErrors(['otp' => 'Invalid OTP.']);
         }
 
         $data = json_decode($record->form_data, true);
 
         $user = User::create([
-            'name'     => $data['name'],
-            'empcode'  => $data['empcode'],
-            'email'    => $data['email'],
+            'name' => $data['name'],
+            'empcode' => $data['empcode'],
+            'email' => $data['email'],
             'password' => Hash::make($data['password']),
-            'access'   => 'guest',
+            'access' => 'guest',
         ]);
 
         DB::table('registration_otps')->where('email', $request->email)->delete();
+
+        // I-deliver ang anumang notification na na-queue habang wala pa
+        // siyang account (hal. "na-add ka sa isang program" bago siya
+        // nakapag-register).
+        PendingNotification::deliverTo($user);
 
         event(new Registered($user));
         Auth::login($user);

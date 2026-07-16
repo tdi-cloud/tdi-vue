@@ -78,7 +78,7 @@
       <!-- Program cards -->
       <div v-if="filteredPrograms.length" class="enrolled__grid">
         <Link
-          v-for="p in filteredPrograms"
+          v-for="p in paginatedPrograms"
           :key="p.batch_id"
           :href="route('programs.my-progress', p.batch_id)"
           class="tile"
@@ -125,19 +125,54 @@
         No programs match this filter.
       </div>
 
+      <!-- Pagination -->
+      <div v-if="filteredPrograms.length && totalPages > 1" class="pagination">
+        <button
+          type="button"
+          class="page-btn"
+          :disabled="currentPage === 1"
+          @click="goToPage(currentPage - 1)"
+        >
+          <ChevronLeft :size="15" /> Previous
+        </button>
+
+        <div class="page-numbers">
+          <button
+            v-for="page in totalPages"
+            :key="page"
+            type="button"
+            class="page-number"
+            :class="{ 'page-number--active': page === currentPage }"
+            @click="goToPage(page)"
+          >
+            {{ page }}
+          </button>
+        </div>
+
+        <button
+          type="button"
+          class="page-btn"
+          :disabled="currentPage === totalPages"
+          @click="goToPage(currentPage + 1)"
+        >
+          Next <ChevronRight :size="15" />
+        </button>
+      </div>
+
     </div>
   </section>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import {
   GraduationCap, Clock, FileWarning, CalendarDays, Layers3,
-  CheckCircle2, AlertCircle, ChevronRight, BookOpen,
+  CheckCircle2, AlertCircle, ChevronRight, ChevronLeft, BookOpen,
 } from 'lucide-vue-next'
 
 const TYPE_OPTIONS = ['ADMIN', 'TECHNICAL', 'SUPERVISORY/MANAGERIAL', 'TEAM-BUILDING', 'OTHER']
+const PER_PAGE = 6
 
 const props = defineProps({
   programs: { type: Array, default: () => [] },
@@ -146,6 +181,7 @@ const props = defineProps({
 const selectedYear = ref('')
 const selectedType = ref('')
 const missingOnly  = ref(false)
+const currentPage  = ref(1)
 
 const years = computed(() =>
   [...new Set(props.programs.map(p => p.year))].sort((a, b) => b - a)
@@ -159,6 +195,21 @@ const filteredPrograms = computed(() =>
     return true
   })
 )
+
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredPrograms.value.length / PER_PAGE)))
+
+const paginatedPrograms = computed(() => {
+  const start = (currentPage.value - 1) * PER_PAGE
+  return filteredPrograms.value.slice(start, start + PER_PAGE)
+})
+
+// Balik sa page 1 tuwing magbabago ang filters, para hindi maiwan sa isang
+// blangkong page kung mas kaunti na ang resulta.
+watch([selectedYear, selectedType, missingOnly], () => { currentPage.value = 1 })
+
+function goToPage(page) {
+  currentPage.value = Math.min(Math.max(1, page), totalPages.value)
+}
 
 const totalHours = computed(() =>
   props.programs.reduce((sum, p) => sum + (p.hours_completed || 0), 0)
@@ -300,6 +351,28 @@ function attendanceBadge(status) {
   display: flex; align-items: center; gap: 0.5rem; justify-content: center;
   color: #9ca3af; font-size: 0.9rem; padding: 2rem; background: #fff; border-radius: 16px;
 }
+
+/* Pagination */
+.pagination {
+  display: flex; align-items: center; justify-content: center; gap: 1rem;
+  margin-top: 2rem; flex-wrap: wrap;
+}
+.page-btn {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  background: #fff; border: 1.5px solid #e5e7eb; border-radius: 10px;
+  padding: 0.55rem 1rem; font-size: 0.82rem; font-weight: 600; color: #374151;
+  cursor: pointer; transition: all 0.15s;
+}
+.page-btn:hover:not(:disabled) { border-color: #1d3fc4; color: #1d3fc4; }
+.page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.page-numbers { display: flex; align-items: center; gap: 0.35rem; }
+.page-number {
+  width: 34px; height: 34px; border-radius: 10px;
+  background: #fff; border: 1.5px solid #e5e7eb; color: #374151;
+  font-size: 0.82rem; font-weight: 700; cursor: pointer; transition: all 0.15s;
+}
+.page-number:hover { border-color: #1d3fc4; color: #1d3fc4; }
+.page-number--active { background: #1d3fc4; border-color: #1d3fc4; color: #fff; }
 
 @media (max-width: 1024px) {
   .summary { grid-template-columns: repeat(2, 1fr); }

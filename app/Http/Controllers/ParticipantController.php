@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Batch;
 use App\Models\Employee;
 use App\Models\Participant;
-use App\Models\User;
+use App\Models\PendingNotification;
 use App\Notifications\ParticipantAdded;
 use App\Notifications\ParticipantRemoved;
 use Illuminate\Http\Request;
@@ -110,7 +110,7 @@ class ParticipantController extends Controller
                 'added_by' => auth()->user()->name ?? 'system',
             ]);
 
-            User::where('empcode', $empcode)->first()?->notify(new ParticipantAdded($participant));
+            PendingNotification::notifyOrQueue($empcode, new ParticipantAdded($participant));
 
             $enrolled[] = $empcode;
             $added++;
@@ -259,12 +259,12 @@ class ParticipantController extends Controller
             ->values()
             ->all();
 
-        $user = User::where('empcode', $participant->empcode)->first();
+        $empcode = $participant->empcode;
 
         $participant->delete();
 
-        if ($user && $program) {
-            $user->notify(new ParticipantRemoved($program->title, $batchLabel, $pendingRequirementTitles));
+        if ($program) {
+            PendingNotification::notifyOrQueue($empcode, new ParticipantRemoved($program->title, $batchLabel, $pendingRequirementTitles));
         }
 
         return back()->with('success', 'Participant removed.');
@@ -325,7 +325,7 @@ class ParticipantController extends Controller
                 'added_by' => auth()->user()->name ?? 'system',
             ]);
 
-            User::where('empcode', $employee->EMPCODE)->first()?->notify(new ParticipantAdded($participant));
+            PendingNotification::notifyOrQueue($employee->EMPCODE, new ParticipantAdded($participant));
 
             $enrolled[] = $employee->EMPCODE;
 

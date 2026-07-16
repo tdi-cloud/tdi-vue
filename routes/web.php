@@ -96,6 +96,9 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('/dashboard/reap-compliance', [DashboardController::class, 'reapCompliance'])->name('dashboard.reap-compliance');
     Route::get('/dashboard/reap-compliance-list', [DashboardController::class, 'reapComplianceList'])->name('dashboard.reap-compliance.list');
 
+    Route::get('/dashboard/tdor-compliance', [DashboardController::class, 'tdorCompliance'])->name('dashboard.tdor-compliance');
+    Route::get('/dashboard/tdor-compliance-list', [DashboardController::class, 'tdorComplianceList'])->name('dashboard.tdor-compliance.list');
+
     // NEW: Lookup endpoints for filter dropdowns
     Route::get('/dashboard/offices', [DashboardController::class, 'offices'])->name('dashboard.offices');
     Route::get('/dashboard/batch-years', [DashboardController::class, 'batchYears'])->name('dashboard.batch-years');
