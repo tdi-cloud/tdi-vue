@@ -3,11 +3,31 @@ import { ref, watch, onMounted, onBeforeUnmount, computed } from 'vue';
 import axios from 'axios';
 import {
     X, BarChart3, Users2, CheckCircle2,
-    Building2, CalendarDays, TrendingUp,
+    Building2, CalendarDays, TrendingUp, Search,
+    ChevronLeft, ChevronRight, UserRound, Loader2, ListFilter,
 } from 'lucide-vue-next';
 import VueApexCharts from 'vue3-apexcharts';
 
 const emit = defineEmits(['close']);
+
+interface NomineeRow {
+    id: number;
+    name: string;
+    sex: 'male' | 'female' | 'other';
+    position: string;
+    agency: string;
+    status: string;
+    status_label: string;
+    program_title: string | null;
+    organizing_sponsor: string | null;
+}
+
+interface NomineePage {
+    data: NomineeRow[];
+    current_page: number;
+    last_page: number;
+    total: number;
+}
 
 const statusOptions: Record<string, string> = {
     for_interview:  'For Interview',
@@ -97,6 +117,16 @@ const donutOptions = ref<any>({
             dynamicAnimation: { enabled: true, speed: 350 },
         },
         dropShadow: { enabled: true, top: 2, left: 0, blur: 6, opacity: 0.12 },
+        events: {
+            // Kapag na-click ang isang slice, buksan ang details panel ng
+            // mga participant na may status na katumbas ng na-click na slice.
+            dataPointSelection: (_event: unknown, _chartContext: unknown, config: { dataPointIndex: number }) => {
+                const statusKey = Object.keys(statusOptions)[config.dataPointIndex];
+                if (statusKey) {
+                    openParticipantsPanel({ status: statusKey }, statusOptions[statusKey]);
+                }
+            },
+        },
     },
     labels:  [],
     legend:  { position: 'bottom', fontSize: '12px', markers: { offsetX: -2 } },
@@ -127,6 +157,16 @@ const barOptions       = ref<any>({
             enabled: true, easing: 'easeinout', speed: 600,
             animateGradually: { enabled: true, delay: 120 },
             dynamicAnimation: { enabled: true, speed: 350 },
+        },
+        events: {
+            // Kapag na-click ang isang bar, buksan ang details panel ng mga
+            // participant na kabilang sa organizing sponsor na katumbas nito.
+            dataPointSelection: (_event: unknown, _chartContext: unknown, config: { dataPointIndex: number }) => {
+                const sponsor = barOptions.value.xaxis.categories[config.dataPointIndex];
+                if (sponsor) {
+                    openParticipantsPanel({ organizing_sponsor: sponsor }, sponsor);
+                }
+            },
         },
     },
     plotOptions: { bar: { columnWidth: '50%', borderRadius: 6, borderRadiusApplication: 'end' } },
@@ -193,6 +233,63 @@ onBeforeUnmount(() => {
     clearTimeout(debounce);
     if (activeController) { activeController.abort(); activeController = null; }
 });
+
+// ── Participants drill-down panel (buksan sa pag-click ng chart) ────────────
+
+const showParticipantsPanel = ref(false);
+const panelTitle    = ref('');
+const panelLoading  = ref(false);
+const panelSearch   = ref('');
+const panelNominees = ref<NomineePage | null>(null);
+let panelFilters: { status?: string; organizing_sponsor?: string } = {};
+let panelController: AbortController | null = null;
+
+async function fetchPanelNominees(page = 1) {
+    if (panelController) panelController.abort();
+    const controller = new AbortController();
+    panelController  = controller;
+    panelLoading.value = true;
+
+    try {
+        const { data } = await axios.get(route('foreign-programs.dashboard-nominees'), {
+            params: {
+                ...panelFilters,
+                agency: filterAgency.value || undefined,
+                year:   filterYear.value   || undefined,
+                search: panelSearch.value  || undefined,
+                page,
+            },
+            signal: controller.signal,
+        });
+        panelNominees.value = data;
+    } catch (err: any) {
+        if (axios.isCancel(err) || err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') return;
+        console.error('Failed to load participants:', err?.response?.data ?? err);
+    } finally {
+        if (panelController === controller) {
+            panelLoading.value = false;
+            panelController    = null;
+        }
+    }
+}
+
+function openParticipantsPanel(filters: { status?: string; organizing_sponsor?: string }, title: string) {
+    panelFilters = filters;
+    panelTitle.value = title;
+    panelSearch.value = '';
+    showParticipantsPanel.value = true;
+    fetchPanelNominees(1);
+}
+
+function closeParticipantsPanel() {
+    showParticipantsPanel.value = false;
+}
+
+let panelSearchDebounce: ReturnType<typeof setTimeout>;
+function onPanelSearchInput() {
+    clearTimeout(panelSearchDebounce);
+    panelSearchDebounce = setTimeout(() => fetchPanelNominees(1), 350);
+}
 </script>
 
 <template>
@@ -294,16 +391,22 @@ onBeforeUnmount(() => {
                         <!-- Charts -->
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <div class="anim-in rounded-xl border p-4" style="animation-delay:380ms">
-                                <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5">
-                                    <span class="h-2 w-2 rounded-full bg-violet-500"></span> Nominees by Status
+                                <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center justify-between gap-1.5">
+                                    <span class="flex items-center gap-1.5">
+                                        <span class="h-2 w-2 rounded-full bg-violet-500"></span> Nominees by Status
+                                    </span>
+                                    <span class="normal-case font-normal text-[10px] text-muted-foreground/70">Click a slice for details</span>
                                 </p>
-                                <VueApexCharts type="donut" height="300" :options="donutOptions" :series="donutSeries" />
+                                <VueApexCharts type="donut" height="300" :options="donutOptions" :series="donutSeries" class="cursor-pointer" />
                             </div>
                             <div class="anim-in rounded-xl border p-4" style="animation-delay:440ms">
-                                <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5">
-                                    <span class="h-2 w-2 rounded-full bg-blue-500"></span> Programs per Organizing Sponsor
+                                <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center justify-between gap-1.5">
+                                    <span class="flex items-center gap-1.5">
+                                        <span class="h-2 w-2 rounded-full bg-blue-500"></span> Programs per Organizing Sponsor
+                                    </span>
+                                    <span class="normal-case font-normal text-[10px] text-muted-foreground/70">Click a bar for details</span>
                                 </p>
-                                <VueApexCharts type="bar" height="300" :options="barOptions"
+                                <VueApexCharts type="bar" height="300" :options="barOptions" class="cursor-pointer"
                                     :series="[{ name: 'Received', data: barReceived }, { name: 'Disseminated', data: barDisseminated }]" />
                             </div>
                         </div>
@@ -314,6 +417,95 @@ onBeforeUnmount(() => {
             </Transition>
         </div>
     </Transition>
+
+    <!-- ===== Participants Drill-down Panel ===== -->
+    <Transition name="slide-panel">
+        <div v-if="showParticipantsPanel" class="fixed inset-y-0 right-0 z-[60] w-full max-w-md bg-background border-l shadow-2xl flex flex-col">
+            <div class="sticky top-0 bg-gradient-to-r from-indigo-600 via-violet-600 to-blue-600 text-white px-5 py-4 flex items-center gap-3">
+                <div class="h-8 w-8 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center shrink-0">
+                    <ListFilter class="h-4 w-4 text-white" />
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h2 class="font-bold text-sm truncate">{{ panelTitle }}</h2>
+                    <p class="text-xs text-white/75">{{ panelNominees?.total ?? 0 }} participant(s)</p>
+                </div>
+                <button class="text-white/80 hover:text-white transition-colors" @click="closeParticipantsPanel">
+                    <X class="h-5 w-5" />
+                </button>
+            </div>
+
+            <div class="p-4 border-b">
+                <div class="relative">
+                    <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <input
+                        v-model="panelSearch"
+                        type="text"
+                        placeholder="Search name, agency, position..."
+                        class="w-full border rounded-xl pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-background shadow-sm"
+                        @input="onPanelSearchInput"
+                    />
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-4">
+                <div v-if="panelLoading" class="flex items-center justify-center gap-2 text-xs text-muted-foreground py-8">
+                    <Loader2 class="h-4 w-4 animate-spin" /> Loading...
+                </div>
+
+                <div v-else-if="panelNominees && panelNominees.data.length > 0" class="flex flex-col gap-2">
+                    <div v-for="n in panelNominees.data" :key="n.id" class="rounded-xl border px-3 py-2.5">
+                        <div class="flex items-start gap-2.5">
+                            <div
+                                class="h-7 w-7 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                                :class="n.sex === 'female' ? 'bg-pink-100 dark:bg-pink-950/50' : 'bg-sky-100 dark:bg-sky-950/50'"
+                            >
+                                <UserRound class="h-4 w-4" :class="n.sex === 'female' ? 'text-pink-500' : 'text-sky-600'" />
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p class="font-bold text-sm leading-tight truncate">{{ n.name }}</p>
+                                <p class="text-xs text-muted-foreground">{{ n.position }}</p>
+                                <p class="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Building2 class="h-3 w-3 shrink-0" /> {{ n.agency }}
+                                </p>
+                                <p v-if="n.program_title" class="text-[11px] text-muted-foreground/80 mt-0.5 truncate">
+                                    {{ n.program_title }}
+                                </p>
+                            </div>
+                            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 shrink-0">
+                                {{ n.status_label }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div v-if="panelNominees.last_page > 1" class="flex items-center justify-between pt-2 text-xs">
+                        <button
+                            type="button"
+                            class="flex items-center gap-1 px-2 py-1 rounded border disabled:opacity-40"
+                            :disabled="panelNominees.current_page <= 1"
+                            @click="fetchPanelNominees(panelNominees.current_page - 1)"
+                        >
+                            <ChevronLeft class="h-3 w-3" /> Previous
+                        </button>
+                        <span class="text-muted-foreground">
+                            Page {{ panelNominees.current_page }} of {{ panelNominees.last_page }}
+                        </span>
+                        <button
+                            type="button"
+                            class="flex items-center gap-1 px-2 py-1 rounded border disabled:opacity-40"
+                            :disabled="panelNominees.current_page >= panelNominees.last_page"
+                            @click="fetchPanelNominees(panelNominees.current_page + 1)"
+                        >
+                            Next <ChevronRight class="h-3 w-3" />
+                        </button>
+                    </div>
+                </div>
+
+                <p v-else class="text-xs text-muted-foreground text-center py-8">No participants found.</p>
+            </div>
+        </div>
+    </Transition>
+    <div v-if="showParticipantsPanel" class="fixed inset-0 z-50 bg-black/30" @click="closeParticipantsPanel" />
 </template>
 
 <style scoped>
@@ -333,4 +525,8 @@ onBeforeUnmount(() => {
 .pop-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
 .pop-enter-from   { opacity: 0; transform: scale(0.94) translateY(8px); }
 .pop-leave-to     { opacity: 0; transform: scale(0.97); }
+.slide-panel-enter-active,
+.slide-panel-leave-active { transition: transform 0.25s ease; }
+.slide-panel-enter-from,
+.slide-panel-leave-to     { transform: translateX(100%); }
 </style>

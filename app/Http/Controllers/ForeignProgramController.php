@@ -229,6 +229,59 @@ class ForeignProgramController extends Controller
         ]);
     }
 
+    // Drill-down mula sa dashboard charts (status donut / sponsor bar) papuntang
+    // listahan ng participants na sakop ng na-click na segment.
+    public function dashboardNominees(Request $request)
+    {
+        $query = ForeignNominee::query()->with('program:id,program_title,organizing_sponsor');
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('agency')) {
+            $query->where('agency', 'like', '%'.$request->agency.'%');
+        }
+
+        if ($request->filled('organizing_sponsor')) {
+            $sponsor = $request->organizing_sponsor;
+            $query->whereHas('program', fn ($q) => $q->where('organizing_sponsor', $sponsor));
+        }
+
+        if ($request->filled('year')) {
+            $year = $request->year;
+            $query->whereHas('program', fn ($q) => $q->whereYear('program_start', $year));
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('firstname', 'like', "%{$search}%")
+                    ->orWhere('surname', 'like', "%{$search}%")
+                    ->orWhere('agency', 'like', "%{$search}%")
+                    ->orWhere('position', 'like', "%{$search}%");
+            });
+        }
+
+        $nominees = $query
+            ->orderBy('surname')
+            ->orderBy('firstname')
+            ->paginate(10)
+            ->through(fn (ForeignNominee $n) => [
+                'id' => $n->id,
+                'name' => trim("{$n->firstname} {$n->middle_name} {$n->surname}"),
+                'sex' => $n->sex,
+                'position' => $n->position,
+                'agency' => $n->agency,
+                'status' => $n->status,
+                'status_label' => $n->status_label,
+                'program_title' => $n->program?->program_title,
+                'organizing_sponsor' => $n->program?->organizing_sponsor,
+            ]);
+
+        return response()->json($nominees);
+    }
+
     public function byOrganizingSponsor(Request $request)
     {
         $sponsor = trim($request->query('sponsor'));

@@ -145,6 +145,9 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('foreign-programs/dashboard-data', [ForeignProgramController::class, 'dashboardData'])
         ->name('foreign-programs.dashboard-data');
 
+    Route::get('foreign-programs/dashboard-nominees', [ForeignProgramController::class, 'dashboardNominees'])
+        ->name('foreign-programs.dashboard-nominees');
+
     Route::get('/foreign-programs/by-sponsor', [ForeignProgramController::class, 'byOrganizingSponsor'])
         ->name('foreign-programs.by-sponsor')
         ->middleware('auth');
