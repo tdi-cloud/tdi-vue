@@ -1,6 +1,7 @@
 <script setup>
+import { ref } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
-import { ClipboardCheck, UserCheck, ListChecks, ShieldCheck, ArrowRight, CalendarRange, Trash2, Settings2 } from 'lucide-vue-next'
+import { ClipboardCheck, UserCheck, ListChecks, ShieldCheck, ArrowRight, CalendarRange, Trash2, Settings2, Info, X, Sparkles } from 'lucide-vue-next'
 
 /*
  | The Welcome/index page passes the `tna` prop coming from
@@ -16,6 +17,8 @@ const steps = [
   { icon: ClipboardCheck, title: 'Self-Rating', desc: 'Rate each competency using the scale guide.' },
   { icon: ShieldCheck, title: 'Supervisory Rating', desc: 'Your supervisor reviews your rating.' },
 ]
+
+const showInfoModal = ref(false)
 
 function deleteAssessment() {
   if (!props.data.assessment_id) return
@@ -41,6 +44,14 @@ function deleteAssessment() {
 
           <h2 class="tna-banner__title">
             Training Needs Analysis
+            <button
+              type="button"
+              class="tna-banner__info-btn"
+              aria-label="What's new about this TNA"
+              @click="showInfoModal = true"
+            >
+              <Info :size="15" />
+            </button>
           </h2>
 
           <p class="tna-banner__lead">
@@ -128,6 +139,55 @@ function deleteAssessment() {
         </ol>
       </div>
     </div>
+
+    <!-- ===== "What's new" info modal ===== -->
+    <Teleport to="body">
+      <div
+        v-if="showInfoModal"
+        class="tna-info-overlay"
+        @click.self="showInfoModal = false"
+      >
+        <div class="tna-info-modal">
+          <button
+            type="button"
+            class="tna-info-modal__close"
+            aria-label="Close"
+            @click="showInfoModal = false"
+          >
+            <X :size="18" />
+          </button>
+
+          <div class="tna-info-modal__badge">
+            <Sparkles :size="20" />
+          </div>
+
+          <h3 class="tna-info-modal__title">A New, Enhanced TNA Experience</h3>
+          <p class="tna-info-modal__lead">
+            This Training Needs Analysis is an upgraded version, fully built into the system —
+            replacing the old manual/paper-based process with a guided, end-to-end digital workflow.
+          </p>
+
+          <ul class="tna-info-modal__list">
+            <li>
+              <ClipboardCheck :size="16" />
+              <span>Guided self-rating with a clear competency scale, completed in about 10–15 minutes.</span>
+            </li>
+            <li>
+              <UserCheck :size="16" />
+              <span>Direct routing to your selected supervisor for review — no more manual handoffs.</span>
+            </li>
+            <li>
+              <ShieldCheck :size="16" />
+              <span>Real-time status tracking, from submission to supervisory rating to final result.</span>
+            </li>
+          </ul>
+
+          <button type="button" class="tna-info-modal__ok" @click="showInfoModal = false">
+            Got it
+          </button>
+        </div>
+      </div>
+    </Teleport>
   </section>
 </template>
 
@@ -174,9 +234,20 @@ function deleteAssessment() {
   text-transform: uppercase;
 }
 .tna-banner__title {
+  display: flex; align-items: center; gap: 0.6rem;
   margin-top: 0.9rem;
   font-size: 2rem; line-height: 1.1; font-weight: 800; color: #fff;
 }
+.tna-banner__info-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: #f5d76e;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s, transform 0.18s;
+}
+.tna-banner__info-btn:hover { background: rgba(245, 184, 0, 0.25); border-color: rgba(245, 184, 0, 0.6); transform: scale(1.08); }
 .tna-banner__lead {
   margin-top: 0.85rem;
   font-size: 0.95rem; line-height: 1.6; color: rgba(255,255,255,0.8);
@@ -269,4 +340,64 @@ function deleteAssessment() {
   .tna-banner__grid { grid-template-columns: 1fr; gap: 1.75rem; }
   .tna-banner__title { font-size: 1.6rem; }
 }
+
+/* "What's new" info modal */
+.tna-info-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+  background: rgba(15, 28, 72, 0.55);
+  backdrop-filter: blur(2px);
+}
+.tna-info-modal {
+  position: relative;
+  width: 100%; max-width: 26rem;
+  border-radius: 20px;
+  padding: 2rem 1.75rem 1.75rem;
+  background: linear-gradient(160deg, #0f1c48 0%, #1a2f6e 60%, #21316b 100%);
+  box-shadow: 0 24px 60px rgba(15, 28, 72, 0.4);
+  color: #fff;
+}
+.tna-info-modal__close {
+  position: absolute; top: 1rem; right: 1rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(255,255,255,0.08); border: none; color: rgba(255,255,255,0.75);
+  cursor: pointer; transition: background 0.18s, color 0.18s;
+}
+.tna-info-modal__close:hover { background: rgba(255,255,255,0.16); color: #fff; }
+
+.tna-info-modal__badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 42px; height: 42px; border-radius: 12px;
+  background: rgba(245, 184, 0, 0.16);
+  border: 1px solid rgba(245, 184, 0, 0.4);
+  color: #f5d76e;
+  margin-bottom: 0.9rem;
+}
+.tna-info-modal__title { font-size: 1.2rem; font-weight: 800; color: #fff; }
+.tna-info-modal__lead {
+  margin-top: 0.6rem;
+  font-size: 0.86rem; line-height: 1.6; color: rgba(255,255,255,0.75);
+}
+.tna-info-modal__list {
+  list-style: none; margin: 1.25rem 0 0; padding: 0;
+  display: flex; flex-direction: column; gap: 0.7rem;
+}
+.tna-info-modal__list li {
+  display: flex; align-items: flex-start; gap: 0.6rem;
+  font-size: 0.82rem; line-height: 1.5; color: rgba(255,255,255,0.85);
+}
+.tna-info-modal__list li svg { flex-shrink: 0; margin-top: 0.15rem; color: #f5d76e; }
+
+.tna-info-modal__ok {
+  display: block; width: 100%;
+  margin-top: 1.5rem;
+  background: #f5b800; color: #0f1c48;
+  font-weight: 800; font-size: 0.88rem;
+  padding: 0.65rem 1rem; border-radius: 10px;
+  border: none; cursor: pointer;
+  transition: background 0.18s, transform 0.18s;
+}
+.tna-info-modal__ok:hover { background: #ffca28; transform: translateY(-1px); }
 </style>

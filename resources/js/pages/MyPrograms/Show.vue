@@ -57,6 +57,18 @@
       </div>
     </section>
 
+    <!-- About this Program -->
+    <section v-if="program.program_description || program.program_type" class="about">
+      <div class="about__inner">
+        <h2>About this Program</h2>
+        <div class="about__meta">
+          <span v-if="program.program_type" class="about__type"><Tag :size="13" /> {{ program.program_type }}</span>
+          <span v-if="program.program_code" class="about__code"><Hash :size="13" /> {{ program.program_code }}</span>
+        </div>
+        <p v-if="program.program_description" class="about__desc">{{ program.program_description }}</p>
+      </div>
+    </section>
+
     <!-- Requirements breakdown -->
     <section class="reqs">
       <div class="reqs__inner">
@@ -116,25 +128,6 @@
           </div>
           <div v-if="!program.requirements.length" class="reqs__empty">
             <CheckCircle2 :size="18" /> No requirements have been set for this batch yet.
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Resource Speakers -->
-    <section v-if="program.resource_speakers && program.resource_speakers.length" class="speakers">
-      <div class="speakers__inner">
-        <h2>Resource Speakers</h2>
-        <p class="reqs__sub">Facilitators and resource persons engaged for this program.</p>
-        <div class="speakers__grid">
-          <div v-for="s in program.resource_speakers" :key="s.id" class="speaker-card">
-            <div class="speaker-card__avatar"><Mic2 :size="18" /></div>
-            <div class="speaker-card__name">{{ s.name }}</div>
-            <div v-if="s.designation || s.affiliation" class="speaker-card__role">
-              {{ [s.designation, s.affiliation].filter(Boolean).join(' — ') }}
-            </div>
-            <div v-if="s.topic" class="speaker-card__topic"><BookOpen :size="13" /> {{ s.topic }}</div>
-            <div v-if="s.date_engaged" class="speaker-card__date"><CalendarDays :size="13" /> {{ formatDate(s.date_engaged) }}</div>
           </div>
         </div>
       </div>
@@ -246,6 +239,50 @@
       </div>
     </section>
 
+    <!-- Resource Speakers -->
+    <section v-if="program.resource_speakers && program.resource_speakers.length" class="speakers">
+      <div class="speakers__inner">
+        <h2>Resource Speakers</h2>
+        <p class="reqs__sub">Facilitators and resource persons engaged for this program.</p>
+        <div class="speakers__grid">
+          <div v-for="s in program.resource_speakers" :key="s.id" class="speaker-card">
+            <div class="speaker-card__avatar"><Mic2 :size="18" /></div>
+            <div class="speaker-card__name">{{ s.name }}</div>
+            <div v-if="s.designation || s.affiliation" class="speaker-card__role">
+              {{ [s.designation, s.affiliation].filter(Boolean).join(' — ') }}
+            </div>
+            <div v-if="s.topic" class="speaker-card__topic"><BookOpen :size="13" /> {{ s.topic }}</div>
+            <div v-if="s.date_engaged" class="speaker-card__date"><CalendarDays :size="13" /> {{ formatDate(s.date_engaged) }}</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Supporting Documents -->
+    <section v-if="program.supporting_documents && program.supporting_documents.length" class="docs">
+      <div class="docs__inner">
+        <h2>Supporting Documents</h2>
+        <p class="reqs__sub">Official memos, orders, and circulars related to this program.</p>
+        <div class="docs__grid">
+          <div v-for="d in program.supporting_documents" :key="d.id" class="doc-card">
+            <div class="doc-card__top">
+              <span class="doc-card__type">{{ d.document_type }}</span>
+              <span v-if="d.document_series" class="doc-card__series">S.Y. {{ d.document_series }}</span>
+            </div>
+            <h3 class="doc-card__subject">{{ d.subject }}</h3>
+            <div class="doc-card__meta">
+              <span v-if="d.document_number"><Hash :size="13" /> {{ d.document_number }}</span>
+              <span v-if="d.origin"><Building2 :size="13" /> {{ d.origin }}</span>
+              <span v-if="d.date_issued"><CalendarDays :size="13" /> {{ formatDate(d.date_issued) }}</span>
+            </div>
+            <a v-if="d.link" :href="d.link" target="_blank" rel="noopener" class="doc-card__link">
+              <ExternalLink :size="13" /> View document
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <TheFooter />
   </div>
 </template>
@@ -260,6 +297,7 @@ import {
   CheckCircle2, AlertCircle, XCircle, CircleDashed,
   UploadCloud, Mic2, BookOpen, FileText, Trash2,
   Award, Star, Trophy, BadgeCheck, Sparkles, Medal,
+  Tag, Hash, Building2, ExternalLink,
 } from 'lucide-vue-next'
 
 
@@ -492,6 +530,16 @@ function confirmDeleteCert(cert) {
 .ring-lg__hole span { font-size: 0.55rem; color: #9ca3af; }
 .icon--green { color: #0CA678; } .icon--gold { color: #e67700; } .icon--red { color: #e03131; } .icon--muted { color: #9ca3af; }
 
+/* About this Program */
+.about { padding: 3rem 2rem 0; background: #f7f9fd; }
+.about__inner { max-width: 900px; margin: 0 auto; background: #fff; border-radius: 16px; padding: 1.75rem 2rem; box-shadow: 0 2px 12px rgba(15,28,72,0.05); }
+.about h2 { font-size: 1.15rem; font-weight: 800; color: #1a2744; margin-bottom: 0.6rem; }
+.about__meta { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.85rem; }
+.about__type, .about__code { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.76rem; font-weight: 700; padding: 0.3rem 0.7rem; border-radius: 20px; }
+.about__type { background: #eef1fc; color: #1d3fc4; }
+.about__code { background: #f3f4f6; color: #4b5563; font-family: monospace; }
+.about__desc { font-size: 0.88rem; line-height: 1.65; color: #4b5563; }
+
 /* Requirements */
 .reqs { padding: 4.5rem 2rem 3rem; background: #f7f9fd; }
 .reqs__inner { max-width: 900px; margin: 0 auto; }
@@ -549,6 +597,21 @@ function confirmDeleteCert(cert) {
 .speaker-card__name { font-weight: 700; font-size: 0.92rem; color: #1a2744; }
 .speaker-card__role { font-size: 0.76rem; color: #6b7280; margin-top: 0.15rem; }
 .speaker-card__topic, .speaker-card__date { display: flex; align-items: center; gap: 0.35rem; font-size: 0.76rem; color: #4b5563; margin-top: 0.5rem; }
+
+/* Supporting Documents */
+.docs { padding: 0 2rem 5rem; background: #f7f9fd; }
+.docs__inner { max-width: 900px; margin: 0 auto; }
+.docs h2 { font-size: 1.5rem; font-weight: 800; color: #1a2744; margin-bottom: 0.4rem; }
+.docs__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
+.doc-card { background: #fff; border-radius: 14px; padding: 1.25rem; box-shadow: 0 2px 12px rgba(15,28,72,0.05); display: flex; flex-direction: column; gap: 0.5rem; }
+.doc-card__top { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.doc-card__type { display: inline-flex; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; color: #1d3fc4; background: #eef1fc; padding: 0.25rem 0.6rem; border-radius: 20px; }
+.doc-card__series { font-size: 0.7rem; font-weight: 700; color: #9ca3af; }
+.doc-card__subject { font-size: 0.92rem; font-weight: 700; color: #1a2744; line-height: 1.3; }
+.doc-card__meta { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.76rem; color: #6b7280; }
+.doc-card__meta span { display: flex; align-items: center; gap: 0.4rem; }
+.doc-card__link { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; font-weight: 700; color: #1d3fc4; text-decoration: none; margin-top: 0.3rem; }
+.doc-card__link:hover { text-decoration: underline; }
 
 /* ══════════════════════════════════════════
    CERTIFICATES

@@ -38,6 +38,7 @@ class EnrolledProgramController extends Controller
         $participant = Participant::with([
             'batch.program.coverPage',
             'batch.program.resourceSpeakers',
+            'batch.program.supportingDocuments',
             'batch.requirements',
             'submissions',
         ])
@@ -189,6 +190,7 @@ class EnrolledProgramController extends Controller
             'program_title' => $program->title,
             'program_code' => $program->program_code,
             'program_type' => $program->type,
+            'program_description' => $program->description,
             'batch_label' => $batch->batch,
             'modality' => $batch->modality,
             'venue' => $batch->venue,
@@ -219,6 +221,19 @@ class EnrolledProgramController extends Controller
                     'topic' => $s->topic,
                     'expertise' => $s->expertise,
                     'date_engaged' => optional($s->date_engaged)->toDateString() ?? $s->date_engaged,
+                ])->values()->toArray()
+                : [];
+
+            $data['supporting_documents'] = $program->supportingDocuments
+                ? $program->supportingDocuments->map(fn ($d) => [
+                    'id' => $d->id,
+                    'document_type' => $d->document_type,
+                    'subject' => $d->subject,
+                    'document_series' => $d->document_series,
+                    'origin' => $d->origin,
+                    'document_number' => $d->document_number,
+                    'date_issued' => optional($d->date_issued)->toDateString() ?? $d->date_issued,
+                    'link' => $d->link,
                 ])->values()->toArray()
                 : [];
         }
