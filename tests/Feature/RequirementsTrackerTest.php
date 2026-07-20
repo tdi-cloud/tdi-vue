@@ -145,6 +145,7 @@ test('lists employees with missing requirement submissions, excluding absentees 
 
     $overdueRow = $items->firstWhere('requirement_title', 'TREAP');
     expect($overdueRow['is_overdue'])->toBeTrue();
+    expect($overdueRow['program_id'])->toBe($program->id);
 
     $upcomingRow = $items->firstWhere('requirement_title', 'TDOR');
     expect($upcomingRow['is_overdue'])->toBeFalse();

@@ -15,22 +15,23 @@ class BatchController extends Controller
     {
         $validated = $request->validate([
             'program_code' => 'required|string|exists:programs,program_code',
-            'batch'        => 'required|string|max:255',
-            'status'       => 'required|string',
-            'modality'     => 'required|string',
-            'venue'        => 'nullable|string',
-            'date_start'   => 'required|date',
-            'date_end'     => 'required|date|after_or_equal:date_start',
-            'time_start'   => 'required|string',
-            'time_end'     => 'required|string',
-            'days'         => 'required|string',
-            'hours'        => 'required|string',
+            'batch' => 'required|string|max:255',
+            'status' => 'required|string',
+            'modality' => 'required|string',
+            'venue' => 'nullable|string',
+            'date_start' => 'required|date',
+            'date_end' => 'required|date|after_or_equal:date_start',
+            'time_start' => 'required|string',
+            'time_end' => 'required|string',
+            'days' => 'required|string',
+            'hours' => 'required|string',
         ]);
 
         $sortOrder = Batch::where('program_code', $validated['program_code'])->count() + 1;
 
         $batch = Batch::create(array_merge($validated, [
             'sort_order' => $sortOrder,
+            'added_by' => auth()->user()->empcode,
         ]));
 
         // ✅ IDINAGDAG: Kopyahin ang requirements ng kapatid na batch (same program)
@@ -47,16 +48,16 @@ class BatchController extends Controller
     public function update(Request $request, Batch $batch)
     {
         $request->validate([
-            'batch'      => 'required|string|max:255',
-            'status'     => 'required|string',
-            'modality'   => 'required|string',
-            'venue'      => 'nullable|string',
+            'batch' => 'required|string|max:255',
+            'status' => 'required|string',
+            'modality' => 'required|string',
+            'venue' => 'nullable|string',
             'date_start' => 'required|date',
-            'date_end'   => 'required|date|after_or_equal:date_start',
+            'date_end' => 'required|date|after_or_equal:date_start',
             'time_start' => 'required|string',
-            'time_end'   => 'required|string',
-            'days'       => 'required|string',
-            'hours'      => 'required|string',
+            'time_end' => 'required|string',
+            'days' => 'required|string',
+            'hours' => 'required|string',
         ]);
 
         $batch->update($request->only([
@@ -110,13 +111,13 @@ class BatchController extends Controller
             Requirement::firstOrCreate(
                 [
                     'batch_id' => $batch->id,
-                    'title'    => $requirement->title,
+                    'title' => $requirement->title,
                 ],
                 [
-                    'name'        => $requirement->name,
-                    'due_date'    => Requirement::dueDateFor($requirement->title, $batch->date_end),
+                    'name' => $requirement->name,
+                    'due_date' => Requirement::dueDateFor($requirement->title, $batch->date_end),
                     'is_required' => $requirement->is_required,
-                    'note'        => $requirement->note,
+                    'note' => $requirement->note,
                 ]
             );
         }

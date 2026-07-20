@@ -9,7 +9,7 @@ class Program extends Model
     protected $fillable = [
         'sort_order', 'program_code', 'title', 'description',
         'competency', 'modality', 'pax', 'category', 'type',
-        'initiated', 'provider', 'cost', 'fund', 'origin',
+        'initiated', 'provider', 'cost', 'fund', 'origin', 'added_by',
     ];
 
     protected static function booted(): void
@@ -17,8 +17,8 @@ class Program extends Model
         // Auto-generate ng program_code kapag may bagong program
         static::created(function (Program $program) {
             $program->update([
-                'program_code' => 'TDI-' . now()->year . '-' . str_pad($program->id, 4, '0', STR_PAD_LEFT),
-        ]);
+                'program_code' => 'TDI-'.now()->year.'-'.str_pad($program->id, 4, '0', STR_PAD_LEFT),
+            ]);
         });
 
         // Kapag binura ang program, kasamang mabubura ang batches niya
@@ -46,6 +46,7 @@ class Program extends Model
     {
         return $this->hasMany(ResourceSpeaker::class)->latest('date_engaged');
     }
+
     public function coverPage()
     {
         return $this->hasOne(CoverPage::class);
@@ -54,5 +55,10 @@ class Program extends Model
     public function tesdaOrders()
     {
         return $this->hasMany(TesdaOrder::class)->latest();
+    }
+
+    public function emailReminderLogs()
+    {
+        return $this->hasMany(EmailReminderLog::class)->latest();
     }
 }

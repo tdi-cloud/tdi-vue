@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, ChevronRight, Layers, Users, ClipboardList, CalendarDays, BookOpen } from 'lucide-vue-next';
+import { Trash2, ChevronRight, Layers, Users, ClipboardList, CalendarDays, BookOpen, UserCog } from 'lucide-vue-next';
 import { router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
@@ -21,6 +21,7 @@ interface Program {
     batch_statuses: string[];
     months: string[];
     cover_page: { image_url: string | null } | null;
+    added_by: string | null;
 }
 
 
@@ -180,6 +181,10 @@ const dateRange = (program: Program) => {
                                 <span v-if="dateRange(program)" class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                                     <CalendarDays class="h-3 w-3 text-amber-500" />
                                     {{ dateRange(program) }}
+                                </span>
+                                <span v-if="program.added_by" class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                                    <UserCog class="h-3 w-3 text-rose-500" />
+                                    Added by {{ program.added_by }}
                                 </span>
                             </div>
                         </div>

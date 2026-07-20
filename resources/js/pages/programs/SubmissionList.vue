@@ -69,6 +69,7 @@ interface Program {
     id: number;
     program_code: string;
     batches?: Batch[];
+    email_reminder_logs?: any[];
 }
 
 /* ===================== PROPS ===================== */

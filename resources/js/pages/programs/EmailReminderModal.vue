@@ -14,6 +14,9 @@ interface Participant {
 
 const props = defineProps<{
     open: boolean;
+    programId: number | null;
+    batchId: number | null;
+    requirementId: number | null;
     batchName: string;
     programTitle: string;
     requirementTitle: string;
@@ -194,13 +197,29 @@ const send = () => {
     const bodyHtml = quill?.root?.innerHTML ?? '';
     const sigText  = sigQuill?.root?.innerHTML ?? '';
 
+    // I-match ang bawat email sa kilalang participant (empcode/name) para may
+    // makikitang detalye sa reminder history; kung manually-added lang ang
+    // email (wala sa listahan ng participants), null na lang ang empcode/name.
+    const recipients = toList.value.map((email) => {
+        const participant = props.participants.find((p) => p.employee_email === email);
+        return {
+            empcode: participant?.empcode ?? null,
+            name:    participant?.employee_name ?? null,
+            email,
+        };
+    });
+
     router.post(
         route('email-reminder.send'),
         {
-            to:        toList.value,
-            subject:   subject.value,
-            body:      bodyHtml,
-            signature: sigText,
+            to:              toList.value,
+            subject:         subject.value,
+            body:            bodyHtml,
+            signature:       sigText,
+            program_id:      props.programId,
+            batch_id:        props.batchId,
+            requirement_id:  props.requirementId,
+            recipients,
         },
         {
             preserveScroll: true,

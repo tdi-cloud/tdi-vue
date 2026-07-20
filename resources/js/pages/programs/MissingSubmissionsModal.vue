@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import {
     Search, AlertTriangle, Users, FileX,
     Mail, Building2, BadgeCheck, X, ChevronDown, ChevronUp,
+    History, MailCheck, ListChecks, ChevronRight,
 } from 'lucide-vue-next';
 import EmailReminderModal from '@/pages/programs/EmailReminderModal.vue';
 
@@ -31,7 +32,20 @@ interface Submission {
     participant?: { empcode: string } | null;
     requirement?: { title: string } | null;
 }
-interface Program { title?: string; batches?: BatchWithDetails[]; }
+interface ReminderRecipient { empcode: string | null; name: string | null; email: string | null; }
+interface ReminderLog {
+    id: number;
+    sent_by: string | null;
+    sent_by_name: string | null;
+    program_id: number | null;
+    batch_id: number | null;
+    requirement_id: number | null;
+    subject: string;
+    recipients: ReminderRecipient[];
+    recipients_count: number;
+    created_at: string;
+}
+interface Program { id?: number; title?: string; batches?: BatchWithDetails[]; email_reminder_logs?: ReminderLog[]; }
 interface MissingEntry {
     participant_id: number; empcode: string; batch_id: number; batch_name: string;
     requirement_id: number; requirement_title: string; requirement_name: string;
@@ -147,9 +161,41 @@ const avatarColor = (empcode: string) => {
 
 defineExpose({ missingCount: computed(() => allMissing.value.length) });
 
+/* ===================== REMINDER HISTORY / ALREADY-REMINDED LOOKUP ===================== */
+
+const reminderLogs = computed(() => props.program.email_reminder_logs ?? []);
+
+// Key: empcode + batch_id + requirement_id -> pinaka-huling reminder log na
+// nagpadala sa kaniya para dito. Ang `reminderLogs` ay latest-first na mula
+// sa backend, kaya ang unang match sa bawat key ang pinaka-bago.
+const lastReminderFor = computed(() => {
+    const map = new Map<string, ReminderLog>();
+    for (const log of reminderLogs.value) {
+        for (const r of log.recipients ?? []) {
+            if (!r.empcode) continue;
+            const key = `${r.empcode}__${log.batch_id}__${log.requirement_id}`;
+            if (!map.has(key)) map.set(key, log);
+        }
+    }
+    return map;
+});
+
+const reminderFor = (entry: MissingEntry): ReminderLog | undefined =>
+    lastReminderFor.value.get(`${entry.empcode}__${entry.batch_id}__${entry.requirement_id}`);
+
+const showHistory = ref(false);
+
+const formatDateTime = (d: string) =>
+    new Date(d).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+const expandedLog = ref<number | null>(null);
+const toggleLogRecipients = (id: number) => { expandedLog.value = expandedLog.value === id ? null : id; };
+
 /* ===================== EMAIL REMINDER ===================== */
 
 interface EmailTarget {
+    batchId: number | null;
+    requirementId: number | null;
     batchName: string;
     requirementTitle: string;
     requirementName: string;
@@ -159,6 +205,8 @@ interface EmailTarget {
 
 const showEmail = ref(false);
 const emailTarget = ref<EmailTarget>({
+    batchId: null,
+    requirementId: null,
     batchName: '',
     requirementTitle: '',
     requirementName: '',
@@ -168,6 +216,8 @@ const emailTarget = ref<EmailTarget>({
 
 const openEmailReminder = (group: Group) => {
     emailTarget.value = {
+        batchId: group.entries[0]?.batch_id ?? null,
+        requirementId: group.entries[0]?.requirement_id ?? null,
         batchName: group.batch,
         requirementTitle: group.requirement_title,
         requirementName: group.requirement_name,
@@ -225,7 +275,7 @@ const openEmailReminder = (group: Group) => {
                         </div>
 
                         <!-- Stats pills -->
-                        <div class="flex flex-wrap gap-2 mt-3">
+                        <div class="flex flex-wrap items-center gap-2 mt-3">
                             <span class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold">
                                 <Users class="h-3.5 w-3.5 text-blue-500" />
                                 {{ new Set(allMissing.map(m => m.participant_id)).size }} participant(s)
@@ -243,10 +293,27 @@ const openEmailReminder = (group: Group) => {
                                 <AlertTriangle class="h-3.5 w-3.5" />
                                 {{ allMissing.filter(m => isOverdue(m.due_date)).length }} overdue
                             </span>
+
+                            <button
+                                type="button"
+                                class="ml-auto inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors"
+                                :class="showHistory
+                                    ? 'bg-blue-600 border-blue-600 text-white'
+                                    : 'hover:bg-muted/50 text-muted-foreground'"
+                                @click="showHistory = !showHistory"
+                            >
+                                <History class="h-3.5 w-3.5" />
+                                Reminder History
+                                <span
+                                    v-if="reminderLogs.length"
+                                    class="rounded-full px-1.5"
+                                    :class="showHistory ? 'bg-white/20' : 'bg-muted'"
+                                >{{ reminderLogs.length }}</span>
+                            </button>
                         </div>
 
                         <!-- Filters -->
-                        <div class="flex flex-wrap items-center gap-2 mt-3">
+                        <div v-if="!showHistory" class="flex flex-wrap items-center gap-2 mt-3">
                             <div class="relative flex-1 min-w-[160px]">
                                 <Search class="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                                 <Input v-model="search" class="text-xs h-8 pl-8" placeholder="Search by name, code, office…" />
@@ -274,6 +341,8 @@ const openEmailReminder = (group: Group) => {
 
                     <!-- ─── BODY (only this scrolls) ─── -->
                     <div class="px-6 py-4 flex flex-col gap-3" style="flex:1; min-height:0; overflow-y:auto;">
+
+                      <template v-if="!showHistory">
 
                         <!-- All clear -->
                         <div v-if="allMissing.length === 0"
@@ -369,6 +438,13 @@ const openEmailReminder = (group: Group) => {
                                                 <span v-else class="text-[11px] text-muted-foreground/60 flex items-center gap-1 italic">
                                                     <Mail class="h-3 w-3" /> No email on file
                                                 </span>
+                                                <span
+                                                    v-if="reminderFor(m)"
+                                                    class="text-[11px] font-semibold flex items-center gap-1 text-emerald-600 dark:text-emerald-400"
+                                                    :title="`Sent by ${reminderFor(m)!.sent_by_name ?? reminderFor(m)!.sent_by ?? 'system'}`"
+                                                >
+                                                    <MailCheck class="h-3 w-3" /> Reminded {{ formatDateTime(reminderFor(m)!.created_at) }}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
@@ -376,6 +452,63 @@ const openEmailReminder = (group: Group) => {
 
                             </div>
                         </template>
+
+                      </template>
+
+                      <!-- ─── REMINDER HISTORY ─── -->
+                      <template v-else>
+                        <div v-if="reminderLogs.length === 0"
+                            class="flex flex-col items-center justify-center py-16 text-center gap-3">
+                            <div class="flex items-center justify-center w-16 h-16 rounded-2xl bg-muted">
+                                <History class="h-8 w-8 text-muted-foreground/50" />
+                            </div>
+                            <p class="text-sm font-bold">No reminders sent yet</p>
+                            <p class="text-xs text-muted-foreground max-w-xs">Once you send an email reminder, it will show up here with the date and recipients.</p>
+                        </div>
+
+                        <template v-else>
+                            <p class="text-[11px] text-muted-foreground">
+                                {{ reminderLogs.length }} reminder{{ reminderLogs.length !== 1 ? 's' : '' }} sent for this program
+                            </p>
+
+                            <div v-for="log in reminderLogs" :key="log.id" class="rounded-2xl border shadow-sm overflow-hidden">
+                                <div
+                                    class="w-full flex items-center justify-between gap-3 px-4 py-3 bg-muted/40 hover:bg-muted/70 transition-colors cursor-pointer select-none"
+                                    @click="toggleLogRecipients(log.id)"
+                                >
+                                    <div class="flex items-center gap-2 flex-wrap min-w-0">
+                                        <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 px-2.5 py-0.5 text-[11px] font-bold shrink-0">
+                                            <MailCheck class="h-3 w-3" /> {{ log.recipients_count }} recipient{{ log.recipients_count !== 1 ? 's' : '' }}
+                                        </span>
+                                        <span class="text-xs font-semibold truncate">{{ log.subject }}</span>
+                                    </div>
+                                    <div class="flex items-center gap-2 shrink-0">
+                                        <span class="text-[11px] text-muted-foreground">{{ formatDateTime(log.created_at) }}</span>
+                                        <ChevronRight v-if="expandedLog !== log.id" class="h-4 w-4 text-muted-foreground" />
+                                        <ChevronDown v-else class="h-4 w-4 text-muted-foreground" />
+                                    </div>
+                                </div>
+
+                                <div class="px-4 py-2 text-[11px] text-muted-foreground border-t bg-background flex items-center gap-1.5">
+                                    <ListChecks class="h-3 w-3" />
+                                    Sent by <span class="font-semibold text-foreground">{{ log.sent_by_name ?? log.sent_by ?? 'system' }}</span>
+                                </div>
+
+                                <div v-if="expandedLog === log.id" class="divide-y" style="max-height:260px; overflow-y:auto;">
+                                    <div v-for="(r, idx) in log.recipients" :key="idx" class="flex items-center gap-3 px-4 py-2.5">
+                                        <div class="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+                                            :class="avatarColor(r.empcode ?? r.email ?? String(idx))">
+                                            {{ initials(r.name ?? r.email) }}
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-xs font-semibold truncate">{{ r.name ?? r.email ?? 'Unknown' }}</p>
+                                            <p class="text-[11px] text-muted-foreground truncate">{{ r.email }}<span v-if="r.empcode"> · {{ r.empcode }}</span></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                      </template>
 
                     </div>
 
@@ -395,6 +528,9 @@ const openEmailReminder = (group: Group) => {
     <EmailReminderModal
         v-show="showEmail"
         :open="showEmail"
+        :program-id="program.id ?? null"
+        :batch-id="emailTarget.batchId"
+        :requirement-id="emailTarget.requirementId"
         :program-title="program.title ?? ''"
         :batch-name="emailTarget.batchName"
         :requirement-title="emailTarget.requirementTitle"

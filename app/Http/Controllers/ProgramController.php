@@ -135,7 +135,9 @@ class ProgramController extends Controller
             'origin' => 'required|string',
         ]);
 
-        Program::create($request->all());
+        Program::create(array_merge($request->all(), [
+            'added_by' => auth()->user()->empcode,
+        ]));
 
         return back()->with('success', 'Program created successfully.');
     }
@@ -147,6 +149,9 @@ class ProgramController extends Controller
             'supportingDocuments',
             'resourceSpeakers',
             'coverPage',
+            'emailReminderLogs' => function ($q) {
+                $q->select(['id', 'sent_by', 'sent_by_name', 'program_id', 'batch_id', 'requirement_id', 'subject', 'recipients', 'recipients_count', 'created_at']);
+            },
             'batches' => function ($q) {
                 $q->orderBy('sort_order')
                     ->orderBy('date_start')
@@ -214,6 +219,14 @@ class ProgramController extends Controller
         $program->update($request->all());
 
         return redirect()->route('programs.show', $program)->with('success', 'Program updated successfully.');
+    }
+
+    public function destroy(Program $program)
+    {
+        // Kasama nang mabubura ang mga batches nito (tingnan ang Program::booted()).
+        $program->delete();
+
+        return redirect()->route('programs.index')->with('success', 'Program deleted successfully.');
     }
 
     public function storeCompetencies(Request $request, Program $program)

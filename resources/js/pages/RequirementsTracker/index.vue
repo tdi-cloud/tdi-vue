@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Head, router } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 import {
     ClipboardList, Search, AlertTriangle, CheckCircle2, ListChecks,
-    Building2, MapPin, CalendarClock, Download, FileWarning, Filter,
+    Building2, MapPin, CalendarClock, Download, FileWarning,
+    SlidersHorizontal, X,
 } from 'lucide-vue-next';
 
 interface TrackerItem {
@@ -12,6 +13,7 @@ interface TrackerItem {
     employee_name: string;
     office_division: string;
     region: string;
+    program_id: number;
     program_code: string;
     program_title: string;
     batch_id: number;
@@ -152,40 +154,27 @@ const initials = (name: string) => {
 
             <!-- Filters -->
             <div class="flex flex-col gap-3">
-                <div class="flex items-center gap-2 flex-wrap">
-                    <div class="relative flex-1 min-w-64">
+                <div class="flex items-center gap-2">
+                    <div class="relative flex-1 max-w-sm">
                         <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <input
                             v-model="search"
                             type="text"
                             placeholder="Search employee name, empcode, or program..."
-                            class="w-full border rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background shadow-sm"
+                            class="w-full border rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background shadow-sm"
                         />
                     </div>
-
-                    <select v-model="requirementTitle" class="border rounded-xl px-3 py-2.5 text-sm bg-background shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="">All Requirements</option>
-                        <option v-for="t in requirementTitles" :key="t" :value="t">{{ t }}</option>
-                    </select>
-
-                    <button
-                        type="button"
-                        @click="overdueOnly = !overdueOnly"
-                        class="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold border shadow-sm transition-colors"
-                        :class="overdueOnly
-                            ? 'bg-red-600 border-red-600 text-white'
-                            : 'bg-background text-muted-foreground hover:bg-muted/50'"
-                    >
-                        <FileWarning class="h-4 w-4" /> Overdue Only
-                    </button>
-
+                    <div class="flex items-center gap-1.5 text-xs text-muted-foreground px-2 py-1.5 rounded-lg border bg-muted/30">
+                        <SlidersHorizontal class="h-3.5 w-3.5" />
+                        <span>Filters</span>
+                    </div>
                     <button
                         v-if="hasActiveFilters()"
                         type="button"
+                        class="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1.5"
                         @click="clearFilters"
-                        class="text-xs text-muted-foreground hover:text-foreground px-2 py-2 transition-colors"
                     >
-                        Clear filters
+                        <X class="h-3.5 w-3.5" /> Clear all
                     </button>
 
                     <a
@@ -196,8 +185,34 @@ const initials = (name: string) => {
                     </a>
                 </div>
 
-                <p class="text-xs text-muted-foreground flex items-center gap-1">
-                    <Filter class="h-3 w-3" />
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 p-3 rounded-xl border bg-muted/30">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                            <ListChecks class="h-3 w-3" /> Requirement
+                        </label>
+                        <select v-model="requirementTitle" class="border rounded-lg px-2 py-1.5 text-xs bg-background shadow-sm">
+                            <option value="">All</option>
+                            <option v-for="t in requirementTitles" :key="t" :value="t">{{ t }}</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                            <FileWarning class="h-3 w-3" /> Due Status
+                        </label>
+                        <button
+                            type="button"
+                            @click="overdueOnly = !overdueOnly"
+                            class="inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold border shadow-sm transition-colors"
+                            :class="overdueOnly
+                                ? 'bg-red-600 border-red-600 text-white'
+                                : 'bg-background text-muted-foreground hover:bg-muted/50'"
+                        >
+                            <FileWarning class="h-3.5 w-3.5" /> Overdue Only
+                        </button>
+                    </div>
+                </div>
+
+                <p class="text-xs text-muted-foreground">
                     Showing {{ items.from ?? 0 }}–{{ items.to ?? 0 }} of {{ items.total }} outstanding requirement(s)
                 </p>
             </div>
@@ -206,12 +221,12 @@ const initials = (name: string) => {
             <div class="rounded-2xl border overflow-hidden shadow-sm bg-background">
                 <table v-if="items.data.length" class="w-full text-sm">
                     <thead>
-                        <tr class="bg-foreground text-background">
-                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide">Employee</th>
-                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide">Program &amp; Batch</th>
-                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide">Requirement</th>
-                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide">Due Date</th>
-                            <th class="text-right font-bold px-4 py-3 text-xs uppercase tracking-wide">Status</th>
+                        <tr class="bg-gradient-to-r from-blue-50 via-indigo-50 to-violet-50 dark:from-blue-950/40 dark:via-indigo-950/40 dark:to-violet-950/40 border-b-2 border-indigo-200 dark:border-indigo-900">
+                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Employee</th>
+                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Program &amp; Batch</th>
+                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Requirement</th>
+                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Due Date</th>
+                            <th class="text-right font-bold px-4 py-3 text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Status</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y">
@@ -237,7 +252,13 @@ const initials = (name: string) => {
                                 </div>
                             </td>
                             <td class="px-4 py-3">
-                                <p class="font-semibold text-sm leading-tight truncate max-w-xs">{{ item.program_title }}</p>
+                                <Link
+                                    :href="route('programs.show', item.program_id)"
+                                    class="font-semibold text-sm leading-tight truncate max-w-xs block hover:text-blue-600 hover:underline transition-colors"
+                                    title="View program details"
+                                >
+                                    {{ item.program_title }}
+                                </Link>
                                 <p class="text-xs text-muted-foreground">{{ item.batch_label }}</p>
                             </td>
                             <td class="px-4 py-3">

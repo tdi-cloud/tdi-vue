@@ -141,6 +141,7 @@ class RequirementsTrackerController extends Controller
             'e.MI as mi',
             DB::raw('e.`OFFICE/DIVISION` as office_division'),
             'e.REGION as region',
+            'prog.id as program_id',
             'prog.program_code as program_code',
             'prog.title as program_title',
             'b.id as batch_id',

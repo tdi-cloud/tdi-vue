@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\AbsentJustification;
 use Illuminate\Support\Facades\Storage;
 
 class Batch extends Model
@@ -21,6 +20,7 @@ class Batch extends Model
         'time_end',
         'days',
         'hours',
+        'added_by',
     ];
 
     /**

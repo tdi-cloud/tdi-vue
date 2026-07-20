@@ -122,6 +122,7 @@ interface Program {
     supporting_documents?: SupportingDocument[];
     resource_speakers?: ResourceSpeaker[];
     cover_page?: { id: number; image: string; image_url: string | null } | null;
+    email_reminder_logs?: any[];
 }
 
 const props = defineProps<{

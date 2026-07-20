@@ -30,6 +30,7 @@ import {
     ChevronDown,
     ScrollText,
     ClipboardList,
+    UserCog,
 } from 'lucide-vue-next';
 import { ref, computed, watch } from 'vue';
 import BatchParticipants from '@/pages/programs/BatchParticipants.vue';
@@ -290,6 +291,10 @@ const formatTime = (t: string) => {
                     <p class="flex items-center gap-1.5">
                         <Users class="h-3.5 w-3.5 shrink-0" />
                         {{ batch.participants?.length ?? 0 }} participant(s)
+                    </p>
+                    <p v-if="batch.added_by" class="flex items-center gap-1.5">
+                        <UserCog class="h-3.5 w-3.5 shrink-0" />
+                        Added by {{ batch.added_by }}
                     </p>
                 </div>
 
