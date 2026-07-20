@@ -39,6 +39,7 @@ interface Config {
 const props = defineProps<{
     config: Config;
     programs: Program[];
+    sponsorLogos: Record<string, string>;
 }>();
 
 // ── Force light mode for public form ──────────────────────────────────────────
@@ -229,20 +230,13 @@ function modalityLabel(m: string) {
     return { 'in-person': 'In-Person', online: 'Online', hybrid: 'Hybrid' }[m] ?? m;
 }
 
-const sponsorLogos: Record<string, string> = {
-    'jica':  '/storage/sponsors/jica.png',
-    'koica': '/storage/sponsors/koica.png',
-    'mtcp':  '/storage/sponsors/mtcp.png',
-    'scp':   '/storage/sponsors/scp.png',
-    'tica':  '/storage/sponsors/tica.png',
-    'itec':  '/storage/sponsors/itec.png',
-};
-
 const logoLoadFailed = ref(false);
 
+// Kinukuha mula sa mga larawang na-customize ng superadmin sa /site-images
+// (Homepage Images), kaya pareho ang logo dito at sa FSTP section ng homepage.
 const sponsorLogo = computed(() => {
     const key = props.config.slug?.toLowerCase() ?? '';
-    return sponsorLogos[key] ?? null;
+    return props.sponsorLogos[key] ?? null;
 });
 
 function handleSponsorLogoError() {
