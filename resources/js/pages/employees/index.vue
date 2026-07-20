@@ -2,12 +2,12 @@
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Head, router } from '@inertiajs/vue3';
-import { ref, watch } from 'vue';
+import { ref, computed, watch } from 'vue';
 import {
     Search, Users, ChevronLeft, ChevronRight,
     X, CheckCircle2, Clock, Award, FileText,
     Building2, MapPin, Hash, Star, AlertCircle,
-    ExternalLink,
+    ExternalLink, SlidersHorizontal,
     Download
 } from 'lucide-vue-next';
 import axios from 'axios';
@@ -130,6 +130,19 @@ watch(region, () => {
     office.value = 'all';
 });
 
+const hasActiveFilters = computed(() =>
+    search.value !== '' || region.value !== 'all' || office.value !== 'all' ||
+    plantilla.value !== 'all' || perPage.value !== '10'
+);
+
+const clearFilters = () => {
+    search.value    = '';
+    region.value    = 'all';
+    office.value    = 'all';
+    plantilla.value = 'all';
+    perPage.value   = '10';
+};
+
 let debounce: ReturnType<typeof setTimeout>;
 watch([search, region, office, plantilla, perPage], () => {
     clearTimeout(debounce);
@@ -242,34 +255,58 @@ const submissionStatusColor = (status?: string) => {
 
             <!-- Search + Filters -->
             <div class="flex flex-col gap-3">
-                <div class="flex items-center gap-3 flex-wrap">
-                    <!-- Search -->
-                    <div class="relative flex-1 min-w-64">
+                <div class="flex items-center gap-2">
+                    <div class="relative flex-1 max-w-sm">
                         <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <input
                             v-model="search"
                             type="text"
                             placeholder="Search by Name, Office, or Empcode..."
-                            class="w-full border rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background shadow-lg"
+                            class="w-full border rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background shadow-sm"
                         />
                     </div>
+                    <div class="flex items-center gap-1.5 text-xs text-muted-foreground px-2 py-1.5 rounded-lg border bg-muted/30">
+                        <SlidersHorizontal class="h-3.5 w-3.5" />
+                        <span>Filters</span>
+                    </div>
+                    <button v-if="hasActiveFilters" class="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1.5" @click="clearFilters">
+                        <X class="h-3.5 w-3.5" /> Clear all
+                    </button>
+                </div>
 
-                    <!-- Region -->
-                    <select v-model="region" class="border rounded-xl px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-lg">
-                        <option value="all">All Regions</option>
-                        <option v-for="r in regions" :key="r" :value="r">{{ r }}</option>
-                    </select>
-
-                    <!-- Office -->
-                    <select v-model="office" class="border rounded-xl px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-lg">
-                        <option value="all">All Offices</option>
-                        <option v-for="o in offices" :key="o" :value="o">{{ o }}</option>
-                    </select>
-
-                    <!-- Per page -->
-                    <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>Show</span>
-                        <select v-model="perPage" class="border rounded-xl px-2 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-blue-500 w-16 shadow-lg">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 p-3 rounded-xl border bg-muted/30">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                            <MapPin class="h-3 w-3" /> Region
+                        </label>
+                        <select v-model="region" class="border rounded-lg px-2 py-1.5 text-xs bg-background shadow-sm">
+                            <option value="all">All</option>
+                            <option v-for="r in regions" :key="r" :value="r">{{ r }}</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                            <Building2 class="h-3 w-3" /> Office
+                        </label>
+                        <select v-model="office" class="border rounded-lg px-2 py-1.5 text-xs bg-background shadow-sm">
+                            <option value="all">All</option>
+                            <option v-for="o in offices" :key="o" :value="o">{{ o }}</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                            <CheckCircle2 class="h-3 w-3" /> Plantilla Status
+                        </label>
+                        <select v-model="plantilla" class="border rounded-lg px-2 py-1.5 text-xs bg-background shadow-sm">
+                            <option value="all">All</option>
+                            <option v-for="p in plantillaStatuses" :key="p" :value="p">{{ p?.toUpperCase() }}</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                            <Hash class="h-3 w-3" /> Show per page
+                        </label>
+                        <select v-model="perPage" class="border rounded-lg px-2 py-1.5 text-xs bg-background shadow-sm">
                             <option value="10">10</option>
                             <option value="25">25</option>
                             <option value="50">50</option>
@@ -277,41 +314,20 @@ const submissionStatusColor = (status?: string) => {
                         </select>
                     </div>
                 </div>
-
-                <!-- Plantilla filter pills -->
-                <div class="flex items-center gap-2 flex-wrap">
-                    <button
-                        @click="plantilla = 'all'"
-                        class="px-3 py-1 rounded-full text-xs font-bold transition-colors"
-                        :class="plantilla === 'all' ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:bg-muted/70'"
-                    >
-                        ALL
-                    </button>
-                    <button
-                        v-for="p in plantillaStatuses"
-                        :key="p"
-                        @click="plantilla = plantilla === p ? 'all' : p"
-                        class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-colors"
-                        :class="plantilla === p ? plantillaColor(p) + ' ring-2 ring-offset-1' : 'bg-background text-muted-foreground border-border hover:bg-muted/50'"
-                    >
-                        <span class="h-2 w-2 rounded-full" :class="plantillaDot(p)" />
-                        {{ p?.toUpperCase() }}
-                    </button>
-                </div>
             </div>
 
             <!-- Table -->
             <div class="rounded-2xl border overflow-hidden shadow-sm bg-background">
                 <table class="w-full text-sm">
                     <thead>
-                        <tr class="bg-foreground text-background">
-                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide">Empcode</th>
-                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide">Employee</th>
-                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide">Plantilla</th>
-                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide">Program Progress</th>
-                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide">Hours Progress</th>
-                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide">Submission Progress</th>
-                            <th class="text-right font-bold px-4 py-3 text-xs uppercase tracking-wide">Action</th>
+                        <tr class="bg-gradient-to-r from-blue-50 via-indigo-50 to-violet-50 dark:from-blue-950/40 dark:via-indigo-950/40 dark:to-violet-950/40 border-b-2 border-indigo-200 dark:border-indigo-900">
+                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Empcode</th>
+                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Employee</th>
+                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Plantilla</th>
+                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Program Progress</th>
+                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Hours Progress</th>
+                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Submission Progress</th>
+                            <th class="text-right font-bold px-4 py-3 text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Action</th>
                         </tr>
                     </thead>
                     <TransitionGroup tag="tbody" class="divide-y" appear>
