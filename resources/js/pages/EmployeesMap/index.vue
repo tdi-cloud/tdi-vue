@@ -94,6 +94,7 @@ const showPanel = ref(false);
 const panelLoading = ref(false);
 const panelRegion = ref<{ region: string; label: string; total: number } | null>(null);
 const panelSearch = ref('');
+const panelOffice = ref('all');
 const panelEmployees = ref<any>(null);
 const panelOfficeBreakdown = ref<{ office: string; total: number }[]>([]);
 
@@ -676,6 +677,7 @@ async function openRegionPanel(region: string, label: string, total: number) {
     panelRegion.value = { region, label, total };
     showPanel.value = true;
     panelSearch.value = '';
+    panelOffice.value = 'all';
     await fetchRegionEmployees();
 }
 
@@ -687,6 +689,7 @@ async function fetchRegionEmployees(page = 1) {
             params: {
                 region: panelRegion.value.region,
                 search: panelSearch.value || undefined,
+                office: panelOffice.value !== 'all' ? panelOffice.value : undefined,
                 page,
             },
         });
@@ -701,6 +704,10 @@ let searchDebounce: ReturnType<typeof setTimeout>;
 function onPanelSearchInput() {
     clearTimeout(searchDebounce);
     searchDebounce = setTimeout(() => fetchRegionEmployees(1), 350);
+}
+
+function onPanelOfficeChange() {
+    fetchRegionEmployees(1);
 }
 
 function handleClick(event: PointerEvent) {
@@ -853,7 +860,7 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
 
-                <div class="p-4 border-b">
+                <div class="p-4 border-b flex flex-col gap-2">
                     <div class="relative">
                         <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <input
@@ -864,6 +871,18 @@ onBeforeUnmount(() => {
                             @input="onPanelSearchInput"
                         />
                     </div>
+
+                    <select
+                        v-if="panelOfficeBreakdown.length"
+                        v-model="panelOffice"
+                        class="w-full border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-sm"
+                        @change="onPanelOfficeChange"
+                    >
+                        <option value="all">All Offices</option>
+                        <option v-for="item in panelOfficeBreakdown" :key="item.office" :value="item.office">
+                            {{ item.office }} ({{ item.total }})
+                        </option>
+                    </select>
                 </div>
 
                 <div class="flex-1 overflow-y-auto p-4">

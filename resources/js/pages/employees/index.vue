@@ -107,10 +107,12 @@ interface EmployeeProgress {
 const props = defineProps<{
     employees: PaginatedEmployees;
     regions: string[];
+    offices: string[];
     plantillaStatuses: string[];
     filters: {
         search?: string;
         region?: string;
+        office?: string;
         plantilla?: string;
         per_page?: string;
     };
@@ -119,16 +121,23 @@ const props = defineProps<{
 // Filters
 const search    = ref(props.filters.search ?? '');
 const region    = ref(props.filters.region ?? 'all');
+const office    = ref(props.filters.office ?? 'all');
 const plantilla = ref(props.filters.plantilla ?? 'all');
 const perPage   = ref(props.filters.per_page ?? '10');
 
+// Kapag nagbago ang region, i-reset ang office selection dahil magbabago rin ang mga choices nito.
+watch(region, () => {
+    office.value = 'all';
+});
+
 let debounce: ReturnType<typeof setTimeout>;
-watch([search, region, plantilla, perPage], () => {
+watch([search, region, office, plantilla, perPage], () => {
     clearTimeout(debounce);
     debounce = setTimeout(() => {
         router.get(route('employees.index'), {
             search:    search.value || undefined,
             region:    region.value !== 'all' ? region.value : undefined,
+            office:    office.value !== 'all' ? office.value : undefined,
             plantilla: plantilla.value !== 'all' ? plantilla.value : undefined,
             per_page:  perPage.value !== '10' ? perPage.value : undefined,
         }, { preserveScroll: true, preserveState: true, replace: true });
@@ -251,6 +260,12 @@ const submissionStatusColor = (status?: string) => {
                         <option v-for="r in regions" :key="r" :value="r">{{ r }}</option>
                     </select>
 
+                    <!-- Office -->
+                    <select v-model="office" class="border rounded-xl px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-lg">
+                        <option value="all">All Offices</option>
+                        <option v-for="o in offices" :key="o" :value="o">{{ o }}</option>
+                    </select>
+
                     <!-- Per page -->
                     <div class="flex items-center gap-2 text-sm text-muted-foreground">
                         <span>Show</span>
@@ -299,11 +314,12 @@ const submissionStatusColor = (status?: string) => {
                             <th class="text-right font-bold px-4 py-3 text-xs uppercase tracking-wide">Action</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y">
+                    <TransitionGroup tag="tbody" class="divide-y" appear>
                         <tr
-                            v-for="emp in employees.data"
+                            v-for="(emp, index) in employees.data"
                             :key="emp.id"
                             class="hover:bg-muted/30 transition-colors"
+                            :style="{ animationDelay: `${index * 60}ms` }"
                         >
                             <td class="px-4 py-3 text-muted-foreground font-mono text-xs">{{ emp.EMPCODE }}</td>
                             <td class="px-4 py-3">
@@ -377,13 +393,13 @@ const submissionStatusColor = (status?: string) => {
                             </td>
                         </tr>
 
-                        <tr v-if="employees.data?.length === 0">
+                        <tr v-if="employees.data?.length === 0" key="empty-state">
                             <td colspan="7" class="px-4 py-16 text-center text-muted-foreground">
                                 <Users class="h-10 w-10 mx-auto mb-2 opacity-30" />
                                 <p class="text-sm font-semibold">No employees found.</p>
                             </td>
                         </tr>
-                    </tbody>
+                    </TransitionGroup>
                 </table>
             </div>
 
@@ -704,3 +720,33 @@ const submissionStatusColor = (status?: string) => {
 
     </AppLayout>
 </template>
+
+<style scoped>
+.v-enter-active {
+    animation: slideIn 0.3s ease both;
+}
+
+.v-leave-active {
+    animation: slideOut 0.25s ease both;
+}
+
+@keyframes slideIn {
+    0% {
+        opacity: 0;
+        transform: translateX(-12px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideOut {
+    0% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+</style>

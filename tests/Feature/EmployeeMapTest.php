@@ -111,6 +111,25 @@ test('employees map region endpoint returns an office breakdown for the requeste
     expect($breakdown['Provincial Office - Albay']['total'])->toBe(1);
 });
 
+test('employees map region endpoint supports filtering by office within the region', function () {
+    $admin = employeeMapTestAdmin('EMP-MAP-ADM6');
+
+    employeeMapTestEmployee('EMP-MAP-13', 'R5', 'Ramos', 'Regional Office V');
+    employeeMapTestEmployee('EMP-MAP-14', 'R5', 'Dela Cruz', 'Provincial Office - Albay');
+    employeeMapTestEmployee('EMP-MAP-15', 'NCR', 'Mendoza', 'Regional Office V');
+
+    $response = $this->actingAs($admin)->getJson(route('employees-map.region', [
+        'region' => 'R5',
+        'office' => 'Regional Office V',
+    ]));
+    $response->assertOk();
+
+    $empcodes = collect($response->json('employees.data'))->pluck('EMPCODE');
+    expect($empcodes)->toContain('EMP-MAP-13')
+        ->and($empcodes)->not->toContain('EMP-MAP-14')
+        ->and($empcodes)->not->toContain('EMP-MAP-15');
+});
+
 test('employees map region endpoint requires a region parameter', function () {
     $admin = employeeMapTestAdmin('EMP-MAP-ADM4');
 

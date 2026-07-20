@@ -49,6 +49,10 @@ class EmployeeMapController extends Controller
             });
         }
 
+        if ($request->filled('office') && $request->office !== 'all') {
+            $query->where('OFFICE', $request->office);
+        }
+
         $employees = $query
             ->orderBy('LASTNAME')
             ->paginate($request->get('per_page', 20))

@@ -296,3 +296,100 @@ test('employees index exposes submission progress stats per employee', function 
         'approved_submissions' => 1,
     ]);
 });
+
+test('employees index scopes the office filter options to the selected region', function () {
+    $admin = progressIndexTestAdmin('EMP-PIDX-ADM6');
+
+    Employee::forceCreate([
+        'EMPCODE' => 'EMP-PIDX-06',
+        'OFFICE/DIVISION' => 'Test Division',
+        'LASTNAME' => 'Torres',
+        'FIRSTNAME' => 'Iris',
+        'MI' => 'D',
+        'POSITION' => 'Test Position',
+        'SG' => '10',
+        'PLANTILLA STATUS' => 'Permanent',
+        'SEX' => 'F',
+        'REGION' => 'NCR',
+        'OFFICE' => 'NCR Office',
+        'LOCATION' => 'Main',
+        'SECTION' => 'Test Section',
+        'UNIT' => 'Test Unit',
+    ]);
+
+    Employee::forceCreate([
+        'EMPCODE' => 'EMP-PIDX-07',
+        'OFFICE/DIVISION' => 'Test Division',
+        'LASTNAME' => 'Villanueva',
+        'FIRSTNAME' => 'Carlo',
+        'MI' => 'D',
+        'POSITION' => 'Test Position',
+        'SG' => '10',
+        'PLANTILLA STATUS' => 'Permanent',
+        'SEX' => 'M',
+        'REGION' => 'R4A',
+        'OFFICE' => 'R4A Office',
+        'LOCATION' => 'Main',
+        'SECTION' => 'Test Section',
+        'UNIT' => 'Test Unit',
+    ]);
+
+    // Walang region na naka-select: dapat lahat ng unique offices ang lumabas.
+    $allResponse = $this->actingAs($admin)->get(route('employees.index'));
+    $allResponse->assertOk();
+    $allOffices = $allResponse->inertiaProps('offices');
+    expect($allOffices)->toContain('NCR Office', 'R4A Office');
+
+    // May naka-select na region: dapat ang office lang ng region na iyon ang lumabas.
+    $ncrResponse = $this->actingAs($admin)->get(route('employees.index', ['region' => 'NCR']));
+    $ncrResponse->assertOk();
+    $ncrOffices = $ncrResponse->inertiaProps('offices');
+    expect($ncrOffices)->toContain('NCR Office')
+        ->and($ncrOffices)->not->toContain('R4A Office');
+});
+
+test('employees index filters employees by the selected office', function () {
+    $admin = progressIndexTestAdmin('EMP-PIDX-ADM8');
+
+    Employee::forceCreate([
+        'EMPCODE' => 'EMP-PIDX-08',
+        'OFFICE/DIVISION' => 'Test Division',
+        'LASTNAME' => 'Fernandez',
+        'FIRSTNAME' => 'Diego',
+        'MI' => 'D',
+        'POSITION' => 'Test Position',
+        'SG' => '10',
+        'PLANTILLA STATUS' => 'Permanent',
+        'SEX' => 'M',
+        'REGION' => 'NCR',
+        'OFFICE' => 'Office A',
+        'LOCATION' => 'Main',
+        'SECTION' => 'Test Section',
+        'UNIT' => 'Test Unit',
+    ]);
+
+    Employee::forceCreate([
+        'EMPCODE' => 'EMP-PIDX-09',
+        'OFFICE/DIVISION' => 'Test Division',
+        'LASTNAME' => 'Gonzales',
+        'FIRSTNAME' => 'Elena',
+        'MI' => 'D',
+        'POSITION' => 'Test Position',
+        'SG' => '10',
+        'PLANTILLA STATUS' => 'Permanent',
+        'SEX' => 'F',
+        'REGION' => 'NCR',
+        'OFFICE' => 'Office B',
+        'LOCATION' => 'Main',
+        'SECTION' => 'Test Section',
+        'UNIT' => 'Test Unit',
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('employees.index', ['office' => 'Office A', 'per_page' => 100]));
+    $response->assertOk();
+
+    $rows = collect($response->inertiaProps('employees')['data'])->pluck('EMPCODE');
+
+    expect($rows)->toContain('EMP-PIDX-08')
+        ->and($rows)->not->toContain('EMP-PIDX-09');
+});

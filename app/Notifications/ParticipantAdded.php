@@ -31,7 +31,7 @@ class ParticipantAdded extends Notification
         return [
             'title' => 'Added to a Program',
             'message' => 'You have been added as a participant in '.($program?->title ?? 'a program').'.',
-            'url' => $batch ? route('programs.my-progress', $batch->id) : route('home').'#my-programs',
+            'url' => route('home').'#my-programs',
         ];
     }
 }

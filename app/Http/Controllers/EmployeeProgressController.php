@@ -32,6 +32,10 @@ class EmployeeProgressController extends Controller
             $query->where('REGION', $request->region);
         }
 
+        if ($request->filled('office') && $request->office !== 'all') {
+            $query->where('OFFICE', $request->office);
+        }
+
         if ($request->filled('plantilla') && $request->plantilla !== 'all') {
             $query->where('PLANTILLA STATUS', $request->plantilla);
         }
@@ -94,11 +98,19 @@ class EmployeeProgressController extends Controller
         $regions = Employee::distinct()->orderBy('REGION')->pluck('REGION');
         $plantillaStatuses = Employee::distinct()->orderBy('PLANTILLA STATUS')->pluck('PLANTILLA STATUS');
 
+        $officesQuery = Employee::query();
+        if ($request->filled('region') && $request->region !== 'all') {
+            $officesQuery->where('REGION', $request->region);
+        }
+        $offices = $officesQuery->whereNotNull('OFFICE')->where('OFFICE', '!=', '')
+            ->distinct()->orderBy('OFFICE')->pluck('OFFICE');
+
         return Inertia::render('employees/index', [
             'employees' => $employees,
             'regions' => $regions,
+            'offices' => $offices,
             'plantillaStatuses' => $plantillaStatuses,
-            'filters' => $request->only(['search', 'region', 'plantilla', 'per_page']),
+            'filters' => $request->only(['search', 'region', 'office', 'plantilla', 'per_page']),
         ]);
     }
 
