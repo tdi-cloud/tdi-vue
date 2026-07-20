@@ -26,7 +26,9 @@ import {
     FileStack,
     ClipboardList,
     Gauge,
-    Map
+    Map,
+    ShieldCheck,
+    Images,
 } from 'lucide-vue-next';
 import { useFlash } from '@/composables/useFlash';
 import { Toaster } from '@/components/ui/toast';
@@ -36,80 +38,110 @@ useFlash();
 
 const page = usePage();
 
-const isAdmin = computed(() => (page.props.auth as any)?.user?.access === 'admin');
+const isAdmin = computed(() => {
+    const access = (page.props.auth as any)?.user?.access;
+    return access === 'admin' || access === 'superadmin';
+});
+
+const isSuperAdmin = computed(() => (page.props.auth as any)?.user?.access === 'superadmin');
 
 const allNavItems: NavItem[] = [
+    // Mga monitoring / tracking / compliance na page
     {
         title: 'Dashboard',
         url: '/dashboard',
         icon: ChartPie,
         color: 'text-indigo-600',
+        group: 'Monitoring',
     },
-
-    {
-        title: 'Programs',
-        url: '/programs',
-        icon: BookOpen,
-        color: 'text-violet-500',
-    },
-
-    {
-        title: 'Calendar',
-        url: '/calendar',
-        icon: CalendarRange,
-        color: 'text-cyan-500',
-    },
-
     {
         title: 'Employees',
         url: '/employees',
         icon: Users,
         color: 'text-blue-500',
+        group: 'Monitoring',
     },
-
     {
         title: 'TPMR Monitoring',
         url: '/tpmr',
         icon: ChartBarStacked,
         color: 'text-emerald-500',
+        group: 'Monitoring',
+    },
+    {
+        title: 'Requirements Tracker',
+        url: '/requirements-tracker',
+        icon: ClipboardList,
+        color: 'text-rose-500',
+        group: 'Monitoring',
+    },
+    {
+        title: 'TNA Summary',
+        url: '/tna-summary',
+        icon: Gauge,
+        color: 'text-indigo-500',
+        group: 'Monitoring',
+    },
+    {
+        title: 'Employees Map',
+        url: '/employees-map',
+        icon: Map,
+        color: 'text-teal-500',
+        group: 'Monitoring',
     },
 
+    // Mga hindi monitoring — records/management na page
+    {
+        title: 'Programs',
+        url: '/programs',
+        icon: BookOpen,
+        color: 'text-violet-500',
+        group: 'Management',
+    },
+    {
+        title: 'Calendar',
+        url: '/calendar',
+        icon: CalendarRange,
+        color: 'text-cyan-500',
+        group: 'Management',
+    },
     {
         title: 'Foreign Programs',
         url: '/foreign-programs',
         icon: Earth,
         color: 'text-blue-600',
+        group: 'Management',
     },
     {
         title: 'Supporting Docs',
         url: '/supporting-documents',
         icon: FileStack,
         color: 'text-amber-500',
-    },
-
-    {
-        title: 'Requirements Tracker',
-        url: '/requirements-tracker',
-        icon: ClipboardList,
-        color: 'text-rose-500',
-    },
-
-    {
-        title: 'TNA Summary',
-        url: '/tna-summary',
-        icon: Gauge,
-        color: 'text-indigo-500',
-    },
-
-    {
-        title: 'Employees Map',
-        url: '/employees-map',
-        icon: Map,
-        color: 'text-teal-500',
+        group: 'Management',
     },
 ];
 
-const mainNavItems = computed<NavItem[]>(() => isAdmin.value ? allNavItems : []);
+const superAdminNavItems: NavItem[] = [
+    {
+        title: 'User Management',
+        url: '/user-management',
+        icon: ShieldCheck,
+        color: 'text-rose-500',
+        group: 'Management',
+    },
+    {
+        title: 'Homepage Images',
+        url: '/site-images',
+        icon: Images,
+        color: 'text-fuchsia-500',
+        group: 'Management',
+    },
+];
+
+const mainNavItems = computed<NavItem[]>(() => {
+    if (!isAdmin.value) return [];
+    return isSuperAdmin.value ? [...allNavItems, ...superAdminNavItems] : allNavItems;
+});
 
 const footerNavItems: NavItem[] = [
     {

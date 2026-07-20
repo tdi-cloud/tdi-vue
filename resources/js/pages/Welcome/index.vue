@@ -1,8 +1,8 @@
 <template>
   <Head title="TESDA Development Institute" />
   <div class="tdi-home">
-    <TheNavbar />
-    <HeroSection />
+    <TheNavbar :logo="siteImages.navbar_logo" />
+    <HeroSection :images="siteImages" />
 
     <!-- Lalabas lang kung naka-login AT may TNA Tool (tna !== null) -->
     <TnaBanner v-if="tna" :data="tna" />
@@ -11,10 +11,10 @@
     <SupervisorBanner v-if="supervisorTna" :data="supervisorTna" />
 
     <EnrolledProgramsSection :programs="enrolledPrograms" />
-    <ImagePanels />
-    <AboutSection />
+    <ImagePanels :images="siteImages" />
+    <AboutSection :image="siteImages.about_photo" />
     <ProgramsSection />
-    <ForeignScholarshipSection />
+    <ForeignScholarshipSection :images="siteImages" />
     <PathwaySection />
     <ResourcesSection />
     <CtaBanner />
@@ -44,6 +44,7 @@ defineProps({
   enrolledPrograms: { type: Array, default: () => [] },
   tna: { type: Object, default: null },
   supervisorTna: { type: Object, default: null },
+  siteImages: { type: Object, default: () => ({}) },
 })
 </script>
 

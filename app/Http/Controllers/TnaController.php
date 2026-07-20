@@ -560,7 +560,7 @@ class TnaController extends Controller
         if (! $user) {
             return false;
         }
-        if ($user->access === 'admin') {
+        if ($user->isAdmin()) {
             return true;
         }
         if ($assessment->user_id === $user->id) {

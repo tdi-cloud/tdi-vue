@@ -33,7 +33,7 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        $defaultRoute = $request->user()->access === 'admin'
+        $defaultRoute = $request->user()->isAdmin()
             ? route('dashboard', absolute: false)
             : route('home', absolute: false);
 

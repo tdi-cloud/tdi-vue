@@ -61,4 +61,22 @@ class User extends Authenticatable
             get: fn (?string $value) => $value ? Storage::disk('public')->url($value) : null,
         );
     }
+
+    /**
+     * True kung 'admin' o 'superadmin' ang access ng user.
+     * Parehong buong admin access ang dalawa; ang 'superadmin' ay hiwalay
+     * na label lang para sa mga user na nangangailangan ng elevated distinction.
+     */
+    public function isAdmin(): bool
+    {
+        return in_array($this->access, ['admin', 'superadmin'], true);
+    }
+
+    /**
+     * True kung 'superadmin' ang access ng user.
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->access === 'superadmin';
+    }
 }

@@ -27,36 +27,51 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 
-const panels = [
+const props = defineProps({
+  images: { type: Object, default: () => ({}) }
+})
+
+const panelMeta = [
   {
-    img:   'storage/hero/cpsc.JPG',
+    key:   'panel_classroom',
+    fallback: 'storage/hero/cpsc.JPG',
     title: 'Classroom Training',
     desc:  'Face-to-face learning sessions led by expert facilitators.',
     icon:  '🎒',
   },
   {
-    img:   'https://images.unsplash.com/photo-1491975474562-1f4e30bc9468?w=600&q=80',
+    key:   'panel_coaching',
+    fallback: 'https://images.unsplash.com/photo-1491975474562-1f4e30bc9468?w=600&q=80',
     title: 'Coaching & Mentoring',
     desc:  'One-on-one guidance from experienced public servants.',
     icon:  '🤝',
   },
   {
-    img:   'https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=600&q=80',
+    key:   'panel_online',
+    fallback: 'https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=600&q=80',
     title: 'Online & Blended',
     desc:  'Flexible digital learning accessible anytime, anywhere.',
     icon:  '💻',
   },
   {
-    img:   '/storage/hero/ethno.jpeg',
+    key:   'panel_leadership',
+    fallback: '/storage/hero/ethno.jpeg',
     title: 'Leadership Programs',
     desc:  'Build the next generation of public sector leaders.',
     icon:  '🏆',
   },
 ]
 
-const panelVisible = ref(panels.map(() => false))
+const panels = computed(() => panelMeta.map(p => ({
+  img:   props.images[p.key] ?? p.fallback,
+  title: p.title,
+  desc:  p.desc,
+  icon:  p.icon,
+})))
+
+const panelVisible = ref(panelMeta.map(() => false))
 const panelRefs    = ref([])
 let observer       = null
 
@@ -64,7 +79,7 @@ onMounted(() => {
   observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
-        panels.forEach((_, i) => {
+        panelMeta.forEach((_, i) => {
           setTimeout(() => {
             panelVisible.value[i] = true
           }, i * 180)   // 180ms bawat panel

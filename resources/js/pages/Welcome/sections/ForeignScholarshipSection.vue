@@ -30,22 +30,22 @@
         </div>
 
         <!--
-          NOTE FOR ADMIN: Replace these with actual photos of TDI/FSTP
-          delegates during their training abroad once available, saved to
-          public/storage/fstp/<filename>.jpg
+          Ang mga larawan na ito ay customizable ng superadmin sa
+          /site-images (Homepage Images) — nasa ibaba ang mga fallback
+          na larawan kung wala pang na-upload na override.
         -->
         <div class="fstp__media" ref="mediaRef">
           <div class="snap snap--1" :class="{ 'snap--visible': snapVisible }">
-            <img src="https://c-korea.vn/wp-content/uploads/2024/10/TUK-3-768x392.jpg" alt="Delegates during a foreign training session" />
+            <img :src="images.fstp_photo_1" alt="Delegates during a foreign training session" />
           </div>
           <div class="snap snap--2" :class="{ 'snap--visible': snapVisible }">
-            <img src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=500&q=80" alt="Group photo of Filipino delegates abroad" />
+            <img :src="images.fstp_photo_2" alt="Group photo of Filipino delegates abroad" />
           </div>
           <div class="snap snap--3" :class="{ 'snap--visible': snapVisible }">
-            <img src="https://marvel-b1-cdn.bc0a.com/f00000000290162/images.ctfassets.net/2htm8llflwdx/59339XFWyVJlC424edZsWo/4a683e5a909cdefbc1fe8278c047d1c6/SL_Benefits_of_Studying_Abroad_-_SEO.jpg?fit=thumb" alt="Nominees in a classroom setting abroad" />
+            <img :src="images.fstp_photo_3" alt="Nominees in a classroom setting abroad" />
           </div>
           <div class="snap snap--4" :class="{ 'snap--visible': snapVisible }">
-            <img src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=500&q=80" alt="Delegates posing at a foreign training venue" />
+            <img :src="images.fstp_photo_4" alt="Delegates posing at a foreign training venue" />
           </div>
           <span class="fstp__media-tag" :class="{ 'fstp__media-tag--visible': snapVisible }">FSTP nominees abroad</span>
         </div>
@@ -114,7 +114,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+
+const props = defineProps({
+  images: { type: Object, default: () => ({}) }
+})
 
 const mediaRef    = ref(null)
 const snapVisible = ref(false)
@@ -136,54 +140,63 @@ onMounted(() => {
 onBeforeUnmount(() => observer?.disconnect())
 
 /**
- * NOTE FOR ADMIN: Save each organization's official logo to:
- *   public/storage/sponsors/<filename>.png
- * using the exact filenames listed below. Transparent PNG, roughly
- * square, works best in this grid. If a logo file is missing or
+ * Ang bawat sponsor logo ay customizable ng superadmin sa /site-images
+ * (Homepage Images). Ang 'fallback' sa ibaba ay ang default na larawan
+ * kung wala pang na-upload na override. If a logo file is missing or
  * fails to load, the card automatically falls back to showing the
  * organization's initials so the layout never breaks.
- *
- * Pwede ring i-fetch ito dynamically mula sa /organizing-sponsors
- * endpoint kung gusto nang i-sync sa database.
  */
-const sponsors = [
+const sponsorMeta = [
   {
     name: 'Japan International Cooperation Agency',
     initials: 'JICA',
-    logo: '/storage/sponsors/jica.png',
+    key: 'sponsor_logo_jica',
+    fallback: '/storage/sponsors/jica.png',
     url: 'https://www.jica.go.jp/english/',
   },
   {
     name: 'Korea International Cooperation Agency',
     initials: 'KOICA',
-    logo: '/storage/sponsors/koica.png',
+    key: 'sponsor_logo_koica',
+    fallback: '/storage/sponsors/koica.png',
     url: 'http://www.koica.go.kr/sites/koica_en/index.do',
   },
   {
     name: 'Malaysian Technical Cooperation Programme',
     initials: 'MTCP',
-    logo: '/storage/sponsors/mtcp.png',
+    key: 'sponsor_logo_mtcp',
+    fallback: '/storage/sponsors/mtcp.png',
     url: 'https://mtcp.kln.gov.my/',
   },
   {
     name: 'Singapore Cooperation Programme',
     initials: 'SCP',
-    logo: '/storage/sponsors/scp.png',
+    key: 'sponsor_logo_scp',
+    fallback: '/storage/sponsors/scp.png',
     url: 'https://scp.gov.sg/',
   },
   {
     name: 'Thailand International Cooperation Agency',
     initials: 'TICA',
-    logo: '/storage/sponsors/tica.png',
+    key: 'sponsor_logo_tica',
+    fallback: '/storage/sponsors/tica.png',
     url: null,
   },
   {
     name: 'Indian Technical and Economic Cooperation',
     initials: 'ITEC',
-    logo: '/storage/sponsors/itec.png',
+    key: 'sponsor_logo_itec',
+    fallback: '/storage/sponsors/itec.png',
     url: 'https://itecgoi.in/index',
   },
 ]
+
+const sponsors = computed(() => sponsorMeta.map(s => ({
+  name: s.name,
+  initials: s.initials,
+  logo: props.images[s.key] ?? s.fallback,
+  url: s.url,
+})))
 
 function handleLogoError(e) {
   e.target.style.display = 'none'

@@ -24,12 +24,15 @@ use App\Http\Controllers\RegionalReportController;
 use App\Http\Controllers\RequirementController;
 use App\Http\Controllers\RequirementsTrackerController;
 use App\Http\Controllers\ResourceSpeakerController;
+use App\Http\Controllers\SiteImageController;
 use App\Http\Controllers\SubmissionController;
 use App\Http\Controllers\SupportingDocumentController;
 use App\Http\Controllers\TesdaOrderController;
 use App\Http\Controllers\TnaController;
 use App\Http\Controllers\TPMRController;
+use App\Http\Controllers\UserManagementController;
 use App\Models\ForeignNominee;
+use App\Models\SiteImage;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -40,6 +43,7 @@ Route::get('/', function () {
             : [],
         'tna' => TnaController::bannerData(auth()->user()),
         'supervisorTna' => TnaController::supervisorBannerData(auth()->user()),
+        'siteImages' => SiteImage::resolvedUrls(),
     ]);
 })->name('home');
 
@@ -288,6 +292,19 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('/programs/{program}/tesda-orders/participants', [TesdaOrderController::class, 'participants'])
         ->name('tesda-orders.participants');
 
+});
+
+// SUPERADMIN ONLY
+Route::middleware(['auth', 'verified', 'superadmin'])->group(function () {
+
+    // USER MANAGEMENT
+    Route::get('/user-management', [UserManagementController::class, 'index'])->name('user-management.index');
+    Route::put('/user-management/{user}', [UserManagementController::class, 'update'])->name('user-management.update');
+
+    // HOMEPAGE IMAGES
+    Route::get('/site-images', [SiteImageController::class, 'index'])->name('site-images.index');
+    Route::post('/site-images/{key}', [SiteImageController::class, 'update'])->name('site-images.update');
+    Route::delete('/site-images/{key}', [SiteImageController::class, 'destroy'])->name('site-images.destroy');
 });
 
 // REGULAR USER

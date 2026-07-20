@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
 import axios from 'axios';
-import { X, Plus, Trash2, GripVertical, ExternalLink, Loader2, Settings, FileText, Save, CheckSquare, Square, Calendar } from 'lucide-vue-next';
+import { X, Plus, Trash2, GripVertical, ExternalLink, Loader2, Settings, FileText, Save, CheckSquare, Square, Calendar, Copy, Check } from 'lucide-vue-next';
 
 interface Requirement {
     id: number | null;
@@ -375,8 +375,21 @@ async function saveCourses() {
 // ── Nomination URL ────────────────────────────────────────────────────────────
 
 const nominationUrl = computed(() =>
-    config.value.slug ? `/nominate/${config.value.slug}` : ''
+    config.value.slug ? `${window.location.origin}/nominate/${config.value.slug}` : ''
 );
+
+const urlCopied = ref(false);
+
+async function copyNominationUrl() {
+    if (!nominationUrl.value) return;
+    try {
+        await navigator.clipboard.writeText(nominationUrl.value);
+        urlCopied.value = true;
+        setTimeout(() => { urlCopied.value = false; }, 2000);
+    } catch {
+        // clipboard access denied — ignore silently
+    }
+}
 </script>
 
 <template>
@@ -394,14 +407,28 @@ const nominationUrl = computed(() =>
                         <div class="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center">
                             <Settings class="h-4 w-4 text-blue-600" />
                         </div>
-                        <div>
+                        <div class="min-w-0">
                             <p class="font-bold text-sm">Nomination Form Setup — {{ organizingSponsor }}</p>
-                            <p v-if="nominationUrl" class="text-xs text-muted-foreground">
-                                Form URL:
-                                <a :href="nominationUrl" target="_blank" class="text-blue-600 hover:underline font-mono">
+                            <div v-if="nominationUrl" class="flex items-center gap-1.5 mt-0.5">
+                                <a :href="nominationUrl" target="_blank"
+                                    class="text-xs text-blue-600 hover:underline font-mono truncate max-w-[280px]"
+                                    :title="nominationUrl">
                                     {{ nominationUrl }}
                                 </a>
-                            </p>
+                                <button
+                                    type="button"
+                                    class="shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md border transition-colors"
+                                    :class="urlCopied
+                                        ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                                        : 'border-border text-muted-foreground hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50'"
+                                    :title="'Copy nomination form link'"
+                                    @click="copyNominationUrl"
+                                >
+                                    <Check v-if="urlCopied" class="h-3 w-3" />
+                                    <Copy v-else class="h-3 w-3" />
+                                    {{ urlCopied ? 'Copied!' : 'Copy' }}
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <button @click="$emit('close')" class="text-muted-foreground hover:text-foreground p-1 rounded-lg">

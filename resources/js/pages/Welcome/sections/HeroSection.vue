@@ -52,26 +52,24 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import { useScrollTo } from '@/composables/useScrollTo'
 
 const { scrollTo } = useScrollTo()
 
 const props = defineProps({
-  heroSlides: {
-    type: Array,
-    default: () => []
+  images: {
+    type: Object,
+    default: () => ({})
   }
 })
 
-// const slides = props.heroSlides.map(img => ({ img }))
-
-const slides = [
-  { img: '/storage/hero/hrmo.jpg' },
-  { img: '/storage/hero/hrmo1.jpeg' },
-  { img: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1600&q=80' },
-]
+const slides = computed(() => [
+  { img: props.images.hero_slide_1 },
+  { img: props.images.hero_slide_2 },
+  { img: props.images.hero_slide_3 },
+])
 
 const currentSlide = ref(0)
 const wordVisible  = ref([false, false, false])
@@ -136,7 +134,7 @@ onMounted(() => {
 
   slideInterval = setInterval(() => {
     const prev = currentSlide.value
-    const next = (prev + 1) % slides.length
+    const next = (prev + 1) % slides.value.length
     resetSlideZoom(prev)
     currentSlide.value = next
     startZoom()

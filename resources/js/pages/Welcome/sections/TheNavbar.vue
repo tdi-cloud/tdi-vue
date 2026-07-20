@@ -5,7 +5,7 @@
       <!-- Brand -->
       <a href="/" class="navbar__brand">
          <div class="w-10">
-          <img class="w-full" src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/TESDA_Seal.svg/1280px-TESDA_Seal.svg.png" alt="">
+          <img class="w-full" :src="logo" alt="">
          </div>
         <div class="navbar__brand-text">
           <span class="brand-name">TESDA Development Institute</span>
@@ -111,6 +111,10 @@ import { useScrollTo } from '@/composables/useScrollTo'
 import NotificationBell from '@/components/NotificationBell.vue'
 import { ChartPie, GraduationCap, ChevronsUpDown, Settings, LogOut } from 'lucide-vue-next'
 
+defineProps({
+  logo: { type: String, default: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/TESDA_Seal.svg/1280px-TESDA_Seal.svg.png' },
+})
+
 const { scrollTo } = useScrollTo()
 const page = usePage()
 const auth = computed(() => page.props.auth)
@@ -120,9 +124,10 @@ const mobileMenuOpen = ref(false)
 const userMenuOpen   = ref(false)
 const userMenuRef    = ref(null)
 
-// ⚠️ I-verify: 'admin' ba talaga ang eksaktong value ng `access` column
-// para sa mga admin? (base sa users migration: access default 'guest')
-const isAdmin = computed(() => auth.value?.user?.access === 'admin')
+const isAdmin = computed(() => {
+    const access = auth.value?.user?.access
+    return access === 'admin' || access === 'superadmin'
+})
 
 const initials = computed(() => {
   const name = auth.value?.user?.name || ''

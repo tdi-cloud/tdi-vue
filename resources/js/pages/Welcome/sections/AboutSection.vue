@@ -6,7 +6,7 @@
       <div class="about__media">
         <div class="about__img-wrap">
           <img
-            src="/storage/hero/cpsc2.JPG"
+            :src="image"
             alt="TDI Training Session"
             class="about__img"
           />
@@ -42,6 +42,10 @@
 </template>
 
 <script setup>
+defineProps({
+  image: { type: String, default: '/storage/hero/cpsc2.JPG' },
+})
+
 const pillars = [
   { icon: '⊕', title: 'Build Capability', desc: 'Strengthen core and technical competencies.',       colorClass: 'pillar__icon--blue' },
   { icon: '↗', title: 'Grow People',      desc: 'Create opportunities for continuous advancement.',  colorClass: 'pillar__icon--teal' },
