@@ -11,13 +11,14 @@ export function useFlash() {
         (flash: any) => {
             if (flash?.success) {
                 toast({
-                    title: 'Success',
+                    title: 'Success!',
                     description: flash.success,
+                    variant: 'success',
                 });
             }
             if (flash?.error) {
                 toast({
-                    title: 'Error',
+                    title: 'Something went wrong',
                     description: flash.error,
                     variant: 'destructive',
                 });
