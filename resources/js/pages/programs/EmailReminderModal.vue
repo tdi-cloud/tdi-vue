@@ -65,6 +65,8 @@ const buildBody = () => {
 <p><a href="https://bit.ly/TDI-TREAP">🔗 bit.ly/TDI-TREAP</a></p>
 <p>Your timely compliance is highly appreciated and will greatly assist in the completion of the required post-training documentation and monitoring activities.</p>
 <p>Please <strong>disregard this reminder if you have already submitted</strong> your ${props.requirementTitle}.</p>
+<p>If you were <strong>unable to attend or did not complete the training</strong>, you may disregard the requirement above. Kindly submit your justification for non-attendance through the link below instead:</p>
+<p><a href="https://bit.ly/Training-Non-Attendance">🔗 bit.ly/Training-Non-Attendance</a></p>
 <p>Thank you for your cooperation and continued support of TESDA's learning and development initiatives.</p>`;
 };
 

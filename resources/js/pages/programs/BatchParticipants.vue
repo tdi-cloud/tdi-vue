@@ -974,13 +974,26 @@ const submissionSummary = computed(() => {
                         </div>
 
                         <div v-if="attStatus === 'Absent'" class="grid gap-1">
-                            <Label class="text-xs">Justification Memo <span class="text-red-500">*</span></Label>
+                            <Label class="text-xs">
+                                Justification Memo
+                                <span v-if="!attendanceTarget?.justification" class="text-red-500">*</span>
+                            </Label>
+
+                            <a
+                                v-if="attendanceTarget?.justification"
+                                :href="`/storage/${attendanceTarget.justification.file_path}`"
+                                target="_blank"
+                                class="inline-flex items-center gap-1 w-fit rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-400 transition"
+                            >
+                                <FileText class="h-3 w-3" /> View currently uploaded memo
+                            </a>
+
                             <input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                                 class="text-xs file:mr-2 file:rounded-md file:border-0 file:bg-blue-600 file:px-2.5 file:py-1.5 file:text-[11px] file:font-bold file:text-white hover:file:bg-blue-500 cursor-pointer"
                                 @change="onFileChange" />
-                            <p class="text-[11px] text-muted-foreground">PDF, Word, o image. Max 5MB.</p>
+                            <p class="text-[11px] text-muted-foreground">PDF, Word, or image. Max 5MB.</p>
                             <p v-if="attendanceTarget?.justification && !attFile" class="text-[11px] text-slate-500">
-                                May naka-upload nang memo. Mag-upload ulit para palitan ito.
+                                A memo is already on file (see the link above). You don't need to upload again — this only applies if you pick a new file.
                             </p>
                             <p class="text-xs text-red-500">{{ attErrors.justification }}</p>
                         </div>
