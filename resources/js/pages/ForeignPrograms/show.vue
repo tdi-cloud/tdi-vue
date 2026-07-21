@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Head, router } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import {
     ArrowLeft, Users, Calendar, Building2, Mail, Phone,
     UserCircle2, X, CheckCircle2, ClipboardList, MapPin,
     UserRound, Search, FileText, Eye, Loader2, ChevronDown,
     Trash2, RefreshCw, Plus, Upload, Sparkles, Briefcase,
-    IdCard, ShieldCheck, FileCheck2, PlaneTakeoff,
+    IdCard, ShieldCheck, FileCheck2, PlaneTakeoff, ClipboardCheck,
 } from 'lucide-vue-next';
 import { ref, computed } from 'vue';
 import axios from 'axios';
@@ -54,6 +54,7 @@ interface ForeignProgram {
     slots: number;
     modality: string;
     organizing_sponsor: string;
+    sponsor: { full_name: string | null } | null;
     status: string;
     submission_date: string | null;
     embassy_deadline: string | null;
@@ -105,6 +106,11 @@ const acceptedCount    = computed(() => props.program.nominees.filter(n => n.sta
 const forInterviewCount = computed(() => props.program.nominees.filter(n => n.status === 'for_interview').length);
 const slotsUsed        = computed(() => props.program.nominees.length);
 const slotsPercent     = computed(() => Math.min(100, Math.round((slotsUsed.value / props.program.slots) * 100)));
+
+const sponsorDisplay = computed(() => {
+    const fullName = props.program.sponsor?.full_name;
+    return fullName ? `${fullName} (${props.program.organizing_sponsor})` : props.program.organizing_sponsor;
+});
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -400,13 +406,24 @@ const modalityLabels: Record<string, string> = {
     <AppLayout>
         <div class="flex flex-1 flex-col gap-5 p-4">
 
-            <!-- Back -->
-            <button
-                class="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground w-fit transition-colors"
-                @click="router.visit(route('foreign-programs.index'))"
-            >
-                <ArrowLeft class="h-4 w-4" /> Back to Foreign Programs
-            </button>
+            <!-- Back + Actions -->
+            <div class="flex items-center justify-between gap-3">
+                <button
+                    class="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground w-fit transition-colors"
+                    @click="router.visit(route('foreign-programs.index'))"
+                >
+                    <ArrowLeft class="h-4 w-4" /> Back to Foreign Programs
+                </button>
+
+                <Link :href="route('foreign-programs.assessment', program.id)">
+                    <Button
+                        size="sm"
+                        class="gap-1.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white shadow-md shadow-indigo-600/20"
+                    >
+                        <ClipboardCheck class="h-4 w-4" /> Nominee Assessment
+                    </Button>
+                </Link>
+            </div>
 
             <!-- Hero Banner -->
             <div class="relative rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 p-6 text-white shadow-xl overflow-hidden">
@@ -437,7 +454,7 @@ const modalityLabels: Record<string, string> = {
                         </p>
 
                         <p class="text-sm text-white/80 flex items-center gap-1.5">
-                            <Building2 class="h-3.5 w-3.5 shrink-0" /> {{ program.organizing_sponsor }}
+                            <Building2 class="h-3.5 w-3.5 shrink-0" /> {{ sponsorDisplay }}
                         </p>
 
                         <div class="flex flex-wrap gap-x-5 gap-y-1 text-sm text-white/80 mt-1">

@@ -729,27 +729,14 @@ const submissionSummary = computed(() => {
                             </div>
                         </div>
 
-                        <!-- Search + Clear All -->
-                        <div v-if="participants.length" class="flex items-center gap-2">
-                            <div class="relative w-52">
-                                <Search class="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-                                <Input
-                                    v-model="listQuery"
-                                    class="text-xs h-7 pl-6"
-                                    placeholder="Search enrolled..."
-                                />
-                            </div>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                class="h-7 px-2 text-[11px] font-bold text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 shrink-0"
-                                :disabled="clearingAll"
-                                @click="clearAllParticipants"
-                            >
-                                <LoaderCircle v-if="clearingAll" class="h-3 w-3 animate-spin mr-1" />
-                                <Trash2 v-else class="h-3 w-3 mr-1" />
-                                Clear All
-                            </Button>
+                        <!-- Search -->
+                        <div v-if="participants.length" class="relative w-52">
+                            <Search class="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                            <Input
+                                v-model="listQuery"
+                                class="text-xs h-7 pl-6"
+                                placeholder="Search enrolled..."
+                            />
                         </div>
                     </div>
 
@@ -818,7 +805,10 @@ const submissionSummary = computed(() => {
                                         <p class="text-xs font-bold leading-4 truncate">
                                             {{ p.employee?.name ?? p.empcode }}
                                         </p>
-                                        <p class="text-[11px] text-muted-foreground">
+                                        <p class="text-[11px] text-muted-foreground truncate">
+                                            <span v-if="p.employee?.['OFFICE/DIVISION'] ?? p.employee?.OFFICE">
+                                                {{ p.employee?.['OFFICE/DIVISION'] ?? p.employee?.OFFICE }} ·
+                                            </span>
                                             {{ p.empcode }}
                                             <span v-if="p.attendance === 'Complete'" class="text-emerald-600 dark:text-emerald-400 font-semibold">
                                                 · {{ p.hours }} hr/s
@@ -930,6 +920,21 @@ const submissionSummary = computed(() => {
                             </div>
                         </div>
                     </template>
+
+                    <!-- Clear All -->
+                    <div v-if="participants.length" class="flex justify-end">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            class="h-7 px-2 text-[11px] font-bold text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 shrink-0"
+                            :disabled="clearingAll"
+                            @click="clearAllParticipants"
+                        >
+                            <LoaderCircle v-if="clearingAll" class="h-3 w-3 animate-spin mr-1" />
+                            <Trash2 v-else class="h-3 w-3 mr-1" />
+                            Clear All
+                        </Button>
+                    </div>
                 </div>
             </div>
 

@@ -13,6 +13,7 @@ class ForeignProgramController extends Controller
     public function index(Request $request)
     {
         $query = ForeignProgram::withCount('nominees')
+            ->with('sponsor')
             ->addSelect([
                 'id', 'program_title', 'description', 'program_start', 'program_end',
                 'slots', 'modality', 'organizing_sponsor', 'status', 'category',
@@ -87,6 +88,7 @@ class ForeignProgramController extends Controller
     {
         return Inertia::render('ForeignPrograms/show', [
             'program' => $foreignProgram->load([
+                'sponsor',
                 'nominees.submissions.requirement',
                 'nominees.sponsorConfig.requirements' => fn ($q) => $q->orderBy('sort_order'),
             ]),

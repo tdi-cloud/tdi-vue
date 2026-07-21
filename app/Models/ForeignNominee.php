@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ForeignNominee extends Model
@@ -42,6 +43,16 @@ class ForeignNominee extends Model
         return $this->hasMany(ForeignNomineeSubmission::class, 'foreign_nominee_id');
     }
 
+    public function assessment(): HasOne
+    {
+        return $this->hasOne(ForeignNomineeAssessment::class, 'foreign_nominee_id');
+    }
+
+    public function interviewRatings(): HasMany
+    {
+        return $this->hasMany(ForeignNomineeInterviewRating::class, 'foreign_nominee_id');
+    }
+
     public function getFullNameAttribute(): string
     {
         return trim("{$this->firstname} {$this->middle_name} {$this->surname}");
@@ -50,14 +61,14 @@ class ForeignNominee extends Model
     public function getStatusLabelAttribute(): string
     {
         return match ($this->status) {
-            'for_interview'  => 'For Interview',
-            'endorsed'       => 'Endorsed',
+            'for_interview' => 'For Interview',
+            'endorsed' => 'Endorsed',
             'waiting_result' => 'Waiting Result',
-            'not_endorsed'   => 'Not Endorsed',
-            'accepted'       => 'Accepted',
-            'regret'         => 'Regret',
-            'cancelled'      => 'Cancelled',
-            default          => ucfirst($this->status),
+            'not_endorsed' => 'Not Endorsed',
+            'accepted' => 'Accepted',
+            'regret' => 'Regret',
+            'cancelled' => 'Cancelled',
+            default => ucfirst($this->status),
         };
     }
 }

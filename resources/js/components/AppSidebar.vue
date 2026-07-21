@@ -29,6 +29,7 @@ import {
     Map,
     ShieldCheck,
     Images,
+    ClipboardCheck,
 } from 'lucide-vue-next';
 import { useFlash } from '@/composables/useFlash';
 import { Toaster } from '@/components/ui/toast';
@@ -44,6 +45,8 @@ const isAdmin = computed(() => {
 });
 
 const isSuperAdmin = computed(() => (page.props.auth as any)?.user?.access === 'superadmin');
+
+const isNhrdcMember = computed(() => (page.props.auth as any)?.isNhrdcMember === true);
 
 const allNavItems: NavItem[] = [
     // Mga monitoring / tracking / compliance na page
@@ -138,9 +141,25 @@ const superAdminNavItems: NavItem[] = [
     },
 ];
 
+const nhrdcNavItems: NavItem[] = [
+    {
+        title: 'Interview Ratings',
+        url: '/nhrdc/programs',
+        icon: ClipboardCheck,
+        color: 'text-indigo-500',
+        group: 'Management',
+    },
+];
+
 const mainNavItems = computed<NavItem[]>(() => {
-    if (!isAdmin.value) return [];
-    return isSuperAdmin.value ? [...allNavItems, ...superAdminNavItems] : allNavItems;
+    let items: NavItem[] = [];
+    if (isAdmin.value) {
+        items = isSuperAdmin.value ? [...allNavItems, ...superAdminNavItems] : allNavItems;
+    }
+    if (isNhrdcMember.value) {
+        items = [...items, ...nhrdcNavItems];
+    }
+    return items;
 });
 
 const footerNavItems: NavItem[] = [
@@ -174,7 +193,7 @@ const footerNavItems: NavItem[] = [
         </SidebarHeader>
 
         <SidebarContent>
-            <NavMain v-if="isAdmin" :items="mainNavItems" />
+            <NavMain v-if="isAdmin || isNhrdcMember" :items="mainNavItems" />
         </SidebarContent>
 
         <SidebarFooter>

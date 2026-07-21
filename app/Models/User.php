@@ -79,4 +79,14 @@ class User extends Authenticatable
     {
         return $this->access === 'superadmin';
     }
+
+    /**
+     * True kung ang empcode ng user ay nasa NHRDC roster — hiwalay ito sa
+     * admin access, kaya may sariling restricted na self-service area ang
+     * mga NHRDC member kahit hindi sila admin.
+     */
+    public function isNhrdcMember(): bool
+    {
+        return $this->empcode && NhrdcMember::where('empcode', $this->empcode)->exists();
+    }
 }

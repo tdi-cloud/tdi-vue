@@ -3,9 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\ForeignNominee;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ForeignProgram extends Model
 {
@@ -20,15 +20,15 @@ class ForeignProgram extends Model
     ];
 
     protected $casts = [
-        'program_start'    => 'date',
-        'program_end'      => 'date',
-        'online_start'     => 'date',
-        'online_end'       => 'date',
-        'inperson_start'   => 'date',
-        'inperson_end'     => 'date',
-        'submission_date'  => 'date',
+        'program_start' => 'date',
+        'program_end' => 'date',
+        'online_start' => 'date',
+        'online_end' => 'date',
+        'inperson_start' => 'date',
+        'inperson_end' => 'date',
+        'submission_date' => 'date',
         'embassy_deadline' => 'date',
-        'interview_date'   => 'date',
+        'interview_date' => 'date',
     ];
 
     public function participants()
@@ -39,8 +39,11 @@ class ForeignProgram extends Model
     public function nominees(): HasMany
     {
         return $this->hasMany(ForeignNominee::class, 'foreign_program_id')
-                    ->orderBy('surname')->orderBy('firstname');
+            ->orderBy('surname')->orderBy('firstname');
     }
 
-    
+    public function sponsor(): BelongsTo
+    {
+        return $this->belongsTo(OrganizingSponsor::class, 'organizing_sponsor', 'name');
+    }
 }

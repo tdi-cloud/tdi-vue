@@ -13,9 +13,12 @@ use App\Http\Controllers\EmployeeProgressController;
 use App\Http\Controllers\EnrolledProgramController;
 use App\Http\Controllers\ForeignAgencyController;
 use App\Http\Controllers\ForeignNominationController;
+use App\Http\Controllers\ForeignNomineeAssessmentController;
 use App\Http\Controllers\ForeignParticipantController;
 use App\Http\Controllers\ForeignProgramController;
 use App\Http\Controllers\ForeignSponsorConfigController;
+use App\Http\Controllers\NhrdcMemberController;
+use App\Http\Controllers\NhrdcSelfServiceController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrganizingSponsorController;
 use App\Http\Controllers\ParticipantController;
@@ -165,6 +168,37 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::put('/foreign-programs/{foreignProgram}', [ForeignProgramController::class, 'update'])->name('foreign-programs.update');
     Route::delete('/foreign-programs/{foreignProgram}', [ForeignProgramController::class, 'destroy'])->name('foreign-programs.destroy');
 
+    // NOMINEE ASSESSMENT SHEET
+    Route::get('/foreign-programs/{foreignProgram}/assessment', [ForeignNomineeAssessmentController::class, 'index'])
+        ->name('foreign-programs.assessment');
+    Route::get('/foreign-nominee-assessments/search-employee', [ForeignNomineeAssessmentController::class, 'searchEmployee'])
+        ->name('foreign-nominee-assessments.search-employee');
+    Route::post('/foreign-nominees/{nominee}/assessment', [ForeignNomineeAssessmentController::class, 'save'])
+        ->name('foreign-nominees.assessment.save');
+
+    // Interview ratings — every NHRDC panel member submits their own rating per nominee
+    Route::post('/foreign-nominees/{nominee}/interview-ratings', [ForeignNomineeAssessmentController::class, 'saveInterviewRating'])
+        ->name('foreign-nominees.interview-ratings.save');
+    Route::delete('/foreign-nominee-interview-ratings/{foreignNomineeInterviewRating}', [ForeignNomineeAssessmentController::class, 'destroyInterviewRating'])
+        ->name('foreign-nominee-interview-ratings.destroy');
+
+    // Per-NHRDC assessment sheet PDF + signed copy upload
+    Route::get('/foreign-programs/{foreignProgram}/nhrdc/{nhrdcMember}/assessment-pdf', [ForeignNomineeAssessmentController::class, 'nhrdcPdf'])
+        ->name('foreign-programs.nhrdc-assessment-pdf');
+    Route::post('/foreign-programs/{foreignProgram}/nhrdc/{nhrdcMember}/signed-copy', [ForeignNomineeAssessmentController::class, 'uploadNhrdcSignedCopy'])
+        ->name('foreign-programs.nhrdc-signed-copy.upload');
+    Route::get('/foreign-programs/{foreignProgram}/nhrdc/{nhrdcMember}/signed-copy', [ForeignNomineeAssessmentController::class, 'downloadNhrdcSignedCopy'])
+        ->name('foreign-programs.nhrdc-signed-copy.download');
+    Route::delete('/foreign-programs/{foreignProgram}/nhrdc/{nhrdcMember}/signed-copy', [ForeignNomineeAssessmentController::class, 'destroyNhrdcSignedCopy'])
+        ->name('foreign-programs.nhrdc-signed-copy.destroy');
+
+    // NHRDC MEMBERS (roster of employees eligible to submit Interview ratings)
+    Route::get('/nhrdc-members', [NhrdcMemberController::class, 'index'])->name('nhrdc-members.index');
+    Route::post('/nhrdc-members', [NhrdcMemberController::class, 'store'])->name('nhrdc-members.store');
+    Route::delete('/nhrdc-members/{nhrdcMember}', [NhrdcMemberController::class, 'destroy'])->name('nhrdc-members.destroy');
+    Route::post('/nhrdc-members/{nhrdcMember}/move-up', [NhrdcMemberController::class, 'moveUp'])->name('nhrdc-members.move-up');
+    Route::post('/nhrdc-members/{nhrdcMember}/move-down', [NhrdcMemberController::class, 'moveDown'])->name('nhrdc-members.move-down');
+
     // FOREIGN PARTICIPANTS
     Route::post('/foreign-programs/{foreignProgram}/participants', [ForeignParticipantController::class, 'store'])->name('foreign-participants.store');
     Route::put('/foreign-participants/{foreignParticipant}', [ForeignParticipantController::class, 'update'])->name('foreign-participants.update');
@@ -209,6 +243,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     // ORGANIZING SPONSORS
     Route::get('/organizing-sponsors', [OrganizingSponsorController::class, 'index'])->name('organizing-sponsors.index');
     Route::post('/organizing-sponsors', [OrganizingSponsorController::class, 'store'])->name('organizing-sponsors.store');
+    Route::put('/organizing-sponsors/{organizingSponsor}', [OrganizingSponsorController::class, 'update'])->name('organizing-sponsors.update');
     Route::delete('/organizing-sponsors/{organizingSponsor}', [OrganizingSponsorController::class, 'destroy'])->name('organizing-sponsors.destroy');
 
     // EMAIL REMINDER
@@ -305,6 +340,18 @@ Route::middleware(['auth', 'verified', 'superadmin'])->group(function () {
     Route::get('/site-images', [SiteImageController::class, 'index'])->name('site-images.index');
     Route::post('/site-images/{key}', [SiteImageController::class, 'update'])->name('site-images.update');
     Route::delete('/site-images/{key}', [SiteImageController::class, 'destroy'])->name('site-images.destroy');
+});
+
+// NHRDC SELF-SERVICE (committee members rate nominee interviews themselves —
+// gated by NHRDC roster membership, not admin access)
+Route::middleware(['auth', 'verified', 'nhrdc'])->prefix('nhrdc')->name('nhrdc.')->group(function () {
+    Route::get('/programs', [NhrdcSelfServiceController::class, 'index'])->name('programs.index');
+    Route::get('/programs/{foreignProgram}', [NhrdcSelfServiceController::class, 'show'])->name('programs.show');
+    Route::get('/programs/{foreignProgram}/assessment-pdf', [NhrdcSelfServiceController::class, 'pdf'])->name('programs.assessment-pdf');
+    Route::post('/programs/{foreignProgram}/signed-copy', [NhrdcSelfServiceController::class, 'uploadSignedCopy'])->name('signed-copy.upload');
+    Route::get('/programs/{foreignProgram}/signed-copy', [NhrdcSelfServiceController::class, 'downloadSignedCopy'])->name('signed-copy.download');
+    Route::delete('/programs/{foreignProgram}/signed-copy', [NhrdcSelfServiceController::class, 'destroySignedCopy'])->name('signed-copy.destroy');
+    Route::post('/nominees/{nominee}/rating', [NhrdcSelfServiceController::class, 'saveRating'])->name('ratings.save');
 });
 
 // REGULAR USER

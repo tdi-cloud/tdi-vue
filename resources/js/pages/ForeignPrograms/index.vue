@@ -27,6 +27,7 @@ interface ForeignProgram {
     slots: number;
     modality: 'in-person' | 'online' | 'hybrid';
     organizing_sponsor: string;
+    sponsor: { full_name: string | null } | null;
     status: string;
     nominees_count: number;
     submission_date?: string;
@@ -119,6 +120,11 @@ const clearFilters = () => {
     filterEmbassy.value = '';
     filterInterview.value = '';
 };
+
+function sponsorDisplay(program: ForeignProgram) {
+    const fullName = program.sponsor?.full_name;
+    return fullName ? `${fullName} (${program.organizing_sponsor})` : program.organizing_sponsor;
+}
 
 // --- Quick View Modal ---
 const viewProgram = ref<ForeignProgram | null>(null);
@@ -545,7 +551,7 @@ function onConfigSaved() {
                             </td>
 
                             <td class="px-4 py-3 align-middle text-xs text-muted-foreground">
-                                <div class="flex items-center gap-1.5 truncate">
+                                <div class="flex items-center gap-1.5 truncate" :title="sponsorDisplay(program)">
                                     <Building2 class="h-3.5 w-3.5 shrink-0 text-blue-400" />
                                     <span class="truncate">{{ program.organizing_sponsor }}</span>
                                 </div>
@@ -652,7 +658,7 @@ function onConfigSaved() {
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-1">Program Details</p>
                         <h2 class="text-base font-bold leading-snug">{{ viewProgram.program_title }}</h2>
-                        <p class="text-xs text-muted-foreground mt-0.5">{{ viewProgram.organizing_sponsor }}</p>
+                        <p class="text-xs text-muted-foreground mt-0.5">{{ sponsorDisplay(viewProgram) }}</p>
                     </div>
                     <button @click="closeView" class="text-muted-foreground hover:text-foreground transition-colors shrink-0 mt-0.5">
                         <X class="h-5 w-5" />
