@@ -35,17 +35,21 @@
           na larawan kung wala pang na-upload na override.
         -->
         <div class="fstp__media" ref="mediaRef">
-          <div class="snap snap--1" :class="{ 'snap--visible': snapVisible }">
+          <div class="snap snap--1" :class="{ 'snap--visible': snapVisible }" @click="openLightbox(0)">
             <img :src="images.fstp_photo_1" alt="Delegates during a foreign training session" />
+            <span class="snap__zoom">🔍</span>
           </div>
-          <div class="snap snap--2" :class="{ 'snap--visible': snapVisible }">
+          <div class="snap snap--2" :class="{ 'snap--visible': snapVisible }" @click="openLightbox(1)">
             <img :src="images.fstp_photo_2" alt="Group photo of Filipino delegates abroad" />
+            <span class="snap__zoom">🔍</span>
           </div>
-          <div class="snap snap--3" :class="{ 'snap--visible': snapVisible }">
+          <div class="snap snap--3" :class="{ 'snap--visible': snapVisible }" @click="openLightbox(2)">
             <img :src="images.fstp_photo_3" alt="Nominees in a classroom setting abroad" />
+            <span class="snap__zoom">🔍</span>
           </div>
-          <div class="snap snap--4" :class="{ 'snap--visible': snapVisible }">
+          <div class="snap snap--4" :class="{ 'snap--visible': snapVisible }" @click="openLightbox(3)">
             <img :src="images.fstp_photo_4" alt="Delegates posing at a foreign training venue" />
+            <span class="snap__zoom">🔍</span>
           </div>
           <span class="fstp__media-tag" :class="{ 'fstp__media-tag--visible': snapVisible }">FSTP nominees abroad</span>
         </div>
@@ -110,6 +114,24 @@
       </div>
 
     </div>
+
+    <!-- Lightbox: malaking view ng FSTP photos -->
+    <Teleport to="body">
+      <div v-if="lightboxOpen" class="lightbox" @click.self="closeLightbox">
+        <button class="lightbox__close" type="button" @click="closeLightbox" aria-label="Close">✕</button>
+
+        <button class="lightbox__nav lightbox__nav--prev" type="button" @click.stop="prevPhoto" aria-label="Previous photo">‹</button>
+
+        <figure class="lightbox__figure">
+          <img :src="activePhoto?.src" :alt="activePhoto?.alt" class="lightbox__img" />
+          <figcaption class="lightbox__caption">
+            <span class="lightbox__count">{{ lightboxIndex + 1 }} / {{ fstpPhotos.length }}</span>
+          </figcaption>
+        </figure>
+
+        <button class="lightbox__nav lightbox__nav--next" type="button" @click.stop="nextPhoto" aria-label="Next photo">›</button>
+      </div>
+    </Teleport>
   </section>
 </template>
 
@@ -135,9 +157,43 @@ onMounted(() => {
   }, { threshold: 0.25 })
 
   if (mediaRef.value) observer.observe(mediaRef.value)
+  window.addEventListener('keydown', onLightboxKeydown)
 })
 
-onBeforeUnmount(() => observer?.disconnect())
+onBeforeUnmount(() => {
+  observer?.disconnect()
+  window.removeEventListener('keydown', onLightboxKeydown)
+})
+
+/* ===================== LIGHTBOX ===================== */
+
+const fstpPhotos = computed(() => [
+  { src: props.images.fstp_photo_1, alt: 'Delegates during a foreign training session' },
+  { src: props.images.fstp_photo_2, alt: 'Group photo of Filipino delegates abroad' },
+  { src: props.images.fstp_photo_3, alt: 'Nominees in a classroom setting abroad' },
+  { src: props.images.fstp_photo_4, alt: 'Delegates posing at a foreign training venue' },
+])
+
+const lightboxIndex = ref(null)
+const lightboxOpen  = computed(() => lightboxIndex.value !== null)
+const activePhoto   = computed(() => lightboxIndex.value !== null ? fstpPhotos.value[lightboxIndex.value] : null)
+
+function openLightbox(i) { lightboxIndex.value = i }
+function closeLightbox() { lightboxIndex.value = null }
+function nextPhoto() {
+  if (lightboxIndex.value === null) return
+  lightboxIndex.value = (lightboxIndex.value + 1) % fstpPhotos.value.length
+}
+function prevPhoto() {
+  if (lightboxIndex.value === null) return
+  lightboxIndex.value = (lightboxIndex.value - 1 + fstpPhotos.value.length) % fstpPhotos.value.length
+}
+function onLightboxKeydown(e) {
+  if (lightboxIndex.value === null) return
+  if (e.key === 'Escape')    closeLightbox()
+  if (e.key === 'ArrowRight') nextPhoto()
+  if (e.key === 'ArrowLeft')  prevPhoto()
+}
 
 /**
  * Ang bawat sponsor logo ay customizable ng superadmin sa /site-images
@@ -152,7 +208,7 @@ const sponsorMeta = [
     initials: 'JICA',
     key: 'sponsor_logo_jica',
     fallback: '/storage/sponsors/jica.png',
-    url: 'https://www.jica.go.jp/english/',
+    url: 'https://www.jica.go.jp/english/overseas/philippine/activities/assistance_schemes/training_and_scholarship_programs/index.html',
   },
   {
     name: 'Korea International Cooperation Agency',
@@ -166,14 +222,14 @@ const sponsorMeta = [
     initials: 'MTCP',
     key: 'sponsor_logo_mtcp',
     fallback: '/storage/sponsors/mtcp.png',
-    url: 'https://mtcp.kln.gov.my/',
+    url: 'https://mtcp.kln.gov.my/courses2/list2',
   },
   {
     name: 'Singapore Cooperation Programme',
     initials: 'SCP',
     key: 'sponsor_logo_scp',
     fallback: '/storage/sponsors/scp.png',
-    url: 'https://scp.gov.sg/',
+    url: 'https://scp.gov.sg/starthome/our-course',
   },
   {
     name: 'Thailand International Cooperation Agency',
@@ -242,6 +298,7 @@ function handleLogoError(e) {
   padding: 0.4rem 0.4rem 1.4rem;
   box-shadow: 0 14px 34px rgba(0,0,0,0.35);
   opacity: 0;
+  cursor: zoom-in;
   transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease;
 }
 .snap img {
@@ -249,6 +306,21 @@ function handleLogoError(e) {
   object-fit: cover; border-radius: 2px;
 }
 .snap:hover { z-index: 10; box-shadow: 0 20px 44px rgba(0,0,0,0.45); }
+
+.snap__zoom {
+  position: absolute;
+  top: 0.9rem; right: 0.9rem;
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.85rem;
+  background: rgba(15,28,72,0.75);
+  border-radius: 50%;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+}
+.snap:hover .snap__zoom { opacity: 1; transform: scale(1); }
 
 .snap--1 {
   width: 47%; aspect-ratio: 4/5;
@@ -438,5 +510,80 @@ a.sponsor-card { cursor: pointer; }
   .snap--3 { transform: rotate(4deg); }
   .snap--4 { transform: rotate(-4deg); }
   .fstp__media-tag { transition: none; opacity: 1; }
+}
+
+/* Lightbox */
+.lightbox {
+  position: fixed; inset: 0; z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  background: rgba(8, 14, 38, 0.92);
+  backdrop-filter: blur(4px);
+  animation: lightboxFade 0.2s ease;
+}
+@keyframes lightboxFade { from { opacity: 0; } to { opacity: 1; } }
+
+.lightbox__figure {
+  max-width: min(90vw, 900px);
+  max-height: 85vh;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+}
+.lightbox__img {
+  max-width: 100%; max-height: 75vh;
+  object-fit: contain;
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  animation: lightboxZoom 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes lightboxZoom { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
+
+.lightbox__caption {
+  display: flex; align-items: center; gap: 0.75rem;
+  color: rgba(255,255,255,0.75);
+  font-size: 0.82rem;
+  text-align: center;
+}
+.lightbox__count {
+  flex-shrink: 0;
+  font-weight: 700;
+  color: #f5d76e;
+  padding: 0.15rem 0.6rem;
+  border-radius: 20px;
+  background: rgba(245, 184, 0, 0.12);
+}
+
+.lightbox__close {
+  position: absolute; top: 1.5rem; right: 1.5rem;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; color: #fff;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, transform 0.2s;
+}
+.lightbox__close:hover { background: rgba(255,255,255,0.2); border-color: #fff; transform: scale(1.05); }
+
+.lightbox__nav {
+  flex-shrink: 0;
+  width: 48px; height: 48px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.8rem; line-height: 1; color: #fff;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, transform 0.2s;
+}
+.lightbox__nav:hover { background: rgba(245, 184, 0, 0.18); border-color: #f5b800; transform: scale(1.08); }
+
+@media (max-width: 640px) {
+  .lightbox { padding: 1rem; gap: 0.5rem; }
+  .lightbox__nav { width: 38px; height: 38px; font-size: 1.4rem; }
+  .lightbox__close { top: 1rem; right: 1rem; width: 34px; height: 34px; }
 }
 </style>

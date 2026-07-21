@@ -19,10 +19,7 @@ use Inertia\Inertia;
 
 class TnaController extends Controller
 {
-    /**
-     * Uploaded signed copy (hindi ang auto-generated PDF) na maaaring
-     * i-attach sa isang assessment. Key = route param, value = column.
-     */
+   
     public const SCAN_TYPES = [
         'self' => 'self_rating_scan_path',
         'supervisory' => 'supervisor_rating_scan_path',
@@ -30,11 +27,7 @@ class TnaController extends Controller
         'result-supervisor' => 'result_scan_supervisor_path',
     ];
 
-    /**
-     * Data para sa TNA banner sa welcome/index page.
-     * Nagbabalik ng null kung: hindi naka-login, walang employee record,
-     * o walang TNA Tool ang position -> hindi lalabas ang banner.
-     */
+  
     public static function bannerData($user): ?array
     {
         if (! $user || empty($user->empcode)) {
@@ -69,10 +62,7 @@ class TnaController extends Controller
         ];
     }
 
-    /**
-     * Data para sa SUPERVISOR banner sa homepage.
-     * Lalabas lang kung ang naka-login ay may pending na ira-rate.
-     */
+   
     public static function supervisorBannerData($user): ?array
     {
         if (! $user || empty($user->empcode)) {
@@ -97,10 +87,7 @@ class TnaController extends Controller
         ];
     }
 
-    /**
-     * Listahan ng mga subordinate na pumili sa naka-login na supervisor.
-     * Pending muna, tapos ang na-review na.
-     */
+   
     public function supervisoryIndex()
     {
         $user = auth()->user();
@@ -130,10 +117,7 @@ class TnaController extends Controller
         ]);
     }
 
-    /**
-     * Ipakita ang supervisory rating form para sa isang subordinate.
-     * Tanging ang napiling supervisor ang makaka-access.
-     */
+   
     public function supervisoryShow(TnaAssessment $assessment)
     {
         $user = auth()->user();
@@ -188,10 +172,7 @@ class TnaController extends Controller
         ]);
     }
 
-    /**
-     * I-save ang supervisory rating; ise-set ang supervisor_reviewed_at
-     * (dito naglo-lock ang self-rating ng empleyado).
-     */
+  
     public function supervisoryStore(Request $request, TnaAssessment $assessment)
     {
         $user = auth()->user();
@@ -229,7 +210,6 @@ class TnaController extends Controller
         $ratingRows = $assessment->ratings()->get()->keyBy('competency_id');
         $submitted = collect($data['ratings'])->keyBy('competency_id');
 
-        // Kompleto dapat ang lahat ng element na sinagot ng empleyado
         $incomplete = $ratingRows->keys()->first(fn ($cid) => ! $submitted->has($cid));
         if ($incomplete !== null) {
             throw ValidationException::withMessages([
@@ -275,10 +255,6 @@ class TnaController extends Controller
             ->with('success', 'Supervisory rating submitted. Thank you!');
     }
 
-    /**
-     * Burahin ang supervisory rating para makapag-rate ulit.
-     * Ang napiling supervisor lang ang makakagawa nito.
-     */
     public function supervisoryRedo(TnaAssessment $assessment)
     {
         $user = auth()->user();
@@ -294,7 +270,6 @@ class TnaController extends Controller
         }
 
         DB::transaction(function () use ($assessment) {
-            // I-clear ang mga rating ng supervisor (hindi hinahawakan ang self-rating)
             $assessment->ratings()->update([
                 'sup_criticality' => null,
                 'sup_competence' => null,
@@ -313,11 +288,7 @@ class TnaController extends Controller
             ->with('success', 'Supervisory rating cleared. You may rate this assessment again.');
     }
 
-    /**
-     * Ipakita ang form para palitan LANG ang FASD signatory ("Noted by" sa
-     * TNA Result) ng isang na-review nang assessment. Hindi hinahawakan ang
-     * ratings o ibang bahagi ng supervisor_form. Napiling supervisor lang.
-     */
+    
     public function editFasd(TnaAssessment $assessment)
     {
         $user = auth()->user();
@@ -344,10 +315,6 @@ class TnaController extends Controller
         ]);
     }
 
-    /**
-     * I-save ang bagong FASD signatory. Hindi hinahawakan ang ratings o
-     * ibang bahagi ng supervisor_form.
-     */
     public function updateFasd(Request $request, TnaAssessment $assessment)
     {
         $user = auth()->user();
@@ -377,10 +344,6 @@ class TnaController extends Controller
             ->with('success', 'FASD signatory updated.');
     }
 
-    /**
-     * PDF ng natapos na supervisory rating (ISO form).
-     * Supervisor-owner lang, at kung na-rate na.
-     */
     public function supervisoryPdf(TnaAssessment $assessment)
     {
         $user = auth()->user();
@@ -425,13 +388,6 @@ class TnaController extends Controller
         return $pdf->stream($filename);
     }
 
-    /**
-     * ── TNA RESULT ────────────────────────────────────────────────
-     * Weighted score kada element:
-     *   w = 0.4*self + 0.6*supervisor  (kada scale)
-     *   Competency Profile Result = w_criticality × w_competence × w_frequency
-     * Max = 3 × 4 × 3 = 36.
-     */
     public const RESULT_BANDS = [
         [0,   4,  'Not Competent',        true],
         [5,   12, 'Slightly Competent',   true],
@@ -442,12 +398,6 @@ class TnaController extends Controller
 
     protected function bandFor(float $score): array
     {
-        // Ang RESULT_BANDS ay integer boundaries (hal. 13-20, 21-28), pero
-        // decimal ang aktwal na score (rounded to 1 decimal). Kung hi lang
-        // (hal. 20) ang gagamitin bilang exclusive-or-equal na upper bound,
-        // may nalalaktawang saklaw (hal. 20.1-20.9) -> "—" ang lumalabas.
-        // Kaya ang upper bound ng bawat band (maliban sa huli) ay ang lo ng
-        // susunod na band, para tuluy-tuloy walang puwang ang saklaw.
         $bands = self::RESULT_BANDS;
         $lastIndex = count($bands) - 1;
 
@@ -466,9 +416,6 @@ class TnaController extends Controller
         return ['label' => '—', 'needs_training' => false];
     }
 
-    /**
-     * Buuin ang buong result data ng isang assessment.
-     */
     protected function buildResult(TnaAssessment $assessment): array
     {
         $w = fn ($self, $sup) => (0.4 * (float) $self) + (0.6 * (float) $sup);
@@ -485,12 +432,6 @@ class TnaController extends Controller
             $score = round($wc * $wl * $wf, 1);
             $band = $this->bandFor($score);
 
-            // Revised formula (bago, hiwalay sa orihinal na TNA formula sa
-            // itaas): Criticality × (4 - Competence). Dito, MATAAS ang
-            // resulta kapag kritikal ang element sa trabaho PERO mababa ang
-            // competence -> mas malaking training need. Baligtad ito sa
-            // orihinal na formula kung saan mababang score ang nangangailangan
-            // ng training.
             $revisedScore = round($wc * (4 - $wl), 1);
 
             return [
@@ -511,13 +452,10 @@ class TnaController extends Controller
             ];
         });
 
-        // Group by unit (para sa merged na Unit cell)
         $units = $rows->groupBy('unit')
             ->map(fn ($group, $unit) => ['unit' => $unit, 'rows' => $group->values()])
             ->values();
 
-        // Top 3 UNIT na pinakamababa ang competency (base sa pinakamababang
-        // element score sa loob ng unit) at nangangailangan ng training.
         $priority = $rows
             ->groupBy('unit')
             ->map(fn ($group, $unit) => [
@@ -531,9 +469,6 @@ class TnaController extends Controller
             ->take(3)
             ->values();
 
-        // Revised formula priority: top 3 UNIT na pinakamataas ang revised
-        // score (base sa pinakamataas na element revised score sa loob ng
-        // unit) -> mataas na resulta dito ang may training need.
         $revisedPriority = $rows
             ->groupBy('unit')
             ->map(fn ($group, $unit) => [
@@ -551,9 +486,6 @@ class TnaController extends Controller
         ];
     }
 
-    /**
-     * Access check: subordinate (may-ari) o ang napiling supervisor.
-     */
     protected function canViewResult(TnaAssessment $assessment): bool
     {
         $user = auth()->user();
@@ -570,9 +502,6 @@ class TnaController extends Controller
         return ! empty($user->empcode) && $assessment->supervisor_empcode === $user->empcode;
     }
 
-    /**
-     * Sino ang pwedeng mag-upload sa isang partikular na scan slot.
-     */
     protected function canUploadScan(string $type, TnaAssessment $assessment): bool
     {
         $user = auth()->user();
@@ -587,10 +516,6 @@ class TnaController extends Controller
         };
     }
 
-    /**
-     * I-upload (o palitan) ang signed copy ng isang assessment. Karagdagang
-     * attachment lang ito — hindi pinapalitan ang auto-generated na PDF.
-     */
     public function uploadScan(Request $request, TnaAssessment $assessment, string $type)
     {
         abort_unless(array_key_exists($type, self::SCAN_TYPES), 404);
@@ -613,11 +538,6 @@ class TnaController extends Controller
         return back()->with('success', 'Scanned copy uploaded.');
     }
 
-    /**
-     * Ipakita ang na-upload na signed copy sa browser (inline, hindi
-     * force-download). Owner o naka-assign na supervisor lang ang
-     * makaka-access, kahit sinong slot ito.
-     */
     public function downloadScan(TnaAssessment $assessment, string $type)
     {
         abort_unless(array_key_exists($type, self::SCAN_TYPES), 404);
@@ -634,10 +554,6 @@ class TnaController extends Controller
         return Storage::disk('local')->response($path, $filename);
     }
 
-    /**
-     * Burahin ang na-upload na signed copy. Kaparehong access-rule ng
-     * upload — sino man ang pwedeng mag-upload sa slot, pwede ring magbura.
-     */
     public function deleteScan(TnaAssessment $assessment, string $type)
     {
         abort_unless(array_key_exists($type, self::SCAN_TYPES), 404);
@@ -654,9 +570,6 @@ class TnaController extends Controller
         return back()->with('success', 'Signed copy deleted.');
     }
 
-    /**
-     * Result page (nakikita ng subordinate at ng supervisor).
-     */
     public function resultShow(TnaAssessment $assessment)
     {
         abort_unless($this->canViewResult($assessment), 403);
@@ -691,9 +604,6 @@ class TnaController extends Controller
         ]);
     }
 
-    /**
-     * PDF ng TNA Result (ISO form F03).
-     */
     public function resultPdf(TnaAssessment $assessment)
     {
         abort_unless($this->canViewResult($assessment), 403);
@@ -717,11 +627,6 @@ class TnaController extends Controller
         return $pdf->stream($filename);
     }
 
-    /**
-     * Base query: pinaka-huling finalized (supervisor-reviewed) na TNA
-     * assessment kada empleyado, naka-join sa users/employees para pwedeng
-     * i-filter base sa REGION/OFFICE.
-     */
     protected function summaryBaseQuery(Request $request)
     {
         $latestIds = TnaAssessment::whereNotNull('supervisor_reviewed_at')
@@ -752,17 +657,10 @@ class TnaController extends Controller
         return $query;
     }
 
-    /**
-     * Admin-only: listahan ng lahat ng empleyado na may finalized TNA
-     * Result, kasama ang kanilang top 3 training priorities.
-     */
     public function summaryIndex(Request $request)
     {
         $query = $this->summaryBaseQuery($request);
 
-        // Ang "unit" filter ay nangangailangan ng computed top-3 priority
-        // (hindi direktang column), kaya kailangan munang i-resolve ang mga
-        // ID na tugma bago mag-paginate, para tama ang total/pages.
         if ($request->filled('unit')) {
             $unit = $request->string('unit');
 
@@ -821,10 +719,6 @@ class TnaController extends Controller
         ]);
     }
 
-    /**
-     * Admin-only: aggregate na buod ng lahat ng finalized TNA Results —
-     * competency band distribution at pinaka-madalas na training priorities.
-     */
     public function summaryDashboardData(Request $request)
     {
         $assessments = $this->summaryBaseQuery($request)
@@ -863,9 +757,6 @@ class TnaController extends Controller
         ]);
     }
 
-    /**
-     * Ipakita ang self-rating form ng naka-login na employee.
-     */
     public function selfRating()
     {
         $user = auth()->user();
@@ -894,7 +785,6 @@ class TnaController extends Controller
 
         $period = config('tna.period');
 
-        // Naisumite na ba para sa position na ito sa period na ito?
         $existing = TnaAssessment::where('user_id', $user->id)
             ->where('period', $period)
             ->where('position', $position)
@@ -933,9 +823,6 @@ class TnaController extends Controller
         ]);
     }
 
-    /**
-     * Search ng supervisor mula sa employees table (JSON, para sa autocomplete).
-     */
     public function searchSupervisor(Request $request)
     {
         $q = trim((string) $request->get('q', ''));
@@ -968,10 +855,6 @@ class TnaController extends Controller
         return response()->json($results);
     }
 
-    /**
-     * Search ng FASD signatory ("Noted by" ng TNA Result) mula sa employees
-     * table, naka-scope sa REGION ng naka-login na supervisor.
-     */
     public function searchFasd(Request $request)
     {
         $q = trim((string) $request->get('q', ''));
@@ -984,10 +867,6 @@ class TnaController extends Controller
         if (! $me) {
             return response()->json([]);
         }
-
-        // Hinahati ang "Juan Santos" -> unang salita sa FIRSTNAME, huli sa
-        // LASTNAME, para hindi kailangan ng CONCAT() na hindi portable
-        // (walang CONCAT ang SQLite, ginagamit sa tests).
         $words = preg_split('/\s+/', $q, -1, PREG_SPLIT_NO_EMPTY);
 
         $results = Employee::query()
@@ -1018,9 +897,6 @@ class TnaController extends Controller
         return response()->json($results);
     }
 
-    /**
-     * I-save ang isinumiteng self-rating.
-     */
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -1063,7 +939,6 @@ class TnaController extends Controller
 
         $competencies = Competency::forPosition($position)->get()->keyBy('id');
 
-        // All competencies (core + elective) must be completed
         $requiredIds = $competencies->keys();
         $submitted = collect($data['ratings'])->keyBy('competency_id');
         $incomplete = $requiredIds->first(function ($id) use ($submitted) {
@@ -1133,10 +1008,6 @@ class TnaController extends Controller
             ->with('success', 'Your self-rating has been submitted. Thank you!');
     }
 
-    /**
-     * I-generate ang isinumiteng self-rating bilang PDF (ISO form).
-     * Owner lang ang makaka-view.
-     */
     public function pdf(TnaAssessment $assessment)
     {
         abort_unless($assessment->user_id === auth()->id(), 403);
@@ -1171,14 +1042,9 @@ class TnaController extends Controller
             .' - '.$clean($assessment->position)
             .' - '.$clean($assessment->period).'.pdf';
 
-        // stream() = bukas sa browser (pwedeng i-print o i-save)
         return $pdf->stream($filename);
     }
 
-    /**
-     * Palitan LANG ang napiling supervisor (hindi hinahawakan ang ratings).
-     * Pinapayagan lang habang hindi pa ni-rate ng supervisor. Owner-only.
-     */
     public function updateSupervisor(Request $request, TnaAssessment $assessment)
     {
         abort_unless($assessment->user_id === auth()->id(), 403);
@@ -1208,10 +1074,6 @@ class TnaController extends Controller
             ->with('success', 'Your supervisor has been updated.');
     }
 
-    /**
-     * Burahin ang self-rating — pinapayagan LANG habang hindi pa
-     * ni-rate ng supervisor. Owner lang ang makakabura.
-     */
     public function destroy(TnaAssessment $assessment)
     {
         abort_unless($assessment->user_id === auth()->id(), 403);
@@ -1247,10 +1109,6 @@ class TnaController extends Controller
         ));
     }
 
-    /**
-     * Default na "division" na ipapasok sa form: "SECTION/UNIT", o SECTION
-     * lang kung walang UNIT.
-     */
     protected function divisionLabel(?Employee $e): ?string
     {
         if (! $e) {
