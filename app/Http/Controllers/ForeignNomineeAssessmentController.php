@@ -22,6 +22,8 @@ class ForeignNomineeAssessmentController extends Controller
     // GET /foreign-programs/{foreignProgram}/assessment
     public function index(ForeignProgram $foreignProgram): Response
     {
+        ForeignNomineeAssessment::ensureDefaultsFor($foreignProgram->nominees()->pluck('id')->all());
+
         return Inertia::render('ForeignPrograms/Assessment', [
             'program' => $foreignProgram->load('sponsor'),
             'nominees' => $foreignProgram->nominees()
@@ -125,6 +127,8 @@ class ForeignNomineeAssessmentController extends Controller
     // NHRDC's own rating (blank if they haven't rated a nominee yet).
     public function nhrdcPdf(ForeignProgram $foreignProgram, NhrdcMember $nhrdcMember)
     {
+        ForeignNomineeAssessment::ensureDefaultsFor($foreignProgram->nominees()->pluck('id')->all());
+
         $nominees = $foreignProgram->nominees()
             ->with(['assessment', 'interviewRatings' => fn ($q) => $q->where('nhrdc_empcode', $nhrdcMember->empcode)])
             ->get()

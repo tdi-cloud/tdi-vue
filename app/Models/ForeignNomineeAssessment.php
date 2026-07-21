@@ -56,4 +56,26 @@ class ForeignNomineeAssessment extends Model
             ->keys()
             ->sum(fn (string $key) => (int) $this->{$key});
     }
+
+    /**
+     * Requirements start at full marks (nothing to deduct yet), so any
+     * nominee without an assessment record gets one created immediately —
+     * regardless of which page (admin or NHRDC self-service) is visited
+     * first. The admin can still deduct points and re-save afterward.
+     *
+     * @param  array<int>  $nomineeIds
+     */
+    public static function ensureDefaultsFor(array $nomineeIds): void
+    {
+        $existingIds = self::whereIn('foreign_nominee_id', $nomineeIds)
+            ->pluck('foreign_nominee_id')
+            ->all();
+
+        foreach (array_diff($nomineeIds, $existingIds) as $nomineeId) {
+            self::create(array_merge(
+                ['foreign_nominee_id' => $nomineeId],
+                self::REQUIREMENT_CRITERIA,
+            ));
+        }
+    }
 }

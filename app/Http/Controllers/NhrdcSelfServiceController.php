@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Employee;
 use App\Models\ForeignNominee;
+use App\Models\ForeignNomineeAssessment;
 use App\Models\ForeignNomineeInterviewRating;
 use App\Models\ForeignProgram;
 use App\Models\ForeignProgramNhrdcSignature;
@@ -45,6 +46,8 @@ class NhrdcSelfServiceController extends Controller
     public function show(ForeignProgram $foreignProgram): Response
     {
         $empcode = Auth::user()->empcode;
+
+        ForeignNomineeAssessment::ensureDefaultsFor($foreignProgram->nominees()->pluck('id')->all());
 
         $nominees = $foreignProgram->nominees()
             ->with(['assessment', 'interviewRatings' => fn ($q) => $q->where('nhrdc_empcode', $empcode)])

@@ -2,6 +2,7 @@
 
 use App\Models\Employee;
 use App\Models\ForeignNominee;
+use App\Models\ForeignNomineeAssessment;
 use App\Models\ForeignNomineeInterviewRating;
 use App\Models\ForeignProgram;
 use App\Models\NhrdcMember;
@@ -94,6 +95,20 @@ test('being an admin alone does not grant NHRDC self-service access', function (
     $admin = User::factory()->create(['empcode' => $employee->EMPCODE, 'access' => 'admin']);
 
     $this->actingAs($admin)->get(route('nhrdc.programs.index'))->assertForbidden();
+});
+
+test('an NHRDC member sees the requirements total even if the admin never opened the assessment page', function () {
+    $nhrdc = nhrdcSelfServiceUser('EMP-SS-13', 'Aquino', 'Ramon');
+    $nominee = selfServiceNominee();
+
+    expect(ForeignNomineeAssessment::where('foreign_nominee_id', $nominee->id)->exists())->toBeFalse();
+
+    $response = $this->actingAs($nhrdc)->get(route('nhrdc.programs.show', $nominee->foreign_program_id));
+
+    $response->assertInertia(fn ($page) => $page
+        ->component('Nhrdc/Assessment')
+        ->where('nominees.0.assessment.requirements_total', 70)
+    );
 });
 
 test('an NHRDC member can view a program and only sees their own rating', function () {

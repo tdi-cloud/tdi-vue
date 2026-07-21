@@ -119,6 +119,24 @@ test('admin can view the nominee assessment sheet for a program', function () {
     );
 });
 
+test('viewing the assessment sheet auto-creates a full-marks requirements default for unassessed nominees', function () {
+    $admin = assessmentTestAdmin('EMP-ASSESS-15');
+    $nominee = assessmentTestNominee();
+
+    expect(ForeignNomineeAssessment::where('foreign_nominee_id', $nominee->id)->exists())->toBeFalse();
+
+    $response = $this->actingAs($admin)->get(route('foreign-programs.assessment', $nominee->foreign_program_id));
+
+    $response->assertInertia(fn ($page) => $page
+        ->component('ForeignPrograms/Assessment')
+        ->where('nominees.0.assessment.requirements_total', 70)
+    );
+
+    $assessment = ForeignNomineeAssessment::where('foreign_nominee_id', $nominee->id)->first();
+    expect($assessment)->not->toBeNull();
+    expect($assessment->requirements_total)->toBe(70);
+});
+
 test('admin can save the requirements section and the total is computed correctly', function () {
     $admin = assessmentTestAdmin('EMP-ASSESS-02');
     $nominee = assessmentTestNominee();
