@@ -46,6 +46,7 @@ Route::get('/', function () {
             : [],
         'tna' => TnaController::bannerData(auth()->user()),
         'supervisorTna' => TnaController::supervisorBannerData(auth()->user()),
+        'nhrdcRating' => NhrdcSelfServiceController::bannerData(auth()->user()),
         'siteImages' => SiteImage::resolvedUrls(),
     ]);
 })->name('home');

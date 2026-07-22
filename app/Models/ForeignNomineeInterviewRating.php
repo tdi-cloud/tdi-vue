@@ -43,6 +43,12 @@ class ForeignNomineeInterviewRating extends Model
     protected function casts(): array
     {
         return [
+            'communication_skills' => 'decimal:2',
+            'alertness' => 'decimal:2',
+            'judgement' => 'decimal:2',
+            'self_confidence' => 'decimal:2',
+            'emotional_stability' => 'decimal:2',
+            'appearance' => 'decimal:2',
             'rated_at' => 'datetime',
         ];
     }
@@ -57,10 +63,10 @@ class ForeignNomineeInterviewRating extends Model
         return $this->belongsTo(User::class, 'rated_by');
     }
 
-    public function getTotalAttribute(): int
+    public function getTotalAttribute(): float
     {
-        return collect(self::CRITERIA)
+        return round(collect(self::CRITERIA)
             ->keys()
-            ->sum(fn (string $key) => (int) $this->{$key});
+            ->sum(fn (string $key) => (float) $this->{$key}), 2);
     }
 }

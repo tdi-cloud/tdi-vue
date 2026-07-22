@@ -102,6 +102,17 @@
     [$needPt, $relevancePt, $donorPt, $docsPt, $total70Pt,
         $commPt, $alertPt, $judgePt, $selfPt, $emoPt, $appearancePt,
         $totalScorePt, $grandPt] = $otherColsPt;
+
+    // Decimal-cast score fields come back as fixed 2dp strings (e.g. "18.00") —
+    // display whole numbers cleanly while still showing genuine decimals (e.g. "18.5").
+    $fmt = function ($v) {
+        if ($v === null) {
+            return '';
+        }
+        $s = rtrim(rtrim(number_format((float) $v, 2, '.', ''), '0'), '.');
+
+        return $s === '' ? '0' : $s;
+    };
 @endphp
 
 <table class="grid">
@@ -157,19 +168,19 @@
                 <td class="name" @if($loop->first) style="width:{{ $nameWidthPt }}pt" @endif>{{ $nominee->full_name }}</td>
                 <td @if($loop->first) style="width:{{ $designationWidthPt }}pt" @endif>{{ $nominee->position }}</td>
                 <td @if($loop->first) style="width:{{ $agencyWidthPt }}pt" @endif>{{ $nominee->agency }}</td>
-                <td class="num" @if($loop->first) style="width:{{ $needPt }}pt" @endif>{{ $a->need_for_training ?? '' }}</td>
-                <td class="num" @if($loop->first) style="width:{{ $relevancePt }}pt" @endif>{{ $a->relevance_to_duties ?? '' }}</td>
-                <td class="num" @if($loop->first) style="width:{{ $donorPt }}pt" @endif>{{ $a->meets_donor_requirements ?? '' }}</td>
-                <td class="num" @if($loop->first) style="width:{{ $docsPt }}pt" @endif>{{ $a->completion_of_documents ?? '' }}</td>
-                <td class="total" @if($loop->first) style="width:{{ $total70Pt }}pt" @endif>{{ $a->requirements_total ?? '' }}</td>
-                <td class="num" @if($loop->first) style="width:{{ $commPt }}pt" @endif>{{ $r->communication_skills ?? '' }}</td>
-                <td class="num" @if($loop->first) style="width:{{ $alertPt }}pt" @endif>{{ $r->alertness ?? '' }}</td>
-                <td class="num" @if($loop->first) style="width:{{ $judgePt }}pt" @endif>{{ $r->judgement ?? '' }}</td>
-                <td class="num" @if($loop->first) style="width:{{ $selfPt }}pt" @endif>{{ $r->self_confidence ?? '' }}</td>
-                <td class="num" @if($loop->first) style="width:{{ $emoPt }}pt" @endif>{{ $r->emotional_stability ?? '' }}</td>
-                <td class="num" @if($loop->first) style="width:{{ $appearancePt }}pt" @endif>{{ $r->appearance ?? '' }}</td>
-                <td class="total" @if($loop->first) style="width:{{ $totalScorePt }}pt" @endif>{{ $r->total ?? '' }}</td>
-                <td class="total" @if($loop->first) style="width:{{ $grandPt }}pt" @endif>{{ $grand ?? '' }}</td>
+                <td class="num" @if($loop->first) style="width:{{ $needPt }}pt" @endif>{{ $a ? $fmt($a->need_for_training) : '' }}</td>
+                <td class="num" @if($loop->first) style="width:{{ $relevancePt }}pt" @endif>{{ $a ? $fmt($a->relevance_to_duties) : '' }}</td>
+                <td class="num" @if($loop->first) style="width:{{ $donorPt }}pt" @endif>{{ $a ? $fmt($a->meets_donor_requirements) : '' }}</td>
+                <td class="num" @if($loop->first) style="width:{{ $docsPt }}pt" @endif>{{ $a ? $fmt($a->completion_of_documents) : '' }}</td>
+                <td class="total" @if($loop->first) style="width:{{ $total70Pt }}pt" @endif>{{ $a ? $fmt($a->requirements_total) : '' }}</td>
+                <td class="num" @if($loop->first) style="width:{{ $commPt }}pt" @endif>{{ $r ? $fmt($r->communication_skills) : '' }}</td>
+                <td class="num" @if($loop->first) style="width:{{ $alertPt }}pt" @endif>{{ $r ? $fmt($r->alertness) : '' }}</td>
+                <td class="num" @if($loop->first) style="width:{{ $judgePt }}pt" @endif>{{ $r ? $fmt($r->judgement) : '' }}</td>
+                <td class="num" @if($loop->first) style="width:{{ $selfPt }}pt" @endif>{{ $r ? $fmt($r->self_confidence) : '' }}</td>
+                <td class="num" @if($loop->first) style="width:{{ $emoPt }}pt" @endif>{{ $r ? $fmt($r->emotional_stability) : '' }}</td>
+                <td class="num" @if($loop->first) style="width:{{ $appearancePt }}pt" @endif>{{ $r ? $fmt($r->appearance) : '' }}</td>
+                <td class="total" @if($loop->first) style="width:{{ $totalScorePt }}pt" @endif>{{ $r ? $fmt($r->total) : '' }}</td>
+                <td class="total" @if($loop->first) style="width:{{ $grandPt }}pt" @endif>{{ $grand !== null ? $fmt($grand) : '' }}</td>
             </tr>
         @endforeach
     </tbody>

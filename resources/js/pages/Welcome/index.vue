@@ -10,6 +10,9 @@
     <!-- Lalabas lang kung may pending na ira-rate ang supervisor -->
     <SupervisorBanner v-if="supervisorTna" :data="supervisorTna" />
 
+    <!-- Lalabas lang kung NHRDC member at may nominees na dapat i-rate -->
+    <NhrdcRatingBanner v-if="nhrdcRating" :data="nhrdcRating" />
+
     <EnrolledProgramsSection :programs="enrolledPrograms" />
     <ImagePanels :images="siteImages" />
     <AboutSection :image="siteImages.about_photo" />
@@ -28,6 +31,7 @@ import TheNavbar          from './sections/TheNavbar.vue'
 import HeroSection        from './sections/HeroSection.vue'
 import TnaBanner          from './sections/TnaBanner.vue'
 import SupervisorBanner   from './sections/SupervisorBanner.vue'
+import NhrdcRatingBanner  from './sections/NhrdcRatingBanner.vue'
 import EnrolledProgramsSection from './sections/EnrolledProgramsSection.vue'
 import ImagePanels        from './sections/ImagePanels.vue'
 import AboutSection       from './sections/AboutSection.vue'
@@ -44,6 +48,7 @@ defineProps({
   enrolledPrograms: { type: Array, default: () => [] },
   tna: { type: Object, default: null },
   supervisorTna: { type: Object, default: null },
+  nhrdcRating: { type: Object, default: null },
   siteImages: { type: Object, default: () => ({}) },
 })
 </script>

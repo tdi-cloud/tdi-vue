@@ -134,7 +134,7 @@ test('viewing the assessment sheet auto-creates a full-marks requirements defaul
 
     $assessment = ForeignNomineeAssessment::where('foreign_nominee_id', $nominee->id)->first();
     expect($assessment)->not->toBeNull();
-    expect($assessment->requirements_total)->toBe(70);
+    expect($assessment->requirements_total)->toBe(70.0);
 });
 
 test('admin can save the requirements section and the total is computed correctly', function () {
@@ -151,7 +151,7 @@ test('admin can save the requirements section and the total is computed correctl
     $assessment = ForeignNomineeAssessment::where('foreign_nominee_id', $nominee->id)->first();
 
     expect($assessment)->not->toBeNull();
-    expect($assessment->requirements_total)->toBe(18 + 25 + 10 + 8);
+    expect($assessment->requirements_total)->toBe((float) (18 + 25 + 10 + 8));
     expect($assessment->assessed_by)->toBe($admin->id);
     expect($assessment->assessed_at)->not->toBeNull();
 });
@@ -168,7 +168,7 @@ test('saving the requirements section twice updates the existing record instead 
     $this->actingAs($admin)->post(route('foreign-nominees.assessment.save', $nominee), $updated);
 
     expect(ForeignNomineeAssessment::where('foreign_nominee_id', $nominee->id)->count())->toBe(1);
-    expect(ForeignNomineeAssessment::where('foreign_nominee_id', $nominee->id)->first()->need_for_training)->toBe(10);
+    expect(ForeignNomineeAssessment::where('foreign_nominee_id', $nominee->id)->first()->need_for_training)->toBe('10.00');
 });
 
 test('requirements scores above the criterion maximum are rejected', function () {
@@ -203,7 +203,7 @@ test('an NHRDC member can submit their own interview rating for a nominee', func
     expect($rating->nhrdc_name)->toBe($nhrdc->name);
     // First member added to the roster is always the Chairperson.
     expect($rating->nhrdc_position)->toBe('Chairperson, HRDC');
-    expect($rating->total)->toBe(5 + 4 + 5 + 4 + 5 + 5);
+    expect($rating->total)->toBe((float) (5 + 4 + 5 + 4 + 5 + 5));
     expect($rating->rated_by)->toBe($admin->id);
 });
 
@@ -252,7 +252,7 @@ test('saving a rating twice for the same NHRDC member updates it instead of crea
     $ratings = ForeignNomineeInterviewRating::where('foreign_nominee_id', $nominee->id)->get();
 
     expect($ratings)->toHaveCount(1);
-    expect($ratings->first()->communication_skills)->toBe(2);
+    expect($ratings->first()->communication_skills)->toBe('2.00');
 });
 
 test('only employees on the NHRDC roster can submit an interview rating', function () {

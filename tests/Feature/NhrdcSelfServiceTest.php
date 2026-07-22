@@ -148,7 +148,7 @@ test('an NHRDC member can save their own interview rating', function () {
 
     expect($rating)->not->toBeNull();
     expect($rating->nhrdc_empcode)->toBe($nhrdc->empcode);
-    expect($rating->total)->toBe(5 + 4 + 5 + 4 + 5 + 5);
+    expect($rating->total)->toBe((float) (5 + 4 + 5 + 4 + 5 + 5));
     expect($rating->rated_by)->toBe($nhrdc->id);
 });
 
@@ -179,7 +179,7 @@ test('saving a rating twice updates it instead of creating a duplicate', functio
     $this->actingAs($nhrdc)->post(route('nhrdc.ratings.save', $nominee), $updated);
 
     expect(ForeignNomineeInterviewRating::where('foreign_nominee_id', $nominee->id)->count())->toBe(1);
-    expect(ForeignNomineeInterviewRating::where('foreign_nominee_id', $nominee->id)->first()->communication_skills)->toBe(2);
+    expect(ForeignNomineeInterviewRating::where('foreign_nominee_id', $nominee->id)->first()->communication_skills)->toBe('2.00');
 });
 
 test('interview scores above the criterion maximum are rejected', function () {
@@ -212,4 +212,44 @@ test('an NHRDC member can generate their own assessment sheet PDF', function () 
 
     $response->assertOk();
     $response->assertHeader('content-type', 'application/pdf');
+});
+
+test('an NHRDC member sees a pending rating summary on the homepage', function () {
+    $nhrdc = nhrdcSelfServiceUser('EMP-SS-14', 'Alonzo', 'Grace');
+    selfServiceNominee();
+    selfServiceNominee();
+
+    $response = $this->actingAs($nhrdc)->get(route('home'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->where('nhrdcRating.pending', 2)
+        ->where('nhrdcRating.rated', 0)
+        ->where('nhrdcRating.total', 2)
+    );
+});
+
+test('the homepage rating summary reflects nominees the NHRDC member already rated', function () {
+    $nhrdc = nhrdcSelfServiceUser('EMP-SS-15', 'Bernardo', 'Hector');
+    $nominee = selfServiceNominee();
+
+    $this->actingAs($nhrdc)->post(route('nhrdc.ratings.save', $nominee), validSelfServiceScores());
+
+    $response = $this->actingAs($nhrdc)->get(route('home'));
+
+    $response->assertInertia(fn ($page) => $page
+        ->where('nhrdcRating.pending', 0)
+        ->where('nhrdcRating.rated', 1)
+        ->where('nhrdcRating.total', 1)
+    );
+});
+
+test('a non-NHRDC user does not see the NHRDC rating summary on the homepage', function () {
+    $employee = selfServiceEmployee('EMP-SS-16', 'Cortez', 'Ivy');
+    $user = User::factory()->create(['empcode' => $employee->EMPCODE, 'access' => 'user']);
+    selfServiceNominee();
+
+    $response = $this->actingAs($user)->get(route('home'));
+
+    $response->assertInertia(fn ($page) => $page->where('nhrdcRating', null));
 });

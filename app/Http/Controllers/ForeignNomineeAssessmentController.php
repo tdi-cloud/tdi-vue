@@ -69,7 +69,7 @@ class ForeignNomineeAssessmentController extends Controller
     {
         $rules = [];
         foreach (ForeignNomineeAssessment::REQUIREMENT_CRITERIA as $key => $max) {
-            $rules[$key] = "required|integer|min:0|max:{$max}";
+            $rules[$key] = "required|numeric|min:0|max:{$max}|decimal:0,2";
         }
 
         $data = $request->validate($rules);
@@ -94,7 +94,7 @@ class ForeignNomineeAssessmentController extends Controller
             'nhrdc_empcode' => 'required|string|exists:nhrdc_members,empcode',
         ];
         foreach (ForeignNomineeInterviewRating::CRITERIA as $key => $max) {
-            $rules[$key] = "required|integer|min:0|max:{$max}";
+            $rules[$key] = "required|numeric|min:0|max:{$max}|decimal:0,2";
         }
 
         $data = $request->validate($rules);

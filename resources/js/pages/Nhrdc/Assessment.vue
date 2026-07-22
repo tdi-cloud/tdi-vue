@@ -102,12 +102,12 @@ function ensureDraft(nominee: Nominee) {
     if (nominee.my_rating) {
         const r = nominee.my_rating;
         draft[nominee.id] = {
-            communication_skills: r.communication_skills,
-            alertness: r.alertness,
-            judgement: r.judgement,
-            self_confidence: r.self_confidence,
-            emotional_stability: r.emotional_stability,
-            appearance: r.appearance,
+            communication_skills: Number(r.communication_skills),
+            alertness: Number(r.alertness),
+            judgement: Number(r.judgement),
+            self_confidence: Number(r.self_confidence),
+            emotional_stability: Number(r.emotional_stability),
+            appearance: Number(r.appearance),
         };
     } else {
         draft[nominee.id] = blankDraft();
@@ -122,7 +122,23 @@ function toggleExpand(nominee: Nominee) {
 function draftTotal(id: number): number {
     const s = draft[id];
     if (!s) return 0;
-    return INTERVIEW_CRITERIA.reduce((sum, c) => sum + (Number(s[c.key]) || 0), 0);
+    const sum = INTERVIEW_CRITERIA.reduce((sum, c) => sum + (Number(s[c.key]) || 0), 0);
+    return Math.round(sum * 100) / 100;
+}
+
+// The HTML `max` attribute doesn't stop someone from typing a value past it,
+// so clamp on every keystroke instead of relying on it.
+function clampScore(raw: string, max: number): number {
+    const n = Number(raw);
+    if (Number.isNaN(n)) return 0;
+    return Math.min(Math.max(n, 0), max);
+}
+
+// Decimal-cast fields arrive from the backend as fixed-2dp strings (e.g. "18.00") —
+// display them cleanly, only showing decimals when they're actually non-zero.
+function fmt(value: number | string | null | undefined): string {
+    const n = Number(value ?? 0);
+    return Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100);
 }
 
 async function saveRating(nominee: Nominee) {
@@ -157,9 +173,9 @@ function gradeBadgeClass(nominee: Nominee) {
 
 function scoreColor(value: number, max: number) {
     const pct = max ? value / max : 0;
-    if (pct >= 0.8) return 'accent-emerald-600';
-    if (pct >= 0.5) return 'accent-blue-600';
-    return 'accent-amber-500';
+    if (pct >= 0.8) return 'border-emerald-400 text-emerald-700 dark:text-emerald-400 focus:ring-emerald-500';
+    if (pct >= 0.5) return 'border-blue-400 text-blue-700 dark:text-blue-400 focus:ring-blue-500';
+    return 'border-amber-400 text-amber-700 dark:text-amber-400 focus:ring-amber-500';
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -318,6 +334,8 @@ const sponsorDisplay = computed(() => {
                     <!-- Rating sheet -->
                     <div v-if="expandedId === n.id" class="border-t bg-muted/10 px-5 py-5 flex flex-col gap-6">
 
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+
                         <!-- Requirements: read-only, encoded by admin -->
                         <div>
                             <div class="flex items-center justify-between mb-3">
@@ -326,14 +344,14 @@ const sponsorDisplay = computed(() => {
                                     I. Requirements Assessment <span class="font-normal text-muted-foreground text-xs">(encoded by admin)</span>
                                 </h3>
                                 <span class="text-xs font-bold text-blue-700 dark:text-blue-400">
-                                    {{ n.assessment?.requirements_total ?? '—' }} / {{ REQUIREMENTS_MAX }}
+                                    {{ n.assessment ? fmt(n.assessment.requirements_total) : '—' }} / {{ REQUIREMENTS_MAX }}
                                 </span>
                             </div>
 
                             <div v-if="n.assessment" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                 <div v-for="c in REQUIREMENT_CRITERIA" :key="c.key" class="rounded-lg border bg-background px-3 py-2">
                                     <p class="text-[11px] text-muted-foreground leading-tight">{{ c.label }}</p>
-                                    <p class="text-sm font-bold mt-0.5">{{ (n.assessment as any)[c.key] }} <span class="text-xs font-normal text-muted-foreground">/ {{ c.max }}</span></p>
+                                    <p class="text-sm font-bold mt-0.5">{{ fmt((n.assessment as any)[c.key]) }} <span class="text-xs font-normal text-muted-foreground">/ {{ c.max }}</span></p>
                                 </div>
                             </div>
                             <p v-else class="text-xs text-amber-700 dark:text-amber-400">
@@ -353,22 +371,22 @@ const sponsorDisplay = computed(() => {
                                 </span>
                             </div>
 
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
                                 <div v-for="c in INTERVIEW_CRITERIA" :key="c.key" class="grid grid-cols-[1fr_auto] gap-x-4 items-center">
-                                    <div>
-                                        <p class="text-xs font-semibold">{{ c.label }}</p>
+                                    <p class="text-xs font-semibold">{{ c.label }}</p>
+                                    <div class="flex items-center gap-1.5 justify-end shrink-0">
                                         <input
-                                            type="range"
+                                            type="number"
                                             min="0"
                                             :max="c.max"
-                                            v-model.number="draft[n.id][c.key]"
-                                            class="w-full mt-1 h-1.5 cursor-pointer"
+                                            step="0.5"
+                                            :value="draft[n.id][c.key]"
+                                            @input="draft[n.id][c.key] = clampScore(($event.target as HTMLInputElement).value, c.max)"
+                                            class="w-16 rounded-lg border px-2 py-1 text-sm font-bold text-right tabular-nums bg-background focus:outline-none focus:ring-2"
                                             :class="scoreColor(draft[n.id][c.key], c.max)"
                                         />
+                                        <span class="text-xs text-muted-foreground font-normal">/ {{ c.max }}</span>
                                     </div>
-                                    <span class="text-sm font-bold text-right tabular-nums w-14 shrink-0">
-                                        {{ draft[n.id][c.key] }} <span class="text-xs text-muted-foreground font-normal">/ {{ c.max }}</span>
-                                    </span>
                                 </div>
                             </div>
 
@@ -385,6 +403,8 @@ const sponsorDisplay = computed(() => {
                                     <Save class="h-3.5 w-3.5" /> {{ savingId === n.id ? 'Saving…' : 'Save My Rating' }}
                                 </button>
                             </div>
+                        </div>
+
                         </div>
 
                         <!-- My Grand Total -->

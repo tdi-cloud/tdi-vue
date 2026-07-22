@@ -36,6 +36,10 @@ class ForeignNomineeAssessment extends Model
     protected function casts(): array
     {
         return [
+            'need_for_training' => 'decimal:2',
+            'relevance_to_duties' => 'decimal:2',
+            'meets_donor_requirements' => 'decimal:2',
+            'completion_of_documents' => 'decimal:2',
             'assessed_at' => 'datetime',
         ];
     }
@@ -50,11 +54,11 @@ class ForeignNomineeAssessment extends Model
         return $this->belongsTo(User::class, 'assessed_by');
     }
 
-    public function getRequirementsTotalAttribute(): int
+    public function getRequirementsTotalAttribute(): float
     {
-        return collect(self::REQUIREMENT_CRITERIA)
+        return round(collect(self::REQUIREMENT_CRITERIA)
             ->keys()
-            ->sum(fn (string $key) => (int) $this->{$key});
+            ->sum(fn (string $key) => (float) $this->{$key}), 2);
     }
 
     /**

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
-import { ClipboardCheck, Calendar, Building2, Users, ChevronRight } from 'lucide-vue-next';
+import { ClipboardCheck, Calendar, Building2, Users, ChevronRight, Search, X, SlidersHorizontal } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 
 interface ForeignProgram {
     id: number;
@@ -15,7 +16,7 @@ interface ForeignProgram {
     rated_nominees_count: number;
 }
 
-defineProps<{ programs: ForeignProgram[] }>();
+const props = defineProps<{ programs: ForeignProgram[] }>();
 
 const formatDate = (date?: string | null) => {
     if (!date) return '—';
@@ -28,6 +29,40 @@ function progressPercent(program: ForeignProgram) {
     if (!program.nominees_count) return 0;
     return Math.round((program.rated_nominees_count / program.nominees_count) * 100);
 }
+
+function yearOf(program: ForeignProgram): number | null {
+    const y = new Date(program.program_start + 'T00:00:00').getFullYear();
+    return isNaN(y) ? null : y;
+}
+
+// ── Search & filters ─────────────────────────────────────────────────────────
+
+const search       = ref('');
+const filterSponsor = ref('');
+const filterYear    = ref('');
+
+const sponsorOptions = computed(() =>
+    [...new Set(props.programs.map(p => p.organizing_sponsor).filter(Boolean))].sort()
+);
+
+const yearOptions = computed(() =>
+    [...new Set(props.programs.map(yearOf).filter((y): y is number => y !== null))].sort((a, b) => b - a)
+);
+
+const hasActiveFilters = computed(() => !!(search.value || filterSponsor.value || filterYear.value));
+
+const clearFilters = () => {
+    search.value = '';
+    filterSponsor.value = '';
+    filterYear.value = '';
+};
+
+const filteredPrograms = computed(() => props.programs.filter(p => {
+    if (search.value && !p.program_title.toLowerCase().includes(search.value.toLowerCase())) return false;
+    if (filterSponsor.value && p.organizing_sponsor !== filterSponsor.value) return false;
+    if (filterYear.value && yearOf(p) !== Number(filterYear.value)) return false;
+    return true;
+}));
 </script>
 
 <template>
@@ -48,9 +83,52 @@ function progressPercent(program: ForeignProgram) {
                 No programs with nominees yet.
             </div>
 
-            <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <template v-else>
+                <!-- Search & Filter Bar -->
+                <div class="flex flex-col gap-3">
+                    <div class="flex items-center gap-2">
+                        <div class="relative flex-1 max-w-sm">
+                            <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <input
+                                v-model="search"
+                                type="text"
+                                placeholder="Search programs..."
+                                class="w-full border rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-background shadow-sm"
+                            />
+                        </div>
+                        <select v-model="filterSponsor" class="border rounded-lg px-2.5 py-2 text-xs bg-background shadow-sm">
+                            <option value="">All Sponsors</option>
+                            <option v-for="s in sponsorOptions" :key="s" :value="s">{{ s }}</option>
+                        </select>
+                        <select v-model="filterYear" class="border rounded-lg px-2.5 py-2 text-xs bg-background shadow-sm">
+                            <option value="">All Years</option>
+                            <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
+                        </select>
+                        <div class="flex items-center gap-1.5 text-xs text-muted-foreground px-2 py-1.5 rounded-lg border bg-muted/30">
+                            <SlidersHorizontal class="h-3.5 w-3.5" />
+                            <span>Filters</span>
+                        </div>
+                        <button
+                            v-if="hasActiveFilters"
+                            type="button"
+                            class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            @click="clearFilters"
+                        >
+                            <X class="h-3.5 w-3.5" /> Clear all
+                        </button>
+                    </div>
+                    <p class="text-xs text-muted-foreground">
+                        Showing {{ filteredPrograms.length }} of {{ programs.length }} program(s)
+                    </p>
+                </div>
+
+                <div v-if="!filteredPrograms.length" class="rounded-2xl border border-dashed py-14 text-center text-sm text-muted-foreground">
+                    No programs match your search or filters.
+                </div>
+
+                <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <Link
-                    v-for="program in programs"
+                    v-for="program in filteredPrograms"
                     :key="program.id"
                     :href="route('nhrdc.programs.show', program.id)"
                     class="rounded-2xl border bg-background shadow-sm p-5 hover:border-indigo-300 hover:shadow-md transition-all"
@@ -82,7 +160,8 @@ function progressPercent(program: ForeignProgram) {
                         </div>
                     </div>
                 </Link>
-            </div>
+                </div>
+            </template>
         </div>
     </AppLayout>
 </template>

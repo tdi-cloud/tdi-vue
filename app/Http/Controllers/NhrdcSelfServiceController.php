@@ -9,6 +9,7 @@ use App\Models\ForeignNomineeInterviewRating;
 use App\Models\ForeignProgram;
 use App\Models\ForeignProgramNhrdcSignature;
 use App\Models\NhrdcMember;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -22,6 +23,50 @@ use Inertia\Response;
  */
 class NhrdcSelfServiceController extends Controller
 {
+    /**
+     * Summary shown on the homepage banner for NHRDC members: how many
+     * nominees (across all programs) they still need to rate. Returns null
+     * when the user isn't on the NHRDC roster or has no nominees to rate yet,
+     * so the banner stays hidden.
+     *
+     * @return array{pending: int, rated: int, total: int}|null
+     */
+    public static function bannerData(?User $user): ?array
+    {
+        if (! $user || empty($user->empcode)) {
+            return null;
+        }
+
+        $empcode = $user->empcode;
+
+        if (! NhrdcMember::where('empcode', $empcode)->exists()) {
+            return null;
+        }
+
+        $programs = ForeignProgram::whereHas('nominees')
+            ->withCount([
+                'nominees',
+                'nominees as rated_nominees_count' => function ($q) use ($empcode) {
+                    $q->whereHas('interviewRatings', fn ($q2) => $q2->where('nhrdc_empcode', $empcode));
+                },
+            ])
+            ->get();
+
+        $total = (int) $programs->sum('nominees_count');
+
+        if ($total === 0) {
+            return null;
+        }
+
+        $rated = (int) $programs->sum('rated_nominees_count');
+
+        return [
+            'pending' => $total - $rated,
+            'rated' => $rated,
+            'total' => $total,
+        ];
+    }
+
     // GET /nhrdc/programs
     public function index(): Response
     {
@@ -74,7 +119,7 @@ class NhrdcSelfServiceController extends Controller
     {
         $rules = [];
         foreach (ForeignNomineeInterviewRating::CRITERIA as $key => $max) {
-            $rules[$key] = "required|integer|min:0|max:{$max}";
+            $rules[$key] = "required|numeric|min:0|max:{$max}|decimal:0,2";
         }
         $data = $request->validate($rules);
 

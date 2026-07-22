@@ -122,10 +122,10 @@ function ensureScores(nominee: Nominee) {
     if (nominee.assessment) {
         const a = nominee.assessment;
         scores[nominee.id] = {
-            need_for_training: a.need_for_training,
-            relevance_to_duties: a.relevance_to_duties,
-            meets_donor_requirements: a.meets_donor_requirements,
-            completion_of_documents: a.completion_of_documents,
+            need_for_training: Number(a.need_for_training),
+            relevance_to_duties: Number(a.relevance_to_duties),
+            meets_donor_requirements: Number(a.meets_donor_requirements),
+            completion_of_documents: Number(a.completion_of_documents),
         };
     } else {
         scores[nominee.id] = blankScores();
@@ -135,7 +135,8 @@ function ensureScores(nominee: Nominee) {
 function reqTotal(id: number): number {
     const s = scores[id];
     if (!s) return 0;
-    return REQUIREMENT_CRITERIA.reduce((sum, c) => sum + (Number(s[c.key]) || 0), 0);
+    const sum = REQUIREMENT_CRITERIA.reduce((sum, c) => sum + (Number(s[c.key]) || 0), 0);
+    return Math.round(sum * 100) / 100;
 }
 
 async function saveAssessment(nominee: Nominee) {
@@ -196,19 +197,28 @@ function selectRater(nominee: Nominee, empcode: string) {
     const existing = empcode ? existingRatingFor(nominee, empcode) : null;
     const fresh = existing
         ? {
-            communication_skills: existing.communication_skills,
-            alertness: existing.alertness,
-            judgement: existing.judgement,
-            self_confidence: existing.self_confidence,
-            emotional_stability: existing.emotional_stability,
-            appearance: existing.appearance,
+            communication_skills: Number(existing.communication_skills),
+            alertness: Number(existing.alertness),
+            judgement: Number(existing.judgement),
+            self_confidence: Number(existing.self_confidence),
+            emotional_stability: Number(existing.emotional_stability),
+            appearance: Number(existing.appearance),
         }
         : blankRatingDraft();
     Object.assign(ratingDraft, fresh);
 }
 
 function ratingDraftTotal(): number {
-    return INTERVIEW_CRITERIA.reduce((sum, c) => sum + (Number(ratingDraft[c.key]) || 0), 0);
+    const sum = INTERVIEW_CRITERIA.reduce((sum, c) => sum + (Number(ratingDraft[c.key]) || 0), 0);
+    return Math.round(sum * 100) / 100;
+}
+
+// The HTML `max` attribute doesn't stop someone from typing a value past it,
+// so clamp on every keystroke instead of relying on it.
+function clampScore(raw: string, max: number): number {
+    const n = Number(raw);
+    if (Number.isNaN(n)) return 0;
+    return Math.min(Math.max(n, 0), max);
 }
 
 function toggleExpand(nominee: Nominee) {
@@ -312,9 +322,9 @@ const sponsorDisplay = computed(() => {
 
 function scoreColor(value: number, max: number) {
     const pct = max ? value / max : 0;
-    if (pct >= 0.8) return 'accent-emerald-600';
-    if (pct >= 0.5) return 'accent-blue-600';
-    return 'accent-amber-500';
+    if (pct >= 0.8) return 'border-emerald-400 text-emerald-700 dark:text-emerald-400 focus:ring-emerald-500';
+    if (pct >= 0.5) return 'border-blue-400 text-blue-700 dark:text-blue-400 focus:ring-blue-500';
+    return 'border-amber-400 text-amber-700 dark:text-amber-400 focus:ring-amber-500';
 }
 
 function gradeBadgeClass(n: Nominee) {
@@ -447,6 +457,8 @@ function gradeBadgeClass(n: Nominee) {
                     <!-- Assessment sheet -->
                     <div v-if="expandedId === n.id" class="border-t bg-muted/10 px-5 py-5 flex flex-col gap-6">
 
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+
                         <!-- Section I: Requirements -->
                         <div>
                             <div class="flex items-center justify-between mb-3">
@@ -459,22 +471,22 @@ function gradeBadgeClass(n: Nominee) {
                                 </span>
                             </div>
 
-                            <div class="flex flex-col gap-3">
+                            <div class="flex flex-col gap-2">
                                 <div v-for="c in REQUIREMENT_CRITERIA" :key="c.key" class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-x-4 gap-y-1 items-center">
-                                    <div>
-                                        <p class="text-xs font-semibold">{{ c.label }}</p>
+                                    <p class="text-xs font-semibold">{{ c.label }}</p>
+                                    <div class="flex items-center gap-1.5 justify-end shrink-0">
                                         <input
-                                            type="range"
+                                            type="number"
                                             min="0"
                                             :max="c.max"
-                                            v-model.number="scores[n.id][c.key]"
-                                            class="w-full mt-1 h-1.5 cursor-pointer"
+                                            step="0.5"
+                                            :value="scores[n.id][c.key]"
+                                            @input="scores[n.id][c.key] = clampScore(($event.target as HTMLInputElement).value, c.max)"
+                                            class="w-20 rounded-lg border px-2 py-1 text-sm font-bold text-right tabular-nums bg-background focus:outline-none focus:ring-2"
                                             :class="scoreColor(scores[n.id][c.key], c.max)"
                                         />
+                                        <span class="text-xs text-muted-foreground font-normal">/ {{ c.max }}</span>
                                     </div>
-                                    <span class="text-sm font-bold text-right tabular-nums w-16 shrink-0">
-                                        {{ scores[n.id][c.key] }} <span class="text-xs text-muted-foreground font-normal">/ {{ c.max }}</span>
-                                    </span>
                                 </div>
                             </div>
 
@@ -562,22 +574,22 @@ function gradeBadgeClass(n: Nominee) {
                                 </p>
 
                                 <template v-if="raterEmpcode">
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
                                         <div v-for="c in INTERVIEW_CRITERIA" :key="c.key" class="grid grid-cols-[1fr_auto] gap-x-4 items-center">
-                                            <div>
-                                                <p class="text-xs font-semibold">{{ c.label }}</p>
+                                            <p class="text-xs font-semibold">{{ c.label }}</p>
+                                            <div class="flex items-center gap-1.5 justify-end shrink-0">
                                                 <input
-                                                    type="range"
+                                                    type="number"
                                                     min="0"
                                                     :max="c.max"
-                                                    v-model.number="ratingDraft[c.key]"
-                                                    class="w-full mt-1 h-1.5 cursor-pointer"
+                                                    step="0.5"
+                                                    :value="ratingDraft[c.key]"
+                                                    @input="ratingDraft[c.key] = clampScore(($event.target as HTMLInputElement).value, c.max)"
+                                                    class="w-16 rounded-lg border px-2 py-1 text-sm font-bold text-right tabular-nums bg-background focus:outline-none focus:ring-2"
                                                     :class="scoreColor(ratingDraft[c.key], c.max)"
                                                 />
+                                                <span class="text-xs text-muted-foreground font-normal">/ {{ c.max }}</span>
                                             </div>
-                                            <span class="text-sm font-bold text-right tabular-nums w-14 shrink-0">
-                                                {{ ratingDraft[c.key] }} <span class="text-xs text-muted-foreground font-normal">/ {{ c.max }}</span>
-                                            </span>
                                         </div>
                                     </div>
 
@@ -601,6 +613,8 @@ function gradeBadgeClass(n: Nominee) {
                                     </div>
                                 </template>
                             </div>
+                        </div>
+
                         </div>
 
                         <!-- Grand Total per NHRDC — each rater's score stands on its own, never averaged together -->
