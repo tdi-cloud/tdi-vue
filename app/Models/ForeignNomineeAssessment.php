@@ -19,6 +19,38 @@ class ForeignNomineeAssessment extends Model
         'completion_of_documents' => 10,
     ];
 
+    /**
+     * Fixed-choice rubric per criterion — the assessor picks one option, not
+     * an arbitrary number, so only these exact point values are valid.
+     *
+     * @var array<string, array<int, string>>
+     */
+    public const REQUIREMENT_OPTIONS = [
+        'need_for_training' => [
+            20 => 'Less than 10 hours of relevant training',
+            17 => 'With 10 to 20 hours of relevant training',
+            15 => 'With 21 to 30 hours relevant training',
+            10 => 'With 31 to 40 hours of relevant training',
+        ],
+        'relevance_to_duties' => [
+            30 => 'Relevant to present work assignment',
+            28 => 'Relevant to other work assignment',
+            20 => 'Not relevant to work assignment',
+        ],
+        'meets_donor_requirements' => [
+            10 => 'Meets all requirements',
+            8 => 'Lacks 1 requirement',
+            6 => 'Lacks 2 requirements',
+            4 => 'Lacks 3 or more requirements',
+        ],
+        'completion_of_documents' => [
+            10 => 'Submits complete requirements',
+            8 => 'Lacks 1 requirement',
+            6 => 'Lacks 2 requirements',
+            4 => 'Lacks 3 or more requirements',
+        ],
+    ];
+
     protected $fillable = [
         'foreign_nominee_id',
         'need_for_training',

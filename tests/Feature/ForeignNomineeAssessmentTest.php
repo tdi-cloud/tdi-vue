@@ -85,11 +85,13 @@ function nhrdcRosterMember(string $empcode, string $lastname, string $firstname)
 
 function validAssessmentScores(): array
 {
+    // Each value must be one of the fixed rubric points for its criterion —
+    // see ForeignNomineeAssessment::REQUIREMENT_OPTIONS.
     return [
-        'need_for_training' => 18,
-        'relevance_to_duties' => 25,
-        'meets_donor_requirements' => 10,
-        'completion_of_documents' => 8,
+        'need_for_training' => 17,
+        'relevance_to_duties' => 28,
+        'meets_donor_requirements' => 8,
+        'completion_of_documents' => 6,
     ];
 }
 
@@ -151,7 +153,7 @@ test('admin can save the requirements section and the total is computed correctl
     $assessment = ForeignNomineeAssessment::where('foreign_nominee_id', $nominee->id)->first();
 
     expect($assessment)->not->toBeNull();
-    expect($assessment->requirements_total)->toBe((float) (18 + 25 + 10 + 8));
+    expect($assessment->requirements_total)->toBe((float) (17 + 28 + 8 + 6));
     expect($assessment->assessed_by)->toBe($admin->id);
     expect($assessment->assessed_at)->not->toBeNull();
 });
@@ -171,12 +173,12 @@ test('saving the requirements section twice updates the existing record instead 
     expect(ForeignNomineeAssessment::where('foreign_nominee_id', $nominee->id)->first()->need_for_training)->toBe('10.00');
 });
 
-test('requirements scores above the criterion maximum are rejected', function () {
+test('requirements scores outside the fixed rubric options are rejected', function () {
     $admin = assessmentTestAdmin('EMP-ASSESS-04');
     $nominee = assessmentTestNominee();
 
     $scores = validAssessmentScores();
-    $scores['need_for_training'] = 21; // max is 20
+    $scores['need_for_training'] = 21; // not one of the rubric's fixed point values (20, 17, 15, 10)
 
     $response = $this->actingAs($admin)->post(route('foreign-nominees.assessment.save', $nominee), $scores);
 
@@ -317,7 +319,7 @@ test('the assessment sheet includes each nominee\'s requirements score and inter
 
     $response->assertInertia(fn ($page) => $page
         ->component('ForeignPrograms/Assessment')
-        ->where('nominees.0.assessment.requirements_total', 18 + 25 + 10 + 8)
+        ->where('nominees.0.assessment.requirements_total', 17 + 28 + 8 + 6)
         ->has('nominees.0.interview_ratings', 1)
         ->where('nominees.0.interview_ratings.0.nhrdc_name', $nhrdc->name)
     );

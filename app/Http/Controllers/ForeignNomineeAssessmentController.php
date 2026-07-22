@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -64,12 +65,14 @@ class ForeignNomineeAssessmentController extends Controller
     }
 
     // POST /foreign-nominees/{nominee}/assessment
-    // Requirements section (max 70) — encoded by the admin/user.
+    // Requirements section (max 70) — each criterion is a fixed-choice rubric,
+    // so the assessor picks one of a handful of exact point values, not an
+    // arbitrary number.
     public function save(Request $request, ForeignNominee $nominee)
     {
         $rules = [];
-        foreach (ForeignNomineeAssessment::REQUIREMENT_CRITERIA as $key => $max) {
-            $rules[$key] = "required|numeric|min:0|max:{$max}|decimal:0,2";
+        foreach (ForeignNomineeAssessment::REQUIREMENT_OPTIONS as $key => $options) {
+            $rules[$key] = ['required', 'numeric', Rule::in(array_keys($options))];
         }
 
         $data = $request->validate($rules);

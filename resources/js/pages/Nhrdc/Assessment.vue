@@ -63,10 +63,41 @@ const hasSignedCopy = ref(props.hasSignedCopy);
 // ── Criteria definitions ─────────────────────────────────────────────────────
 
 const REQUIREMENT_CRITERIA = [
-    { key: 'need_for_training', label: "Nominee's Need for Training", max: 20 },
-    { key: 'relevance_to_duties', label: 'Relevance of the Course to the Present Duties and Responsibilities', max: 30 },
-    { key: 'meets_donor_requirements', label: 'Nominee Meets Donor Requirements', max: 10 },
-    { key: 'completion_of_documents', label: 'Completion of Documentary Requirements', max: 10 },
+    {
+        key: 'need_for_training', label: "Nominee's Need for Training", max: 20,
+        options: [
+            { value: 20, label: 'Less than 10 hours of relevant training' },
+            { value: 17, label: 'With 10 to 20 hours of relevant training' },
+            { value: 15, label: 'With 21 to 30 hours relevant training' },
+            { value: 10, label: 'With 31 to 40 hours of relevant training' },
+        ],
+    },
+    {
+        key: 'relevance_to_duties', label: 'Relevance of the Course to the Present Duties and Responsibilities', max: 30,
+        options: [
+            { value: 30, label: 'Relevant to present work assignment' },
+            { value: 28, label: 'Relevant to other work assignment' },
+            { value: 20, label: 'Not relevant to work assignment' },
+        ],
+    },
+    {
+        key: 'meets_donor_requirements', label: 'Nominee Meets Donor Requirements', max: 10,
+        options: [
+            { value: 10, label: 'Meets all requirements' },
+            { value: 8, label: 'Lacks 1 requirement' },
+            { value: 6, label: 'Lacks 2 requirements' },
+            { value: 4, label: 'Lacks 3 or more requirements' },
+        ],
+    },
+    {
+        key: 'completion_of_documents', label: 'Completion of Documentary Requirements', max: 10,
+        options: [
+            { value: 10, label: 'Submits complete requirements' },
+            { value: 8, label: 'Lacks 1 requirement' },
+            { value: 6, label: 'Lacks 2 requirements' },
+            { value: 4, label: 'Lacks 3 or more requirements' },
+        ],
+    },
 ] as const;
 
 const INTERVIEW_CRITERIA = [
@@ -139,6 +170,11 @@ function clampScore(raw: string, max: number): number {
 function fmt(value: number | string | null | undefined): string {
     const n = Number(value ?? 0);
     return Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100);
+}
+
+function optionLabel(criterion: (typeof REQUIREMENT_CRITERIA)[number], value: number | string | null | undefined): string {
+    const n = Number(value ?? NaN);
+    return criterion.options.find(o => o.value === n)?.label ?? '';
 }
 
 async function saveRating(nominee: Nominee) {
@@ -348,10 +384,11 @@ const sponsorDisplay = computed(() => {
                                 </span>
                             </div>
 
-                            <div v-if="n.assessment" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div v-if="n.assessment" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div v-for="c in REQUIREMENT_CRITERIA" :key="c.key" class="rounded-lg border bg-background px-3 py-2">
                                     <p class="text-[11px] text-muted-foreground leading-tight">{{ c.label }}</p>
                                     <p class="text-sm font-bold mt-0.5">{{ fmt((n.assessment as any)[c.key]) }} <span class="text-xs font-normal text-muted-foreground">/ {{ c.max }}</span></p>
+                                    <p class="text-[11px] text-muted-foreground italic mt-0.5">{{ optionLabel(c, (n.assessment as any)[c.key]) }}</p>
                                 </div>
                             </div>
                             <p v-else class="text-xs text-amber-700 dark:text-amber-400">

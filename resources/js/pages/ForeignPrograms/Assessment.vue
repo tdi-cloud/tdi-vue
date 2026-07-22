@@ -82,10 +82,41 @@ const props = defineProps<{
 // ── Criteria definitions ─────────────────────────────────────────────────────
 
 const REQUIREMENT_CRITERIA = [
-    { key: 'need_for_training', label: "Nominee's Need for Training", max: 20 },
-    { key: 'relevance_to_duties', label: 'Relevance of the Course to the Present Duties and Responsibilities', max: 30 },
-    { key: 'meets_donor_requirements', label: 'Nominee Meets Donor Requirements', max: 10 },
-    { key: 'completion_of_documents', label: 'Completion of Documentary Requirements', max: 10 },
+    {
+        key: 'need_for_training', label: "Nominee's Need for Training", max: 20,
+        options: [
+            { value: 20, label: 'Less than 10 hours of relevant training' },
+            { value: 17, label: 'With 10 to 20 hours of relevant training' },
+            { value: 15, label: 'With 21 to 30 hours relevant training' },
+            { value: 10, label: 'With 31 to 40 hours of relevant training' },
+        ],
+    },
+    {
+        key: 'relevance_to_duties', label: 'Relevance of the Course to the Present Duties and Responsibilities', max: 30,
+        options: [
+            { value: 30, label: 'Relevant to present work assignment' },
+            { value: 28, label: 'Relevant to other work assignment' },
+            { value: 20, label: 'Not relevant to work assignment' },
+        ],
+    },
+    {
+        key: 'meets_donor_requirements', label: 'Nominee Meets Donor Requirements', max: 10,
+        options: [
+            { value: 10, label: 'Meets all requirements' },
+            { value: 8, label: 'Lacks 1 requirement' },
+            { value: 6, label: 'Lacks 2 requirements' },
+            { value: 4, label: 'Lacks 3 or more requirements' },
+        ],
+    },
+    {
+        key: 'completion_of_documents', label: 'Completion of Documentary Requirements', max: 10,
+        options: [
+            { value: 10, label: 'Submits complete requirements' },
+            { value: 8, label: 'Lacks 1 requirement' },
+            { value: 6, label: 'Lacks 2 requirements' },
+            { value: 4, label: 'Lacks 3 or more requirements' },
+        ],
+    },
 ] as const;
 
 const INTERVIEW_CRITERIA = [
@@ -471,21 +502,28 @@ function gradeBadgeClass(n: Nominee) {
                                 </span>
                             </div>
 
-                            <div class="flex flex-col gap-2">
-                                <div v-for="c in REQUIREMENT_CRITERIA" :key="c.key" class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-x-4 gap-y-1 items-center">
-                                    <p class="text-xs font-semibold">{{ c.label }}</p>
-                                    <div class="flex items-center gap-1.5 justify-end shrink-0">
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            :max="c.max"
-                                            step="0.5"
-                                            :value="scores[n.id][c.key]"
-                                            @input="scores[n.id][c.key] = clampScore(($event.target as HTMLInputElement).value, c.max)"
-                                            class="w-20 rounded-lg border px-2 py-1 text-sm font-bold text-right tabular-nums bg-background focus:outline-none focus:ring-2"
-                                            :class="scoreColor(scores[n.id][c.key], c.max)"
-                                        />
-                                        <span class="text-xs text-muted-foreground font-normal">/ {{ c.max }}</span>
+                            <div class="flex flex-col gap-4">
+                                <div v-for="c in REQUIREMENT_CRITERIA" :key="c.key" class="flex flex-col gap-1.5">
+                                    <p class="text-xs font-semibold">{{ c.label }} <span class="font-normal text-muted-foreground">({{ c.max }} pts)</span></p>
+                                    <div class="flex flex-col gap-1.5">
+                                        <label
+                                            v-for="opt in c.options"
+                                            :key="opt.value"
+                                            class="flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs cursor-pointer transition-colors"
+                                            :class="scores[n.id][c.key] === opt.value
+                                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30'
+                                                : 'hover:bg-muted/40'"
+                                        >
+                                            <input
+                                                type="radio"
+                                                :name="`req-${n.id}-${c.key}`"
+                                                :value="opt.value"
+                                                v-model.number="scores[n.id][c.key]"
+                                                class="h-3.5 w-3.5 accent-blue-600 shrink-0"
+                                            />
+                                            <span class="flex-1">{{ opt.label }}</span>
+                                            <span class="font-bold tabular-nums shrink-0">{{ opt.value }} pts</span>
+                                        </label>
                                     </div>
                                 </div>
                             </div>
