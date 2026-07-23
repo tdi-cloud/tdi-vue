@@ -73,7 +73,10 @@
     <section class="reqs">
       <div class="reqs__inner">
         <h2>Requirements Checklist</h2>
-        <p class="reqs__sub">Submit each requirement below as a PDF file. You can re-submit anytime before it's approved.</p>
+        <p v-if="program.attendance === 'Absent'" class="reqs__sub reqs__sub--absent">
+          You were marked Absent for this program, so requirement submissions are no longer required.
+        </p>
+        <p v-else class="reqs__sub">Submit each requirement below as a PDF file. You can re-submit anytime before it's approved.</p>
         <div class="reqs__chips">
           <span class="chip chip--approved"><CheckCircle2 :size="13" /> {{ program.requirements_approved }} Approved</span>
           <span class="chip chip--pending"><Clock :size="13" /> {{ program.requirements_pending }} Pending Review</span>
@@ -98,12 +101,12 @@
                 <a :href="r.file_url" target="_blank" rel="noopener" class="file-link">
                   <FileText :size="14" /> {{ r.file_name }}
                 </a>
-                <button v-if="r.status !== 'Approved'" type="button" class="delete-btn"
+                <button v-if="r.status !== 'Approved' && program.attendance !== 'Absent'" type="button" class="delete-btn"
                   :disabled="deletingId === r.id" @click="confirmDelete(r)">
                   <Trash2 :size="13" /> {{ deletingId === r.id ? 'Deleting…' : 'Delete' }}
                 </button>
               </div>
-              <form v-if="r.status !== 'Approved'" class="req-row__upload" @submit.prevent="submitFile(r)">
+              <form v-if="r.status !== 'Approved' && program.attendance !== 'Absent'" class="req-row__upload" @submit.prevent="submitFile(r)">
                 <label class="upload-input">
                   <UploadCloud :size="14" />
                   <span>{{ selectedFile[r.id]?.name || (r.file_url ? 'Replace file (PDF)' : 'Choose PDF file') }}</span>
@@ -114,7 +117,7 @@
                   {{ uploadingId === r.id ? 'Saving…' : (r.file_url ? 'Save Changes' : 'Submit') }}
                 </button>
               </form>
-              <div v-if="r.status !== 'Approved'" class="req-row__notes">
+              <div v-if="r.status !== 'Approved' && program.attendance !== 'Absent'" class="req-row__notes">
                 <textarea v-model="noteDraft[r.id]" placeholder="Add a note for the reviewer (optional)…" rows="2"></textarea>
               </div>
               <div v-else-if="r.notes" class="req-row__notes-readonly">
@@ -130,6 +133,49 @@
             <CheckCircle2 :size="18" /> No requirements have been set for this batch yet.
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- Absence Justification -->
+    <section class="justification">
+      <div class="justification__inner">
+        <div v-if="program.attendance === 'Absent' && program.justification" class="justification__banner">
+          <AlertCircle :size="20" />
+          <div>
+            <p class="justification__banner-title">You were marked as Absent for this program</p>
+            <p class="justification__banner-sub">
+              Your justification memo has been recorded. You no longer need to submit the requirements above.
+            </p>
+          </div>
+        </div>
+
+        <h2>Non-Attendance Justification</h2>
+        <p class="reqs__sub">
+          Unable to attend or complete this program? Upload your justification memo (PDF) — you don't need to have
+          submitted any requirements first. This will automatically mark you as Absent and you won't be asked to
+          submit the requirements anymore.
+        </p>
+
+        <div v-if="program.justification" class="req-row__file">
+          <a :href="program.justification.file_url" target="_blank" rel="noopener" class="file-link">
+            <FileText :size="14" /> View uploaded justification
+          </a>
+          <button type="button" class="delete-btn" :disabled="deletingJustification" @click="confirmDeleteJustification">
+            <Trash2 :size="13" /> {{ deletingJustification ? 'Removing…' : 'Remove' }}
+          </button>
+        </div>
+
+        <form class="req-row__upload" @submit.prevent="submitJustification">
+          <label class="upload-input">
+            <UploadCloud :size="14" />
+            <span>{{ justificationFile?.name || (program.justification ? 'Replace file (PDF)' : 'Choose PDF file') }}</span>
+            <input type="file" accept="application/pdf" @change="onJustificationFileChange" />
+          </label>
+          <button type="submit" class="upload-btn" :disabled="!justificationFile || uploadingJustification">
+            {{ uploadingJustification ? 'Uploading…' : 'Upload Justification' }}
+          </button>
+        </form>
+        <div v-if="justificationError" class="req-row__error">{{ justificationError }}</div>
       </div>
     </section>
 
@@ -406,6 +452,60 @@ function confirmDelete(requirement) {
   )
 }
 
+/* ---- Absence justification ---- */
+const justificationFile = ref(null)
+const justificationError = ref('')
+const uploadingJustification = ref(false)
+const deletingJustification = ref(false)
+
+function onJustificationFileChange(event) {
+  justificationError.value = ''
+  const file = event.target.files[0]
+  if (!file) return
+  if (file.type !== 'application/pdf') {
+    justificationError.value = 'Only PDF files are accepted.'
+    justificationFile.value = null
+    return
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    justificationError.value = 'File must not exceed 10MB.'
+    justificationFile.value = null
+    return
+  }
+  justificationFile.value = file
+}
+
+function submitJustification() {
+  if (!justificationFile.value) { justificationError.value = 'Please choose a PDF file.'; return }
+  uploadingJustification.value = true
+  justificationError.value = ''
+  const formData = new FormData()
+  formData.append('file', justificationFile.value)
+  router.post(
+    route('programs.my-progress.justification.submit', { batch: props.program.batch_id }),
+    formData,
+    {
+      forceFormData: true,
+      preserveScroll: true,
+      onSuccess: () => { justificationFile.value = null },
+      onError: (errors) => { justificationError.value = errors.file || 'Upload failed. Please try again.' },
+      onFinish: () => { uploadingJustification.value = false },
+    }
+  )
+}
+
+function confirmDeleteJustification() {
+  if (!window.confirm('Remove your justification memo? Your attendance status will revert to Pending.')) return
+  deletingJustification.value = true
+  router.delete(
+    route('programs.my-progress.justification.destroy', { batch: props.program.batch_id }),
+    {
+      preserveScroll: true,
+      onFinish: () => { deletingJustification.value = false },
+    }
+  )
+}
+
 /* ════════════════════════════════════════
    CERTIFICATE SECTION
 ════════════════════════════════════════ */
@@ -540,11 +640,20 @@ function confirmDeleteCert(cert) {
 .about__code { background: #f3f4f6; color: #4b5563; font-family: monospace; }
 .about__desc { font-size: 0.88rem; line-height: 1.65; color: #4b5563; }
 
+/* Absence Justification */
+.justification { padding: 3rem 2rem 3rem; background: #f7f9fd; }
+.justification__inner { max-width: 900px; margin: 0 auto; background: #fff; border-radius: 16px; padding: 1.75rem 2rem; box-shadow: 0 2px 12px rgba(15,28,72,0.05); }
+.justification__inner h2 { font-size: 1.15rem; font-weight: 800; color: #1a2744; margin-bottom: 0.5rem; }
+.justification__banner { display: flex; align-items: flex-start; gap: 0.75rem; background: #fef2f2; color: #991b1b; border-radius: 12px; padding: 0.9rem 1.1rem; margin-bottom: 1.25rem; }
+.justification__banner-title { font-weight: 700; font-size: 0.88rem; }
+.justification__banner-sub { font-size: 0.8rem; margin-top: 0.15rem; color: #b91c1c; }
+
 /* Requirements */
-.reqs { padding: 4.5rem 2rem 3rem; background: #f7f9fd; }
+.reqs { padding: 4.5rem 2rem 0; background: #f7f9fd; }
 .reqs__inner { max-width: 900px; margin: 0 auto; }
 .reqs h2 { font-size: 1.5rem; font-weight: 800; color: #1a2744; margin-bottom: 0.4rem; }
 .reqs__sub { color: #6b7280; margin-bottom: 1.5rem; }
+.reqs__sub--absent { color: #991b1b; font-weight: 600; }
 .reqs__chips { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 2rem; }
 .chip { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; font-weight: 700; padding: 0.4rem 0.8rem; border-radius: 20px; }
 .chip--approved { background: #ecfdf5; color: #065f46; }

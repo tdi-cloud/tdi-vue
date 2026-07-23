@@ -41,6 +41,7 @@ class EnrolledProgramController extends Controller
             'batch.program.supportingDocuments',
             'batch.requirements',
             'submissions',
+            'justification',
         ])
             ->where('empcode', $user->empcode)
             ->where('batch_id', $batch->id)
@@ -159,6 +160,53 @@ class EnrolledProgramController extends Controller
         return back()->with('success', 'Submission deleted.');
     }
 
+    // POST /my-programs/{batch}/absent-justification
+    // Lets a participant self-report a non-attendance/failure justification at
+    // any time — independent of requirement submission progress. Uploading it
+    // automatically marks the participant Absent for this batch, so they're
+    // no longer expected to submit the regular requirements.
+    public function submitJustification(Request $request, Batch $batch)
+    {
+        $participant = $this->ownParticipant($request, $batch);
+
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:pdf', 'max:10240'],
+        ]);
+
+        $path = $request->file('file')->store('justifications', 'public');
+
+        if ($participant->justification) {
+            Storage::disk('public')->delete($participant->justification->file_path);
+            $participant->justification->update(['file_path' => $path]);
+        } else {
+            $participant->justification()->create(['file_path' => $path]);
+        }
+
+        $participant->update([
+            'attendance' => 'Absent',
+            'hours' => 0,
+        ]);
+
+        return back()->with('success', 'Justification uploaded. You have been marked as Absent for this program and no longer need to submit the requirements.');
+    }
+
+    // DELETE /my-programs/{batch}/absent-justification
+    public function destroyJustification(Request $request, Batch $batch)
+    {
+        $participant = $this->ownParticipant($request, $batch);
+
+        abort_if(! $participant->justification, 404);
+
+        Storage::disk('public')->delete($participant->justification->file_path);
+        $participant->justification->delete();
+
+        if ($participant->attendance === 'Absent') {
+            $participant->update(['attendance' => 'Pending']);
+        }
+
+        return back()->with('success', 'Justification removed.');
+    }
+
     protected static function transform(Participant $participant, bool $withRequirements = false): array
     {
         $batch = $participant->batch;
@@ -211,6 +259,12 @@ class EnrolledProgramController extends Controller
 
         if ($withRequirements) {
             $data['requirements'] = $reqList->values();
+
+            $data['justification'] = $participant->justification ? [
+                'id' => $participant->justification->id,
+                'file_url' => '/storage/'.$participant->justification->file_path,
+                'uploaded_at' => $participant->justification->updated_at,
+            ] : null;
 
             $data['resource_speakers'] = $program->resourceSpeakers
                 ? $program->resourceSpeakers->map(fn ($s) => [

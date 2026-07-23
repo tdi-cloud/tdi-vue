@@ -367,6 +367,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/my-programs/{batch}/requirements/{requirement}/submission', [EnrolledProgramController::class, 'destroySubmission'])
         ->name('programs.my-progress.destroy');
 
+    // ABSENCE JUSTIFICATION
+    Route::post('/my-programs/{batch}/absent-justification', [EnrolledProgramController::class, 'submitJustification'])
+        ->name('programs.my-progress.justification.submit');
+
+    Route::delete('/my-programs/{batch}/absent-justification', [EnrolledProgramController::class, 'destroyJustification'])
+        ->name('programs.my-progress.justification.destroy');
+
     // CERTIFICATES
     Route::post('/my-programs/{batch}/certificates', [CertificateController::class, 'uploadByUser'])
         ->name('certificates.upload-by-user');
