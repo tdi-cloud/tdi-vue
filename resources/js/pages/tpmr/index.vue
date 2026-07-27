@@ -261,22 +261,22 @@ const regionRate = (code: string) =>
                     </div>
                 </div>
 
-                <div class="overflow-x-auto">
+                <div class="overflow-auto max-h-[65vh]">
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="border-b bg-muted/30">
-                                <th class="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-muted-foreground min-w-[220px]">
+                                <th class="sticky top-0 z-10 bg-background border-b text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-muted-foreground min-w-[220px]">
                                     Region / Admin
                                 </th>
                                 <th
                                     v-for="(name, num) in months"
                                     :key="num"
-                                    class="px-2 py-3 text-xs font-bold uppercase tracking-wide text-center w-16"
+                                    class="sticky top-0 z-10 bg-background border-b px-2 py-3 text-xs font-bold uppercase tracking-wide text-center w-16"
                                     :class="parseInt(String(num)) === currentMonth ? 'text-blue-600' : 'text-muted-foreground'"
                                 >
                                     {{ monthAbbr(name) }}
                                 </th>
-                                <th class="px-4 py-3 text-xs font-bold uppercase tracking-wide text-muted-foreground text-center w-16">
+                                <th class="sticky top-0 z-10 bg-background border-b px-4 py-3 text-xs font-bold uppercase tracking-wide text-muted-foreground text-center w-16">
                                     Rate
                                 </th>
                             </tr>

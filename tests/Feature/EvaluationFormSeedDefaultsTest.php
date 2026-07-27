@@ -38,11 +38,10 @@ function evalSeedBatch(Program $program): Batch
 }
 
 /**
- * Regression guard for the exact registered form TESDA-OP-AS-01-F05
- * (Rev. No. 00 – 03/01/17) so the seeded question bank never silently
- * drifts from the official document.
+ * Regression guard for the client-approved default question bank (based on
+ * the registered TESDA-OP-AS-01-F05 form) so it never silently drifts.
  */
-test('seeding defaults reproduces the registered TESDA-OP-AS-01-F05 form exactly', function () {
+test('seeding defaults reproduces the approved question bank exactly', function () {
     $batch = evalSeedBatch(evalSeedProgram());
     $form = EvaluationForm::create(['batch_id' => $batch->id, 'slug' => EvaluationForm::generateSlugFor($batch)]);
     $form->seedDefaults();
@@ -65,8 +64,8 @@ test('seeding defaults reproduces the registered TESDA-OP-AS-01-F05 form exactly
         '1. Objectives were clearly explained',
         '2. Objectives stated were met',
         '3. I understand the materials and topics in this program',
-        '4. Content is relevant to my job (if not, please explain)',
-        'a. What topics are not useful?',
+        '4. Content is relevant to my job',
+        'a. What topics were clearly explained?',
         'b. What issues remain confusing / unclear?',
         'c. Very important topics that I wished shall have been discussed',
     ]);
@@ -77,11 +76,11 @@ test('seeding defaults reproduces the registered TESDA-OP-AS-01-F05 form exactly
     expect($methodology->title)->toBe('II. Methodology');
     expect($methodology->description)->toBe('The following activities/materials helped me to understand the content and achieve the stated objectives.');
     expect($methodology->questions->pluck('label')->all())->toBe([
-        '1. Pre-work received prior to program',
-        "2. Participant's workbook / worksheets",
-        '3. Class discussions',
-        '4. Exercises and/or readings/activities',
-        '5. Audio/Visuals (flip charts, videos, etc.)',
+        '5. Pre-work received prior to program',
+        "6. Participant's workbook / worksheets",
+        '7. Class discussions',
+        '8. Exercises and/or readings/activities',
+        '9. Audio/Visuals (flip charts, videos, etc.)',
         'a. It would help me if',
         'b. The pacing of the program is:',
         'c. The degree of involvement of the participants is:',
@@ -95,50 +94,54 @@ test('seeding defaults reproduces the registered TESDA-OP-AS-01-F05 form exactly
     $environment = $form->sections->firstWhere('key', EvaluationSection::KEY_ENVIRONMENT);
     expect($environment->title)->toBe('III. Environment Administration');
     expect($environment->questions->pluck('label')->all())->toBe([
-        '1. Are Exercises and/or readings/activities relevant to the training?',
-        '2. Is the training room and facilities conducive to learning?',
-        '3. Is the training room well ventilated (A/C and Electric Fan)',
-        '4. Is the sound system working properly?',
-        '5. Are meals served nutritious/healthy and worth with its cost?',
-        '6. Is the comfort room clean and sanitized?',
-        '7. Is the dormitory room/s clean and comfortable to stay/sleep in?',
+        '10. Are Exercises and/or readings/activities relevant to the training?',
+        '11. Is the training room and facilities conducive to learning?',
+        '12. Is the training room well ventilated (A/C and Electric Fan)',
+        '13. Is the sound system working properly?',
+        '14. Are meals served nutritious/healthy and worth with its cost?',
+        '15. Is the comfort room clean and sanitized?',
+        '16. Is the dormitory room/s clean and comfortable to stay/sleep in?',
     ]);
     expect($environment->questions->pluck('type')->unique()->all())->toBe([EvaluationQuestion::TYPE_LIKERT5]);
 
     $facilitators = $form->sections->firstWhere('key', EvaluationSection::KEY_FACILITATORS);
     expect($facilitators->title)->toBe('IV. Facilitator');
     expect($facilitators->questions->pluck('label')->all())->toBe([
-        '1. Appeared knowledgeable of the subject matter',
-        '2. Presented clearly to assist my understanding',
-        '3. Promoted discussion and involvement',
-        '4. Responded appropriately to questions',
-        '5. Effectively managed group dynamics',
-        '6. Kept the discussion/activities focused on stated objectives',
+        '17. Appeared knowledgeable of the subject matter',
+        '18. Presented clearly to assist my understanding',
+        '19. Promoted discussion and involvement',
+        '20. Responded appropriately to questions',
+        '21. Effectively managed group dynamics',
+        '22. Kept the discussion/activities focused on stated objectives',
         'Your comments, please:',
     ]);
     $facilitatorComment = $facilitators->questions->firstWhere('label', 'Your comments, please:');
     expect($facilitatorComment->type)->toBe(EvaluationQuestion::TYPE_TEXT);
-    expect($facilitatorComment->is_required)->toBeFalse();
 
     $plannedActions = $form->sections->firstWhere('key', EvaluationSection::KEY_PLANNED_ACTIONS);
     expect($plannedActions->title)->toBe('V. Planned Actions');
     expect($plannedActions->questions->pluck('label')->all())->toBe([
-        '1. As a result of this program, what will you do differently?',
+        '23. As a result of this program, what will you do differently?',
     ]);
-    expect($plannedActions->questions->first()->is_required)->toBeTrue();
 
     $overall = $form->sections->firstWhere('key', EvaluationSection::KEY_OVERALL);
     expect($overall->title)->toBe('VI. Overall Program Rating');
     expect($overall->questions->pluck('label')->all())->toBe([
-        '1. My overall rating for this program',
+        '18. My overall rating for this program',
         'Your comments, please:',
         'What may keep you from applying what you have learned in this program?',
         'Which target group is best suited for this program? Could you recommend specific individuals to attend?',
         'Please share any information you believe would help us to improve this program.',
     ]);
     $ratingQuestion = $overall->questions->firstWhere('type', EvaluationQuestion::TYPE_SCALE10);
-    expect($ratingQuestion->label)->toBe('1. My overall rating for this program');
-    expect($ratingQuestion->is_required)->toBeTrue();
+    expect($ratingQuestion->label)->toBe('18. My overall rating for this program');
+
+    // Every seeded question is required (client asked that all questions require an answer).
+    $form->sections->each(function ($section) {
+        $section->questions->each(function ($question) use ($section) {
+            expect($question->is_required)->toBeTrue("Expected '{$question->label}' in section '{$section->title}' to be required.");
+        });
+    });
 });
 
 test('the fixed rating scale legends match the registered form', function () {

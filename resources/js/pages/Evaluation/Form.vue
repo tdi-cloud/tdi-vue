@@ -2,6 +2,7 @@
 import { ref, computed, reactive, onMounted } from 'vue';
 import { router, usePage, Head } from '@inertiajs/vue3';
 import { ChevronDown, Loader2, AlertCircle, Star, Users, ClipboardList, Target, Lightbulb, MessageSquareText, Building2, ArrowLeft, ArrowRight, Check } from 'lucide-vue-next';
+import EvaluationLikertGrid from '@/components/EvaluationLikertGrid.vue';
 
 interface Question {
     id: number;
@@ -147,10 +148,6 @@ function likertQuestions(section: Section) {
 
 function otherQuestions(section: Section) {
     return section.questions.filter((q) => q.type !== 'likert5');
-}
-
-function facilitatorHasLikertError(facilitator: Facilitator, section: Section) {
-    return likertQuestions(section).some((q) => fieldError(`facilitator_answers.${facilitator.id}.${q.id}`));
 }
 
 function toggleCheckboxValue(target: any[], option: string) {
@@ -402,38 +399,14 @@ function submit() {
                             <p v-if="facilitator.role" class="text-xs text-gray-500 mb-3">{{ facilitator.role }}</p>
 
                             <!-- Likert-scale statements share one ratings grid -->
-                            <div v-if="likertQuestions(section).length" class="overflow-x-auto -mx-1 px-1">
-                                <table class="w-full text-xs border-collapse">
-                                    <thead>
-                                        <tr>
-                                            <th class="text-left font-semibold text-gray-500 pb-2 pr-2 align-bottom"></th>
-                                            <th
-                                                v-for="opt in LIKERT5_OPTIONS" :key="opt.value"
-                                                class="text-center font-semibold text-gray-500 pb-2 px-1.5 align-bottom whitespace-nowrap"
-                                            >{{ opt.label }}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-for="question in likertQuestions(section)" :key="question.id" class="border-t border-gray-100">
-                                            <td class="py-2.5 pr-3 text-gray-700 font-medium">
-                                                {{ question.label }} <span v-if="question.is_required" class="text-red-500">*</span>
-                                            </td>
-                                            <td v-for="opt in LIKERT5_OPTIONS" :key="opt.value" class="text-center py-2.5 px-1.5">
-                                                <input
-                                                    type="radio"
-                                                    :name="`facilitator-${facilitator.id}-${question.id}`"
-                                                    :checked="facilitatorAnswers[facilitator.id][question.id] === opt.value"
-                                                    @change="facilitatorAnswers[facilitator.id][question.id] = opt.value"
-                                                    class="h-4 w-4 accent-rose-600 cursor-pointer"
-                                                />
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                                <p v-if="facilitatorHasLikertError(facilitator, section)" class="mt-2 text-xs text-red-500">
-                                    Please rate all required items above.
-                                </p>
-                            </div>
+                            <EvaluationLikertGrid
+                                v-if="likertQuestions(section).length"
+                                :questions="likertQuestions(section)"
+                                :values="facilitatorAnswers[facilitator.id]"
+                                :options="LIKERT5_OPTIONS"
+                                :name-prefix="`facilitator-${facilitator.id}`"
+                                :error-for="(qid) => fieldError(`facilitator_answers.${facilitator.id}.${qid}`)"
+                            />
 
                             <div class="space-y-4 mt-4">
                                 <div v-for="question in otherQuestions(section)" :key="question.id">
@@ -471,25 +444,23 @@ function submit() {
                         </div>
 
                         <div class="px-5 py-5 space-y-5">
-                            <div v-for="question in section.questions" :key="question.id">
+                            <!-- Likert-scale statements share one ratings grid -->
+                            <EvaluationLikertGrid
+                                v-if="likertQuestions(section).length"
+                                :questions="likertQuestions(section)"
+                                :values="answers"
+                                :options="LIKERT5_OPTIONS"
+                                :name-prefix="`section-${section.id}`"
+                                :error-for="(qid) => fieldError(`answers.${qid}`)"
+                            />
+
+                            <div v-for="question in otherQuestions(section)" :key="question.id">
                                 <label class="block text-sm font-semibold text-gray-700 mb-1.5">
                                     {{ question.label }} <span v-if="question.is_required" class="text-red-500">*</span>
                                 </label>
 
-                                <!-- likert5 -->
-                                <div v-if="question.type === 'likert5'" class="flex flex-wrap gap-1.5">
-                                    <button
-                                        v-for="opt in LIKERT5_OPTIONS" :key="opt.value" type="button"
-                                        class="px-3 py-1.5 rounded-full text-xs font-semibold border transition"
-                                        :class="answers[question.id] === opt.value
-                                            ? 'bg-rose-600 border-rose-600 text-white'
-                                            : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-rose-50'"
-                                        @click="answers[question.id] = opt.value"
-                                    >{{ opt.label }}</button>
-                                </div>
-
                                 <!-- scale10 -->
-                                <div v-else-if="question.type === 'scale10'" class="space-y-2">
+                                <div v-if="question.type === 'scale10'" class="space-y-2">
                                     <div class="flex flex-wrap gap-1.5">
                                         <button
                                             v-for="n in 10" :key="n" type="button"

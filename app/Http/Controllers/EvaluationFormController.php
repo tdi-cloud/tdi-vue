@@ -334,7 +334,7 @@ class EvaluationFormController extends Controller
         $responses = $evaluationForm->responses()
             ->with(['answers.question', 'answers.facilitator'])
             ->latest()
-            ->paginate(20);
+            ->paginate($request->integer('per_page', 20));
 
         return response()->json($responses);
     }
