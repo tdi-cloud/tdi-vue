@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,6 +17,9 @@ import { ref, computed } from 'vue';
 import { useConfirm } from '@/composables/useConfirm';
 
 const { confirmDialog } = useConfirm();
+
+const page = usePage();
+const isSuperAdmin = computed(() => (page.props.auth as any)?.user?.access === 'superadmin');
 
 interface Question {
     id: number;
@@ -143,6 +146,22 @@ async function copyLink() {
     await navigator.clipboard.writeText(publicUrl.value);
     linkCopied.value = true;
     setTimeout(() => { linkCopied.value = false; }, 1500);
+}
+
+const deletingForm = ref(false);
+async function deleteForm() {
+    if (!form.value) return;
+    const confirmed = await confirmDialog(
+        `Delete the entire evaluation form for "${props.batch.batch}"? This removes all sections, questions, facilitators, and any responses already submitted — this cannot be undone.`,
+        { confirmText: 'Delete Evaluation Form' },
+    );
+    if (!confirmed) return;
+
+    deletingForm.value = true;
+    router.delete(route('evaluation-forms.destroy', form.value.id), {
+        preserveScroll: true,
+        onFinish: () => { deletingForm.value = false; },
+    });
 }
 
 /* ── Sections ─────────────────────────────────────────────────────────────── */
@@ -413,6 +432,16 @@ function moveFacilitator(facilitator: Facilitator, dir: 'up' | 'down') {
                                 <BarChart3 class="h-3 w-3 mr-1" /> View Results Dashboard
                             </Button>
                         </Link>
+                    </div>
+
+                    <div v-if="isSuperAdmin" class="flex items-center justify-between gap-3 pt-3 border-t">
+                        <p class="text-[11px] text-muted-foreground">
+                            Superadmin only: permanently delete this batch's evaluation form and start over.
+                        </p>
+                        <Button size="sm" variant="destructive" class="h-7 text-xs shrink-0" :disabled="deletingForm" @click="deleteForm">
+                            <LoaderCircle v-if="deletingForm" class="h-3 w-3 mr-1 animate-spin" />
+                            <Trash2 v-else class="h-3 w-3 mr-1" /> Delete Evaluation Form
+                        </Button>
                     </div>
                 </div>
 

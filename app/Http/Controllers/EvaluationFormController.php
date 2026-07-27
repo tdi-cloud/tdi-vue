@@ -281,6 +281,12 @@ class EvaluationFormController extends Controller
             }
         })->pluck('id');
 
+        // Kept unfiltered by batch so the "Responses per Batch" breakdown always
+        // shows every batch, even while the other stats below are scoped to one.
+        $allFormIds = EvaluationForm::whereHas('batch', function ($q) use ($program) {
+            $q->where('program_code', $program->program_code);
+        })->pluck('id');
+
         $responseIds = EvaluationResponse::whereIn('evaluation_form_id', $formIds)->pluck('id');
 
         $totalResponses = $responseIds->count();
@@ -314,7 +320,7 @@ class EvaluationFormController extends Controller
         $responsesPerBatch = EvaluationResponse::query()
             ->join('evaluation_forms', 'evaluation_responses.evaluation_form_id', '=', 'evaluation_forms.id')
             ->join('batches', 'evaluation_forms.batch_id', '=', 'batches.id')
-            ->whereIn('evaluation_forms.id', $formIds)
+            ->whereIn('evaluation_forms.id', $allFormIds)
             ->selectRaw('batches.id as batch_id, batches.batch as batch_label, count(*) as total')
             ->groupBy('batches.id', 'batches.batch')
             ->get();
@@ -332,7 +338,7 @@ class EvaluationFormController extends Controller
     public function responses(Request $request, EvaluationForm $evaluationForm)
     {
         $responses = $evaluationForm->responses()
-            ->with(['answers.question', 'answers.facilitator'])
+            ->with(['answers.question.section', 'answers.facilitator'])
             ->latest()
             ->paginate($request->integer('per_page', 20));
 

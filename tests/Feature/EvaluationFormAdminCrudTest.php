@@ -192,3 +192,32 @@ test('admin can add, reorder, and delete facilitators', function () {
     $this->actingAs($admin)->delete(route('evaluation-facilitators.destroy', $second));
     expect(EvaluationFacilitator::find($second->id))->toBeNull();
 });
+
+test('a superadmin can delete an entire evaluation form to reset it', function () {
+    $superadmin = User::factory()->create(['empcode' => 'EMP-EVCRUD-07', 'access' => 'superadmin']);
+    $program = evalCrudProgram();
+    $batch = evalCrudBatch($program);
+    $form = EvaluationForm::create(['batch_id' => $batch->id, 'slug' => EvaluationForm::generateSlugFor($batch)]);
+    $form->seedDefaults();
+    $sectionId = $form->sections()->first()->id;
+
+    $this->actingAs($superadmin)
+        ->delete(route('evaluation-forms.destroy', $form))
+        ->assertSessionDoesntHaveErrors();
+
+    expect(EvaluationForm::find($form->id))->toBeNull();
+    expect(EvaluationSection::find($sectionId))->toBeNull();
+});
+
+test('a regular admin cannot delete an evaluation form', function () {
+    $admin = evalCrudAdmin('EMP-EVCRUD-08');
+    $program = evalCrudProgram();
+    $batch = evalCrudBatch($program);
+    $form = EvaluationForm::create(['batch_id' => $batch->id, 'slug' => EvaluationForm::generateSlugFor($batch)]);
+
+    $this->actingAs($admin)
+        ->delete(route('evaluation-forms.destroy', $form))
+        ->assertForbidden();
+
+    expect(EvaluationForm::find($form->id))->not->toBeNull();
+});

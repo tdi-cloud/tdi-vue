@@ -181,8 +181,8 @@ function textAnswers(response: any) {
 
 /**
  * Comments are grouped per question (not per respondent) so individual
- * respondents stay anonymous — only the question label and facilitator (for
- * facilitator-section questions) are shown alongside each comment.
+ * respondents stay anonymous — each group is labeled with its form section
+ * so admins can still tell where in the form the question lives.
  */
 const groupedComments = computed(() => {
     const groups = new Map<string, { key: string; label: string; facilitatorName?: string; comments: string[] }>();
@@ -191,9 +191,11 @@ const groupedComments = computed(() => {
         for (const a of textAnswers(response)) {
             const key = `${a.evaluation_question_id}-${a.evaluation_facilitator_id ?? 'none'}`;
             if (!groups.has(key)) {
+                const sectionTitle = a.question?.section?.title;
+                const label = sectionTitle ? `${sectionTitle} - ${a.question?.label ?? 'Question'}` : (a.question?.label ?? 'Question');
                 groups.set(key, {
                     key,
-                    label: a.question?.label ?? 'Question',
+                    label,
                     facilitatorName: a.facilitator?.name,
                     comments: [],
                 });
@@ -378,7 +380,7 @@ onBeforeUnmount(() => {
                     <VueApexCharts v-if="overallDistribution.length" type="bar" height="240" :options="distributionBarOptions" :series="distributionBarSeries" />
                     <p v-else class="text-xs text-muted-foreground text-center py-10">No overall ratings yet.</p>
                 </div>
-                <div v-if="filterBatchId === 'all'" class="rounded-xl border p-4">
+                <div class="rounded-xl border p-4">
                     <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center justify-between gap-1.5">
                         <span>Responses per Batch</span>
                         <span v-if="responsesPerBatch.length" class="normal-case font-normal text-[10px] text-muted-foreground/70">Click a slice to see who submitted</span>
@@ -395,7 +397,6 @@ onBeforeUnmount(() => {
                 <div class="px-5 py-3 border-b bg-muted/40 flex items-center gap-1.5">
                     <MessageSquareText class="h-4 w-4 text-rose-600" />
                     <p class="text-sm font-bold">Written Comments</p>
-                    <span class="ml-auto text-[10px] text-muted-foreground">Anonymous — no names shown</span>
                 </div>
 
                 <div v-if="filterBatchId === 'all'" class="px-5 py-8 text-center text-xs text-muted-foreground">

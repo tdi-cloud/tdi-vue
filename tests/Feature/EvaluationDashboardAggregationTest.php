@@ -122,6 +122,11 @@ test('the dashboard aggregates ratings correctly across all batches and when fil
     expect($filtered['total_responses'])->toBe(2);
     $filteredOverall = collect($filtered['avg_by_section'])->firstWhere('section_key', EvaluationSection::KEY_OVERALL);
     expect((float) $filteredOverall['avg_rating'])->toBe(9.0); // (8+10)/2
+
+    // Responses per Batch always reflects every batch, even while filtered.
+    $filteredResponsesPerBatch = collect($filtered['responses_per_batch'])->keyBy('batch_label');
+    expect($filteredResponsesPerBatch['Batch A']['total'])->toBe(2);
+    expect($filteredResponsesPerBatch['Batch B']['total'])->toBe(1);
 });
 
 test('non-admin users cannot view the evaluation dashboard data', function () {

@@ -63,18 +63,12 @@
 </table>
 
 @php
-    // NAME / DESIGNATION / AGENCY are sized in points, weighted by the
-    // longest value actually present in each column, but capped to ~42% of
-    // the page — these columns are allowed to wrap onto 2–3 lines rather
-    // than forcing a single line, so they don't need to fit the full value
-    // on one line. Whatever width remains is handed to the requirements/
-    // interview columns, split in their relative proportions (RELEVANCE
-    // gets a bigger share since it has by far the longest header label).
-    $pageWidthPt = 770; // A4 landscape (841.89pt) minus 0.5in left/right margins
-    $charWidth = 3.8;   // approx. pt per character at 6pt Arial
-    $cellPad = 10;      // padding + border allowance per cell
+    
+    $pageWidthPt = 770; 
+    $charWidth = 3.8;   
+    $cellPad = 10;      
 
-    $hashPt = 7.5; // fixed ~10px, doesn't grow/shrink with the other columns
+    $hashPt = 7.5; 
     $nameLen = max(4, $nominees->max(fn ($n) => strlen($n->full_name)));
     $designationLen = max(4, $nominees->max(fn ($n) => strlen($n->position)));
     $agencyLen = max(4, $nominees->max(fn ($n) => strlen($n->agency)));
