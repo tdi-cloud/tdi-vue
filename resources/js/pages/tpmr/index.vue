@@ -7,6 +7,9 @@ import {
     X, Upload, FileText, Trash2, ExternalLink,
     CheckCircle2, AlertCircle, Search
 } from 'lucide-vue-next';
+import { useConfirm } from '@/composables/useConfirm';
+
+const { confirmDialog } = useConfirm();
 
 interface Report {
     id: number;
@@ -138,8 +141,8 @@ const submit = () => {
     });
 };
 
-const deleteReport = (id: number) => {
-    if (!confirm('Delete this report?')) return;
+const deleteReport = async (id: number) => {
+    if (!(await confirmDialog('Delete this report?'))) return;
     router.delete(route('tpmr.destroy', id), { preserveScroll: true });
 };
 

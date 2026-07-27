@@ -12,23 +12,23 @@ class CertificateController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'participant_id'   => 'required|exists:participants,id',
-            'batch_id'         => 'required|exists:batches,id',
-            'program_code'     => 'required|string',
-            'type'             => 'required|in:Participation,Completion,Appearance,Appreciation,Recognition,Achievement',
-            'status'           => 'nullable|in:Pending,Issued,Revoked',
-            'issued_date'      => 'nullable|date',
-            'issued_by'        => 'nullable|string|max:255',
-            'remarks'          => 'nullable|string|max:1000',
-            'file'             => 'nullable|file|mimes:pdf|max:5120', 
+            'participant_id' => 'required|exists:participants,id',
+            'batch_id' => 'required|exists:batches,id',
+            'program_code' => 'required|string',
+            'type' => 'required|in:Participation,Completion,Appearance,Appreciation,Recognition,Achievement',
+            'status' => 'nullable|in:Pending,Issued,Revoked',
+            'issued_date' => 'nullable|date',
+            'issued_by' => 'nullable|string|max:255',
+            'remarks' => 'nullable|string|max:1000',
+            'file' => 'nullable|file|mimes:pdf|max:5120',
         ]);
 
         $participant = Participant::findOrFail($validated['participant_id']);
 
         $cert = Certificate::firstOrNew([
             'participant_id' => $validated['participant_id'],
-            'batch_id'       => $validated['batch_id'],
-            'type'           => $validated['type'],
+            'batch_id' => $validated['batch_id'],
+            'type' => $validated['type'],
         ]);
 
         if (! $request->hasFile('file') && ! $cert->file_path) {
@@ -41,22 +41,23 @@ class CertificateController extends Controller
             if ($cert->file_path) {
                 Storage::disk('public')->delete($cert->file_path);
             }
-            $file     = $request->file('file');
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $path     = $file->storeAs('certificates', $filename, 'public');
+            $file = $request->file('file');
+            $safeName = $this->sanitizeFilename($file->getClientOriginalName());
+            $filename = time().'_'.$safeName;
+            $path = $file->storeAs('certificates', $filename, 'public');
 
-            $cert->file_path  = $path;
-            $cert->file_name  = $file->getClientOriginalName();
+            $cert->file_path = $path;
+            $cert->file_name = $safeName;
             $cert->uploaded_by = $request->user()->name ?? 'System';
         }
 
-        $cert->program_code  = $validated['program_code'];
-        $cert->empcode       = $participant->empcode;
-        $cert->status        = $validated['status'] ?? $cert->status ?? 'Pending';
-        $cert->issued_date   = $validated['issued_date'] ?? $cert->issued_date;
-        $cert->issued_by     = $validated['issued_by'] ?? $cert->issued_by;
-        $cert->remarks       = $validated['remarks'] ?? $cert->remarks;
-        $cert->hours         = $participant->hours ?? 0;
+        $cert->program_code = $validated['program_code'];
+        $cert->empcode = $participant->empcode;
+        $cert->status = $validated['status'] ?? $cert->status ?? 'Pending';
+        $cert->issued_date = $validated['issued_date'] ?? $cert->issued_date;
+        $cert->issued_by = $validated['issued_by'] ?? $cert->issued_by;
+        $cert->remarks = $validated['remarks'] ?? $cert->remarks;
+        $cert->hours = $participant->hours ?? 0;
 
         $cert->save();
 
@@ -78,25 +79,26 @@ class CertificateController extends Controller
 
         $cert = Certificate::firstOrNew([
             'participant_id' => $participant->id,
-            'batch_id'       => $batchId,
-            'type'           => $request->type,
+            'batch_id' => $batchId,
+            'type' => $request->type,
         ]);
 
         if ($cert->file_path) {
             Storage::disk('public')->delete($cert->file_path);
         }
 
-        $file     = $request->file('file');
-        $filename = time() . '_' . $file->getClientOriginalName();
-        $path     = $file->storeAs('certificates', $filename, 'public');
+        $file = $request->file('file');
+        $safeName = $this->sanitizeFilename($file->getClientOriginalName());
+        $filename = time().'_'.$safeName;
+        $path = $file->storeAs('certificates', $filename, 'public');
 
-        $cert->program_code  = $participant->batch->program_code;
-        $cert->empcode       = $participant->empcode;
-        $cert->file_path     = $path;
-        $cert->file_name     = $file->getClientOriginalName();
-        $cert->uploaded_by   = $user->name;
-        $cert->hours         = $participant->hours ?? 0;
-        $cert->status        = $cert->status ?? 'Pending';
+        $cert->program_code = $participant->batch->program_code;
+        $cert->empcode = $participant->empcode;
+        $cert->file_path = $path;
+        $cert->file_name = $safeName;
+        $cert->uploaded_by = $user->name;
+        $cert->hours = $participant->hours ?? 0;
+        $cert->status = $cert->status ?? 'Pending';
 
         $cert->save();
 
@@ -106,6 +108,7 @@ class CertificateController extends Controller
     public function destroy(Certificate $certificate)
     {
         $certificate->delete(); // booted() handles file deletion
+
         return back()->with('success', 'Certificate deleted successfully.');
     }
 
@@ -118,5 +121,14 @@ class CertificateController extends Controller
         $certificate->delete();
 
         return back()->with('success', 'Certificate removed successfully.');
+    }
+
+    /**
+     * Strip directory components and any character outside a safe allow-list
+     * from a user-supplied filename before it's used to build a storage path.
+     */
+    private function sanitizeFilename(string $name): string
+    {
+        return preg_replace('/[^A-Za-z0-9_\-.]/', '_', basename($name));
     }
 }

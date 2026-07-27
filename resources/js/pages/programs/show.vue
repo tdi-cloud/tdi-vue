@@ -26,20 +26,24 @@ import {
     Flag,
     Megaphone ,
     Award,
-    FileSignature
+    FileSignature,
+    ClipboardCheck
 } from 'lucide-vue-next';
 import { Link } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import BatchList from '@/pages/programs/BatchList.vue';
 import CompetencyModal from '@/pages/programs/CompetencyModal.vue';
-import RequirementList from '@/pages/programs/RequirementList.vue'; 
+import RequirementList from '@/pages/programs/RequirementList.vue';
 import SubmissionList from '@/pages/programs/SubmissionList.vue';
 import SupportingDocuments from '@/pages/programs/SupportingDocuments.vue';
 import ResourceSpeakers from '@/pages/programs/ResourceSpeakers.vue';
 import CoverPagePanel from '@/pages/programs/CoverPagePanel.vue';
 import CertificatesPanel from '@/pages/programs/CertificatesPanel.vue';
 import TesdaOrderPanel from '@/pages/programs/TesdaOrderPanel.vue';
+import EvaluationDashboard from '@/pages/programs/EvaluationDashboard.vue';
+import { useConfirm } from '@/composables/useConfirm';
 
+const { confirmDialog } = useConfirm();
 
 interface Requirement {
     id: number;
@@ -65,7 +69,8 @@ interface Batch {
     time_end: string;
     days: string;
     hours: string;
-    requirements?: Requirement[]; 
+    requirements?: Requirement[];
+    evaluation_form?: { id: number; batch_id: number; is_active: boolean } | null;
 }
 
 interface Competency {
@@ -135,8 +140,8 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: props.program.program_code, href: `/programs/${props.program.id}` },
 ];
 
-const deleteProgram = () => {
-    if (confirm('Are you sure you want to delete this program?')) {
+const deleteProgram = async () => {
+    if (await confirmDialog('Are you sure you want to delete this program?')) {
         router.delete(route('programs.destroy', props.program.id), {
             onSuccess: () => router.visit(route('programs.index')),
         });
@@ -146,6 +151,7 @@ const deleteProgram = () => {
 /* ===================== COMPETENCIES ===================== */
 
 const showCompetencyModal = ref(false);
+const showEvaluationDashboard = ref(false);
 
 const DOMAIN_ORDER = ['Leadership', 'Core', 'Organizational', 'Technical', 'TTI'];
 
@@ -173,8 +179,8 @@ const existingCompetencyNames = computed(() =>
     (props.program.competencies ?? []).map((c) => c.competency),
 );
 
-const removeCompetency = (competency: Competency) => {
-    if (confirm('Remove this competency from the program?')) {
+const removeCompetency = async (competency: Competency) => {
+    if (await confirmDialog('Remove this competency from the program?', { confirmText: 'Remove' })) {
         router.delete(route('programs.competencies.destroy', [props.program.id, competency.id]), {
             preserveScroll: true,
         });
@@ -286,7 +292,16 @@ const removeCompetency = (competency: Competency) => {
 
                         <!-- LEFT: Program Details (2/3 ng lapad) -->
                         <div class="lg:col-span-2 flex flex-col gap-4">
-                            <h1 class="font-bold">Program Details</h1>
+                            <div class="flex items-center justify-between">
+                                <h1 class="font-bold">Program Details</h1>
+                                <Button
+                                    size="sm"
+                                    class="h-7 text-xs bg-rose-600 hover:bg-rose-700 text-white"
+                                    @click="showEvaluationDashboard = true"
+                                >
+                                    <ClipboardCheck class="h-3.5 w-3.5 mr-1" /> Evaluation Results
+                                </Button>
+                            </div>
 
                             <CoverPagePanel
                                 :program-id="program.id"
@@ -449,5 +464,39 @@ const removeCompetency = (competency: Competency) => {
             </Tabs>
 
         </div>
+
+        <!-- Evaluation Results modal -->
+        <Transition name="backdrop" appear>
+            <div
+                v-if="showEvaluationDashboard"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+                @click.self="showEvaluationDashboard = false"
+            >
+                <div class="bg-background rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+                    <div class="sticky top-0 z-10 bg-gradient-to-r from-rose-700 via-red-700 to-orange-600 border-b px-6 py-4 rounded-t-2xl flex items-center gap-3 text-white">
+                        <div class="flex items-center justify-center h-9 w-9 rounded-xl bg-white/20 backdrop-blur shadow">
+                            <ClipboardCheck class="h-4 w-4 text-white" />
+                        </div>
+                        <div>
+                            <h2 class="text-base font-bold leading-none">Evaluation Results</h2>
+                            <p class="text-xs text-white/75 mt-0.5">Aggregated feedback for {{ program.title }}</p>
+                        </div>
+                        <button class="ml-auto text-white/80 hover:text-white transition-colors" @click="showEvaluationDashboard = false">
+                            <X class="h-5 w-5" />
+                        </button>
+                    </div>
+                    <div class="p-6">
+                        <EvaluationDashboard :program="program" />
+                    </div>
+                </div>
+            </div>
+        </Transition>
     </AppLayout>
 </template>
+
+<style scoped>
+.backdrop-enter-active,
+.backdrop-leave-active { transition: opacity 0.2s ease; }
+.backdrop-enter-from,
+.backdrop-leave-to     { opacity: 0; }
+</style>

@@ -2,6 +2,9 @@
 import { ref, onMounted } from 'vue';
 import { X, Plus, Trash2, Users, LoaderCircle, Search, ChevronUp, ChevronDown } from 'lucide-vue-next';
 import axios from 'axios';
+import { useConfirm } from '@/composables/useConfirm';
+
+const { confirmDialog } = useConfirm();
 
 interface Member {
     id: number;
@@ -99,7 +102,7 @@ const addMember = async (emp: EmployeeResult) => {
 };
 
 const deleteMember = async (member: Member) => {
-    if (!confirm(`Remove "${member.name}" from the NHRDC roster?`)) return;
+    if (!(await confirmDialog(`Remove "${member.name}" from the NHRDC roster?`))) return;
     deletingId.value = member.id;
     try {
         await axios.delete(route('nhrdc-members.destroy', member.id));

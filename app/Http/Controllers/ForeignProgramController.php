@@ -20,6 +20,7 @@ class ForeignProgramController extends Controller
                 'online_start', 'online_end', 'inperson_start', 'inperson_end',
                 'program_cost', 'fund_source', 'submission_date', 'embassy_deadline',
                 'interview_date', 'invited_agencies', 'attached_agency', 'created_at',
+                'created_by_empcode', 'created_by_name',
             ]);
 
         if ($request->filled('search')) {
@@ -102,6 +103,11 @@ class ForeignProgramController extends Controller
     public function store(Request $request)
     {
         $data = $this->validateProgram($request);
+
+        $user = $request->user();
+        $data['created_by_empcode'] = $user?->empcode;
+        $data['created_by_name'] = $user?->name ?? 'System';
+
         ForeignProgram::create($data);
 
         return back()->with('success', 'Foreign program created successfully.');

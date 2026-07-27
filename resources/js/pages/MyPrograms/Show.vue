@@ -57,8 +57,28 @@
       </div>
     </section>
 
+    <!-- Tab Navigation -->
+    <nav class="tabs-nav">
+      <div class="tabs-nav__inner">
+        <button
+          v-for="tab in TABS"
+          :key="tab.key"
+          type="button"
+          class="tab-btn"
+          :class="{ 'tab-btn--active': activeTab === tab.key }"
+          @click="activeTab = tab.key"
+        >
+          <component :is="tab.icon" :size="16" />
+          {{ tab.label }}
+          <span v-if="tab.badge" class="tab-btn__badge">{{ tab.badge }}</span>
+        </button>
+      </div>
+    </nav>
+
+    <div class="tab-content">
+
     <!-- About this Program -->
-    <section v-if="program.program_description || program.program_type" class="about">
+    <section v-show="activeTab === 'about'" class="about">
       <div class="about__inner">
         <h2>About this Program</h2>
         <div class="about__meta">
@@ -70,7 +90,7 @@
     </section>
 
     <!-- Requirements breakdown -->
-    <section class="reqs">
+    <section v-show="activeTab === 'requirements'" class="reqs">
       <div class="reqs__inner">
         <h2>Requirements Checklist</h2>
         <p v-if="program.attendance === 'Absent'" class="reqs__sub reqs__sub--absent">
@@ -137,7 +157,7 @@
     </section>
 
     <!-- Absence Justification -->
-    <section class="justification">
+    <section v-show="activeTab === 'justification'" class="justification">
       <div class="justification__inner">
         <div v-if="program.attendance === 'Absent' && program.justification" class="justification__banner">
           <AlertCircle :size="20" />
@@ -182,7 +202,7 @@
     <!-- ══════════════════════════════════════════
          CERTIFICATES SECTION
     ══════════════════════════════════════════ -->
-    <section class="certs">
+    <section v-show="activeTab === 'certificates'" class="certs">
       <div class="certs__inner">
 
         <!-- Section header -->
@@ -286,7 +306,7 @@
     </section>
 
     <!-- Resource Speakers -->
-    <section v-if="program.resource_speakers && program.resource_speakers.length" class="speakers">
+    <section v-show="activeTab === 'speakers'" class="speakers">
       <div class="speakers__inner">
         <h2>Resource Speakers</h2>
         <p class="reqs__sub">Facilitators and resource persons engaged for this program.</p>
@@ -305,7 +325,7 @@
     </section>
 
     <!-- Supporting Documents -->
-    <section v-if="program.supporting_documents && program.supporting_documents.length" class="docs">
+    <section v-show="activeTab === 'documents'" class="docs">
       <div class="docs__inner">
         <h2>Supporting Documents</h2>
         <p class="reqs__sub">Official memos, orders, and circulars related to this program.</p>
@@ -329,6 +349,8 @@
       </div>
     </section>
 
+    </div>
+
     <TheFooter />
   </div>
 </template>
@@ -343,13 +365,40 @@ import {
   CheckCircle2, AlertCircle, XCircle, CircleDashed,
   UploadCloud, Mic2, BookOpen, FileText, Trash2,
   Award, Star, Trophy, BadgeCheck, Sparkles, Medal,
-  Tag, Hash, Building2, ExternalLink,
+  Tag, Hash, Building2, ExternalLink, Info, ClipboardCheck,
 } from 'lucide-vue-next'
+import { useConfirm } from '@/composables/useConfirm'
 
+const { confirmDialog } = useConfirm()
 
 const props = defineProps({
   program: { type: Object, required: true },
 })
+
+/* ---- Tabs: split the page into panels instead of one long scroll ---- */
+const TABS = computed(() => {
+  const tabs = []
+  if (props.program.program_description || props.program.program_type) {
+    tabs.push({ key: 'about', label: 'Overview', icon: Info })
+  }
+  tabs.push({
+    key: 'requirements',
+    label: 'Requirements',
+    icon: ClipboardCheck,
+    badge: props.program.requirements_missing > 0 ? props.program.requirements_missing : null,
+  })
+  tabs.push({ key: 'justification', label: 'Non-Attendance', icon: AlertCircle })
+  tabs.push({ key: 'certificates', label: 'Certificates', icon: Award })
+  if (props.program.resource_speakers?.length) {
+    tabs.push({ key: 'speakers', label: 'Speakers', icon: Mic2 })
+  }
+  if (props.program.supporting_documents?.length) {
+    tabs.push({ key: 'documents', label: 'Documents', icon: FileText })
+  }
+  return tabs
+})
+
+const activeTab = ref('requirements')
 
 /* ---- Note drafts ---- */
 const noteDraft = ref(
@@ -440,8 +489,8 @@ function submitFile(requirement) {
   )
 }
 
-function confirmDelete(requirement) {
-  if (!window.confirm(`Delete your submission for "${requirement.name}"? You'll need to submit again.`)) return
+async function confirmDelete(requirement) {
+  if (!(await confirmDialog(`Delete your submission for "${requirement.name}"? You'll need to submit again.`))) return
   deletingId.value = requirement.id
   router.delete(
     route('programs.my-progress.destroy', { batch: props.program.batch_id, requirement: requirement.id }),
@@ -494,8 +543,8 @@ function submitJustification() {
   )
 }
 
-function confirmDeleteJustification() {
-  if (!window.confirm('Remove your justification memo? Your attendance status will revert to Pending.')) return
+async function confirmDeleteJustification() {
+  if (!(await confirmDialog('Remove your justification memo? Your attendance status will revert to Pending.'))) return
   deletingJustification.value = true
   router.delete(
     route('programs.my-progress.justification.destroy', { batch: props.program.batch_id }),
@@ -584,8 +633,8 @@ function uploadCertificate() {
   )
 }
 
-function confirmDeleteCert(cert) {
-  if (!window.confirm(`Remove your ${cert.type} certificate? This cannot be undone.`)) return
+async function confirmDeleteCert(cert) {
+  if (!(await confirmDialog(`Remove your ${cert.type} certificate? This cannot be undone.`))) return
   deletingCertId.value = cert.id
   router.delete(
     route('certificates.destroy-by-user', { batch: props.program.batch_id, certificate: cert.id }),
@@ -617,7 +666,7 @@ function confirmDeleteCert(cert) {
 .flash--success { background: #ecfdf5; color: #065f46; }
 
 /* Stats */
-.stats { background: #f7f9fd; padding: 0 2rem; }
+.stats { background: #ffffff; padding: 0 2rem; }
 .stats__inner { max-width: 900px; margin: 0 auto; transform: translateY(-2.5rem); display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 1.25rem; }
 .stat-card { background: #fff; border-radius: 16px; padding: 1.5rem; box-shadow: 0 8px 30px rgba(15,28,72,0.1); display: flex; align-items: center; gap: 1rem; }
 .stat-card--ring { gap: 1.25rem; }
@@ -630,8 +679,18 @@ function confirmDeleteCert(cert) {
 .ring-lg__hole span { font-size: 0.55rem; color: #9ca3af; }
 .icon--green { color: #0CA678; } .icon--gold { color: #e67700; } .icon--red { color: #e03131; } .icon--muted { color: #9ca3af; }
 
+/* Tabs: split the page into panels so the user isn't stuck scrolling
+   through every section to find the one they want. */
+.tabs-nav { position: sticky; top: 68px; z-index: 20; background: #fff; border-bottom: 1px solid #e5e7eb; margin-top: 1.5rem; }
+.tabs-nav__inner { max-width: 900px; margin: 0 auto; display: flex; gap: 0.25rem; padding: 0 2rem; overflow-x: auto; }
+.tab-btn { display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap; padding: 0.9rem 1rem; border: none; background: none; font-family: inherit; font-size: 0.85rem; font-weight: 700; color: #6b7280; cursor: pointer; border-bottom: 2.5px solid transparent; transition: color 0.15s, border-color 0.15s; }
+.tab-btn:hover { color: #1d3fc4; }
+.tab-btn--active { color: #1d3fc4; border-bottom-color: #1d3fc4; }
+.tab-btn__badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #f59f00; color: #fff; font-size: 0.68rem; font-weight: 800; }
+.tab-content { background: #f7f9fd; padding: 2.5rem 0 4rem; }
+
 /* About this Program */
-.about { padding: 3rem 2rem 0; background: #f7f9fd; }
+.about { padding: 0 2rem; background: transparent; }
 .about__inner { max-width: 900px; margin: 0 auto; background: #fff; border-radius: 16px; padding: 1.75rem 2rem; box-shadow: 0 2px 12px rgba(15,28,72,0.05); }
 .about h2 { font-size: 1.15rem; font-weight: 800; color: #1a2744; margin-bottom: 0.6rem; }
 .about__meta { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.85rem; }
@@ -641,7 +700,7 @@ function confirmDeleteCert(cert) {
 .about__desc { font-size: 0.88rem; line-height: 1.65; color: #4b5563; }
 
 /* Absence Justification */
-.justification { padding: 3rem 2rem 3rem; background: #f7f9fd; }
+.justification { padding: 0 2rem; background: transparent; }
 .justification__inner { max-width: 900px; margin: 0 auto; background: #fff; border-radius: 16px; padding: 1.75rem 2rem; box-shadow: 0 2px 12px rgba(15,28,72,0.05); }
 .justification__inner h2 { font-size: 1.15rem; font-weight: 800; color: #1a2744; margin-bottom: 0.5rem; }
 .justification__banner { display: flex; align-items: flex-start; gap: 0.75rem; background: #fef2f2; color: #991b1b; border-radius: 12px; padding: 0.9rem 1.1rem; margin-bottom: 1.25rem; }
@@ -649,7 +708,7 @@ function confirmDeleteCert(cert) {
 .justification__banner-sub { font-size: 0.8rem; margin-top: 0.15rem; color: #b91c1c; }
 
 /* Requirements */
-.reqs { padding: 4.5rem 2rem 0; background: #f7f9fd; }
+.reqs { padding: 0 2rem; background: transparent; }
 .reqs__inner { max-width: 900px; margin: 0 auto; }
 .reqs h2 { font-size: 1.5rem; font-weight: 800; color: #1a2744; margin-bottom: 0.4rem; }
 .reqs__sub { color: #6b7280; margin-bottom: 1.5rem; }
@@ -697,7 +756,7 @@ function confirmDeleteCert(cert) {
 .reqs__empty { display: flex; align-items: center; gap: 0.5rem; color: #9ca3af; font-size: 0.9rem; padding: 1.5rem; background: #fff; border-radius: 14px; }
 
 /* Resource speakers */
-.speakers { padding: 0 2rem 5rem; background: #f7f9fd; }
+.speakers { padding: 0 2rem; background: transparent; }
 .speakers__inner { max-width: 900px; margin: 0 auto; }
 .speakers h2 { font-size: 1.5rem; font-weight: 800; color: #1a2744; margin-bottom: 0.4rem; }
 .speakers__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
@@ -708,7 +767,7 @@ function confirmDeleteCert(cert) {
 .speaker-card__topic, .speaker-card__date { display: flex; align-items: center; gap: 0.35rem; font-size: 0.76rem; color: #4b5563; margin-top: 0.5rem; }
 
 /* Supporting Documents */
-.docs { padding: 0 2rem 5rem; background: #f7f9fd; }
+.docs { padding: 0 2rem; background: transparent; }
 .docs__inner { max-width: 900px; margin: 0 auto; }
 .docs h2 { font-size: 1.5rem; font-weight: 800; color: #1a2744; margin-bottom: 0.4rem; }
 .docs__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
@@ -725,7 +784,7 @@ function confirmDeleteCert(cert) {
 /* ══════════════════════════════════════════
    CERTIFICATES
 ══════════════════════════════════════════ */
-.certs { padding: 0 2rem 5rem; background: #f7f9fd; }
+.certs { padding: 0 2rem; background: transparent; }
 .certs__inner { max-width: 900px; margin: 0 auto; }
 .certs__header { display: flex; align-items: flex-start; margin-bottom: 1.75rem; }
 .certs__title-group { display: flex; align-items: flex-start; gap: 1rem; }

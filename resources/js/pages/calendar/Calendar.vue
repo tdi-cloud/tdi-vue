@@ -64,6 +64,28 @@ const breadcrumbs: BreadcrumbItem[] = [
 const showDialog = ref(false);
 const selected = ref<CalendarEvent['extendedProps'] | null>(null);
 
+// Stack order sa month view: mga hindi pa nagsisimula (upcoming) sa taas,
+// mga nag-start na (ongoing/completed) sa ilalim — para hindi natatabunan
+// ang paparating na programs ng mga lumang training kapag nagko-collapse
+// sa "+x more".
+//
+// Note: dapat isang function ang ibigay sa `eventOrder` (hindi basta i-pre-sort
+// ang `events` array + `eventOrder: false`) dahil internally, ID-based object
+// ang ginagamit ni FullCalendar bilang event store — palaging pinag-uusapan
+// ang mga integer-like key sa ascending numeric order sa JS regardless ng
+// insertion order, kaya nawawala ang custom array order bago pa man ito
+// makarating sa stacking algorithm.
+const todayStart = new Date();
+todayStart.setHours(0, 0, 0, 0);
+const todayMs = todayStart.getTime();
+
+function eventOrder(a: { start: number }, b: { start: number }): number {
+    const aStarted = a.start <= todayMs;
+    const bStarted = b.start <= todayMs;
+    if (aStarted !== bStarted) return aStarted ? 1 : -1;
+    return a.start - b.start;
+}
+
 const statusVariant = computed(() => {
     const status = selected.value?.status?.toLowerCase() ?? '';
     if (status === 'active') return 'bg-cyan-100 text-cyan-700';
@@ -88,6 +110,7 @@ const calendarOptions: CalendarOptions = {
         list: 'List',
     },
     events: props.events,
+    eventOrder,
     dayMaxEvents: 3, // "+x more" link kapag masyadong maraming events sa isang araw
     height: 'auto',
     eventDisplay: 'block',

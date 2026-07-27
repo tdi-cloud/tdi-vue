@@ -10,6 +10,9 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import axios from 'axios';
 import NhrdcMemberModal from '@/components/NhrdcMemberModal.vue';
 import NhrdcSignedCopyUpload from '@/components/NhrdcSignedCopyUpload.vue';
+import { useConfirm } from '@/composables/useConfirm';
+
+const { confirmDialog } = useConfirm();
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
 
@@ -288,7 +291,7 @@ function editRating(nominee: Nominee, rating: InterviewRating) {
 }
 
 async function removeRating(nominee: Nominee, rating: InterviewRating) {
-    if (!confirm(`Remove ${rating.nhrdc_name ?? 'this'}'s interview rating for this nominee?`)) return;
+    if (!(await confirmDialog(`Remove ${rating.nhrdc_name ?? 'this'}'s interview rating for this nominee?`))) return;
     await axios.delete(route('foreign-nominee-interview-ratings.destroy', rating.id));
     nominee.interview_ratings = nominee.interview_ratings.filter(r => r.id !== rating.id);
     if (raterEmpcode.value === rating.nhrdc_empcode) {

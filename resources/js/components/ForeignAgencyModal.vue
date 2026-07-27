@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { X, Plus, Trash2, Building2, Loader2 } from 'lucide-vue-next';
 import axios from 'axios';
+import { useConfirm } from '@/composables/useConfirm';
 
 interface Agency {
     id: number;
@@ -16,6 +17,7 @@ const emit = defineEmits<{
     (e: 'updated'): void;
 }>();
 
+const { confirmDialog } = useConfirm();
 const agencies = ref<Agency[]>([]);
 const newName  = ref('');
 const loading  = ref(false);
@@ -51,7 +53,7 @@ async function addAgency() {
 }
 
 async function removeAgency(agency: Agency) {
-    if (!confirm(`Remove "${agency.name}"?`)) return;
+    if (!(await confirmDialog(`Remove "${agency.name}"?`))) return;
     try {
         await axios.delete(route('foreign-agencies.destroy', agency.id));
         await fetchAgencies();

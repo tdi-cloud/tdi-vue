@@ -3,6 +3,7 @@ import { Head, Link, usePage, router } from '@inertiajs/vue3'
 import TnaBackdrop from './TnaBackdrop.vue'
 import BackToTop from './BackToTop.vue'
 import TnaScanUpload from '@/components/TnaScanUpload.vue'
+import { useConfirm } from '@/composables/useConfirm'
 import { computed } from 'vue'
 
 defineProps({
@@ -12,9 +13,10 @@ defineProps({
 
 const page = usePage()
 const flashSuccess = computed(() => page.props.flash?.success)
+const { confirmDialog } = useConfirm()
 
-function redoRating(id) {
-  if (!confirm('Clear your rating and start over? Your ratings for this subordinate will be deleted.')) return
+async function redoRating(id) {
+  if (!(await confirmDialog('Clear your rating and start over? Your ratings for this subordinate will be deleted.', { confirmText: 'Clear Rating' }))) return
   router.delete(route('tna.supervisory.redo', id), { preserveScroll: true })
 }
 </script>

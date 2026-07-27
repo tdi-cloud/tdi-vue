@@ -6,13 +6,15 @@ import {
     Plus, Earth, Calendar, Users, Building2, Search, X,
     ChevronLeft, ChevronRight, Globe, MapPin, Clock, Banknote,
     Tag, FileText, CalendarDays, Building, Hash, AlignLeft,
-    CheckCircle2, SlidersHorizontal, Trash2, Eye, Pencil,BarChart3, Settings
+    CheckCircle2, SlidersHorizontal, Trash2, Eye, Pencil,BarChart3, Settings, UserRound
 } from 'lucide-vue-next';
 import { ref, computed, watch } from 'vue';
 import ForeignProgramsDashboardModal from '@/components/ForeignProgramsDashboardModal.vue';
 import OrganizingSponsorModal from '@/components/OrganizingSponsorModal.vue';
 import SponsorConfigModal from '@/components/SponsorConfigModal.vue';
+import { useConfirm } from '@/composables/useConfirm';
 
+const { confirmDialog } = useConfirm();
 const showDashboard = ref(false);
 const showFormSettingsDropdown = ref(false);
 function handleClickOutside(event: MouseEvent) {
@@ -43,6 +45,8 @@ interface ForeignProgram {
     inperson_end?: string;
     program_cost?: string;
     fund_source?: string;
+    created_by_empcode?: string | null;
+    created_by_name?: string | null;
 }
 
 interface PaginatedPrograms {
@@ -243,8 +247,8 @@ const submit = () => {
     });
 };
 
-const confirmDelete = (id: number) => {
-    if (confirm('Are you sure you want to delete this program?')) {
+const confirmDelete = async (id: number) => {
+    if (await confirmDialog('Are you sure you want to delete this program?')) {
         router.delete(route('foreign-programs.destroy', id), { preserveScroll: true });
     }
 };
@@ -547,6 +551,9 @@ function onConfigSaved() {
                                     <span class="w-fit text-[10px] font-semibold px-2 py-0.5 rounded-full" :class="statusColors[program.status]">
                                         {{ statusLabels[program.status] }}
                                     </span>
+                                    <span v-if="program.created_by_empcode" class="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5" :title="`Added by ${program.created_by_name} (${program.created_by_empcode})`">
+                                        <UserRound class="h-2.5 w-2.5 shrink-0" /> {{ program.created_by_empcode }}
+                                    </span>
                                 </Link>
                             </td>
 
@@ -705,6 +712,15 @@ function onConfigSaved() {
                         <div class="col-span-2">
                             <p class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Invited Agencies</p>
                             <p class="font-medium">{{ viewProgram.invited_agencies || '—' }}</p>
+                        </div>
+                        <div class="col-span-2">
+                            <p class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Added By</p>
+                            <p class="font-medium">
+                                <template v-if="viewProgram.created_by_empcode">
+                                    {{ viewProgram.created_by_name }} <span class="text-muted-foreground font-mono text-xs">({{ viewProgram.created_by_empcode }})</span>
+                                </template>
+                                <template v-else>—</template>
+                            </p>
                         </div>
                     </div>
                 </div>

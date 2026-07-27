@@ -3,6 +3,9 @@ import { ref, computed } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { ImagePlus, Trash2, Upload, Loader2, Maximize2, X } from 'lucide-vue-next';
+import { useConfirm } from '@/composables/useConfirm';
+
+const { confirmDialog } = useConfirm();
 
 interface CoverPage {
     id: number;
@@ -72,8 +75,8 @@ const uploadFile = (file: File) => {
     });
 };
 
-const removeCover = () => {
-    if (!confirm('Remove this cover page?')) return;
+const removeCover = async () => {
+    if (!(await confirmDialog('Remove this cover page?'))) return;
     router.delete(route('programs.cover.destroy', props.programId), {
         preserveScroll: true,
         onSuccess: () => {

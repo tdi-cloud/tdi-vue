@@ -9,18 +9,17 @@ use Illuminate\Support\Facades\Storage;
 
 class SubmissionController extends Controller
 {
-   
     public function store(Request $request)
     {
         $request->validate([
-            'participant_id'  => 'required|exists:participants,id',
-            'program_code'    => 'required',
-            'batch_id'        => 'required|exists:batches,id',
-            'requirement_id'  => 'required|exists:requirements,id',
-            'status'          => 'nullable|in:Pending,Approved,Rejected',
-            'notes'           => 'nullable|string',
-            'remarks'         => 'nullable|string|max:2000',
-            'file'            => 'nullable|mimes:pdf|max:20480',
+            'participant_id' => 'required|exists:participants,id',
+            'program_code' => 'required',
+            'batch_id' => 'required|exists:batches,id',
+            'requirement_id' => 'required|exists:requirements,id',
+            'status' => 'nullable|in:Pending,Approved,Rejected',
+            'notes' => 'nullable|string',
+            'remarks' => 'nullable|string|max:2000',
+            'file' => 'nullable|mimes:pdf|max:20480',
         ]);
 
         // Hanapin kung may existing na submission para sa participant+requirement
@@ -35,22 +34,22 @@ class SubmissionController extends Controller
                 Storage::disk('public')->delete($path);
             }
             $file = $request->file('file');
-            $filename = time() . '_' . $file->getClientOriginalName();
+            $filename = time().'_'.$this->sanitizeFilename($file->getClientOriginalName());
             $path = $file->storeAs('submissions', $filename, 'public');
         }
 
         $data = [
-            'participant_id'  => $request->participant_id,
-            'program_code'    => $request->program_code,
-            'batch_id'        => $request->batch_id,
-            'requirement_id'  => $request->requirement_id,
-            'status'          => $request->status ?? ($submission->status ?? 'Pending'),
-            'file_path'       => $path,
-            'notes'           => $request->notes ?? $submission?->notes ?? '',
-            'remarks'         => $request->remarks ?? $submission?->remarks,
-            'submitted_at'    => $path ? Carbon::now() : $submission?->submitted_at,
-            'reviewed_at'     => $request->filled('status') ? Carbon::now() : $submission?->reviewed_at,
-            'reviewed_by'     => $request->filled('status') ? ($request->user()->name ?? 'System') : $submission?->reviewed_by,
+            'participant_id' => $request->participant_id,
+            'program_code' => $request->program_code,
+            'batch_id' => $request->batch_id,
+            'requirement_id' => $request->requirement_id,
+            'status' => $request->status ?? ($submission->status ?? 'Pending'),
+            'file_path' => $path,
+            'notes' => $request->notes ?? $submission?->notes ?? '',
+            'remarks' => $request->remarks ?? $submission?->remarks,
+            'submitted_at' => $path ? Carbon::now() : $submission?->submitted_at,
+            'reviewed_at' => $request->filled('status') ? Carbon::now() : $submission?->reviewed_at,
+            'reviewed_by' => $request->filled('status') ? ($request->user()->name ?? 'System') : $submission?->reviewed_by,
         ];
 
         if ($submission) {
@@ -68,13 +67,13 @@ class SubmissionController extends Controller
     public function review(Request $request, Submission $submission)
     {
         $validated = $request->validate([
-            'status'  => 'required|in:Approved,Rejected',
+            'status' => 'required|in:Approved,Rejected',
             'remarks' => 'nullable|string|max:2000',
         ]);
 
         $submission->update([
-            'status'      => $validated['status'],
-            'remarks'     => $validated['remarks'] ?? null,
+            'status' => $validated['status'],
+            'remarks' => $validated['remarks'] ?? null,
             'reviewed_at' => Carbon::now(),
             'reviewed_by' => $request->user()->name ?? 'System',
         ]);
@@ -94,5 +93,14 @@ class SubmissionController extends Controller
         $submission->delete();
 
         return back()->with('success', 'Submission deleted successfully.');
+    }
+
+    /**
+     * Strip directory components and any character outside a safe allow-list
+     * from a user-supplied filename before it's used to build a storage path.
+     */
+    private function sanitizeFilename(string $name): string
+    {
+        return preg_replace('/[^A-Za-z0-9_\-.]/', '_', basename($name));
     }
 }

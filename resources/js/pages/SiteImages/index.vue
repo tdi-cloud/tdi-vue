@@ -3,6 +3,9 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import { Images, Upload, RotateCcw, CheckCircle2, Loader2 } from 'lucide-vue-next';
+import { useConfirm } from '@/composables/useConfirm';
+
+const { confirmDialog } = useConfirm();
 
 interface ImageSlot {
     key: string;
@@ -39,8 +42,8 @@ const handleFileChange = (key: string, event: Event) => {
     });
 };
 
-const resetImage = (key: string) => {
-    if (!confirm('Reset this image back to its default?')) return;
+const resetImage = async (key: string) => {
+    if (!(await confirmDialog('Reset this image back to its default?', { confirmText: 'Reset' }))) return;
     busyKey.value = key;
     router.delete(route('site-images.destroy', key), {
         preserveScroll: true,

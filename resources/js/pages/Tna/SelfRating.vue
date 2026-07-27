@@ -4,7 +4,10 @@ import TnaBackdrop from './TnaBackdrop.vue'
 import BackToTop from './BackToTop.vue'
 import SignaturePad from '@/components/ui/signature-pad/SignaturePad.vue'
 import TnaScanUpload from '@/components/TnaScanUpload.vue'
+import { useConfirm } from '@/composables/useConfirm'
 import { computed, reactive, ref, watch } from 'vue'
+
+const { confirmDialog } = useConfirm()
 
 const props = defineProps({
   period: { type: String, default: '' },
@@ -135,9 +138,9 @@ const submit = () => {
     .post(route('tna.self-rating.store'), { preserveScroll: true })
 }
 
-function deleteAssessment() {
+async function deleteAssessment() {
   if (!props.alreadySubmitted?.id) return
-  if (!confirm('Delete your self-rating and start over? This action cannot be undone.')) return
+  if (!(await confirmDialog('Delete your self-rating and start over? This action cannot be undone.'))) return
   router.delete(route('tna.self-rating.destroy', props.alreadySubmitted.id), {
     preserveScroll: true,
   })

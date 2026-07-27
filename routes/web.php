@@ -11,6 +11,8 @@ use App\Http\Controllers\EmailReminderController;
 use App\Http\Controllers\EmployeeMapController;
 use App\Http\Controllers\EmployeeProgressController;
 use App\Http\Controllers\EnrolledProgramController;
+use App\Http\Controllers\EvaluationController;
+use App\Http\Controllers\EvaluationFormController;
 use App\Http\Controllers\ForeignAgencyController;
 use App\Http\Controllers\ForeignNominationController;
 use App\Http\Controllers\ForeignNomineeAssessmentController;
@@ -145,6 +147,31 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
         ->name('programs.resource-speakers.update');
     Route::delete('/programs/{program}/resource-speakers/{resourceSpeaker}', [ResourceSpeakerController::class, 'destroy'])
         ->name('programs.resource-speakers.destroy');
+
+    // EVALUATION (admin)
+    Route::get('/batches/{batch}/evaluation', [EvaluationFormController::class, 'edit'])->name('batches.evaluation.edit');
+    Route::post('/batches/{batch}/evaluation-form', [EvaluationFormController::class, 'store'])->name('batches.evaluation-form.store');
+    Route::put('/evaluation-forms/{evaluationForm}', [EvaluationFormController::class, 'update'])->name('evaluation-forms.update');
+    Route::delete('/evaluation-forms/{evaluationForm}', [EvaluationFormController::class, 'destroy'])->name('evaluation-forms.destroy');
+
+    Route::put('/evaluation-sections/{evaluationSection}', [EvaluationFormController::class, 'updateSection'])->name('evaluation-sections.update');
+    Route::post('/evaluation-sections/{evaluationSection}/move-up', [EvaluationFormController::class, 'moveSectionUp'])->name('evaluation-sections.move-up');
+    Route::post('/evaluation-sections/{evaluationSection}/move-down', [EvaluationFormController::class, 'moveSectionDown'])->name('evaluation-sections.move-down');
+
+    Route::post('/evaluation-sections/{evaluationSection}/questions', [EvaluationFormController::class, 'storeQuestion'])->name('evaluation-sections.questions.store');
+    Route::put('/evaluation-questions/{evaluationQuestion}', [EvaluationFormController::class, 'updateQuestion'])->name('evaluation-questions.update');
+    Route::delete('/evaluation-questions/{evaluationQuestion}', [EvaluationFormController::class, 'destroyQuestion'])->name('evaluation-questions.destroy');
+    Route::post('/evaluation-questions/{evaluationQuestion}/move-up', [EvaluationFormController::class, 'moveQuestionUp'])->name('evaluation-questions.move-up');
+    Route::post('/evaluation-questions/{evaluationQuestion}/move-down', [EvaluationFormController::class, 'moveQuestionDown'])->name('evaluation-questions.move-down');
+
+    Route::post('/evaluation-forms/{evaluationForm}/facilitators', [EvaluationFormController::class, 'storeFacilitator'])->name('evaluation-forms.facilitators.store');
+    Route::put('/evaluation-facilitators/{evaluationFacilitator}', [EvaluationFormController::class, 'updateFacilitator'])->name('evaluation-facilitators.update');
+    Route::delete('/evaluation-facilitators/{evaluationFacilitator}', [EvaluationFormController::class, 'destroyFacilitator'])->name('evaluation-facilitators.destroy');
+    Route::post('/evaluation-facilitators/{evaluationFacilitator}/move-up', [EvaluationFormController::class, 'moveFacilitatorUp'])->name('evaluation-facilitators.move-up');
+    Route::post('/evaluation-facilitators/{evaluationFacilitator}/move-down', [EvaluationFormController::class, 'moveFacilitatorDown'])->name('evaluation-facilitators.move-down');
+
+    Route::get('/programs/{program}/evaluation-dashboard', [EvaluationFormController::class, 'dashboardData'])->name('programs.evaluation-dashboard');
+    Route::get('/evaluation-forms/{evaluationForm}/responses', [EvaluationFormController::class, 'responses'])->name('evaluation-forms.responses');
 
     // COVER PAGE
     Route::post('/programs/cover/upload', [CoverPageController::class, 'upload'])->name('programs.cover.upload');
@@ -336,6 +363,8 @@ Route::middleware(['auth', 'verified', 'superadmin'])->group(function () {
     // USER MANAGEMENT
     Route::get('/user-management', [UserManagementController::class, 'index'])->name('user-management.index');
     Route::put('/user-management/{user}', [UserManagementController::class, 'update'])->name('user-management.update');
+    Route::post('/user-management/{user}/avatar', [UserManagementController::class, 'updateAvatar'])->name('user-management.avatar.update');
+    Route::delete('/user-management/{user}/avatar', [UserManagementController::class, 'destroyAvatar'])->name('user-management.avatar.destroy');
 
     // HOMEPAGE IMAGES
     Route::get('/site-images', [SiteImageController::class, 'index'])->name('site-images.index');
@@ -460,6 +489,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::get('/nominate/{slug}', [ForeignNominationController::class, 'show'])->name('nominate.show');
 Route::post('/nominate/{slug}', [ForeignNominationController::class, 'submit'])->name('nominate.submit');
 Route::get('/nominate/{slug}/success', [ForeignNominationController::class, 'success'])->name('nominate.success');
+
+Route::get('/evaluate/{slug}', [EvaluationController::class, 'show'])->name('evaluate.show');
+Route::post('/evaluate/{slug}', [EvaluationController::class, 'submit'])->name('evaluate.submit');
+Route::get('/evaluate/{slug}/success', [EvaluationController::class, 'success'])->name('evaluate.success');
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

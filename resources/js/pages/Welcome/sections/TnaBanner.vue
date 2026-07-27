@@ -2,6 +2,9 @@
 import { ref } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import { ClipboardCheck, UserCheck, ListChecks, ShieldCheck, ArrowRight, CalendarRange, Trash2, Settings2, Info, X, Sparkles } from 'lucide-vue-next'
+import { useConfirm } from '@/composables/useConfirm'
+
+const { confirmDialog } = useConfirm()
 
 /*
  | The Welcome/index page passes the `tna` prop coming from
@@ -20,9 +23,9 @@ const steps = [
 
 const showInfoModal = ref(false)
 
-function deleteAssessment() {
+async function deleteAssessment() {
   if (!props.data.assessment_id) return
-  if (!confirm('Delete your self-rating? This action cannot be undone.')) return
+  if (!(await confirmDialog('Delete your self-rating? This action cannot be undone.'))) return
   router.delete(route('tna.self-rating.destroy', props.data.assessment_id), {
     preserveScroll: true,
   })

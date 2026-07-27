@@ -32,10 +32,6 @@ class ForeignNominationController extends Controller
             $programsQuery->whereNotIn('status', ['concluded', 'no_nominee']);
         }
 
-        // ── Itago ang mga programa na lampas na ang submission date kaysa ngayon ──
-        // Pinapakita pa rin ang mga walang submission_date (null = walang deadline).
-        // Kahit naka-save pa ito sa selected_program_ids, hindi na ito lalabas sa
-        // aplikante kapag lumagpas na ang deadline.
         $programsQuery->where(function ($q) {
             $q->whereNull('submission_date')
                 ->orWhereDate('submission_date', '>=', now()->toDateString());
@@ -45,10 +41,6 @@ class ForeignNominationController extends Controller
             ->orderBy('program_start')
             ->get(['id', 'program_title', 'program_start', 'program_end', 'slots', 'modality']);
 
-        // Kunin ang mga sponsor logo na na-customize sa /site-images (Homepage
-        // Images) para pareho ang logo dito sa nomination form at sa FSTP
-        // section ng homepage. Ang key na 'sponsor_logo_jica' ay nagiging 'jica'
-        // dito para tumugma sa slug ng bawat sponsor.
         $sponsorLogos = collect(SiteImage::resolvedUrls())
             ->filter(fn ($url, $key) => str_starts_with($key, 'sponsor_logo_'))
             ->mapWithKeys(fn ($url, $key) => [str_replace('sponsor_logo_', '', $key) => $url])
@@ -82,9 +74,6 @@ class ForeignNominationController extends Controller
             'accomplished_form' => 'nullable|file|mimes:pdf|max:10240',
         ]);
 
-        // ── Tiyakin na hindi expired ang piniling programa ──
-        // Depensa kung sakaling may magpadala ng program_id na lampas na ang deadline
-        // (hal. naka-cache na page o dev tools).
         $program = ForeignProgram::findOrFail($request->foreign_program_id);
         if (
             $program->submission_date
@@ -97,7 +86,6 @@ class ForeignNominationController extends Controller
                 ->withInput();
         }
 
-        // Validate requirement files
         foreach ($config->requirements as $req) {
             if ($req->file_required) {
                 $request->validate([
@@ -108,14 +96,12 @@ class ForeignNominationController extends Controller
             }
         }
 
-        // Upload accomplished form
         $accomplishedPath = null;
         if ($request->hasFile('accomplished_form')) {
             $accomplishedPath = $request->file('accomplished_form')
                 ->store('nominees/accomplished', 'public');
         }
 
-        // Create nominee
         $nominee = ForeignNominee::create([
             'foreign_program_id' => $request->foreign_program_id,
             'foreign_sponsor_config_id' => $config->id,
@@ -132,7 +118,6 @@ class ForeignNominationController extends Controller
             'status' => 'for_interview',
         ]);
 
-        // Upload requirement files
         foreach ($config->requirements as $req) {
             $fileKey = "requirement_{$req->id}";
             if ($request->hasFile($fileKey)) {

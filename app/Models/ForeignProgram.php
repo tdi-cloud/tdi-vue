@@ -17,6 +17,7 @@ class ForeignProgram extends Model
         'program_cost', 'fund_source', 'category',
         'organizing_sponsor', 'status', 'submission_date', 'embassy_deadline',
         'interview_date', 'invited_agencies', 'attached_agency',
+        'created_by_empcode', 'created_by_name',
     ];
 
     protected $casts = [

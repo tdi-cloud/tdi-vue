@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useConfirm } from '@/composables/useConfirm';
+import { useInitials } from '@/composables/useInitials';
 import { Head, router, usePage } from '@inertiajs/vue3';
 import { ref, computed, watch } from 'vue';
 import {
     Search, ShieldCheck, X, SlidersHorizontal,
-    Mail, Hash, Crown, ChevronLeft, ChevronRight,
+    Mail, Hash, Crown, ChevronLeft, ChevronRight, Pencil,
 } from 'lucide-vue-next';
 
 interface UserRow {
@@ -13,6 +16,7 @@ interface UserRow {
     email: string;
     empcode: string | null;
     access: string;
+    avatar: string | null;
 }
 
 interface PaginatedUsers {
@@ -76,6 +80,106 @@ const updateAccess = (user: UserRow, newAccess: string) => {
         onFinish: () => { savingId.value = null; },
     });
 };
+
+/* ---- Edit modal: name + avatar ---- */
+const { confirmDialog } = useConfirm();
+const { getInitials } = useInitials();
+
+const editingUser = ref<UserRow | null>(null);
+const nameDraft = ref('');
+const nameError = ref('');
+const savingName = ref(false);
+
+const avatarInput = ref<HTMLInputElement | null>(null);
+const avatarProcessing = ref(false);
+const avatarError = ref('');
+const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+
+function openEditModal(user: UserRow) {
+    editingUser.value = user;
+    nameDraft.value = user.name;
+    nameError.value = '';
+    avatarError.value = '';
+}
+
+function closeEditModal() {
+    editingUser.value = null;
+}
+
+// Kapag na-reload na ang page props pagkatapos ng update, hanapin ulit ang
+// parehong user sa bagong `users.data` para ma-refresh ang laman ng modal
+// (avatar/name) nang hindi ito nagsasara.
+function refreshEditingUser(userId: number) {
+    const updated = props.users.data.find(u => u.id === userId);
+    if (updated) editingUser.value = updated;
+}
+
+function saveName() {
+    if (!editingUser.value) return;
+    if (!nameDraft.value.trim()) {
+        nameError.value = 'Name is required.';
+        return;
+    }
+    const userId = editingUser.value.id;
+    savingName.value = true;
+    nameError.value = '';
+    router.put(route('user-management.update', userId), { name: nameDraft.value }, {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => refreshEditingUser(userId),
+        onError: (errors) => { nameError.value = errors.name || 'Failed to update name.'; },
+        onFinish: () => { savingName.value = false; },
+    });
+}
+
+function triggerAvatarPick() {
+    avatarError.value = '';
+    avatarInput.value?.click();
+}
+
+function handleAvatarChange(e: Event) {
+    if (!editingUser.value) return;
+    const target = e.target as HTMLInputElement;
+    const file = target.files?.[0];
+    target.value = '';
+    if (!file) return;
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+        avatarError.value = 'Please choose a JPG, PNG, or WEBP image.';
+        return;
+    }
+    if (file.size > MAX_AVATAR_BYTES) {
+        avatarError.value = 'Image is too large — please choose one under 2MB.';
+        return;
+    }
+
+    avatarError.value = '';
+    avatarProcessing.value = true;
+    const userId = editingUser.value.id;
+    const data = new FormData();
+    data.append('avatar', file);
+    router.post(route('user-management.avatar.update', userId), data, {
+        forceFormData: true,
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => refreshEditingUser(userId),
+        onError: (errors) => { avatarError.value = errors.avatar || 'Upload failed. Please try again.'; },
+        onFinish: () => { avatarProcessing.value = false; },
+    });
+}
+
+async function removeAvatar() {
+    if (!editingUser.value) return;
+    if (!(await confirmDialog(`Remove ${editingUser.value.name}'s profile picture?`))) return;
+    const userId = editingUser.value.id;
+    avatarProcessing.value = true;
+    router.delete(route('user-management.avatar.destroy', userId), {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => refreshEditingUser(userId),
+        onFinish: () => { avatarProcessing.value = false; },
+    });
+}
 </script>
 
 <template>
@@ -142,6 +246,7 @@ const updateAccess = (user: UserRow, newAccess: string) => {
                             <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-rose-700 dark:text-rose-300">User</th>
                             <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-rose-700 dark:text-rose-300">Current Access</th>
                             <th class="text-right font-bold px-4 py-3 text-xs uppercase tracking-wide text-rose-700 dark:text-rose-300">Change Access</th>
+                            <th class="text-center font-bold px-4 py-3 text-xs uppercase tracking-wide text-rose-700 dark:text-rose-300">Edit</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y">
@@ -150,8 +255,18 @@ const updateAccess = (user: UserRow, newAccess: string) => {
                                 <span class="flex items-center gap-1.5"><Hash class="h-3 w-3" /> {{ u.empcode ?? '—' }}</span>
                             </td>
                             <td class="px-4 py-3">
-                                <p class="font-bold text-sm leading-tight">{{ u.name }}</p>
-                                <p class="text-xs text-muted-foreground flex items-center gap-1 mt-0.5"><Mail class="h-3 w-3" /> {{ u.email }}</p>
+                                <div class="flex items-center gap-2.5">
+                                    <Avatar class="h-8 w-8 overflow-hidden rounded-full bg-rose-600 shrink-0">
+                                        <AvatarImage v-if="u.avatar" :src="u.avatar" :alt="u.name" />
+                                        <AvatarFallback class="rounded-full text-xs font-extrabold text-white">
+                                            {{ getInitials(u.name) }}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <div class="min-w-0">
+                                        <p class="font-bold text-sm leading-tight truncate">{{ u.name }}</p>
+                                        <p class="text-xs text-muted-foreground flex items-center gap-1 mt-0.5"><Mail class="h-3 w-3" /> {{ u.email }}</p>
+                                    </div>
+                                </div>
                             </td>
                             <td class="px-4 py-3">
                                 <span class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border" :class="accessColor(u.access)">
@@ -169,6 +284,16 @@ const updateAccess = (user: UserRow, newAccess: string) => {
                                 >
                                     <option v-for="lvl in accessLevels" :key="lvl" :value="lvl">{{ lvl.toUpperCase() }}</option>
                                 </select>
+                            </td>
+                            <td class="px-4 py-3 text-center">
+                                <button
+                                    type="button"
+                                    class="inline-flex items-center justify-center h-8 w-8 rounded-lg text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                                    title="Edit name / profile picture"
+                                    @click="openEditModal(u)"
+                                >
+                                    <Pencil class="h-3.5 w-3.5" />
+                                </button>
                             </td>
                         </tr>
                     </tbody>
@@ -205,5 +330,102 @@ const updateAccess = (user: UserRow, newAccess: string) => {
             </div>
 
         </div>
+
+        <!-- ===== Edit User Modal (name + avatar) ===== -->
+        <Teleport to="body">
+            <div
+                v-if="editingUser"
+                class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
+                @click.self="closeEditModal"
+            >
+                <div class="bg-background rounded-2xl shadow-2xl w-full max-w-md">
+                    <div class="flex items-center gap-3 px-5 py-4 border-b">
+                        <div class="flex items-center justify-center h-9 w-9 rounded-xl bg-rose-600 shrink-0">
+                            <Pencil class="h-4 w-4 text-white" />
+                        </div>
+                        <div class="min-w-0">
+                            <h3 class="text-sm font-extrabold leading-none">Edit User</h3>
+                            <p class="text-xs text-muted-foreground mt-0.5 truncate">{{ editingUser.email }}</p>
+                        </div>
+                        <button class="ml-auto text-muted-foreground hover:text-foreground transition-colors shrink-0" @click="closeEditModal">
+                            <X class="h-5 w-5" />
+                        </button>
+                    </div>
+
+                    <div class="p-5 flex flex-col gap-6">
+                        <!-- Avatar -->
+                        <div class="flex items-center gap-4">
+                            <Avatar class="h-16 w-16 overflow-hidden rounded-full bg-rose-600 shrink-0">
+                                <AvatarImage v-if="editingUser.avatar" :src="editingUser.avatar" :alt="editingUser.name" />
+                                <AvatarFallback class="rounded-full text-lg font-extrabold text-white">
+                                    {{ getInitials(editingUser.name) }}
+                                </AvatarFallback>
+                            </Avatar>
+
+                            <div class="flex flex-col gap-2 min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        class="rounded-lg border px-3 py-1.5 text-xs font-semibold hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        :disabled="avatarProcessing"
+                                        @click="triggerAvatarPick"
+                                    >
+                                        {{ avatarProcessing ? 'Uploading…' : editingUser.avatar ? 'Change photo' : 'Upload photo' }}
+                                    </button>
+                                    <button
+                                        v-if="editingUser.avatar"
+                                        type="button"
+                                        class="rounded-lg border px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        :disabled="avatarProcessing"
+                                        @click="removeAvatar"
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                                <p class="text-[11px] text-muted-foreground">JPG, PNG, or WEBP. Max 2MB.</p>
+                                <p v-if="avatarError" class="text-[11px] text-red-600">{{ avatarError }}</p>
+                            </div>
+
+                            <input
+                                ref="avatarInput"
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                class="hidden"
+                                @change="handleAvatarChange"
+                            />
+                        </div>
+
+                        <!-- Name -->
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-xs font-semibold">Name</label>
+                            <input
+                                v-model="nameDraft"
+                                type="text"
+                                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 bg-background"
+                            />
+                            <p v-if="nameError" class="text-xs text-red-600">{{ nameError }}</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-2 px-5 py-4 border-t">
+                        <button
+                            type="button"
+                            class="rounded-lg border px-3.5 py-2 text-sm font-semibold hover:bg-muted transition-colors"
+                            @click="closeEditModal"
+                        >
+                            Close
+                        </button>
+                        <button
+                            type="button"
+                            class="rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm px-4 py-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                            :disabled="savingName || nameDraft === editingUser.name"
+                            @click="saveName"
+                        >
+                            {{ savingName ? 'Saving…' : 'Save Name' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
     </AppLayout>
 </template>

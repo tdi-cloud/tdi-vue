@@ -8,6 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Plus, LoaderCircle, Save, ClipboardList, CalendarClock, Trash2, BadgeCheck, StickyNote } from 'lucide-vue-next';
 import { ref, computed } from 'vue';
+import { useConfirm } from '@/composables/useConfirm';
+
+const { confirmDialog } = useConfirm();
 
 interface Requirement {
     id: number;
@@ -148,8 +151,8 @@ const submit = () => {
     });
 };
 
-const removeRequirement = (requirement: Requirement) => {
-    if (confirm('Remove this requirement from the batch?')) {
+const removeRequirement = async (requirement: Requirement) => {
+    if (await confirmDialog('Remove this requirement from the batch?', { confirmText: 'Remove' })) {
         router.delete(route('programs.requirements.destroy', [props.program.id, requirement.id]), {
             preserveScroll: true,
         });

@@ -7,6 +7,9 @@ import {
 } from 'lucide-vue-next';
 import { router } from '@inertiajs/vue3';
 import TesdaOrderModal from '@/pages/programs/TesdaOrderModal.vue';
+import { useConfirm } from '@/composables/useConfirm';
+
+const { confirmDialog } = useConfirm();
 
 interface TesdaOrder {
     id: number;
@@ -45,8 +48,8 @@ onMounted(() => {
     refreshOrders();
 });
 
-function deleteOrder(order: TesdaOrder) {
-    if (!confirm(`Delete TESDA Order "${order.subject}"?`)) return;
+async function deleteOrder(order: TesdaOrder) {
+    if (!(await confirmDialog(`Delete TESDA Order "${order.subject}"?`))) return;
     router.delete(route('tesda-orders.destroy', order.id), {
         onSuccess: () => refreshOrders(),
         preserveScroll: true,

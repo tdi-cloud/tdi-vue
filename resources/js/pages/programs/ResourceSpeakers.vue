@@ -23,6 +23,9 @@ import {
     StickyNote,
 } from 'lucide-vue-next';
 import { ref, computed } from 'vue';
+import { useConfirm } from '@/composables/useConfirm';
+
+const { confirmDialog } = useConfirm();
 
 interface ResourceSpeaker {
     id: number;
@@ -161,8 +164,8 @@ const submit = () => {
     }
 };
 
-const destroy = (speaker: ResourceSpeaker) => {
-    if (!confirm(`Remove "${speaker.name}" from the resource speakers list?`)) return;
+const destroy = async (speaker: ResourceSpeaker) => {
+    if (!(await confirmDialog(`Remove "${speaker.name}" from the resource speakers list?`))) return;
 
     router.delete(route('programs.resource-speakers.destroy', [props.program.id, speaker.id]), {
         preserveScroll: true,

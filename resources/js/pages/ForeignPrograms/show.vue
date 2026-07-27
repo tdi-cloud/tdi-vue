@@ -11,6 +11,9 @@ import {
 } from 'lucide-vue-next';
 import { ref, computed } from 'vue';
 import axios from 'axios';
+import { useConfirm } from '@/composables/useConfirm';
+
+const { confirmDialog } = useConfirm();
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
 
@@ -62,6 +65,8 @@ interface ForeignProgram {
     category: string | null;
     description: string | null;
     nominees: Nominee[];
+    created_by_empcode: string | null;
+    created_by_name: string | null;
 }
 
 interface SponsorRequirement {
@@ -146,8 +151,8 @@ async function updateStatus(nominee: Nominee, newStatus: string) {
     }
 }
 
-function confirmDelete(nominee: Nominee) {
-    if (!confirm(`Remove nominee "${fullName(nominee)}"?`)) return;
+async function confirmDelete(nominee: Nominee) {
+    if (!(await confirmDialog(`Remove nominee "${fullName(nominee)}"?`))) return;
     router.delete(route('foreign-nominees.destroy', nominee.id), { preserveScroll: true });
 }
 
@@ -473,6 +478,10 @@ const modalityLabels: Record<string, string> = {
                             <span v-if="program.interview_date" class="flex items-center gap-1.5">
                                 <UserCircle2 class="h-3.5 w-3.5" />
                                 Interview: {{ formatDate(program.interview_date) }}
+                            </span>
+                            <span v-if="program.created_by_empcode" class="flex items-center gap-1.5" :title="`Added by ${program.created_by_name} (${program.created_by_empcode})`">
+                                <UserRound class="h-3.5 w-3.5" />
+                                Added by: {{ program.created_by_name }} ({{ program.created_by_empcode }})
                             </span>
                         </div>
                     </div>

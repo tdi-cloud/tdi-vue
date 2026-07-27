@@ -14,6 +14,9 @@ import {
 } from 'lucide-vue-next';
 import { ref, watch, computed } from 'vue';
 import BulkAddParticipants from '@/pages/programs/BulkAddParticipants.vue';
+import { useConfirm } from '@/composables/useConfirm';
+
+const { confirmDialog } = useConfirm();
 
 interface EmployeeOption {
     empcode: string;
@@ -252,8 +255,8 @@ const saveSubmission = (row: any) => {
     );
 };
 
-const deleteSubmission = (submissionId: number) => {
-    if (!confirm('Delete this submission file/record?')) return;
+const deleteSubmission = async (submissionId: number) => {
+    if (!(await confirmDialog('Delete this submission file/record?'))) return;
     router.delete(route('submissions.destroy', submissionId), {
         preserveScroll: true,
         onSuccess: () => {
@@ -443,9 +446,9 @@ const addParticipants = () => {
     );
 };
 
-const removeParticipant = (participant: any) => {
+const removeParticipant = async (participant: any) => {
     const label = participant.employee?.name ?? participant.empcode;
-    if (!confirm(`Remove ${label} from this batch?`)) return;
+    if (!(await confirmDialog(`Remove ${label} from this batch?`))) return;
 
     router.delete(route('participants.destroy', participant.id), {
         preserveScroll: true,
@@ -470,11 +473,11 @@ const showBulkAdd = ref(false);
 
 const clearingAll = ref(false);
 
-const clearAllParticipants = () => {
+const clearAllParticipants = async () => {
     if (!participants.value.length) return;
 
     const count = participants.value.length;
-    if (!confirm(`Remove ALL ${count} participant(s) from this batch? This cannot be undone.`)) return;
+    if (!(await confirmDialog(`Remove ALL ${count} participant(s) from this batch? This cannot be undone.`, { confirmText: 'Remove All' }))) return;
 
     clearingAll.value = true;
 
@@ -500,7 +503,7 @@ const clearAllParticipants = () => {
 };
 
 
-const applyToAll = () => {
+const applyToAll = async () => {
     if (!attendanceTarget.value) return;
     attErrors.value = {};
 
@@ -518,10 +521,11 @@ const applyToAll = () => {
         (p: any) => p.attendance !== 'Absent'
     ).length;
 
-    if (!confirm(
+    if (!(await confirmDialog(
         `Apply ${h} hr(s) / Complete to all ${eligibleCount} participant(s) in this batch? ` +
-        `Absent participants will be skipped.`
-    )) return;
+        `Absent participants will be skipped.`,
+        { confirmText: 'Apply', variant: 'default' }
+    ))) return;
 
     attProcessing.value = true;
     router.post(

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import axios from 'axios';
+import { useConfirm } from '@/composables/useConfirm';
 
 const props = defineProps<{
     programId: number;
@@ -11,6 +12,8 @@ const emit = defineEmits<{
     (e: 'uploaded'): void;
     (e: 'deleted'): void;
 }>();
+
+const { confirmDialog } = useConfirm();
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -52,7 +55,7 @@ async function handleFileChange(e: Event) {
 }
 
 async function destroy() {
-    if (!confirm('Delete this signed copy?')) return;
+    if (!(await confirmDialog('Delete this signed copy?'))) return;
     error.value = '';
     processing.value = true;
     try {

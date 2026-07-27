@@ -114,7 +114,7 @@ class EnrolledProgramController extends Controller
                 Storage::disk('public')->delete($path);
             }
             $file = $request->file('file');
-            $filename = time().'_'.$file->getClientOriginalName();
+            $filename = time().'_'.$this->sanitizeFilename($file->getClientOriginalName());
             $path = $file->storeAs('submissions', $filename, 'public');
         }
 
@@ -293,5 +293,14 @@ class EnrolledProgramController extends Controller
         }
 
         return $data;
+    }
+
+    /**
+     * Strip directory components and any character outside a safe allow-list
+     * from a user-supplied filename before it's used to build a storage path.
+     */
+    private function sanitizeFilename(string $name): string
+    {
+        return preg_replace('/[^A-Za-z0-9_\-.]/', '_', basename($name));
     }
 }

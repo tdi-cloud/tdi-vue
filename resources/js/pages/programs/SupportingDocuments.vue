@@ -22,6 +22,9 @@ import {
     Building2,
 } from 'lucide-vue-next';
 import { ref, computed } from 'vue';
+import { useConfirm } from '@/composables/useConfirm';
+
+const { confirmDialog } = useConfirm();
 
 interface SupportingDocument {
     id: number;
@@ -157,8 +160,8 @@ const submit = () => {
     }
 };
 
-const destroy = (doc: SupportingDocument) => {
-    if (!confirm(`Delete "${doc.subject}"? This cannot be undone.`)) return;
+const destroy = async (doc: SupportingDocument) => {
+    if (!(await confirmDialog(`Delete "${doc.subject}"? This cannot be undone.`))) return;
 
     router.delete(route('programs.supporting-documents.destroy', [props.program.id, doc.id]), {
         preserveScroll: true,

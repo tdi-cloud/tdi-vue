@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useConfirm } from '@/composables/useConfirm';
 import { useInitials } from '@/composables/useInitials';
 import AppLayout from '@/layouts/AppLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
@@ -33,6 +34,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 const page = usePage<SharedData>();
 const user = computed(() => page.props.auth.user as User);
+const { confirmDialog } = useConfirm();
 
 const form = useForm({
     name: user.value.name,
@@ -87,8 +89,8 @@ function handleAvatarChange(e: Event) {
     });
 }
 
-function removeAvatar() {
-    if (!confirm('Remove your profile picture?')) return;
+async function removeAvatar() {
+    if (!(await confirmDialog('Remove your profile picture?'))) return;
     avatarProcessing.value = true;
     router.delete(route('profile.avatar.destroy'), {
         preserveScroll: true,

@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { X, Plus, Trash2, Building2, LoaderCircle, Pencil, Check } from 'lucide-vue-next';
 import axios from 'axios';
+import { useConfirm } from '@/composables/useConfirm';
 
 interface Sponsor {
     id: number;
@@ -14,6 +15,8 @@ const emit = defineEmits<{
     (e: 'select', name: string): void;
     (e: 'updated'): void;
 }>();
+
+const { confirmDialog } = useConfirm();
 
 const sponsors     = ref<Sponsor[]>([]);
 const loading      = ref(false);
@@ -60,7 +63,7 @@ const addSponsor = async () => {
 };
 
 const deleteSponsor = async (sponsor: Sponsor) => {
-    if (!confirm(`Remove "${sponsor.name}" from the list?`)) return;
+    if (!(await confirmDialog(`Remove "${sponsor.name}" from the list?`))) return;
     deletingId.value = sponsor.id;
     try {
         await axios.delete(route('organizing-sponsors.destroy', sponsor.id));

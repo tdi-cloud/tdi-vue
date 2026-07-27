@@ -31,12 +31,16 @@ import {
     ScrollText,
     ClipboardList,
     UserCog,
+    ClipboardCheck,
 } from 'lucide-vue-next';
 import { ref, computed, watch } from 'vue';
 import BatchParticipants from '@/pages/programs/BatchParticipants.vue';
 import ParticipantSearch from '@/pages/programs/ParticipantSearch.vue';
 import DeclarationModal from '@/pages/programs/DeclarationModal.vue';
 import AttendanceModal from '@/pages/programs/AttendanceModal.vue';
+import { useConfirm } from '@/composables/useConfirm';
+
+const { confirmDialog } = useConfirm();
 
 // ─── Declaration ─────────────────────────────────────────────────────────────
 
@@ -90,6 +94,12 @@ const viewingBatch = computed(() =>
 const openParticipants = (batch: any) => {
     viewingBatchId.value   = batch.id;
     showParticipants.value = true;
+};
+
+// ─── Evaluation ───────────────────────────────────────────────────────────────
+
+const openEvaluation = (batch: any) => {
+    router.visit(route('batches.evaluation.edit', batch.id));
 };
 
 // ─── Form ─────────────────────────────────────────────────────────────────────
@@ -180,8 +190,8 @@ const submit = () => {
     }
 };
 
-const destroy = (batch: any) => {
-    if (!confirm(`Delete ${batch.batch}? This will also remove its participants.`)) return;
+const destroy = async (batch: any) => {
+    if (!(await confirmDialog(`Delete ${batch.batch}? This will also remove its participants.`))) return;
     router.delete(route('batches.destroy', batch.id), { preserveScroll: true });
 };
 
@@ -342,6 +352,19 @@ const formatTime = (t: string) => {
                             >
                                 <ClipboardList class="h-3.5 w-3.5 text-violet-600" />
                                 Attendance
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                                class="text-xs cursor-pointer gap-2"
+                                @click="openEvaluation(batch)"
+                            >
+                                <ClipboardCheck class="h-3.5 w-3.5 text-rose-600" />
+                                Evaluation
+                                <span
+                                    v-if="!batch.evaluation_form"
+                                    class="ml-auto h-1.5 w-1.5 rounded-full bg-amber-500"
+                                    title="Not set up yet"
+                                />
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>

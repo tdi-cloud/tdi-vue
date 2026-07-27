@@ -12,10 +12,20 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
     Route::get('register', [RegisteredUserController::class, 'create'])->name('register');
-    Route::post('register/verify', [RegisteredUserController::class, 'verify'])->name('register.verify');
-    Route::post('register/send-otp', [RegisteredUserController::class, 'sendOtp'])->name('register.send-otp');
+
+    Route::post('register/verify', [RegisteredUserController::class, 'verify'])
+        ->middleware('throttle:10,1')
+        ->name('register.verify');
+
+    Route::post('register/send-otp', [RegisteredUserController::class, 'sendOtp'])
+        ->middleware('throttle:6,1')
+        ->name('register.send-otp');
+
     Route::get('register/verify-otp', [RegisteredUserController::class, 'otpPage'])->name('register.otp-page'); // 👈 add
-    Route::post('register', [RegisteredUserController::class, 'store'])->name('register.store'); // 👈 add name
+
+    Route::post('register', [RegisteredUserController::class, 'store'])
+        ->middleware('throttle:10,1')
+        ->name('register.store'); // 👈 add name
 
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
@@ -26,12 +36,14 @@ Route::middleware('guest')->group(function () {
         ->name('password.request');
 
     Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
+        ->middleware('throttle:6,1')
         ->name('password.email');
 
     Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])
         ->name('password.reset');
 
     Route::post('reset-password', [NewPasswordController::class, 'store'])
+        ->middleware('throttle:6,1')
         ->name('password.store');
 });
 

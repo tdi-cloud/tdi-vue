@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -42,18 +43,49 @@ class UserManagementController extends Controller
         ]);
     }
 
+    // Handles both the inline "Change Access" select (sends only `access`)
+    // and the edit modal's name field (sends only `name`) — each caller only
+    // sends the field it's actually changing.
     public function update(Request $request, User $user): RedirectResponse
     {
-        $request->validate([
-            'access' => ['required', Rule::in(self::ACCESS_LEVELS)],
+        $data = $request->validate([
+            'access' => ['sometimes', 'required', Rule::in(self::ACCESS_LEVELS)],
+            'name' => ['sometimes', 'required', 'string', 'max:255'],
         ]);
 
-        if ($user->id === $request->user()->id) {
+        if (array_key_exists('access', $data) && $user->id === $request->user()->id) {
             return back()->with('error', 'You cannot change your own access level.');
         }
 
-        $user->update(['access' => $request->string('access')->toString()]);
+        $user->update($data);
 
-        return back()->with('success', "Updated {$user->name}'s access to {$request->access}.");
+        return back()->with('success', "Updated {$user->name}.");
+    }
+
+    public function updateAvatar(Request $request, User $user): RedirectResponse
+    {
+        $request->validate([
+            'avatar' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+        ]);
+
+        if ($user->getRawOriginal('avatar')) {
+            Storage::disk('public')->delete($user->getRawOriginal('avatar'));
+        }
+
+        $path = $request->file('avatar')->store('avatars', 'public');
+
+        $user->update(['avatar' => $path]);
+
+        return back()->with('success', "Updated {$user->name}'s profile picture.");
+    }
+
+    public function destroyAvatar(Request $request, User $user): RedirectResponse
+    {
+        if ($user->getRawOriginal('avatar')) {
+            Storage::disk('public')->delete($user->getRawOriginal('avatar'));
+            $user->update(['avatar' => null]);
+        }
+
+        return back()->with('success', "Removed {$user->name}'s profile picture.");
     }
 }

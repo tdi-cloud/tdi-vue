@@ -2,6 +2,9 @@
 import { ref, watch, computed } from 'vue';
 import axios from 'axios';
 import { X, Plus, Trash2, GripVertical, ExternalLink, Loader2, Settings, FileText, Save, CheckSquare, Square, Calendar, Copy, Check } from 'lucide-vue-next';
+import { useConfirm } from '@/composables/useConfirm';
+
+const { confirmDialog } = useConfirm();
 
 interface Requirement {
     id: number | null;
@@ -316,7 +319,7 @@ async function saveRequirement(req: Requirement) {
 }
 
 async function deleteRequirement(req: Requirement) {
-    if (!confirm(`Delete "${req.question}"?`)) return;
+    if (!(await confirmDialog(`Delete "${req.question}"?`))) return;
     await axios.delete(`/foreign-nominee-requirements/${req.id}`);
     config.value.requirements = config.value.requirements.filter(r => r.id !== req.id);
 }

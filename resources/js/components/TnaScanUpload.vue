@@ -1,6 +1,7 @@
 <script setup>
 import { router } from '@inertiajs/vue3'
 import { ref } from 'vue'
+import { useConfirm } from '@/composables/useConfirm'
 
 const props = defineProps({
   assessmentId: { type: [Number, String], required: true },
@@ -8,6 +9,8 @@ const props = defineProps({
   label: { type: String, required: true },
   hasFile: { type: Boolean, default: false },
 })
+
+const { confirmDialog } = useConfirm()
 
 const MAX_BYTES = 10 * 1024 * 1024
 
@@ -45,8 +48,8 @@ function handleFileChange(e) {
   })
 }
 
-function destroy() {
-  if (!confirm('Delete this signed copy?')) return
+async function destroy() {
+  if (!(await confirmDialog('Delete this signed copy?'))) return
   error.value = ''
   processing.value = true
   router.delete(route('tna.scans.destroy', [props.assessmentId, props.type]), {

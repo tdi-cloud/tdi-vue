@@ -41,6 +41,11 @@ class Batch extends Model
         return $this->hasMany(Requirement::class, 'batch_id');
     }
 
+    public function evaluationForm()
+    {
+        return $this->hasOne(EvaluationForm::class);
+    }
+
     protected static function booted(): void
     {
         static::deleting(function (Batch $batch) {

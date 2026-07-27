@@ -19,6 +19,9 @@ import {
     Plus,
     FileCheck,
 } from 'lucide-vue-next';
+import { useConfirm } from '@/composables/useConfirm';
+
+const { confirmDialog } = useConfirm();
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -252,8 +255,8 @@ function saveCertificate() {
     });
 }
 
-function deleteCert(cert: Certificate) {
-    if (!confirm(`Delete this ${cert.type} certificate? This cannot be undone.`)) return;
+async function deleteCert(cert: Certificate) {
+    if (!(await confirmDialog(`Delete this ${cert.type} certificate? This cannot be undone.`))) return;
     router.delete(route('certificates.destroy', cert.id), { preserveScroll: true });
 }
 </script>

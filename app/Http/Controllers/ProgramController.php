@@ -157,6 +157,7 @@ class ProgramController extends Controller
                     ->orderBy('date_start')
                     ->with([
                         'requirements',
+                        'evaluationForm:id,batch_id,is_active',
                         'participants' => function ($pq) {
                             $pq->addSelect([
                                 'participants.*',

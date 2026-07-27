@@ -4,8 +4,9 @@ import { Badge } from '@/components/ui/badge';
 import { Trash2, ChevronRight, Layers, Users, ClipboardList, CalendarDays, BookOpen, UserCog } from 'lucide-vue-next';
 import { router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
+import { useConfirm } from '@/composables/useConfirm';
 
-
+const { confirmDialog } = useConfirm();
 
 interface Program {
     id: number;
@@ -94,8 +95,8 @@ const changePage = (page: number) => {
     }, 10);
 };
 
-const deleteProgram = (id: number) => {
-    if (confirm('Are you sure you want to delete this program?')) {
+const deleteProgram = async (id: number) => {
+    if (await confirmDialog('Are you sure you want to delete this program?')) {
         router.delete(route('programs.destroy', id));
     }
 };
