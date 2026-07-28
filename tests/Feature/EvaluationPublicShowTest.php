@@ -41,7 +41,7 @@ test('an unknown slug returns 404', function () {
     $this->get(route('evaluate.show', 'does-not-exist'))->assertNotFound();
 });
 
-test('an inactive evaluation form returns 404', function () {
+test('an inactive evaluation form renders a closed notice instead of a 404', function () {
     $batch = evalShowBatch(evalShowProgram());
     $form = EvaluationForm::create([
         'batch_id' => $batch->id,
@@ -50,7 +50,13 @@ test('an inactive evaluation form returns 404', function () {
     ]);
     $form->seedDefaults();
 
-    $this->get(route('evaluate.show', $form->slug))->assertNotFound();
+    $response = $this->get(route('evaluate.show', $form->slug));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('Evaluation/Closed')
+        ->where('form.slug', $form->slug)
+    );
 });
 
 test('an active evaluation form renders publicly with sections, facilitators, and participants', function () {

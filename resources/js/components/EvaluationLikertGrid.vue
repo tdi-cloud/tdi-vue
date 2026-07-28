@@ -21,13 +21,13 @@ const props = defineProps<{
 
 <template>
     <div class="overflow-x-auto -mx-1 px-1">
-        <table class="w-full text-xs border-collapse">
+        <table class="w-full min-w-[420px] table-fixed text-xs border-collapse">
             <thead>
                 <tr>
-                    <th class="text-left font-semibold text-gray-500 pb-2 pr-2 align-bottom"></th>
+                    <th class="w-[30%] text-left font-semibold text-gray-500 pb-2 pr-2 align-bottom"></th>
                     <th
                         v-for="opt in options" :key="opt.value"
-                        class="text-center font-semibold text-gray-500 pb-2 px-1.5 align-bottom whitespace-nowrap"
+                        class="text-center font-semibold text-gray-500 pb-2 px-1.5 align-bottom"
                     >{{ opt.label }}</th>
                 </tr>
             </thead>

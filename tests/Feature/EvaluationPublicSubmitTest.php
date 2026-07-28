@@ -158,5 +158,7 @@ test('submitting to an inactive form is rejected', function () {
     $form->update(['is_active' => false]);
     $payload = evalSubmitValidPayload($form);
 
-    $this->post(route('evaluate.submit', $form->slug), $payload)->assertNotFound();
+    $this->post(route('evaluate.submit', $form->slug), $payload)->assertRedirect(route('evaluate.show', $form->slug));
+
+    expect(EvaluationResponse::count())->toBe(0);
 });

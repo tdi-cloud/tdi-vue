@@ -19,19 +19,26 @@ const logoFailed = ref(false);
             <div class="flex flex-col gap-8">
                 <div class="flex flex-col items-center gap-3">
                     <Link :href="route('home')" class="flex flex-col items-center gap-3 font-medium">
-                        <img
-                            v-if="!logoFailed"
-                            src="/storage/images/tesda-logo.png"
-                            alt="TESDA"
-                            class="h-16 w-16 rounded-full object-contain shadow-lg ring-4 ring-white"
-                            @error="logoFailed = true"
-                        />
-                        <div v-else class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-b from-blue-700 to-blue-900 font-extrabold text-white shadow-lg ring-4 ring-white">
-                            TDI
+                        <div class="relative flex h-16 w-16 items-center justify-center">
+                            <div
+                                class="absolute -inset-4 rounded-full bg-[conic-gradient(from_0deg,transparent_0deg,rgba(37,99,235,0.55)_100deg,transparent_220deg,transparent_360deg)] opacity-60 blur-lg animate-[spin_9s_linear_infinite]"
+                            ></div>
+                            <div
+                                class="absolute -inset-2 rounded-full bg-[conic-gradient(from_180deg,transparent_0deg,rgba(96,165,250,0.5)_80deg,transparent_180deg,transparent_360deg)] opacity-50 blur-md animate-[spin_6s_linear_infinite_reverse]"
+                            ></div>
+                            <img
+                                v-if="!logoFailed"
+                                src="/storage/images/tesda-logo.png"
+                                alt="TESDA"
+                                class="relative z-10 h-16 w-16 rounded-full object-contain shadow-lg ring-4 ring-white"
+                                @error="logoFailed = true"
+                            />
+                            <div v-else class="relative z-10 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-b from-blue-700 to-blue-900 font-extrabold text-white shadow-lg ring-4 ring-white">
+                                TDI
+                            </div>
                         </div>
                         <div class="text-center leading-tight">
-                            <p class="text-xs font-bold tracking-widest text-blue-900 uppercase">TESDA</p>
-                            <p class="text-[11px] text-muted-foreground">Technical Education and Skills Development Authority</p>
+                            <p class="text-xs font-bold tracking-widest text-blue-900 uppercase">TESDA Development Institute</p>
                         </div>
                     </Link>
                 </div>

@@ -18,13 +18,18 @@ class EvaluationController extends Controller
     public function show(string $slug)
     {
         $form = EvaluationForm::where('slug', $slug)
-            ->where('is_active', true)
             ->with([
                 'sections.questions',
                 'facilitators',
                 'batch.program.coverPage',
             ])
             ->firstOrFail();
+
+        if (! $form->is_active) {
+            return Inertia::render('Evaluation/Closed', [
+                'form' => $form,
+            ]);
+        }
 
         $participants = $form->batch->participants()
             ->with('employee')
@@ -46,9 +51,12 @@ class EvaluationController extends Controller
     public function submit(Request $request, string $slug)
     {
         $form = EvaluationForm::where('slug', $slug)
-            ->where('is_active', true)
             ->with(['sections.questions', 'facilitators'])
             ->firstOrFail();
+
+        if (! $form->is_active) {
+            return redirect()->route('evaluate.show', $slug);
+        }
 
         if ($request->filled('empcode') && $form->responses()->where('empcode', $request->empcode)->exists()) {
             return back()->with('error', 'You have already submitted an evaluation for this batch.')->withInput();
