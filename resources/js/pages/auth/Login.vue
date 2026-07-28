@@ -44,16 +44,16 @@ const submit = () => {
     <AuthBase title="Log in to your account" description="Enter your email and password below to log in">
         <Head title="Log in" />
 
-        <div v-if="status" class="mb-4 text-center text-sm font-medium text-green-600">
+        <div v-if="status" class="mb-4 rounded-lg bg-green-50 py-2 text-center text-sm font-medium text-green-700">
             {{ status }}
         </div>
 
         <form @submit.prevent="submit" class="flex flex-col gap-6">
-            <div class="grid gap-6">
+            <div class="grid gap-5">
                 <div class="grid gap-2">
                     <Label for="email">Email address</Label>
                     <div class="relative">
-                        <Mail class="pointer-events-none absolute inset-y-0 left-0 my-auto ml-3 h-4 w-4 text-muted-foreground" />
+                        <Mail class="pointer-events-none absolute inset-y-0 left-0 my-auto ml-3.5 h-4 w-4 text-blue-900/50" />
                         <Input
                             id="email"
                             type="email"
@@ -63,7 +63,7 @@ const submit = () => {
                             autocomplete="email"
                             v-model="form.email"
                             placeholder="email@example.com"
-                            class="pl-10"
+                            class="h-11 rounded-xl border-blue-100 bg-white pl-10 shadow-sm focus-visible:ring-blue-700"
                         />
                     </div>
                     <InputError :message="form.errors.email" />
@@ -72,10 +72,10 @@ const submit = () => {
                 <div class="grid gap-2">
                     <div class="flex items-center justify-between">
                         <Label for="password">Password</Label>
-                        <TextLink v-if="canResetPassword" :href="route('password.request')" class="text-sm" tabindex="5"> Forgot password? </TextLink>
+                        <TextLink v-if="canResetPassword" :href="route('password.request')" class="text-sm text-blue-800" tabindex="5"> Forgot password? </TextLink>
                     </div>
                     <div class="relative">
-                        <Lock class="pointer-events-none absolute inset-y-0 left-0 my-auto ml-3 h-4 w-4 text-muted-foreground" />
+                        <Lock class="pointer-events-none absolute inset-y-0 left-0 my-auto ml-3.5 h-4 w-4 text-blue-900/50" />
                         <Input
                             id="password"
                             :type="showPassword ? 'text' : 'password'"
@@ -84,7 +84,7 @@ const submit = () => {
                             autocomplete="current-password"
                             v-model="form.password"
                             placeholder="Password"
-                            class="pl-10 pr-10"
+                            class="h-11 rounded-xl border-blue-100 bg-white pl-10 pr-10 shadow-sm focus-visible:ring-blue-700"
                         />
                         <button
                             type="button"
@@ -102,12 +102,12 @@ const submit = () => {
 
                 <div class="flex items-center justify-between" tabindex="3">
                     <Label for="remember" class="flex items-center space-x-3 ">
-                        <Checkbox id="remember" class="border-sky-900 data-[state=checked]:bg-sky-900 data-[state=checked]:border-sky-900 data-[state=checked]:text-white" v-model:checked="form.remember" tabindex="4" />
+                        <Checkbox id="remember" class="border-blue-800 data-[state=checked]:bg-blue-800 data-[state=checked]:border-blue-800 data-[state=checked]:text-white" v-model:checked="form.remember" tabindex="4" />
                         <span>Remember me</span>
                     </Label>
                 </div>
 
-                <Button type="submit" class="mt-4 w-full bg-gradient-to-t from-blue-800 to-blue-600 rouded-lg font-extrabold" tabindex="4" :disabled="form.processing">
+                <Button type="submit" class="mt-2 h-11 w-full rounded-xl bg-gradient-to-b from-blue-700 to-blue-900 font-extrabold shadow-md shadow-blue-900/20 transition hover:brightness-110" tabindex="4" :disabled="form.processing">
                     <LoaderCircle v-if="form.processing" class="h-4 w-4 animate-spin" />
                     Log in
                 </Button>
@@ -115,7 +115,7 @@ const submit = () => {
 
             <div class="text-center text-sm text-muted-foreground">
                 Don't have an account?
-                <TextLink :href="route('register')" :tabindex="5">Sign up</TextLink>
+                <TextLink :href="route('register')" class="text-blue-800" :tabindex="5">Sign up</TextLink>
             </div>
         </form>
     </AuthBase>
