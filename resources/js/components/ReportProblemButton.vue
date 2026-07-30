@@ -55,7 +55,7 @@ const submit = () => {
                     <MessageSquareWarning class="h-5 w-5 text-amber-500" /> Report a Problem
                 </DialogTitle>
                 <DialogDescription class="text-xs text-muted-foreground">
-                    Describe the issue you encountered. This will be sent directly to the super admin.
+                    Describe the issue you encountered. This will be sent directly to our team.
                 </DialogDescription>
             </DialogHeader>
 

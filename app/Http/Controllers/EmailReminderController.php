@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Mail\ReminderEmail;
+use App\Models\Batch;
 use App\Models\EmailReminderLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\ValidationException;
 
 class EmailReminderController extends Controller
 {
@@ -25,6 +27,19 @@ class EmailReminderController extends Controller
             'recipients.*.name' => 'nullable|string',
             'recipients.*.email' => 'nullable|email',
         ]);
+
+        // Huwag payagan ang sinuman na mag-send ng email reminder para sa isang
+        // naka-reschedule nang batch, dahil malamang luma na/mali na ang mga detalye
+        // (petsa, deadline) na nakasaad sa reminder — para maiwasan ang pagkalito ng participants.
+        if (! empty($validated['batch_id'])) {
+            $batch = Batch::find($validated['batch_id']);
+
+            if ($batch && $batch->status === 'Rescheduled') {
+                throw ValidationException::withMessages([
+                    'batch_id' => 'This batch has been rescheduled. Email reminders are disabled for it to avoid sending outdated schedule information.',
+                ]);
+            }
+        }
 
         $mailable = new ReminderEmail(
             emailSubject: $validated['subject'],

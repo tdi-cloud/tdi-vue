@@ -22,7 +22,7 @@ interface ParticipantInBatch {
 }
 interface Requirement { id: number; title: string; name: string; due_date: string; }
 interface BatchWithDetails {
-    id: number; batch: string;
+    id: number; batch: string; status?: string;
     participants?: ParticipantInBatch[]; requirements?: Requirement[];
 }
 interface Submission {
@@ -214,7 +214,25 @@ const emailTarget = ref<EmailTarget>({
     participants: [],
 });
 
+// Batch status lookup, para malaman kung "Rescheduled" ang batch ng isang group
+// at ma-disable ang Email Reminder button dito (iniiwasan ang pagpadala ng
+// reminder na may lumang/maling petsa).
+const batchStatusById = computed(() => {
+    const map = new Map<number, string | undefined>();
+    for (const b of props.program.batches ?? []) {
+        map.set(b.id, b.status);
+    }
+    return map;
+});
+
+const isRescheduled = (group: Group) => {
+    const batchId = group.entries[0]?.batch_id;
+    return batchId != null && batchStatusById.value.get(batchId) === 'Rescheduled';
+};
+
 const openEmailReminder = (group: Group) => {
+    if (isRescheduled(group)) return;
+
     emailTarget.value = {
         batchId: group.entries[0]?.batch_id ?? null,
         requirementId: group.entries[0]?.requirement_id ?? null,
@@ -398,10 +416,15 @@ const openEmailReminder = (group: Group) => {
                                         <span class="text-[11px] font-bold text-muted-foreground">{{ group.entries.length }} incomplete</span>
                                         <button
                                             type="button"
-                                            class="inline-flex items-center gap-1 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 text-[11px] font-semibold transition-colors"
+                                            class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors"
+                                            :class="isRescheduled(group)
+                                                ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                                                : 'bg-blue-600 hover:bg-blue-700 text-white'"
+                                            :disabled="isRescheduled(group)"
+                                            :title="isRescheduled(group) ? 'This batch has been rescheduled — email reminders are disabled.' : ''"
                                             @click.stop="openEmailReminder(group)"
                                         >
-                                            <Mail class="h-3 w-3" /> Email Reminder
+                                            <Mail class="h-3 w-3" /> {{ isRescheduled(group) ? 'Rescheduled' : 'Email Reminder' }}
                                         </button>
                                         <ChevronDown v-if="collapsed[group.key]" class="h-4 w-4 text-muted-foreground" />
                                         <ChevronUp v-else class="h-4 w-4 text-muted-foreground" />

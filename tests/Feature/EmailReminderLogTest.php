@@ -102,6 +102,26 @@ test('sending a reminder without a recipients breakdown falls back to logging th
     expect($log->program_id)->toBeNull();
 });
 
+test('email reminders are blocked for a rescheduled batch', function () {
+    Mail::fake();
+    $admin = reminderTestAdmin('EMP-REM-05');
+    [$program, $batch, $requirement] = reminderTestSetup();
+    $batch->update(['status' => 'Rescheduled']);
+
+    $response = $this->actingAs($admin)->post(route('email-reminder.send'), [
+        'to' => ['juan@example.com'],
+        'subject' => 'Reminder',
+        'body' => '<p>Body</p>',
+        'program_id' => $program->id,
+        'batch_id' => $batch->id,
+        'requirement_id' => $requirement->id,
+    ]);
+
+    $response->assertSessionHasErrors('batch_id');
+    Mail::assertNothingSent();
+    expect(EmailReminderLog::count())->toBe(0);
+});
+
 test('non-admin users cannot send email reminders', function () {
     $user = User::factory()->create(['empcode' => 'EMP-REM-03', 'access' => 'user']);
 
