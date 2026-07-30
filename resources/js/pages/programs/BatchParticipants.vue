@@ -15,8 +15,10 @@ import {
 import { ref, watch, computed } from 'vue';
 import BulkAddParticipants from '@/pages/programs/BulkAddParticipants.vue';
 import { useConfirm } from '@/composables/useConfirm';
+import { useToast } from '@/components/ui/toast/use-toast';
 
 const { confirmDialog } = useConfirm();
+const { toast } = useToast();
 
 interface EmployeeOption {
     empcode: string;
@@ -261,7 +263,7 @@ const deleteSubmission = async (submissionId: number) => {
         preserveScroll: true,
         onSuccess: () => {
             showSubmissions.value = false;
-            submissionsTarget.value = null;
+            submissionsTargetId.value = null;
             editingRow.value = null;
         },
     });
@@ -377,7 +379,7 @@ watch(() => props.open, (isOpen) => {
         listQuery.value = '';
         page.value = 1;
         showSubmissions.value = false;
-        submissionsTarget.value = null;
+        submissionsTargetId.value = null;
         editingRow.value = null;
     }
 });
@@ -452,6 +454,13 @@ const removeParticipant = async (participant: any) => {
 
     router.delete(route('participants.destroy', participant.id), {
         preserveScroll: true,
+        onError: () => {
+            toast({
+                title: 'Something went wrong',
+                description: `Could not remove ${label}. Your session may have expired — try refreshing the page.`,
+                variant: 'destructive',
+            });
+        },
     });
 };
 
@@ -488,13 +497,24 @@ const clearAllParticipants = async () => {
         }
 
         const participant = participants.value[index];
+        const countBefore = participants.value.length;
 
         router.delete(route('participants.destroy', participant.id), {
             preserveScroll: true,
+            onError: () => {
+                clearingAll.value = false;
+                toast({
+                    title: 'Something went wrong',
+                    description: 'Removing participants was interrupted. Your session may have expired — try refreshing the page.',
+                    variant: 'destructive',
+                });
+            },
             onFinish: () => {
-                // ✅ Laging i-delete ang index 0 hanggang maubos,
-                // dahil mag-shrink ang array pagkatapos ng bawat reload
-                deleteOne(0);
+                // Kung hindi humikpo ang list (nag-fail ang request), itigil na
+                // sa halip na mag-retry nang walang hanggan sa parehong participant.
+                if (participants.value.length < countBefore) {
+                    deleteOne(0);
+                }
             },
         });
     };

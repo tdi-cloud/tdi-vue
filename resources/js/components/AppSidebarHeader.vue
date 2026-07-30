@@ -4,6 +4,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import type { BreadcrumbItemType } from '@/types';
 import NavUser from '@/components/NavUser.vue';
 import NotificationBell from '@/components/NotificationBell.vue';
+import ReportProblemButton from '@/components/ReportProblemButton.vue';
 import AppearanceMenu from '@/components/AppearanceMenu.vue';
 
 defineProps<{
@@ -39,6 +40,7 @@ defineProps<{
         </div>
 
         <div class="ml-auto flex items-center gap-1">
+            <ReportProblemButton />
             <NotificationBell />
             <AppearanceMenu />
             <NavUser />

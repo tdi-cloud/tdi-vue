@@ -24,6 +24,7 @@ use App\Http\Controllers\NhrdcSelfServiceController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrganizingSponsorController;
 use App\Http\Controllers\ParticipantController;
+use App\Http\Controllers\ProblemReportController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\RegionalReportController;
 use App\Http\Controllers\RequirementController;
@@ -419,6 +420,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])
         ->name('notifications.read-all');
+
+    // PROBLEM REPORTS
+    Route::post('/problem-reports', [ProblemReportController::class, 'store'])
+        ->name('problem-reports.store');
 
     // SELF RATING
 

@@ -9,7 +9,7 @@ const { state, respond } = useConfirmDialogState();
     <Teleport to="body">
         <div
             v-if="state.open"
-            class="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4"
+            class="pointer-events-auto fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4"
             @click.self="respond(false)"
         >
             <div class="bg-background text-foreground rounded-2xl shadow-2xl w-full max-w-sm p-6">

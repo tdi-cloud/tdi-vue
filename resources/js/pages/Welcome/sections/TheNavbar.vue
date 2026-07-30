@@ -27,6 +27,7 @@
       <!-- Auth Buttons -->
       <div class="navbar__actions">
         <template v-if="auth?.user">
+          <ReportProblemButton button-class="text-white/85 hover:bg-white/10 hover:text-white" />
           <NotificationBell button-class="text-white/85 hover:bg-white/10 hover:text-white" />
 
           <!-- Name + dropdown (Dashboard [admin only], Settings, Logout) -->
@@ -83,6 +84,7 @@
 
       <div class="mobile-menu__actions">
         <template v-if="auth?.user">
+          <ReportProblemButton button-class="text-white/85 hover:bg-white/10 hover:text-white" />
           <NotificationBell button-class="text-white/85 hover:bg-white/10 hover:text-white" />
 
           <Link v-if="isAdmin" :href="route('dashboard')" class="btn btn--primary" @click="mobileMenuOpen = false">
@@ -109,6 +111,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { Link, usePage, router } from '@inertiajs/vue3'
 import { useScrollTo } from '@/composables/useScrollTo'
 import NotificationBell from '@/components/NotificationBell.vue'
+import ReportProblemButton from '@/components/ReportProblemButton.vue'
 import { ChartPie, GraduationCap, ChevronsUpDown, Settings, LogOut } from 'lucide-vue-next'
 
 defineProps({
