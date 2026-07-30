@@ -30,6 +30,7 @@ import {
     ShieldCheck,
     Images,
     ClipboardCheck,
+    MessageSquareWarning,
 } from 'lucide-vue-next';
 import { useFlash } from '@/composables/useFlash';
 import { Toaster } from '@/components/ui/toast';
@@ -137,6 +138,13 @@ const superAdminNavItems: NavItem[] = [
         url: '/site-images',
         icon: Images,
         color: 'text-fuchsia-500',
+        group: 'Management',
+    },
+    {
+        title: 'Problem Reports',
+        url: '/problem-reports',
+        icon: MessageSquareWarning,
+        color: 'text-amber-500',
         group: 'Management',
     },
 ];

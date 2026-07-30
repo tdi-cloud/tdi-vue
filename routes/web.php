@@ -54,9 +54,8 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
-Route::get('dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified', 'admin'])->name('dashboard');
+Route::get('dashboard', [DashboardController::class, 'index'])
+    ->middleware(['auth', 'verified', 'admin'])->name('dashboard');
 
 Route::middleware(['auth', 'verified', 'admin'])->group(function () {
 
@@ -371,6 +370,10 @@ Route::middleware(['auth', 'verified', 'superadmin'])->group(function () {
     Route::get('/site-images', [SiteImageController::class, 'index'])->name('site-images.index');
     Route::post('/site-images/{key}', [SiteImageController::class, 'update'])->name('site-images.update');
     Route::delete('/site-images/{key}', [SiteImageController::class, 'destroy'])->name('site-images.destroy');
+
+    // PROBLEM REPORTS
+    Route::get('/problem-reports', [ProblemReportController::class, 'index'])->name('problem-reports.index');
+    Route::put('/problem-reports/{problemReport}', [ProblemReportController::class, 'updateStatus'])->name('problem-reports.update-status');
 });
 
 // NHRDC SELF-SERVICE (committee members rate nominee interviews themselves —

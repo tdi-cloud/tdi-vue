@@ -4,6 +4,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
 import { ref, onMounted, watch } from 'vue';
 import PlaceholderPattern from '../components/PlaceholderPattern.vue';
+import DashboardSummaryBanner from '../components/DashboardSummaryBanner.vue';
 import TrainingComplianceCard from '../components/TrainingComplianceCard.vue';
 import SupervisoryComplianceCard from '../components/SupervisoryComplianceCard.vue';
 import TreapComplianceCard from '../components/TreapComplianceCard.vue';
@@ -16,7 +17,14 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
 ];
 
-defineProps<{ name?: string }>();
+defineProps<{
+    summary: {
+        employees: number;
+        programs: number;
+        active_batches: number;
+        pending_submissions: number;
+    };
+}>();
 
 /* ===================== SHARED FILTERS ===================== */
 
@@ -65,6 +73,9 @@ watch(region, fetchOffices);
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
+
+            <!-- ===================== SUMMARY BANNER ===================== -->
+            <DashboardSummaryBanner :summary="summary" />
 
             <!-- ===================== SHARED FILTER BAR ===================== -->
             <div class="flex flex-wrap items-center gap-3 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-card px-5 py-3 shadow-sm">

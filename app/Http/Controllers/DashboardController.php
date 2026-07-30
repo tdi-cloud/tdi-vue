@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Batch;
+use App\Models\Employee;
+use App\Models\Program;
+use App\Models\Submission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -10,7 +14,14 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        return Inertia::render('dashboard');
+        return Inertia::render('Dashboard', [
+            'summary' => [
+                'employees' => Employee::count(),
+                'programs' => Program::count(),
+                'active_batches' => Batch::where('status', 'Active')->count(),
+                'pending_submissions' => Submission::where('status', 'Pending')->count(),
+            ],
+        ]);
     }
 
     public function offices(Request $request)

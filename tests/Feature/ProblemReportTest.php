@@ -43,3 +43,39 @@ test('the description is required', function () {
 
     expect(ProblemReport::count())->toBe(0);
 });
+
+test('superadmin can view the problem reports list', function () {
+    $superadmin = User::factory()->create(['empcode' => 'EMP-PR-006', 'access' => 'superadmin']);
+    $reporter = User::factory()->create(['empcode' => 'EMP-PR-007']);
+    ProblemReport::factory()->for($reporter, 'user')->create(['description' => 'Something broke.']);
+
+    $this->actingAs($superadmin)
+        ->get(route('problem-reports.index'))
+        ->assertSuccessful();
+});
+
+test('regular admin cannot view the problem reports list', function () {
+    $admin = User::factory()->create(['empcode' => 'EMP-PR-008', 'access' => 'admin']);
+
+    $this->actingAs($admin)
+        ->get(route('problem-reports.index'))
+        ->assertForbidden();
+});
+
+test('superadmin can mark a report resolved and reopen it', function () {
+    $superadmin = User::factory()->create(['empcode' => 'EMP-PR-009', 'access' => 'superadmin']);
+    $reporter = User::factory()->create(['empcode' => 'EMP-PR-010']);
+    $report = ProblemReport::factory()->for($reporter, 'user')->create();
+
+    $this->actingAs($superadmin)
+        ->put(route('problem-reports.update-status', $report), ['status' => 'resolved'])
+        ->assertRedirect();
+
+    expect($report->fresh()->status)->toBe(ProblemReport::STATUS_RESOLVED);
+
+    $this->actingAs($superadmin)
+        ->put(route('problem-reports.update-status', $report), ['status' => 'open'])
+        ->assertRedirect();
+
+    expect($report->fresh()->status)->toBe(ProblemReport::STATUS_OPEN);
+});
