@@ -172,6 +172,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
 
     Route::get('/programs/{program}/evaluation-dashboard', [EvaluationFormController::class, 'dashboardData'])->name('programs.evaluation-dashboard');
     Route::get('/evaluation-forms/{evaluationForm}/responses', [EvaluationFormController::class, 'responses'])->name('evaluation-forms.responses');
+    Route::delete('/evaluation-forms/{evaluationForm}/responses/{evaluationResponse}', [EvaluationFormController::class, 'destroyResponse'])->name('evaluation-forms.responses.destroy');
 
     // COVER PAGE
     Route::post('/programs/cover/upload', [CoverPageController::class, 'upload'])->name('programs.cover.upload');

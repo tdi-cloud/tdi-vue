@@ -13,6 +13,7 @@ class EvaluationFacilitator extends Model
 
     protected $fillable = [
         'evaluation_form_id',
+        'resource_speaker_id',
         'name',
         'role',
         'sort_order',
@@ -21,6 +22,11 @@ class EvaluationFacilitator extends Model
     public function form(): BelongsTo
     {
         return $this->belongsTo(EvaluationForm::class, 'evaluation_form_id');
+    }
+
+    public function resourceSpeaker(): BelongsTo
+    {
+        return $this->belongsTo(ResourceSpeaker::class);
     }
 
     public function answers(): HasMany

@@ -245,12 +245,10 @@ const removeCompetency = async (competency: Competency) => {
                         </TabsTrigger>
 
                         <TabsTrigger
-                            value="certificates"
+                            value="Supporting"
                             class="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-1 text-sm font-medium"
                         >
-                            <span class="flex items-center gap-1">
-                                <Award class="h-4 w-4" /> Certificates
-                            </span>
+                            <span class="flex items-center gap-1"><ScrollText class="h-4 w-4" /> Supporting Docs</span>
                         </TabsTrigger>
 
                         <TabsTrigger
@@ -261,18 +259,24 @@ const removeCompetency = async (competency: Competency) => {
                         </TabsTrigger>
 
                         <TabsTrigger
+                            value="certificates"
+                            class="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-1 text-sm font-medium"
+                        >
+                            <span class="flex items-center gap-1">
+                                <Award class="h-4 w-4" /> Certificates
+                            </span>
+                        </TabsTrigger>
+
+                        
+
+                        <TabsTrigger
                             value="tesda-order"
                             class="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-1 text-sm font-medium"
                         >
                             <span class="flex items-center gap-1"><FileSignature class="h-4 w-4" /> TESDA Order</span>
                         </TabsTrigger>
 
-                        <TabsTrigger
-                            value="Supporting"
-                            class="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-1 text-sm font-medium"
-                        >
-                            <span class="flex items-center gap-1"><ScrollText class="h-4 w-4" /> Supporting Docs</span>
-                        </TabsTrigger>
+                        
 
                         <TabsTrigger
                             value="resource"

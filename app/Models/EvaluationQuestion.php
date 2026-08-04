@@ -19,7 +19,9 @@ class EvaluationQuestion extends Model
 
     public const TYPE_CHECKBOX = 'checkbox';
 
-    public const TYPES = [self::TYPE_LIKERT5, self::TYPE_SCALE10, self::TYPE_TEXT, self::TYPE_CHECKBOX];
+    public const TYPE_RADIO = 'radio';
+
+    public const TYPES = [self::TYPE_LIKERT5, self::TYPE_SCALE10, self::TYPE_TEXT, self::TYPE_CHECKBOX, self::TYPE_RADIO];
 
     /**
      * Fixed option labels for the two rating-scale question types — these

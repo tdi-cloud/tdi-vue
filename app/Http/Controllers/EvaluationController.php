@@ -81,6 +81,8 @@ class EvaluationController extends Controller
                         $rules[$key] = $this->rulesForQuestion($question);
                         if ($question->type === EvaluationQuestion::TYPE_CHECKBOX) {
                             $rules["{$key}.*"] = Rule::in($question->options ?? []);
+                        } elseif ($question->type === EvaluationQuestion::TYPE_RADIO) {
+                            $rules[$key][] = Rule::in($question->options ?? []);
                         }
                     }
                 } else {
@@ -88,6 +90,8 @@ class EvaluationController extends Controller
                     $rules[$key] = $this->rulesForQuestion($question);
                     if ($question->type === EvaluationQuestion::TYPE_CHECKBOX) {
                         $rules["{$key}.*"] = Rule::in($question->options ?? []);
+                    } elseif ($question->type === EvaluationQuestion::TYPE_RADIO) {
+                        $rules[$key][] = Rule::in($question->options ?? []);
                     }
                 }
             }

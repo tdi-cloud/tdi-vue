@@ -23,7 +23,7 @@ const isSuperAdmin = computed(() => (page.props.auth as any)?.user?.access === '
 
 interface Question {
     id: number;
-    type: 'likert5' | 'scale10' | 'text' | 'checkbox';
+    type: 'likert5' | 'scale10' | 'text' | 'checkbox' | 'radio';
     label: string;
     options: string[] | null;
     is_required: boolean;
@@ -78,6 +78,7 @@ const TYPE_LABELS: Record<string, string> = {
     scale10: '1-10 rating',
     text: 'Open text',
     checkbox: 'Checkboxes',
+    radio: 'Single choice',
 };
 
 const publicUrl = computed(() => form.value ? route('evaluate.show', form.value.slug) : '');
@@ -226,7 +227,7 @@ function submitQuestion() {
         label: questionForm.value.label,
         is_required: questionForm.value.is_required,
     };
-    if (questionForm.value.type === 'checkbox') {
+    if (questionForm.value.type === 'checkbox' || questionForm.value.type === 'radio') {
         payload.options = questionForm.value.options.split('\n').map(o => o.trim()).filter(Boolean);
     }
 
@@ -501,7 +502,7 @@ function moveFacilitator(facilitator: Facilitator, dir: 'up' | 'down') {
                                     <div class="flex items-center gap-1.5 mt-1">
                                         <Badge variant="outline" class="text-[10px]">{{ TYPE_LABELS[question.type] }}</Badge>
                                         <Badge v-if="question.is_required" variant="outline" class="text-[10px] text-rose-600 border-rose-200">Required</Badge>
-                                        <span v-if="question.type === 'checkbox' && question.options" class="text-[10px] text-muted-foreground truncate">
+                                        <span v-if="(question.type === 'checkbox' || question.type === 'radio') && question.options" class="text-[10px] text-muted-foreground truncate">
                                             {{ question.options.join(', ') }}
                                         </span>
                                     </div>
@@ -599,6 +600,7 @@ function moveFacilitator(facilitator: Facilitator, dir: 'up' | 'down') {
                                 <SelectItem class="text-xs" value="scale10">1–10 rating</SelectItem>
                                 <SelectItem class="text-xs" value="text">Open text</SelectItem>
                                 <SelectItem class="text-xs" value="checkbox">Checkboxes (multiple choice)</SelectItem>
+                                <SelectItem class="text-xs" value="radio">Single choice (radio buttons)</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -609,7 +611,7 @@ function moveFacilitator(facilitator: Facilitator, dir: 'up' | 'down') {
                         <p v-if="questionErrors.label" class="text-xs text-red-500">{{ questionErrors.label }}</p>
                     </div>
 
-                    <div v-if="questionForm.type === 'checkbox'" class="grid gap-1">
+                    <div v-if="questionForm.type === 'checkbox' || questionForm.type === 'radio'" class="grid gap-1">
                         <Label class="text-xs">Options <span class="text-red-500">*</span></Label>
                         <Textarea v-model="questionForm.options" class="text-xs" rows="3" placeholder="One option per line, e.g.&#10;just right&#10;too slow&#10;too fast" />
                         <p v-if="questionErrors.options" class="text-xs text-red-500">{{ questionErrors.options }}</p>

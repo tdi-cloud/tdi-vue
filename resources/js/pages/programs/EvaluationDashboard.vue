@@ -3,7 +3,10 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import axios from 'axios';
 import { router } from '@inertiajs/vue3';
 import VueApexCharts from 'vue3-apexcharts';
-import { BarChart3, Users2, Star, MessageSquareText, Loader2, ChevronLeft, ChevronRight, Inbox, Sparkles, Settings2, ClipboardCheck, X, UserRound, Clock } from 'lucide-vue-next';
+import { BarChart3, Users2, Star, MessageSquareText, Loader2, ChevronLeft, ChevronRight, Inbox, Sparkles, Settings2, ClipboardCheck, X, UserRound, Clock, Trash2 } from 'lucide-vue-next';
+import { useConfirm } from '@/composables/useConfirm';
+
+const { confirmDialog } = useConfirm();
 
 interface Batch {
     id: number;
@@ -255,6 +258,26 @@ function closeBatchPanel() {
     showBatchPanel.value = false;
 }
 
+const deletingResponseId = ref<number | null>(null);
+
+async function deleteResponse(response: any) {
+    if (!batchPanelFormId.value) return;
+    if (!(await confirmDialog(`Delete the evaluation response from "${response.respondent_name}"? This cannot be undone.`))) return;
+
+    deletingResponseId.value = response.id;
+    router.delete(route('evaluation-forms.responses.destroy', [batchPanelFormId.value, response.id]), {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => {
+            const page = batchPanelData.value?.current_page ?? 1;
+            fetchBatchResponses(page);
+            fetchDashboard();
+            fetchComments(1);
+        },
+        onFinish: () => { deletingResponseId.value = null; },
+    });
+}
+
 function isRecent(createdAt: string) {
     return Date.now() - new Date(createdAt).getTime() < 24 * 60 * 60 * 1000;
 }
@@ -479,6 +502,16 @@ onBeforeUnmount(() => {
                                     <span v-if="isRecent(response.created_at)" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 shrink-0">
                                         New
                                     </span>
+                                    <button
+                                        type="button"
+                                        class="shrink-0 h-7 w-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-40"
+                                        title="Delete this response"
+                                        :disabled="deletingResponseId === response.id"
+                                        @click="deleteResponse(response)"
+                                    >
+                                        <Loader2 v-if="deletingResponseId === response.id" class="h-3.5 w-3.5 animate-spin" />
+                                        <Trash2 v-else class="h-3.5 w-3.5" />
+                                    </button>
                                 </div>
                             </div>
 

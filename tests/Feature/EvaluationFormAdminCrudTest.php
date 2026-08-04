@@ -1,11 +1,14 @@
 <?php
 
 use App\Models\Batch;
+use App\Models\EvaluationAnswer;
 use App\Models\EvaluationFacilitator;
 use App\Models\EvaluationForm;
 use App\Models\EvaluationQuestion;
+use App\Models\EvaluationResponse;
 use App\Models\EvaluationSection;
 use App\Models\Program;
+use App\Models\ResourceSpeaker;
 use App\Models\User;
 
 function evalCrudAdmin(string $empcode): User
@@ -193,6 +196,40 @@ test('admin can add, reorder, and delete facilitators', function () {
     expect(EvaluationFacilitator::find($second->id))->toBeNull();
 });
 
+test('adding a facilitator also creates a matching resource speaker on the program, and keeps them in sync', function () {
+    $admin = evalCrudAdmin('EMP-EVCRUD-12');
+    $program = evalCrudProgram();
+    $batch = evalCrudBatch($program);
+    $form = EvaluationForm::create(['batch_id' => $batch->id, 'slug' => EvaluationForm::generateSlugFor($batch)]);
+
+    $this->actingAs($admin)
+        ->post(route('evaluation-forms.facilitators.store', $form), ['name' => 'Juan Dela Cruz', 'role' => 'Trainer'])
+        ->assertSessionDoesntHaveErrors();
+
+    $facilitator = $form->facilitators()->first();
+    expect($facilitator->resource_speaker_id)->not->toBeNull();
+
+    $resourceSpeaker = ResourceSpeaker::find($facilitator->resource_speaker_id);
+    expect($resourceSpeaker)->not->toBeNull();
+    expect($resourceSpeaker->program_id)->toBe($program->id);
+    expect($resourceSpeaker->name)->toBe('Juan Dela Cruz');
+    expect($resourceSpeaker->designation)->toBe('Trainer');
+
+    // Editing the facilitator keeps the linked resource speaker in sync.
+    $this->actingAs($admin)
+        ->put(route('evaluation-facilitators.update', $facilitator), ['name' => 'Juan D. Cruz', 'role' => 'Lead Trainer'])
+        ->assertSessionDoesntHaveErrors();
+
+    expect($resourceSpeaker->fresh()->name)->toBe('Juan D. Cruz');
+    expect($resourceSpeaker->fresh()->designation)->toBe('Lead Trainer');
+
+    // Deleting the facilitator removes the linked resource speaker too.
+    $this->actingAs($admin)->delete(route('evaluation-facilitators.destroy', $facilitator));
+
+    expect(EvaluationFacilitator::find($facilitator->id))->toBeNull();
+    expect(ResourceSpeaker::find($resourceSpeaker->id))->toBeNull();
+});
+
 test('a superadmin can delete an entire evaluation form to reset it', function () {
     $superadmin = User::factory()->create(['empcode' => 'EMP-EVCRUD-07', 'access' => 'superadmin']);
     $program = evalCrudProgram();
@@ -220,4 +257,73 @@ test('a regular admin cannot delete an evaluation form', function () {
         ->assertForbidden();
 
     expect(EvaluationForm::find($form->id))->not->toBeNull();
+});
+
+test('admin can delete a single evaluation response, and its answers are removed too', function () {
+    $admin = evalCrudAdmin('EMP-EVCRUD-09');
+    $program = evalCrudProgram();
+    $batch = evalCrudBatch($program);
+    $form = EvaluationForm::create(['batch_id' => $batch->id, 'slug' => EvaluationForm::generateSlugFor($batch)]);
+    $form->seedDefaults();
+
+    $response = EvaluationResponse::create([
+        'evaluation_form_id' => $form->id,
+        'email' => 'respondent@example.com',
+        'respondent_name' => 'Juan Dela Cruz',
+        'name_source' => EvaluationResponse::SOURCE_MANUAL,
+    ]);
+    $question = $form->sections()->first()->questions()->first();
+    EvaluationAnswer::create([
+        'evaluation_response_id' => $response->id,
+        'evaluation_question_id' => $question->id,
+        'value_numeric' => 5,
+    ]);
+
+    $this->actingAs($admin)
+        ->delete(route('evaluation-forms.responses.destroy', [$form, $response]))
+        ->assertSessionDoesntHaveErrors();
+
+    expect(EvaluationResponse::find($response->id))->toBeNull();
+    expect(EvaluationAnswer::where('evaluation_response_id', $response->id)->count())->toBe(0);
+});
+
+test('deleting a response that belongs to a different evaluation form returns 404', function () {
+    $admin = evalCrudAdmin('EMP-EVCRUD-10');
+    $program = evalCrudProgram();
+    $batch = evalCrudBatch($program);
+    $form = EvaluationForm::create(['batch_id' => $batch->id, 'slug' => EvaluationForm::generateSlugFor($batch)]);
+
+    $otherBatch = evalCrudBatch($program, ['batch' => 'Batch 2']);
+    $otherForm = EvaluationForm::create(['batch_id' => $otherBatch->id, 'slug' => EvaluationForm::generateSlugFor($otherBatch)]);
+    $response = EvaluationResponse::create([
+        'evaluation_form_id' => $otherForm->id,
+        'email' => 'respondent@example.com',
+        'respondent_name' => 'Juan Dela Cruz',
+        'name_source' => EvaluationResponse::SOURCE_MANUAL,
+    ]);
+
+    $this->actingAs($admin)
+        ->delete(route('evaluation-forms.responses.destroy', [$form, $response]))
+        ->assertNotFound();
+
+    expect(EvaluationResponse::find($response->id))->not->toBeNull();
+});
+
+test('non-admin users cannot delete an evaluation response', function () {
+    $user = User::factory()->create(['empcode' => 'EMP-EVCRUD-11', 'access' => 'user']);
+    $program = evalCrudProgram();
+    $batch = evalCrudBatch($program);
+    $form = EvaluationForm::create(['batch_id' => $batch->id, 'slug' => EvaluationForm::generateSlugFor($batch)]);
+    $response = EvaluationResponse::create([
+        'evaluation_form_id' => $form->id,
+        'email' => 'respondent@example.com',
+        'respondent_name' => 'Juan Dela Cruz',
+        'name_source' => EvaluationResponse::SOURCE_MANUAL,
+    ]);
+
+    $this->actingAs($user)
+        ->delete(route('evaluation-forms.responses.destroy', [$form, $response]))
+        ->assertForbidden();
+
+    expect(EvaluationResponse::find($response->id))->not->toBeNull();
 });

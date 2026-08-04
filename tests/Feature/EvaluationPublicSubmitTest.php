@@ -65,6 +65,7 @@ function evalSubmitValidPayload(EvaluationForm $form): array
                 EvaluationQuestion::TYPE_LIKERT5 => 5,
                 EvaluationQuestion::TYPE_SCALE10 => 9,
                 EvaluationQuestion::TYPE_CHECKBOX => [($question->options ?? ['ok'])[0]],
+                EvaluationQuestion::TYPE_RADIO => ($question->options ?? ['ok'])[0],
                 default => 'Sample answer text.',
             };
 
@@ -121,14 +122,65 @@ test('missing a required question fails validation and creates no rows', functio
     expect(EvaluationAnswer::count())->toBe(0);
 });
 
-test('checkbox answers persist as the selected subset', function () {
+test('radio answers persist as a single selected value', function () {
     $form = evalSubmitForm();
     $payload = evalSubmitValidPayload($form);
 
-    $checkboxQuestion = $form->sections
+    $radioQuestion = $form->sections
         ->firstWhere('key', EvaluationSection::KEY_METHODOLOGY)
         ->questions
-        ->firstWhere('type', EvaluationQuestion::TYPE_CHECKBOX);
+        ->firstWhere('type', EvaluationQuestion::TYPE_RADIO);
+    $payload['answers'][$radioQuestion->id] = 'too slow';
+
+    $this->post(route('evaluate.submit', $form->slug), $payload)->assertSessionDoesntHaveErrors();
+
+    $answer = EvaluationAnswer::where('evaluation_question_id', $radioQuestion->id)->firstOrFail();
+    expect($answer->value_text)->toBe('too slow');
+});
+
+test('radio answers reject more than one selected value', function () {
+    $form = evalSubmitForm();
+    $payload = evalSubmitValidPayload($form);
+
+    $radioQuestion = $form->sections
+        ->firstWhere('key', EvaluationSection::KEY_METHODOLOGY)
+        ->questions
+        ->firstWhere('type', EvaluationQuestion::TYPE_RADIO);
+    $payload['answers'][$radioQuestion->id] = ['too slow', 'too fast'];
+
+    $this->post(route('evaluate.submit', $form->slug), $payload)
+        ->assertSessionHasErrors("answers.{$radioQuestion->id}");
+    expect(EvaluationResponse::count())->toBe(0);
+});
+
+test('radio answers reject a value outside the configured options', function () {
+    $form = evalSubmitForm();
+    $payload = evalSubmitValidPayload($form);
+
+    $radioQuestion = $form->sections
+        ->firstWhere('key', EvaluationSection::KEY_METHODOLOGY)
+        ->questions
+        ->firstWhere('type', EvaluationQuestion::TYPE_RADIO);
+    $payload['answers'][$radioQuestion->id] = 'not a real option';
+
+    $this->post(route('evaluate.submit', $form->slug), $payload)
+        ->assertSessionHasErrors("answers.{$radioQuestion->id}");
+    expect(EvaluationResponse::count())->toBe(0);
+});
+
+test('checkbox answers persist as the selected subset', function () {
+    $form = evalSubmitForm();
+
+    $section = $form->sections->firstWhere('key', EvaluationSection::KEY_METHODOLOGY);
+    $checkboxQuestion = $section->questions()->create([
+        'type' => EvaluationQuestion::TYPE_CHECKBOX,
+        'label' => 'Custom checkbox question',
+        'options' => ['too slow', 'too fast', 'just right'],
+        'is_required' => false,
+        'sort_order' => $section->questions->max('sort_order') + 1,
+    ]);
+
+    $payload = evalSubmitValidPayload($form->fresh()->load('sections.questions', 'facilitators'));
     $payload['answers'][$checkboxQuestion->id] = ['too slow', 'too fast'];
 
     $this->post(route('evaluate.submit', $form->slug), $payload)->assertSessionDoesntHaveErrors();

@@ -86,9 +86,10 @@ test('seeding defaults reproduces the approved question bank exactly', function 
         'c. The degree of involvement of the participants is:',
     ]);
     $pacing = $methodology->questions->firstWhere('label', 'b. The pacing of the program is:');
-    expect($pacing->type)->toBe(EvaluationQuestion::TYPE_CHECKBOX);
+    expect($pacing->type)->toBe(EvaluationQuestion::TYPE_RADIO);
     expect($pacing->options)->toBe(['just right', 'too slow', 'too fast']);
     $involvement = $methodology->questions->firstWhere('label', 'c. The degree of involvement of the participants is:');
+    expect($involvement->type)->toBe(EvaluationQuestion::TYPE_RADIO);
     expect($involvement->options)->toBe(['not enough', 'too much', 'just right']);
 
     $environment = $form->sections->firstWhere('key', EvaluationSection::KEY_ENVIRONMENT);

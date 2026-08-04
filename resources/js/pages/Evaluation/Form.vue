@@ -6,7 +6,7 @@ import EvaluationLikertGrid from '@/components/EvaluationLikertGrid.vue';
 
 interface Question {
     id: number;
-    type: 'likert5' | 'scale10' | 'text' | 'checkbox';
+    type: 'likert5' | 'scale10' | 'text' | 'checkbox' | 'radio';
     label: string;
     options: string[] | null;
     is_required: boolean;
@@ -308,7 +308,7 @@ function submit() {
                             <span v-else>{{ i + 1 }}</span>
                         </div>
                         <span
-                            class="text-[10px] mt-1.5 text-center leading-tight w-full px-0.5"
+                            class="text-[9px] sm:text-[10px] mt-1.5 text-center leading-tight w-full px-0.5 break-words"
                             :class="i === currentStep ? 'text-rose-600 font-semibold' : 'text-gray-400'"
                         >
                             {{ s.label }}
@@ -426,6 +426,15 @@ function submit() {
                                         </label>
                                     </div>
 
+                                    <div v-else-if="question.type === 'radio'" class="flex flex-col gap-1.5">
+                                        <label v-for="opt in question.options ?? []" :key="opt" class="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                                            <input type="radio" class="h-3.5 w-3.5" :name="`facilitator-${facilitator.id}-question-${question.id}`"
+                                                :checked="facilitatorAnswers[facilitator.id][question.id] === opt"
+                                                @change="facilitatorAnswers[facilitator.id][question.id] = opt" />
+                                            {{ opt }}
+                                        </label>
+                                    </div>
+
                                     <p v-if="fieldError(`facilitator_answers.${facilitator.id}.${question.id}`)" class="mt-1 text-xs text-red-500">
                                         {{ fieldError(`facilitator_answers.${facilitator.id}.${question.id}`) }}
                                     </p>
@@ -461,10 +470,10 @@ function submit() {
 
                                 <!-- scale10 -->
                                 <div v-if="question.type === 'scale10'" class="space-y-2">
-                                    <div class="flex flex-wrap gap-1.5">
+                                    <div class="grid grid-cols-10 gap-1">
                                         <button
                                             v-for="n in 10" :key="n" type="button"
-                                            class="h-9 w-9 rounded-lg text-sm font-bold border transition"
+                                            class="h-9 min-w-0 px-0 rounded-lg text-[11px] sm:text-sm font-bold border transition"
                                             :class="answers[question.id] === n
                                                 ? 'bg-rose-600 border-rose-600 text-white'
                                                 : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-rose-50'"
@@ -486,6 +495,16 @@ function submit() {
                                         <input type="checkbox" class="h-3.5 w-3.5"
                                             :checked="answers[question.id]?.includes(opt)"
                                             @change="toggleCheckboxValue(answers[question.id], opt)" />
+                                        {{ opt }}
+                                    </label>
+                                </div>
+
+                                <!-- radio (single choice) -->
+                                <div v-else-if="question.type === 'radio'" class="flex flex-col gap-1.5">
+                                    <label v-for="opt in question.options ?? []" :key="opt" class="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                                        <input type="radio" class="h-3.5 w-3.5" :name="`question-${question.id}`"
+                                            :checked="answers[question.id] === opt"
+                                            @change="answers[question.id] = opt" />
                                         {{ opt }}
                                     </label>
                                 </div>

@@ -201,12 +201,12 @@ class EvaluationFormController extends Controller
         $data = $request->validate([
             'type' => ['required', Rule::in(EvaluationQuestion::TYPES)],
             'label' => 'required|string',
-            'options' => 'required_if:type,checkbox|nullable|array|min:1',
+            'options' => 'required_if:type,checkbox,radio|nullable|array|min:1',
             'options.*' => 'string|max:255',
             'is_required' => 'boolean',
         ]);
 
-        if ($data['type'] !== EvaluationQuestion::TYPE_CHECKBOX) {
+        if (! in_array($data['type'], [EvaluationQuestion::TYPE_CHECKBOX, EvaluationQuestion::TYPE_RADIO], true)) {
             $data['options'] = null;
         }
 
@@ -225,7 +225,20 @@ class EvaluationFormController extends Controller
 
         $data['sort_order'] = EvaluationFacilitator::nextSortOrder($evaluationForm->id);
 
-        $evaluationForm->facilitators()->create($data);
+        DB::transaction(function () use ($evaluationForm, $data) {
+            // Kapag nagdagdag ng facilitator para i-rate, idagdag din siya
+            // bilang Resource Speaker ng program, para magkatugma ang dalawang listahan.
+            $program = $evaluationForm->batch->program;
+            $resourceSpeaker = $program->resourceSpeakers()->create([
+                'program_code' => $program->program_code,
+                'name' => $data['name'],
+                'designation' => $data['role'] ?? null,
+            ]);
+
+            $data['resource_speaker_id'] = $resourceSpeaker->id;
+
+            $evaluationForm->facilitators()->create($data);
+        });
 
         return back()->with('success', 'Facilitator added.');
     }
@@ -238,7 +251,15 @@ class EvaluationFormController extends Controller
             'role' => 'nullable|string|max:255',
         ]);
 
-        $evaluationFacilitator->update($data);
+        DB::transaction(function () use ($evaluationFacilitator, $data) {
+            $evaluationFacilitator->update($data);
+
+            // Panatilihing magkatugma ang naka-link na Resource Speaker record.
+            $evaluationFacilitator->resourceSpeaker?->update([
+                'name' => $data['name'],
+                'designation' => $data['role'] ?? null,
+            ]);
+        });
 
         return back()->with('success', 'Facilitator updated.');
     }
@@ -246,7 +267,10 @@ class EvaluationFormController extends Controller
     // DELETE /evaluation-facilitators/{evaluationFacilitator}
     public function destroyFacilitator(EvaluationFacilitator $evaluationFacilitator)
     {
-        $evaluationFacilitator->delete();
+        DB::transaction(function () use ($evaluationFacilitator) {
+            $evaluationFacilitator->resourceSpeaker?->delete();
+            $evaluationFacilitator->delete();
+        });
 
         return back()->with('success', 'Facilitator removed.');
     }
@@ -343,5 +367,15 @@ class EvaluationFormController extends Controller
             ->paginate($request->integer('per_page', 20));
 
         return response()->json($responses);
+    }
+
+    // DELETE /evaluation-forms/{evaluationForm}/responses/{evaluationResponse}
+    public function destroyResponse(EvaluationForm $evaluationForm, EvaluationResponse $evaluationResponse)
+    {
+        abort_if($evaluationResponse->evaluation_form_id !== $evaluationForm->id, 404);
+
+        $evaluationResponse->delete();
+
+        return back()->with('success', 'Response deleted.');
     }
 }

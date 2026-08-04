@@ -59,6 +59,7 @@ function evalDupPayload(EvaluationForm $form, array $overrides = []): array
                 EvaluationQuestion::TYPE_LIKERT5 => 5,
                 EvaluationQuestion::TYPE_SCALE10 => 9,
                 EvaluationQuestion::TYPE_CHECKBOX => [($question->options ?? ['ok'])[0]],
+                EvaluationQuestion::TYPE_RADIO => ($question->options ?? ['ok'])[0],
                 default => 'Sample answer text.',
             };
         }

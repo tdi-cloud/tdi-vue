@@ -45,8 +45,8 @@ final class EvaluationDefaults
                     ['type' => EvaluationQuestion::TYPE_LIKERT5, 'label' => '8. Exercises and/or readings/activities', 'is_required' => true],
                     ['type' => EvaluationQuestion::TYPE_LIKERT5, 'label' => '9. Audio/Visuals (flip charts, videos, etc.)', 'is_required' => true],
                     ['type' => EvaluationQuestion::TYPE_TEXT, 'label' => 'a. It would help me if', 'is_required' => true],
-                    ['type' => EvaluationQuestion::TYPE_CHECKBOX, 'label' => 'b. The pacing of the program is:', 'options' => ['just right', 'too slow', 'too fast'], 'is_required' => true],
-                    ['type' => EvaluationQuestion::TYPE_CHECKBOX, 'label' => 'c. The degree of involvement of the participants is:', 'options' => ['not enough', 'too much', 'just right'], 'is_required' => true],
+                    ['type' => EvaluationQuestion::TYPE_RADIO, 'label' => 'b. The pacing of the program is:', 'options' => ['just right', 'too slow', 'too fast'], 'is_required' => true],
+                    ['type' => EvaluationQuestion::TYPE_RADIO, 'label' => 'c. The degree of involvement of the participants is:', 'options' => ['not enough', 'too much', 'just right'], 'is_required' => true],
                 ],
             ],
             [
