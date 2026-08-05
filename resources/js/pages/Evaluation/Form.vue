@@ -292,11 +292,11 @@ function submit() {
 
             <!-- Progress -->
             <div class="bg-white rounded-2xl shadow-sm px-5 py-4">
-                <div class="flex items-start justify-between mb-3 gap-1">
+                <div class="flex items-start justify-between gap-1 mb-3 overflow-x-auto -mx-1 px-1 pb-1">
                     <div
                         v-for="(s, i) in steps"
                         :key="s.key"
-                        class="flex flex-col items-center flex-1 min-w-0"
+                        class="flex flex-col items-center shrink-0 w-16"
                     >
                         <div
                             class="h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all"
@@ -308,7 +308,7 @@ function submit() {
                             <span v-else>{{ i + 1 }}</span>
                         </div>
                         <span
-                            class="text-[9px] sm:text-[10px] mt-1.5 text-center leading-tight w-full px-0.5 break-words"
+                            class="text-[10px] mt-1.5 text-center leading-tight whitespace-nowrap"
                             :class="i === currentStep ? 'text-rose-600 font-semibold' : 'text-gray-400'"
                         >
                             {{ s.label }}

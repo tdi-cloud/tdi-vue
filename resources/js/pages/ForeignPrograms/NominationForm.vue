@@ -144,8 +144,39 @@ function validateCurrentStep(): boolean {
     return Object.keys(stepErrors.value).length === 0;
 }
 
-function next() {
+const checkingEmail = ref(false);
+
+async function emailAlreadyUsed(): Promise<boolean> {
+    checkingEmail.value = true;
+    try {
+        const res = await fetch(
+            route('nominate.check-email', props.config.slug) +
+            `?email=${encodeURIComponent(fields.value.email)}&foreign_program_id=${encodeURIComponent(String(fields.value.foreign_program_id))}`,
+            { headers: { Accept: 'application/json' } },
+        );
+        if (!res.ok) return false;
+        const data = await res.json();
+        return !!data.already_submitted;
+    } catch {
+        return false;
+    } finally {
+        checkingEmail.value = false;
+    }
+}
+
+async function next() {
     if (!validateCurrentStep()) return;
+
+    // Bago umalis sa 'profile' step, i-check muna kung nagamit na ang email
+    // na ito para sa napiling program — para hindi umasa ang user na
+    // tatanggapin ang submission niya, sa halip agad na mabigyan ng feedback.
+    if (currentKey.value === 'profile') {
+        if (await emailAlreadyUsed()) {
+            stepErrors.value.email = 'This email has already been used to submit a nomination for this program.';
+            return;
+        }
+    }
+
     if (currentStep.value < steps.value.length - 1) currentStep.value++;
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -566,10 +597,13 @@ function handleSponsorLogoError() {
                         <button
                             v-if="!isLastStep"
                             type="button"
+                            :disabled="checkingEmail"
                             @click="next"
-                            class="ml-auto flex items-center justify-center gap-1.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-extrabold py-3 px-6 text-sm transition"
+                            class="ml-auto flex items-center justify-center gap-1.5 rounded-xl bg-blue-700 hover:bg-blue-800 disabled:opacity-60 disabled:cursor-not-allowed text-white font-extrabold py-3 px-6 text-sm transition"
                         >
-                            Next <ArrowRight class="h-4 w-4" />
+                            <Loader2 v-if="checkingEmail" class="h-4 w-4 animate-spin" />
+                            {{ checkingEmail ? 'Checking…' : 'Next' }}
+                            <ArrowRight v-if="!checkingEmail" class="h-4 w-4" />
                         </button>
 
                         <button

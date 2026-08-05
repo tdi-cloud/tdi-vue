@@ -19,6 +19,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ExternalLink } from 'lucide-vue-next';
@@ -86,6 +87,23 @@ function eventOrder(a: { start: number }, b: { start: number }): number {
     return a.start - b.start;
 }
 
+// ── Filter by program category ──────────────────────────────────────────────
+const selectedCategory = ref('all');
+
+const categories = computed(() =>
+    [...new Set(
+        props.events
+            .map((e) => e.extendedProps.category)
+            .filter((c): c is string => !!c)
+    )].sort()
+);
+
+const filteredEvents = computed(() =>
+    selectedCategory.value === 'all'
+        ? props.events
+        : props.events.filter((e) => e.extendedProps.category === selectedCategory.value)
+);
+
 const statusVariant = computed(() => {
     const status = selected.value?.status?.toLowerCase() ?? '';
     if (status === 'active') return 'bg-cyan-100 text-cyan-700';
@@ -95,7 +113,7 @@ const statusVariant = computed(() => {
     return 'bg-gray-100 text-gray-700';
 });
 
-const calendarOptions: CalendarOptions = {
+const calendarOptions = computed<CalendarOptions>(() => ({
     plugins: [dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin],
     initialView: 'dayGridMonth',
     headerToolbar: {
@@ -109,7 +127,7 @@ const calendarOptions: CalendarOptions = {
         week: 'Week',
         list: 'List',
     },
-    events: props.events,
+    events: filteredEvents.value,
     eventOrder,
     dayMaxEvents: 3, // "+x more" link kapag masyadong maraming events sa isang araw
     height: 'auto',
@@ -118,7 +136,7 @@ const calendarOptions: CalendarOptions = {
         selected.value = info.event.extendedProps as CalendarEvent['extendedProps'];
         showDialog.value = true;
     },
-};
+}));
 </script>
 
 <template>
@@ -126,6 +144,21 @@ const calendarOptions: CalendarOptions = {
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
+            <div class="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm">
+                <span class="text-sm font-semibold text-muted-foreground">Program Category</span>
+                <Select v-model="selectedCategory">
+                    <SelectTrigger class="h-9 w-56 text-xs font-semibold">
+                        <SelectValue placeholder="All Categories" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem class="text-xs" value="all">All Categories</SelectItem>
+                        <SelectItem v-for="c in categories" :key="c" class="text-xs" :value="c">
+                            {{ c }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+
             <div class="rounded-xl border bg-card p-4 shadow-sm">
                 <FullCalendar :options="calendarOptions" />
             </div>

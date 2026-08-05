@@ -53,6 +53,24 @@ class ForeignNominationController extends Controller
         ]);
     }
 
+    // GET /nominate/{slug}/check-email — lets the form warn the applicant
+    // before they reach the final step that their email was already used.
+    public function checkEmail(Request $request, string $slug)
+    {
+        ForeignSponsorConfig::where('slug', $slug)->where('is_active', true)->firstOrFail();
+
+        $data = $request->validate([
+            'email' => 'required|email',
+            'foreign_program_id' => 'required|exists:foreign_programs,id',
+        ]);
+
+        $alreadySubmitted = ForeignNominee::where('foreign_program_id', $data['foreign_program_id'])
+            ->whereRaw('LOWER(email) = ?', [strtolower($data['email'])])
+            ->exists();
+
+        return response()->json(['already_submitted' => $alreadySubmitted]);
+    }
+
     public function submit(Request $request, string $slug)
     {
         $config = ForeignSponsorConfig::where('slug', $slug)

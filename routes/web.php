@@ -496,6 +496,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 // PUBLIC USER
 
 Route::get('/nominate/{slug}', [ForeignNominationController::class, 'show'])->name('nominate.show');
+Route::get('/nominate/{slug}/check-email', [ForeignNominationController::class, 'checkEmail'])->name('nominate.check-email');
 Route::post('/nominate/{slug}', [ForeignNominationController::class, 'submit'])->name('nominate.submit');
 Route::get('/nominate/{slug}/success', [ForeignNominationController::class, 'success'])->name('nominate.success');
 

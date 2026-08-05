@@ -80,6 +80,24 @@ test('the same email cannot submit a second nomination for the same program', fu
     expect(ForeignNominee::count())->toBe(1);
 });
 
+test('check-email endpoint reports whether an email was already used for a program', function () {
+    $config = nominationSubmitConfig();
+    $program = nominationSubmitProgram($config);
+
+    $this->post(route('nominate.submit', $config->slug), nominationSubmitPayload($program, ['email' => 'juan@example.com']))
+        ->assertRedirect(route('nominate.success', $config->slug));
+
+    $this->get(route('nominate.check-email', $config->slug).'?'.http_build_query([
+        'email' => 'JUAN@example.com',
+        'foreign_program_id' => $program->id,
+    ]))->assertJson(['already_submitted' => true]);
+
+    $this->get(route('nominate.check-email', $config->slug).'?'.http_build_query([
+        'email' => 'someoneelse@example.com',
+        'foreign_program_id' => $program->id,
+    ]))->assertJson(['already_submitted' => false]);
+});
+
 test('the same email can submit to a different program', function () {
     $config = nominationSubmitConfig();
     $programOne = nominationSubmitProgram($config, ['program_title' => 'Program One']);
