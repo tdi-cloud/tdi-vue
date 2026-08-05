@@ -47,6 +47,7 @@ interface Nominee {
     accomplished_form_path: string | null;
     submissions: Submission[];
     sponsor_config: { id: number; requirements: NomineeRequirement[] } | null;
+    created_at: string;
 }
 
 interface ForeignProgram {
@@ -133,6 +134,16 @@ const formatDate = (date?: string | null) => {
     const d = date.includes('T') ? new Date(date) : new Date(date + 'T00:00:00');
     if (isNaN(d.getTime())) return '—';
     return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+const formatDateTime = (date?: string | null) => {
+    if (!date) return '—';
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleString('en-PH', {
+        month: 'short', day: 'numeric', year: 'numeric',
+        hour: 'numeric', minute: '2-digit',
+    });
 };
 
 function fileUrl(path: string) {
@@ -589,6 +600,7 @@ const modalityLabels: Record<string, string> = {
                             <th class="text-left font-semibold px-4 py-3">Agency</th>
                             <th class="text-left font-semibold px-4 py-3">Contact</th>
                             <th class="text-left font-semibold px-4 py-3">Docs</th>
+                            <th class="text-left font-semibold px-4 py-3">Submitted</th>
                             <th class="text-left font-semibold px-4 py-3 min-w-[160px]">Status</th>
                             <th class="text-center font-semibold px-4 py-3">Actions</th>
                         </tr>
@@ -651,6 +663,11 @@ const modalityLabels: Record<string, string> = {
                                 </button>
                             </td>
 
+                            <!-- Submitted -->
+                            <td class="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
+                                {{ formatDateTime(n.created_at) }}
+                            </td>
+
                             <!-- Status — inline select -->
                             <td class="px-4 py-3">
                                 <div class="relative flex items-center gap-1">
@@ -690,7 +707,7 @@ const modalityLabels: Record<string, string> = {
                         </tr>
 
                         <tr v-if="filtered.length === 0">
-                            <td colspan="9" class="px-4 py-16 text-center">
+                            <td colspan="10" class="px-4 py-16 text-center">
                                 <div class="flex flex-col items-center gap-3 text-muted-foreground">
                                     <Users class="h-12 w-12 opacity-20" />
                                     <p class="text-sm font-semibold">No nominees found.</p>

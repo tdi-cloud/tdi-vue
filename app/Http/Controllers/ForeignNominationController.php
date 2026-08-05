@@ -86,6 +86,18 @@ class ForeignNominationController extends Controller
                 ->withInput();
         }
 
+        $alreadySubmitted = ForeignNominee::where('foreign_program_id', $request->foreign_program_id)
+            ->whereRaw('LOWER(email) = ?', [strtolower($request->email)])
+            ->exists();
+
+        if ($alreadySubmitted) {
+            return back()
+                ->withErrors([
+                    'email' => 'This email has already been used to submit a nomination for this program.',
+                ])
+                ->withInput();
+        }
+
         foreach ($config->requirements as $req) {
             if ($req->file_required) {
                 $request->validate([
