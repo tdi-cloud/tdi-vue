@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
     Megaphone,
@@ -21,6 +22,7 @@ import {
     BookOpen,
     Sparkles,
     StickyNote,
+    CalendarRange,
 } from 'lucide-vue-next';
 import { ref, computed } from 'vue';
 import { useConfirm } from '@/composables/useConfirm';
@@ -31,6 +33,7 @@ interface ResourceSpeaker {
     id: number;
     program_id: number;
     program_code: string | null;
+    batch_id: number | null;
     name: string;
     designation: string | null;
     affiliation: string | null;
@@ -42,10 +45,16 @@ interface ResourceSpeaker {
     remarks: string | null;
 }
 
+interface ProgramBatch {
+    id: number;
+    batch: string;
+}
+
 interface Program {
     id: number;
     program_code: string;
     resource_speakers?: ResourceSpeaker[];
+    batches?: ProgramBatch[];
 }
 
 const props = defineProps<{
@@ -61,6 +70,7 @@ const processing = ref(false);
 
 const form = ref({
     name: '',
+    batch_id: '' as string | number,
     designation: '',
     affiliation: '',
     topic: '',
@@ -76,6 +86,7 @@ const errors = ref<Record<string, string>>({});
 const resetForm = () => {
     form.value = {
         name: '',
+        batch_id: '',
         designation: '',
         affiliation: '',
         topic: '',
@@ -98,6 +109,7 @@ const openEdit = (speaker: ResourceSpeaker) => {
     editingSpeaker.value = speaker;
     form.value = {
         name: speaker.name,
+        batch_id: speaker.batch_id ?? '',
         designation: speaker.designation ?? '',
         affiliation: speaker.affiliation ?? '',
         topic: speaker.topic ?? '',
@@ -117,6 +129,7 @@ const submit = () => {
 
     const payload = {
         name: form.value.name,
+        batch_id: form.value.batch_id || null,
         designation: form.value.designation || null,
         affiliation: form.value.affiliation || null,
         topic: form.value.topic || null,
@@ -194,6 +207,11 @@ const AVATAR_COLORS = [
 ];
 
 const avatarColor = (id: number) => AVATAR_COLORS[id % AVATAR_COLORS.length];
+
+const batchLabel = (speaker: ResourceSpeaker) => {
+    if (speaker.batch_id === null) return null;
+    return props.program.batches?.find((b) => b.id === speaker.batch_id)?.batch ?? null;
+};
 </script>
 
 <template>
@@ -274,6 +292,14 @@ const avatarColor = (id: number) => AVATAR_COLORS[id % AVATAR_COLORS.length];
                 </div>
 
                 <div class="flex flex-wrap gap-1 mt-1">
+                    <Badge
+                        :class="batchLabel(speaker)
+                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                            : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'"
+                        class="border-0 text-[10px] font-bold gap-1"
+                    >
+                        <CalendarRange class="h-3 w-3" /> {{ batchLabel(speaker) ?? 'All batches' }}
+                    </Badge>
                     <Badge v-if="speaker.topic" class="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border-0 text-[10px] font-bold gap-1">
                         <BookOpen class="h-3 w-3" /> {{ speaker.topic }}
                     </Badge>
@@ -337,6 +363,26 @@ const avatarColor = (id: number) => AVATAR_COLORS[id % AVATAR_COLORS.length];
                             <Label class="text-xs">Full Name <span class="text-red-500">*</span></Label>
                             <Input class="text-xs h-8" v-model="form.name" placeholder="e.g. Engr. Juan Dela Cruz" />
                             <p class="text-xs text-red-500">{{ errors.name }}</p>
+                        </div>
+
+                        <!-- Batch scope (full width) -->
+                        <div class="grid gap-1 col-span-2">
+                            <Label class="text-xs">Batch</Label>
+                            <Select v-model="form.batch_id">
+                                <SelectTrigger class="text-xs h-8">
+                                    <SelectValue placeholder="All batches (general/program-wide)" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem class="text-xs" value="">All batches (general/program-wide)</SelectItem>
+                                    <SelectItem v-for="b in program.batches ?? []" :key="b.id" class="text-xs" :value="b.id">
+                                        {{ b.batch }}
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <p class="text-[11px] text-muted-foreground">
+                                Leave as "All batches" for a general speaker, or pick a specific batch so this speaker only shows up for participants enrolled in that batch.
+                            </p>
+                            <p class="text-xs text-red-500">{{ errors.batch_id }}</p>
                         </div>
 
                         <!-- Designation -->

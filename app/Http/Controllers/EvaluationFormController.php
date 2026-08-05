@@ -231,6 +231,7 @@ class EvaluationFormController extends Controller
             $program = $evaluationForm->batch->program;
             $resourceSpeaker = $program->resourceSpeakers()->create([
                 'program_code' => $program->program_code,
+                'batch_id' => $evaluationForm->batch_id,
                 'name' => $data['name'],
                 'designation' => $data['role'] ?? null,
             ]);

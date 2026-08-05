@@ -11,6 +11,7 @@ class ResourceSpeaker extends Model
     protected $fillable = [
         'program_id',
         'program_code',
+        'batch_id',
         'name',
         'designation',
         'affiliation',
@@ -29,5 +30,10 @@ class ResourceSpeaker extends Model
     public function program()
     {
         return $this->belongsTo(Program::class);
+    }
+
+    public function batch()
+    {
+        return $this->belongsTo(Batch::class);
     }
 }

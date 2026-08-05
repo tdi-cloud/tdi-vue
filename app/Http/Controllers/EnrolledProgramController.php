@@ -267,15 +267,17 @@ class EnrolledProgramController extends Controller
             ] : null;
 
             $data['resource_speakers'] = $program->resourceSpeakers
-                ? $program->resourceSpeakers->map(fn ($s) => [
-                    'id' => $s->id,
-                    'name' => $s->name,
-                    'designation' => $s->designation,
-                    'affiliation' => $s->affiliation,
-                    'topic' => $s->topic,
-                    'expertise' => $s->expertise,
-                    'date_engaged' => optional($s->date_engaged)->toDateString() ?? $s->date_engaged,
-                ])->values()->toArray()
+                ? $program->resourceSpeakers
+                    ->filter(fn ($s) => $s->batch_id === null || $s->batch_id === $batch->id)
+                    ->map(fn ($s) => [
+                        'id' => $s->id,
+                        'name' => $s->name,
+                        'designation' => $s->designation,
+                        'affiliation' => $s->affiliation,
+                        'topic' => $s->topic,
+                        'expertise' => $s->expertise,
+                        'date_engaged' => optional($s->date_engaged)->toDateString() ?? $s->date_engaged,
+                    ])->values()->toArray()
                 : [];
 
             $data['supporting_documents'] = $program->supportingDocuments
