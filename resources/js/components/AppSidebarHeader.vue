@@ -14,7 +14,7 @@ defineProps<{
 
 <template>
     <header
-        class="flex h-16 shrink-0 items-center gap-2 border-b border-sidebar-border/70 px-6 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 md:px-4"
+        class="flex h-16 shrink-0 items-center gap-2 border-b border-sidebar-border/70 pl-6 pr-3 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 md:pl-4 md:pr-2"
     >
         <div class="flex items-center gap-2">
             <SidebarTrigger class="-ml-1" />
@@ -39,7 +39,7 @@ defineProps<{
             </template>
         </div>
 
-        <div class="ml-auto flex items-center gap-1">
+        <div class="ml-auto flex items-center gap-3">
             <ReportProblemButton />
             <NotificationBell />
             <AppearanceMenu />

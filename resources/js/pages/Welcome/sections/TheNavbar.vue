@@ -34,7 +34,6 @@
           <div class="user-menu" ref="userMenuRef">
             <button class="user-menu__trigger" @click="userMenuOpen = !userMenuOpen">
               <span class="user-menu__avatar">{{ initials }}</span>
-              <span class="user-menu__name">{{ auth.user.name }}</span>
               <ChevronsUpDown class="user-menu__chevron" :size="15" />
             </button>
 

@@ -7,10 +7,12 @@ import { computed } from 'vue';
 interface Props {
     user: User;
     showEmail?: boolean;
+    showName?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
     showEmail: false,
+    showName: true,
 });
 
 const { getInitials } = useInitials();
@@ -27,7 +29,7 @@ const showAvatar = computed(() => props.user.avatar && props.user.avatar !== '')
         </AvatarFallback>
     </Avatar>
 
-    <div class="grid flex-1 text-left text-sm leading-tight">
+    <div v-if="showName" class="grid flex-1 text-left text-sm leading-tight">
         <span class="truncate font-medium">{{ user.name }}</span>
         <span v-if="showEmail" class="truncate text-xs text-muted-foreground">{{ user.email }}</span>
     </div>

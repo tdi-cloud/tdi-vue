@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import {
     BriefcaseBusiness, CircleCheckBig, Timer, Users, LoaderCircle, Search, Download,
 } from 'lucide-vue-next';
+import EmployeeProgressModal from '@/components/EmployeeProgressModal.vue';
 
 /* ===================== PROPS — filters come from dashboard ===================== */
 
@@ -113,6 +114,8 @@ const listType      = ref<'completed' | 'in_progress'>('completed');
 const listLoading   = ref(false);
 const listSearch    = ref('');
 const employees     = ref<EmployeeRow[]>([]);
+
+const selectedEmpcode = ref<string | null>(null);
 
 const openList = async (type: 'completed' | 'in_progress') => {
     listType.value      = type;
@@ -334,7 +337,12 @@ const chartOptions = computed(() => ({
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="(emp, i) in filteredEmployees" :key="emp.EMPCODE + i" class="border-b last:border-b-0 hover:bg-muted/40">
+                            <tr
+                                v-for="(emp, i) in filteredEmployees"
+                                :key="emp.EMPCODE + i"
+                                class="border-b last:border-b-0 hover:bg-muted/40 cursor-pointer"
+                                @click="selectedEmpcode = emp.EMPCODE"
+                            >
                                 <td class="px-3 py-2.5 text-muted-foreground">{{ i + 1 }}</td>
                                 <td class="px-3 py-2.5 font-bold uppercase">{{ fullName(emp) }}</td>
                                 <td class="px-3 py-2.5">{{ emp.POSITION }}</td>
@@ -371,6 +379,8 @@ const chartOptions = computed(() => ({
                 </div>
             </DialogContent>
         </Dialog>
+
+        <EmployeeProgressModal :empcode="selectedEmpcode" @close="selectedEmpcode = null" />
 
     </div>
 </template>

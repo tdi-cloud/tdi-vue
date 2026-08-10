@@ -11,7 +11,7 @@ withDefaults(
         buttonClass?: string;
     }>(),
     {
-        buttonClass: 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+        buttonClass: 'text-foreground/70 hover:bg-accent hover:text-accent-foreground',
     },
 );
 

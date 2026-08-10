@@ -2,6 +2,7 @@
 import { ref, watch, computed } from 'vue';
 import VueApexCharts from 'vue3-apexcharts';
 import { FileCheck, FileX, Users, TrendingUp, X, Loader2 } from 'lucide-vue-next';
+import EmployeeProgressModal from '@/components/EmployeeProgressModal.vue';
 
 const props = defineProps<{
     target: string;
@@ -48,6 +49,8 @@ const modalRegion    = ref('ALL');
 const modalEmployees = ref<EmployeeRow[]>([]);
 const modalLoading   = ref(false);
 const modalCount     = ref(0);
+
+const selectedEmpcode = ref<string | null>(null);
 
 // ─── Fetch main data ─────────────────────────────────────────────────────────
 
@@ -399,7 +402,8 @@ const modalTitle = computed(() => {
                             <tr
                                 v-for="(emp, i) in modalEmployees"
                                 :key="emp.empcode"
-                                class="hover:bg-muted/30 transition-colors"
+                                class="hover:bg-muted/30 transition-colors cursor-pointer"
+                                @click="selectedEmpcode = emp.empcode"
                             >
                                 <td class="px-4 py-2.5 text-muted-foreground text-xs">{{ i + 1 }}</td>
                                 <td class="px-4 py-2.5">
@@ -435,4 +439,6 @@ const modalTitle = computed(() => {
             </div>
         </div>
     </Teleport>
+
+    <EmployeeProgressModal :empcode="selectedEmpcode" @close="selectedEmpcode = null" />
 </template>
