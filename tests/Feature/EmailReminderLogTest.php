@@ -44,7 +44,8 @@ function reminderTestSetup(): array
         'batch_id' => $batch->id,
         'title' => 'TREAP',
         'name' => Requirement::nameFor('TREAP'),
-        'due_date' => now()->addDays(10)->toDateString(),
+        // Overdue on purpose — reminders are only allowed once the due date has passed.
+        'due_date' => now()->subDays(2)->toDateString(),
         'is_required' => true,
     ]);
 
@@ -118,6 +119,26 @@ test('email reminders are blocked for a rescheduled batch', function () {
     ]);
 
     $response->assertSessionHasErrors('batch_id');
+    Mail::assertNothingSent();
+    expect(EmailReminderLog::count())->toBe(0);
+});
+
+test('email reminders are blocked when the requirement is not yet overdue', function () {
+    Mail::fake();
+    $admin = reminderTestAdmin('EMP-REM-06');
+    [$program, $batch, $requirement] = reminderTestSetup();
+    $requirement->update(['due_date' => now()->addDays(5)->toDateString()]);
+
+    $response = $this->actingAs($admin)->post(route('email-reminder.send'), [
+        'to' => ['juan@example.com'],
+        'subject' => 'Reminder',
+        'body' => '<p>Body</p>',
+        'program_id' => $program->id,
+        'batch_id' => $batch->id,
+        'requirement_id' => $requirement->id,
+    ]);
+
+    $response->assertSessionHasErrors('requirement_id');
     Mail::assertNothingSent();
     expect(EmailReminderLog::count())->toBe(0);
 });

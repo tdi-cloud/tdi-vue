@@ -230,8 +230,14 @@ const isRescheduled = (group: Group) => {
     return batchId != null && batchStatusById.value.get(batchId) === 'Rescheduled';
 };
 
+// Walang dapat i-remind hangga't hindi pa lumalagpas ang due date ng requirement —
+// kasama na rito ang wala pang due date (hindi pa matukoy kung overdue o hindi).
+const notYetOverdue = (group: Group) => !isOverdue(group.due_date);
+
+const emailReminderDisabled = (group: Group) => isRescheduled(group) || notYetOverdue(group);
+
 const openEmailReminder = (group: Group) => {
-    if (isRescheduled(group)) return;
+    if (emailReminderDisabled(group)) return;
 
     emailTarget.value = {
         batchId: group.entries[0]?.batch_id ?? null,
@@ -417,14 +423,19 @@ const openEmailReminder = (group: Group) => {
                                         <button
                                             type="button"
                                             class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors"
-                                            :class="isRescheduled(group)
+                                            :class="emailReminderDisabled(group)
                                                 ? 'bg-muted text-muted-foreground cursor-not-allowed'
                                                 : 'bg-blue-600 hover:bg-blue-700 text-white'"
-                                            :disabled="isRescheduled(group)"
-                                            :title="isRescheduled(group) ? 'This batch has been rescheduled — email reminders are disabled.' : ''"
+                                            :disabled="emailReminderDisabled(group)"
+                                            :title="isRescheduled(group)
+                                                ? 'This batch has been rescheduled — email reminders are disabled.'
+                                                : notYetOverdue(group)
+                                                    ? 'This requirement is not yet overdue — email reminders can only be sent once the due date has passed.'
+                                                    : ''"
                                             @click.stop="openEmailReminder(group)"
                                         >
-                                            <Mail class="h-3 w-3" /> {{ isRescheduled(group) ? 'Rescheduled' : 'Email Reminder' }}
+                                            <Mail class="h-3 w-3" />
+                                            {{ isRescheduled(group) ? 'Rescheduled' : notYetOverdue(group) ? 'Not Yet Due' : 'Email Reminder' }}
                                         </button>
                                         <ChevronDown v-if="collapsed[group.key]" class="h-4 w-4 text-muted-foreground" />
                                         <ChevronUp v-else class="h-4 w-4 text-muted-foreground" />

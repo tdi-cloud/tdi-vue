@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Mail\ReminderEmail;
 use App\Models\Batch;
 use App\Models\EmailReminderLog;
+use App\Models\Requirement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
@@ -37,6 +38,19 @@ class EmailReminderController extends Controller
             if ($batch && $batch->status === 'Rescheduled') {
                 throw ValidationException::withMessages([
                     'batch_id' => 'This batch has been rescheduled. Email reminders are disabled for it to avoid sending outdated schedule information.',
+                ]);
+            }
+        }
+
+        // Huwag payagan ang sinuman na mag-send ng reminder para sa isang
+        // requirement na hindi pa overdue — walang dapat i-remind hangga't
+        // hindi pa lumalagpas ang due date nito.
+        if (! empty($validated['requirement_id'])) {
+            $requirement = Requirement::find($validated['requirement_id']);
+
+            if ($requirement && (! $requirement->due_date || ! $requirement->due_date->lt(now()->startOfDay()))) {
+                throw ValidationException::withMessages([
+                    'requirement_id' => 'This requirement is not yet overdue. Email reminders can only be sent once the due date has passed.',
                 ]);
             }
         }

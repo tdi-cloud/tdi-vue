@@ -82,6 +82,24 @@ watch(() => [props.search, props.filterInitiated, props.filterBatchStatus, props
 
 const totalPages = computed(() => Math.ceil(filtered.value.length / perPage));
 
+const pageNumbers = computed(() => {
+    const total = totalPages.value;
+    const current = currentPage.value;
+    const delta = 1;
+    const pages: (number | string)[] = [];
+
+    const left = Math.max(2, current - delta);
+    const right = Math.min(total - 1, current + delta);
+
+    pages.push(1);
+    if (left > 2) pages.push('...');
+    for (let i = left; i <= right; i++) pages.push(i);
+    if (right < total - 1) pages.push('...');
+    if (total > 1) pages.push(total);
+
+    return pages;
+});
+
 const paginated = computed(() => {
     const start = (currentPage.value - 1) * perPage;
     return filtered.value.slice(start, start + perPage);
@@ -209,7 +227,7 @@ const dateRange = (program: Program) => {
                 <span>
                     Showing {{ (currentPage - 1) * perPage + 1 }}–{{ Math.min(currentPage * perPage, filtered.length) }} of {{ filtered.length }} programs
                 </span>
-                <div class="flex gap-1 flex-wrap">
+                <div class="flex gap-1 items-center flex-nowrap shrink-0">
                     <button
                         class="px-3 py-1 rounded border text-xs disabled:opacity-40 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40 transition-colors"
                         :disabled="currentPage === 1"
@@ -217,17 +235,21 @@ const dateRange = (program: Program) => {
                     >
                         Previous
                     </button>
-                    <button
-                        v-for="page in totalPages"
-                        :key="page"
-                        class="px-3 py-1 rounded border text-xs transition-colors"
-                        :class="page === currentPage
-                            ? 'bg-blue-600 border-blue-600 text-white'
-                            : 'border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40'"
-                        @click="changePage(page)"
-                    >
-                        {{ page }}
-                    </button>
+                    <template v-for="(page, index) in pageNumbers" :key="`${page}-${index}`">
+                        <span v-if="page === '...'" class="px-1 text-xs text-muted-foreground select-none">
+                            &hellip;
+                        </span>
+                        <button
+                            v-else
+                            class="px-3 py-1 rounded border text-xs transition-colors"
+                            :class="page === currentPage
+                                ? 'bg-blue-600 border-blue-600 text-white'
+                                : 'border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40'"
+                            @click="changePage(Number(page))"
+                        >
+                            {{ page }}
+                        </button>
+                    </template>
                     <button
                         class="px-3 py-1 rounded border text-xs disabled:opacity-40 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40 transition-colors"
                         :disabled="currentPage === totalPages"
