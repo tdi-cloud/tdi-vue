@@ -32,6 +32,7 @@ interface ProgramListItem {
     title: string;
     description: string;
     initiated: string;
+    provider: string | null;
     batches_count: number;
     participants_count: number;
     requirements_count: number;
@@ -53,6 +54,7 @@ const search = ref('');
 const filterInitiated = ref('all');
 const filterBatchStatus = ref('all');
 const filterMonth = ref('all');
+const filterProvider = ref('all');
 const showModal = ref(false);
 const showConfirm = ref(false);
 const showInfo = ref(false);
@@ -185,6 +187,15 @@ const availableMonths = computed(() => {
     return Array.from(set).sort().reverse();
 });
 
+// ✅ Lahat ng unique na provider values sa lahat ng programs, para sa Provider filter dropdown
+const availableProviders = computed(() => {
+    const set = new Set<string>();
+    props.programs.forEach((p) => {
+        if (p.provider) set.add(p.provider);
+    });
+    return Array.from(set).sort();
+});
+
 const monthLabel = (ym: string) => {
     const [year, month] = ym.split('-');
     const date = new Date(Number(year), Number(month) - 1, 1);
@@ -225,7 +236,7 @@ const monthLabel = (ym: string) => {
 
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-5 items-end gap-2">
+            <div class="grid grid-cols-1 md:grid-cols-6 items-end gap-2">
 
                 <!-- Search (spans 2 columns) -->
                 <div class="grid gap-1 md:col-span-2">
@@ -303,6 +314,27 @@ const monthLabel = (ym: string) => {
                     </Select>
                 </div>
 
+                <!-- Provider filter -->
+                <div class="grid gap-1">
+                    <Label class="text-[11px] font-semibold text-slate-400">Provider</Label>
+                    <Select v-model="filterProvider">
+                        <SelectTrigger class="text-xs h-8 w-full shadow-md">
+                            <SelectValue placeholder="All providers" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem class="text-xs" value="all">All providers</SelectItem>
+                            <SelectItem
+                                v-for="p in availableProviders"
+                                :key="p"
+                                :value="p"
+                                class="text-xs"
+                            >
+                                {{ p }}
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+
             </div>
 
             <!-- Program List: fills the rest; only its inner list scrolls -->
@@ -312,6 +344,7 @@ const monthLabel = (ym: string) => {
                 :filter-initiated="filterInitiated"
                 :filter-batch-status="filterBatchStatus"
                 :filter-month="filterMonth"
+                :filter-provider="filterProvider"
             />
 
             <!-- Confirmation Dialog -->

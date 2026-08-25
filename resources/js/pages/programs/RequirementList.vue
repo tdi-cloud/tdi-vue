@@ -221,46 +221,50 @@ const removeRequirement = async (requirement: Requirement) => {
 
                 <!-- Requirements ng batch na ito -->
                 <template v-if="batch.requirements?.length">
-                    <div
-                        v-for="r in batch.requirements"
-                        :key="r.id"
-                        class="group flex items-start justify-between gap-3 rounded-xl border px-3 py-2.5"
-                    >
-                        <div class="flex flex-col gap-0.5">
-                            <p class="text-sm font-bold leading-snug">
-                                {{ r.title }}
-                                <span class="font-normal text-muted-foreground">— {{ r.name }}</span>
-                            </p>
-                            <p class="text-xs text-muted-foreground flex items-center gap-1">
-                                <CalendarClock class="h-3.5 w-3.5" />
-                                Due on <span class="font-semibold text-foreground">{{ formatDate(r.due_date) }}</span>
-                            </p>
-                            <p v-if="r.note" class="text-xs text-muted-foreground flex items-start gap-1 mt-0.5">
-                                <StickyNote class="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                                <span class="leading-snug">{{ r.note }}</span>
-                            </p>
-                        </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                        <div
+                            v-for="r in batch.requirements"
+                            :key="r.id"
+                            class="group relative flex flex-col gap-2 rounded-xl border p-3.5 shadow-sm transition-shadow hover:shadow-md"
+                            :class="r.is_required
+                                ? 'border-blue-200 dark:border-blue-800/40 bg-blue-50/40 dark:bg-blue-950/10'
+                                : 'bg-card'"
+                        >
+                            <button
+                                type="button"
+                                class="absolute top-2.5 right-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all"
+                                @click="removeRequirement(r)"
+                            >
+                                <Trash2 class="h-3.5 w-3.5" />
+                            </button>
 
-                        <div class="flex items-center gap-2 shrink-0">
                             <span
                                 v-if="r.is_required"
-                                class="inline-flex items-center gap-1 rounded-full bg-blue-600/10 text-blue-600 dark:text-blue-400 px-2 py-0.5 text-[11px] font-bold"
+                                class="self-start inline-flex items-center gap-1 rounded-full bg-blue-600/10 text-blue-600 dark:text-blue-400 px-2 py-0.5 text-[11px] font-bold"
                             >
                                 <BadgeCheck class="h-3 w-3" /> Required
                             </span>
                             <span
                                 v-else
-                                class="inline-flex items-center rounded-full bg-muted text-muted-foreground px-2 py-0.5 text-[11px] font-semibold"
+                                class="self-start inline-flex items-center rounded-full bg-muted text-muted-foreground px-2 py-0.5 text-[11px] font-semibold"
                             >
                                 Optional
                             </span>
-                            <button
-                                type="button"
-                                class="text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all"
-                                @click="removeRequirement(r)"
-                            >
-                                <Trash2 class="h-4 w-4" />
-                            </button>
+
+                            <div class="pr-4">
+                                <p class="text-sm font-bold leading-snug">{{ r.title }}</p>
+                                <p class="text-xs text-muted-foreground leading-snug">{{ r.name }}</p>
+                            </div>
+
+                            <p class="text-xs text-muted-foreground flex items-center gap-1 mt-auto pt-1">
+                                <CalendarClock class="h-3.5 w-3.5 shrink-0" />
+                                Due <span class="font-semibold text-foreground">{{ formatDate(r.due_date) }}</span>
+                            </p>
+
+                            <p v-if="r.note" class="text-xs text-muted-foreground flex items-start gap-1 border-t pt-2">
+                                <StickyNote class="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                                <span class="leading-snug">{{ r.note }}</span>
+                            </p>
                         </div>
                     </div>
                 </template>

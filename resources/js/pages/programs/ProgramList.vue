@@ -14,6 +14,7 @@ interface Program {
     title: string;
     description: string;
     initiated: string;
+    provider: string | null;
     batches_count: number;
     participants_count: number;
     requirements_count: number;
@@ -33,6 +34,7 @@ const props = defineProps<{
     filterInitiated: string;
     filterBatchStatus: string;
     filterMonth: string;
+    filterProvider: string;
 }>();
 
 const filtered = computed(() => {
@@ -64,6 +66,11 @@ const filtered = computed(() => {
             return false;
         }
 
+        // Provider filter
+        if (props.filterProvider !== 'all' && p.provider !== props.filterProvider) {
+            return false;
+        }
+
         return true;
     });
 });
@@ -76,7 +83,7 @@ const perPage = 12;
 const currentPage = ref(1);
 const isChangingPage = ref(false);
 
-watch(() => [props.search, props.filterInitiated, props.filterBatchStatus, props.filterMonth], () => {
+watch(() => [props.search, props.filterInitiated, props.filterBatchStatus, props.filterMonth, props.filterProvider], () => {
     currentPage.value = 1;
 });
 
