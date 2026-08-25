@@ -355,7 +355,7 @@ const modalTitle = computed(() => {
             class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
             @click.self="modalOpen = false"
         >
-            <div class="bg-background rounded-2xl shadow-xl w-full max-w-3xl flex flex-col max-h-[85vh] overflow-hidden">
+            <div class="bg-background rounded-2xl shadow-xl w-full max-w-7xl flex flex-col max-h-[85vh] overflow-hidden">
 
                 <!-- Modal header -->
                 <div class="flex items-center justify-between gap-4 px-5 py-4 border-b shrink-0">
@@ -393,9 +393,9 @@ const modalTitle = computed(() => {
                                 <th class="text-left font-semibold px-4 py-3">Name</th>
                                 <th class="text-left font-semibold px-4 py-3">Position</th>
                                 <th class="text-left font-semibold px-4 py-3">Office/Division</th>
-                                <th class="text-left font-semibold px-4 py-3">Region</th>
-                                <th class="text-left font-semibold px-4 py-3">Batch</th>
-                                <th class="text-left font-semibold px-4 py-3">Due Date</th>
+                                <th class="text-left font-semibold px-4 py-3 whitespace-nowrap">Region</th>
+                                <th class="text-left font-semibold px-4 py-3 whitespace-nowrap">Batch</th>
+                                <th class="text-left font-semibold px-4 py-3 whitespace-nowrap">Due Date</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y">
@@ -410,15 +410,15 @@ const modalTitle = computed(() => {
                                     <p class="font-semibold leading-tight">{{ emp.name }}</p>
                                     <p class="text-[11px] text-muted-foreground">{{ emp.empcode }}</p>
                                 </td>
-                                <td class="px-4 py-2.5 text-xs text-muted-foreground">{{ emp.position }}</td>
-                                <td class="px-4 py-2.5 text-xs text-muted-foreground">{{ emp.office_division }}</td>
-                                <td class="px-4 py-2.5">
+                                <td class="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{{ emp.position }}</td>
+                                <td class="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{{ emp.office_division }}</td>
+                                <td class="px-4 py-2.5 whitespace-nowrap">
                                     <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
                                         {{ emp.region }}
                                     </span>
                                 </td>
-                                <td class="px-4 py-2.5 text-xs text-muted-foreground">{{ emp.batch_name }}</td>
-                                <td class="px-4 py-2.5">
+                                <td class="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{{ emp.batch_name }}</td>
+                                <td class="px-4 py-2.5 whitespace-nowrap">
                                     <span
                                         class="text-xs font-semibold"
                                         :class="modalType === 'not_submitted' ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'"

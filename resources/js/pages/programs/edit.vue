@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, LoaderCircle, Save } from 'lucide-vue-next';
-import { computed, watch } from 'vue';
+import { computed } from 'vue';
 
 interface Program {
     id: number;
@@ -86,16 +86,6 @@ const form = useForm({
     cost: props.program.cost,
     fund: props.program.fund,
     origin: props.program.origin,
-});
-
-watch(() => form.initiated, (val) => {
-    if (val === 'TDI') {
-        form.provider = 'TESDA Development Institute (TDI)';
-    } else if (val === 'NTTA') {
-        form.provider = 'National TVET Trainors Academy (NTTA)';
-    } else if (!['TDI', 'NTTA'].includes(props.program.initiated)) {
-        form.provider = '';
-    }
 });
 
 const submit = () => {

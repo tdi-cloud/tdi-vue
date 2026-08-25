@@ -181,7 +181,7 @@ const regionRate = (code: string) =>
     <AppLayout>
         <div class="flex flex-1 flex-col gap-6 p-4 md:p-6">
 
-            <!-- Header -->
+            <!-- Header-->
             <div class="flex items-start justify-between gap-4 flex-wrap">
                 <div>
                     <p class="text-xs font-bold uppercase tracking-widest text-emerald-600 flex items-center gap-1.5 mb-1">
