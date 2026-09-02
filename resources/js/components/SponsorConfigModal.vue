@@ -28,6 +28,7 @@ interface Program {
     modality: string;
     slots: number;
     status: string;
+    submission_date: string | null;
 }
 
 interface Config {
@@ -108,6 +109,7 @@ function toggleAll() {
     } else {
         selectedPrograms.value = programList.value.map(p => p.id);
     }
+    queueAutoSavePrograms();
 }
 
 function toggleProgram(id: number) {
@@ -117,6 +119,7 @@ function toggleProgram(id: number) {
     } else {
         selectedPrograms.value.push(id);
     }
+    queueAutoSavePrograms();
 }
 
 async function fetchPrograms() {
@@ -131,18 +134,58 @@ async function fetchPrograms() {
         });
         programList.value  = res.data.programs;
         programYears.value = res.data.years;
+
+        pruneExpiredSelections();
     } finally {
         programsLoading.value = false;
     }
 }
 
+// ── Auto-unselect programs na na-select na pero lumagpas na ang submission
+//    date nila — hindi na dapat manatiling naka-select ito sa nomination form. ──
+
+function isDeadlinePassed(program: Program): boolean {
+    if (!program.submission_date) return false;
+    const d = program.submission_date.includes('T')
+        ? new Date(program.submission_date)
+        : new Date(program.submission_date + 'T00:00:00');
+    if (isNaN(d.getTime())) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return d < today;
+}
+
+const autoUnselectedCount = ref(0);
+
+function pruneExpiredSelections() {
+    const expiredIds = programList.value
+        .filter(p => selectedPrograms.value.includes(p.id) && isDeadlinePassed(p))
+        .map(p => p.id);
+
+    if (expiredIds.length === 0) return;
+
+    selectedPrograms.value = selectedPrograms.value.filter(id => !expiredIds.includes(id));
+    autoUnselectedCount.value = expiredIds.length;
+    setTimeout(() => { autoUnselectedCount.value = 0; }, 5000);
+    queueAutoSavePrograms();
+}
+
 watch(programYear, fetchPrograms);
 
-async function savePrograms() {
-    if (selectedPrograms.value.length === 0) {
-        alert('Please select at least one program.');
-        return;
-    }
+// Auto-save ang program selection — walang "Save" button na kailangang pindutin,
+// bawat select/deselect ay direktang naka-tali sa pagbabago. Debounced nang
+// bahagya para hindi mag-flood ng requests kapag mabilis na pag-click ng ilang
+// checkbox nang sunod-sunod.
+let programsSaveTimer: ReturnType<typeof setTimeout> | null = null;
+const programsSaved = ref(false);
+
+function queueAutoSavePrograms() {
+    if (!config.value.id) return;
+    if (programsSaveTimer) clearTimeout(programsSaveTimer);
+    programsSaveTimer = setTimeout(autoSavePrograms, 500);
+}
+
+async function autoSavePrograms() {
     saving.value = true;
     try {
         const res = await axios.put(`/foreign-sponsor-configs/${config.value.id}`, {
@@ -154,6 +197,8 @@ async function savePrograms() {
         });
         config.value = { ...config.value, ...res.data };
         emit('saved', config.value);
+        programsSaved.value = true;
+        setTimeout(() => { programsSaved.value = false; }, 1500);
     } finally {
         saving.value = false;
     }
@@ -532,7 +577,17 @@ async function copyNominationUrl() {
                                     <span class="text-xs text-muted-foreground">
                                         {{ selectedPrograms.length }} selected
                                     </span>
+                                    <span v-if="saving" class="flex items-center gap-1 text-xs text-muted-foreground ml-auto">
+                                        <Loader2 class="h-3 w-3 animate-spin" /> Saving…
+                                    </span>
+                                    <span v-else-if="programsSaved" class="flex items-center gap-1 text-xs text-emerald-600 ml-auto">
+                                        <Check class="h-3 w-3" /> Saved
+                                    </span>
                                 </div>
+
+                                <p v-if="autoUnselectedCount > 0" class="text-[11px] text-amber-600">
+                                    ⚠️ {{ autoUnselectedCount }} program(s) were automatically unselected because their submission date has already passed.
+                                </p>
 
                                 <!-- Loading -->
                                 <div v-if="programsLoading" class="flex justify-center py-8">
@@ -582,24 +637,13 @@ async function copyNominationUrl() {
                                         </div>
                                     </div>
 
-                                    <p v-else class="text-center text-xs text-muted-foreground py-8">
-                                        No programs found for this sponsor{{ programYear ? ` in ${programYear}` : '' }}.
-                                    </p>
-
-                                    <!-- Save -->
-                                    <div v-if="programList.length > 0" class="pt-2">
-                                        <p v-if="selectedPrograms.length === 0" class="text-xs text-red-500 mb-2">
-                                            ⚠️ Select at least one program to include in the nomination form.
+                                    <div v-else class="text-center py-8 space-y-1">
+                                        <p class="text-xs text-muted-foreground">
+                                            No programs found for this sponsor{{ programYear ? ` in ${programYear}` : '' }}.
                                         </p>
-                                        <button
-                                            :disabled="saving || selectedPrograms.length === 0"
-                                            class="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-2.5 text-sm transition"
-                                            @click="savePrograms"
-                                        >
-                                            <Loader2 v-if="saving" class="h-3.5 w-3.5 animate-spin" />
-                                            <Save v-else class="h-3.5 w-3.5" />
-                                            {{ saving ? 'Saving…' : `Save Selected Programs (${selectedPrograms.length})` }}
-                                        </button>
+                                        <p class="text-[11px] text-muted-foreground/80">
+                                            Only programs whose submission date hasn't passed yet (or ones already selected here) show up in this list.
+                                        </p>
                                     </div>
                                 </template>
                             </template>

@@ -6,6 +6,7 @@ use App\Models\ForeignNominee;
 use App\Models\ForeignProgram;
 use App\Models\ForeignSponsorConfig;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 
 class ForeignProgramController extends Controller
@@ -294,14 +295,24 @@ class ForeignProgramController extends Controller
     {
         $sponsor = trim($request->query('sponsor'));
 
+        // Kailangan ng listahan ng mga naka-select na program ID para dito, para
+        // hindi sila maitago kahit lampas na ang deadline nila (tingnan sa baba).
+        $selectedIds = ForeignSponsorConfig::where('organizing_sponsor', $sponsor)
+            ->value('selected_program_ids') ?? [];
+
         $query = ForeignProgram::query()
             ->where('organizing_sponsor', $sponsor); // exact match
 
-        // ── Itago ang mga lampas na ang submission date kaysa ngayon ──
-        // Pinapakita pa rin ang mga walang submission_date (null = walang deadline).
-        $query->where(function ($q) {
+        // Itago ang mga lampas na sa submission deadline — HABANG hindi itinatago
+        // ang mga ALREADY-SELECTED na program kahit lampas na ang deadline nila,
+        // para hindi mag-mismatch sa "X selected" count sa Programs tab.
+        $query->where(function ($q) use ($selectedIds) {
             $q->whereNull('submission_date')
                 ->orWhereDate('submission_date', '>=', now()->toDateString());
+
+            if (! empty($selectedIds)) {
+                $q->orWhereIn('id', $selectedIds);
+            }
         });
 
         // Year filter (optional)
@@ -313,11 +324,14 @@ class ForeignProgramController extends Controller
             ->orderBy('program_start', 'desc')
             ->get(['id', 'program_title', 'program_start', 'program_end', 'modality', 'slots', 'status', 'submission_date']);
 
+        // `whereYear()`/PHP-side extraction dito sa halip na raw YEAR(...) SQL,
+        // para portable ito sa parehong MySQL (production) at SQLite (tests).
         $years = ForeignProgram::where('organizing_sponsor', $sponsor)
-            ->selectRaw('YEAR(program_start) as year')
-            ->distinct()
-            ->orderBy('year', 'desc')
-            ->pluck('year');
+            ->pluck('program_start')
+            ->map(fn ($date) => (int) Carbon::parse($date)->format('Y'))
+            ->unique()
+            ->sortDesc()
+            ->values();
 
         return response()->json([
             'programs' => $programs,

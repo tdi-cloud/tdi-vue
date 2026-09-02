@@ -12,6 +12,7 @@ import { ref, computed, watch } from 'vue';
 import ForeignProgramsDashboardModal from '@/components/ForeignProgramsDashboardModal.vue';
 import OrganizingSponsorModal from '@/components/OrganizingSponsorModal.vue';
 import SponsorConfigModal from '@/components/SponsorConfigModal.vue';
+import EditProgramModal from '@/pages/ForeignPrograms/EditProgramModal.vue';
 import { useConfirm } from '@/composables/useConfirm';
 
 const { confirmDialog } = useConfirm();
@@ -135,79 +136,14 @@ const viewProgram = ref<ForeignProgram | null>(null);
 const openView = (program: ForeignProgram) => { viewProgram.value = program; };
 const closeView = () => { viewProgram.value = null; };
 
-// --- Edit Modal ---
+// --- Edit Modal --- (form fields/date handling live inside EditProgramModal.vue)
 const showEditModal = ref(false);
-
-const editForm = useForm({
-    program_title: '',
-    description: '',
-    program_start: '',
-    program_end: '',
-    slots: 1,
-    modality: 'in-person' as 'in-person' | 'online' | 'hybrid',
-    online_start: '',
-    online_end: '',
-    program_cost: '',
-    fund_source: '',
-    category: 'Foreign',
-    organizing_sponsor: '',
-    status: 'for_dissemination',
-    submission_date: '',
-    embassy_deadline: '',
-    interview_date: '',
-    invited_agencies: '',
-    attached_agency: '',
-});
-
-const editingId = ref<number | null>(null);
-
-    const toDateInput = (date?: string | null): string => {
-    if (!date) return '';
-    return date.slice(0, 10); // takes "2026-06-15" from "2026-06-15T00:00:00.000000Z"
-};
+const editingProgram = ref<ForeignProgram | null>(null);
 
 const openEdit = (program: ForeignProgram) => {
-    editingId.value = program.id;
-    editForm.program_title      = program.program_title;
-    editForm.description        = program.description ?? '';
-    editForm.program_start      = toDateInput(program.program_start);
-    editForm.program_end        = toDateInput(program.program_end);
-    editForm.slots              = program.slots;
-    editForm.modality           = program.modality;
-    editForm.online_start       = toDateInput(program.online_start);
-    editForm.online_end         = toDateInput(program.online_end);
-    editForm.program_cost       = program.program_cost ?? '';
-    editForm.fund_source        = program.fund_source ?? '';
-    editForm.category           = program.category ?? 'Foreign';
-    editForm.organizing_sponsor = program.organizing_sponsor;
-    editForm.status             = program.status;
-    editForm.submission_date    = toDateInput(program.submission_date);
-    editForm.embassy_deadline   = toDateInput(program.embassy_deadline);
-    editForm.interview_date     = toDateInput(program.interview_date);
-    editForm.invited_agencies   = program.invited_agencies ?? '';
-    editForm.attached_agency    = program.attached_agency ?? '';
+    editingProgram.value = program;
     showEditModal.value = true;
 };
-
-const closeEdit = () => {
-    showEditModal.value = false;
-    editingId.value = null;
-    editForm.reset();
-};
-
-const submitEdit = () => {
-    if (!editingId.value) return;
-    editForm.put(route('foreign-programs.update', editingId.value), {
-        preserveScroll: true,
-        onSuccess: () => closeEdit(),
-    });
-};
-
-const showEditOnlineDates = computed(() => editForm.modality === 'online' || editForm.modality === 'hybrid');
-
-watch(() => editForm.modality, (val) => {
-    if (val === 'in-person') { editForm.online_start = ''; editForm.online_end = ''; }
-});
 
 // --- Add Modal & Form ---
 const showModal = ref(false);
@@ -302,10 +238,9 @@ const formatDate = (date?: string) => {
 };
 
 
-// Organizing Sponsors
-const showSponsorModal    = ref(false);
-const sponsors            = ref<string[]>([]);
-const sponsorsForEditModal = ref(false); // true = para sa edit form, false = para sa add form
+// Organizing Sponsors (Add Program form only — EditProgramModal.vue manages its own)
+const showSponsorModal = ref(false);
+const sponsors = ref<string[]>([]);
 
 const fetchSponsors = async () => {
     const res = await fetch(route('organizing-sponsors.index'), {
@@ -315,17 +250,12 @@ const fetchSponsors = async () => {
     sponsors.value = data.map((s: { id: number; name: string }) => s.name);
 };
 
-const openSponsorModal = (forEdit = false) => {
-    sponsorsForEditModal.value = forEdit;
+const openSponsorModal = () => {
     showSponsorModal.value = true;
 };
 
 const onSponsorSelected = (name: string) => {
-    if (sponsorsForEditModal.value) {
-        editForm.organizing_sponsor = name;
-    } else {
-        form.organizing_sponsor = name;
-    }
+    form.organizing_sponsor = name;
 };
 
 // Initial load
@@ -340,8 +270,10 @@ function openConfigModal(sponsor: string) {
 }
 
 function onConfigSaved() {
-    // Optional: pwedeng mag-refresh ng page or mag-show ng toast
-    configModalOpen.value = false;
+    // Huwag i-close ang modal dito — ang Programs tab ay auto-save na ngayon sa
+    // bawat select/deselect, kaya kung isasara natin ito sa bawat 'saved' event,
+    // maisasara ang modal sa gitna mismo ng pag-setup ng admin. Ang X button /
+    // pag-click sa labas ng modal na lang ang magsasara nito.
 }
 </script>
 
@@ -733,228 +665,11 @@ function onConfigSaved() {
             </div>
         </div>
 
-        <!-- ===== Edit Modal ===== -->
-        <div v-if="showEditModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="closeEdit">
-            <div class="bg-background rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-
-                <!-- Header -->
-                <div class="sticky top-0 z-10 bg-background border-b px-6 py-4 rounded-t-2xl flex items-center gap-3">
-                    <div class="flex items-center justify-center h-9 w-9 rounded-xl bg-amber-500 shadow">
-                        <Pencil class="h-4 w-4 text-white" />
-                    </div>
-                    <div>
-                        <h2 class="text-base font-bold leading-none">Edit Program</h2>
-                        <p class="text-xs text-muted-foreground mt-0.5">Update the details of this program</p>
-                    </div>
-                    <button @click="closeEdit" class="ml-auto text-muted-foreground hover:text-foreground transition-colors">
-                        <X class="h-5 w-5" />
-                    </button>
-                </div>
-
-                <div class="p-6 flex flex-col gap-6">
-
-                    <!-- Basic Info -->
-                    <div class="flex flex-col gap-4">
-                        <div class="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-amber-600 dark:text-amber-400">
-                            <FileText class="h-3.5 w-3.5" /> <span>Basic Information</span>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="md:col-span-2 flex flex-col gap-1">
-                                <label class="text-xs font-semibold flex items-center gap-1.5">
-                                    <AlignLeft class="h-3.5 w-3.5 text-muted-foreground" /> Program Title <span class="text-red-500">*</span>
-                                </label>
-                                <input v-model="editForm.program_title" type="text" class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
-                                <span v-if="editForm.errors.program_title" class="text-xs text-red-500">{{ editForm.errors.program_title }}</span>
-                            </div>
-                            <div class="md:col-span-2 flex flex-col gap-1">
-                                <label class="text-xs font-semibold flex items-center gap-1.5">
-                                    <FileText class="h-3.5 w-3.5 text-muted-foreground" /> Description
-                                </label>
-                                <textarea v-model="editForm.description" rows="3" class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none" placeholder="Optional"></textarea>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Schedule -->
-                    <div class="flex flex-col gap-4">
-                        <div class="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-amber-600 dark:text-amber-400">
-                            <CalendarDays class="h-3.5 w-3.5" /> <span>Schedule</span>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="flex flex-col gap-1">
-                                <label class="text-xs font-semibold flex items-center gap-1.5">
-                                    <Calendar class="h-3.5 w-3.5 text-muted-foreground" /> Program Start <span class="text-red-500">*</span>
-                                </label>
-                                <input v-model="editForm.program_start" type="date" class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
-                            </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="text-xs font-semibold flex items-center gap-1.5">
-                                    <Calendar class="h-3.5 w-3.5 text-muted-foreground" /> Program End <span class="text-red-500">*</span>
-                                </label>
-                                <input v-model="editForm.program_end" type="date" class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
-                            </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="text-xs font-semibold flex items-center gap-1.5">
-                                    <Hash class="h-3.5 w-3.5 text-muted-foreground" /> Slots <span class="text-red-500">*</span>
-                                </label>
-                                <input v-model="editForm.slots" type="number" min="1" class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
-                            </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="text-xs font-semibold flex items-center gap-1.5">
-                                    <Globe class="h-3.5 w-3.5 text-muted-foreground" /> Modality <span class="text-red-500">*</span>
-                                </label>
-                                <select v-model="editForm.modality" class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
-                                    <option value="in-person">🏢 In-person</option>
-                                    <option value="online">💻 Online</option>
-                                    <option value="hybrid">🔀 Hybrid</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <template v-if="showEditOnlineDates">
-                            <div class="rounded-xl bg-purple-50 border border-purple-200 p-4 dark:bg-purple-950/30 dark:border-purple-900">
-                                <p class="text-xs font-extrabold uppercase tracking-wide text-purple-600 dark:text-purple-400 mb-3">💻 Online Schedule</p>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div class="flex flex-col gap-1">
-                                        <label class="text-xs font-semibold">Online Start</label>
-                                        <input v-model="editForm.online_start" type="date" class="border rounded-lg px-3 py-2 text-sm bg-white dark:bg-background focus:outline-none focus:ring-2 focus:ring-purple-400" />
-                                    </div>
-                                    <div class="flex flex-col gap-1">
-                                        <label class="text-xs font-semibold">Online End</label>
-                                        <input v-model="editForm.online_end" type="date" class="border rounded-lg px-3 py-2 text-sm bg-white dark:bg-background focus:outline-none focus:ring-2 focus:ring-purple-400" />
-                                    </div>
-                                </div>
-                            </div>
-                        </template>
-                    </div>
-
-                    <!-- Classification & Funding -->
-                    <div class="flex flex-col gap-4">
-                        <div class="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-amber-600 dark:text-amber-400">
-                            <Banknote class="h-3.5 w-3.5" /> <span>Classification & Funding</span>
-                        </div>
-                        <div class="rounded-xl bg-amber-50 border border-amber-200 p-4 dark:bg-amber-950/30 dark:border-amber-900">
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div class="flex flex-col gap-1">
-                                    <label class="text-xs font-semibold flex items-center gap-1.5">
-                                        <Tag class="h-3.5 w-3.5 text-muted-foreground" /> Category <span class="text-red-500">*</span>
-                                    </label>
-                                    <select v-model="editForm.category" class="border rounded-lg px-3 py-2 text-sm bg-white dark:bg-background focus:outline-none focus:ring-2 focus:ring-amber-500">
-                                        <option value="Foreign">🌐 Foreign</option>
-                                        <option value="Bilateral">🤝 Bilateral</option>
-                                    </select>
-                                </div>
-                                <div class="flex flex-col gap-1">
-                                    <label class="text-xs font-semibold flex items-center gap-1.5">
-                                        <Banknote class="h-3.5 w-3.5 text-muted-foreground" /> Program Cost
-                                    </label>
-                                    <input v-model="editForm.program_cost" type="text" class="border rounded-lg px-3 py-2 text-sm bg-white dark:bg-background focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="e.g. 50,000" />
-                                </div>
-                                <div class="flex flex-col gap-1">
-                                    <label class="text-xs font-semibold flex items-center gap-1.5">
-                                        <FileText class="h-3.5 w-3.5 text-muted-foreground" /> Fund Source
-                                    </label>
-                                    <select v-model="editForm.fund_source" class="border rounded-lg px-3 py-2 text-sm bg-white dark:bg-background focus:outline-none focus:ring-2 focus:ring-amber-500">
-                                        <option value="">— Select —</option>
-                                        <option value="SDP">SDP</option>
-                                        <option value="Other Office">Other Office</option>
-                                        <option value="Sponsoring Organization">Sponsoring Organization</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Organizer & Status -->
-                    <div class="flex flex-col gap-4">
-                        <div class="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-amber-600 dark:text-amber-400">
-                            <Building2 class="h-3.5 w-3.5" /> <span>Organizer & Status</span>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="flex flex-col gap-1">
-                                <label class="text-xs font-semibold flex items-center gap-1.5">
-                                    <Building2 class="h-3.5 w-3.5 text-muted-foreground" /> Organizing Sponsor <span class="text-red-500">*</span>
-                                </label>
-                                <div class="flex gap-2">
-                                    <select
-                                        v-model="editForm.organizing_sponsor"
-                                        class="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                                    >
-                                        <option value="">— Select sponsor —</option>
-                                        <option v-for="s in sponsors" :key="s" :value="s">{{ s }}</option>
-                                    </select>
-                                    <button
-                                        type="button"
-                                        class="px-3 py-2 rounded-lg border text-xs font-semibold text-amber-600 hover:bg-amber-50 transition-colors whitespace-nowrap"
-                                        @click="openSponsorModal(true)"
-                                    >
-                                        + Manage
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="text-xs font-semibold flex items-center gap-1.5">
-                                    <CheckCircle2 class="h-3.5 w-3.5 text-muted-foreground" /> Status <span class="text-red-500">*</span>
-                                </label>
-                                <select v-model="editForm.status" class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
-                                    <option v-for="(label, key) in statusLabels" :key="key" :value="key">{{ label }}</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Key Dates -->
-                    <div class="flex flex-col gap-4">
-                        <div class="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-amber-600 dark:text-amber-400">
-                            <CalendarDays class="h-3.5 w-3.5" /> <span>Key Dates</span>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div class="flex flex-col gap-1">
-                                <label class="text-xs font-semibold flex items-center gap-1.5">
-                                    <Calendar class="h-3.5 w-3.5 text-muted-foreground" /> Submission Date
-                                </label>
-                                <input v-model="editForm.submission_date" type="date" class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
-                            </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="text-xs font-semibold flex items-center gap-1.5">
-                                    <Users class="h-3.5 w-3.5 text-muted-foreground" /> Interview Date
-                                </label>
-                                <input v-model="editForm.interview_date" type="date" class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
-                            </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="text-xs font-semibold flex items-center gap-1.5">
-                                    <MapPin class="h-3.5 w-3.5 text-muted-foreground" /> Embassy Deadline
-                                </label>
-                                <input v-model="editForm.embassy_deadline" type="date" class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Agencies -->
-                    <div class="flex flex-col gap-4">
-                        <div class="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-amber-600 dark:text-amber-400">
-                            <Building class="h-3.5 w-3.5" /> <span>Invited Agencies</span>
-                        </div>
-                        <div class="flex flex-col gap-1">
-                            <label class="text-xs font-semibold flex items-center gap-1.5">
-                                <Building class="h-3.5 w-3.5 text-muted-foreground" /> Agencies
-                            </label>
-                            <textarea v-model="editForm.invited_agencies" rows="2" class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none" placeholder="Comma-separated, e.g. DILG, DBM, CSC"></textarea>
-                        </div>
-                    </div>
-
-                </div>
-
-                <!-- Footer -->
-                <div class="sticky bottom-0 bg-background border-t px-6 py-4 rounded-b-2xl flex justify-end gap-2">
-                    <Button variant="outline" @click="closeEdit">Cancel</Button>
-                    <Button class="bg-amber-500 hover:bg-amber-600 text-white" :disabled="editForm.processing" @click="submitEdit">
-                        <Pencil v-if="!editForm.processing" class="h-4 w-4 mr-1" />
-                        {{ editForm.processing ? 'Saving...' : 'Save Changes' }}
-                    </Button>
-                </div>
-            </div>
-        </div>
+        <EditProgramModal
+            :open="showEditModal"
+            :program="editingProgram"
+            @update:open="showEditModal = $event"
+        />
 
         <!-- ===== Add Program Modal ===== -->
         <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="showModal = false">
@@ -1108,7 +823,7 @@ function onConfigSaved() {
                                     <button
                                         type="button"
                                         class="px-3 py-2 rounded-lg border text-xs font-semibold text-blue-600 hover:bg-blue-50 transition-colors whitespace-nowrap"
-                                        @click="openSponsorModal(false)"
+                                        @click="openSponsorModal()"
                                     >
                                         + Manage
                                     </button>

@@ -8,10 +8,12 @@ import {
     UserRound, Search, FileText, Eye, Loader2, ChevronDown,
     Trash2, RefreshCw, Plus, Upload, Sparkles, Briefcase,
     IdCard, ShieldCheck, FileCheck2, PlaneTakeoff, ClipboardCheck,
+    Pencil,
 } from 'lucide-vue-next';
 import { ref, computed } from 'vue';
 import axios from 'axios';
 import { useConfirm } from '@/composables/useConfirm';
+import EditProgramModal from '@/pages/ForeignPrograms/EditProgramModal.vue';
 
 const { confirmDialog } = useConfirm();
 
@@ -93,6 +95,7 @@ const props = defineProps<{ program: ForeignProgram; sponsorConfigs: SponsorConf
 const searchQuery     = ref('');
 const updatingId      = ref<number | null>(null);
 const viewNominee     = ref<Nominee | null>(null);
+const showEditModal   = ref(false);
 
 // ── Computed ──────────────────────────────────────────────────────────────────
 
@@ -431,14 +434,25 @@ const modalityLabels: Record<string, string> = {
                     <ArrowLeft class="h-4 w-4" /> Back to Foreign Programs
                 </button>
 
-                <Link :href="route('foreign-programs.assessment', program.id)">
+                <div class="flex items-center gap-2">
                     <Button
                         size="sm"
-                        class="gap-1.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white shadow-md shadow-indigo-600/20"
+                        variant="outline"
+                        class="gap-1.5"
+                        @click="showEditModal = true"
                     >
-                        <ClipboardCheck class="h-4 w-4" /> Nominee Assessment
+                        <Pencil class="h-4 w-4" /> Edit Program
                     </Button>
-                </Link>
+
+                    <Link :href="route('foreign-programs.assessment', program.id)">
+                        <Button
+                            size="sm"
+                            class="gap-1.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white shadow-md shadow-indigo-600/20"
+                        >
+                            <ClipboardCheck class="h-4 w-4" /> Nominee Assessment
+                        </Button>
+                    </Link>
+                </div>
             </div>
 
             <!-- Hero Banner -->
@@ -1135,6 +1149,12 @@ const modalityLabels: Record<string, string> = {
                 </div>
             </Transition>
         </Teleport>
+
+        <EditProgramModal
+            :open="showEditModal"
+            :program="program"
+            @update:open="showEditModal = $event"
+        />
 
     </AppLayout>
 </template>
