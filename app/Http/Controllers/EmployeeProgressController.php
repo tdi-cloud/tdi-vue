@@ -207,7 +207,7 @@ class EmployeeProgressController extends Controller
             'stats' => [
                 'programs_attended' => $programsAttended,
                 'programs_completed' => $programsCompleted,
-                'total_hours' => $enrolledPrograms->sum('hours'),
+                'total_hours' => round($enrolledPrograms->sum('hours'), 2),
                 'total_submissions' => $enrolledPrograms->sum('approved_submissions'),
                 'not_approved' => $enrolledPrograms->sum('pending_submissions'),
                 'completion_rate' => $completionRate,

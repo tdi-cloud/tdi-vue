@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import {
     X, CheckCircle2, Clock, Award, FileText,
     Building2, MapPin, Hash, Star, AlertCircle,
-    ExternalLink, Download,
+    ExternalLink, Download, BookOpen, Search,
 } from 'lucide-vue-next';
 import axios from 'axios';
 
@@ -82,15 +82,43 @@ const emit = defineEmits<{
     close: [];
 }>();
 
-const loading     = ref(false);
-const progress    = ref<EmployeeProgress | null>(null);
-const activeReqs  = ref<EnrolledProgram | null>(null);
+const loading      = ref(false);
+const progress     = ref<EmployeeProgress | null>(null);
+const activeReqs   = ref<EnrolledProgram | null>(null);
+const programSearch = ref('');
+const programYear   = ref('all');
+
+// Mula sa date_start ng bawat enrolled program — para sa Year filter dropdown.
+const availableProgramYears = computed(() => {
+    const years = new Set<string>();
+    (progress.value?.enrolled_programs ?? []).forEach((p) => {
+        if (p.date_start) years.add(String(new Date(p.date_start).getFullYear()));
+    });
+    return Array.from(years).sort().reverse();
+});
+
+const filteredPrograms = computed(() => {
+    const q = programSearch.value.trim().toLowerCase();
+    const programs = progress.value?.enrolled_programs ?? [];
+
+    return programs.filter((p) => {
+        if (programYear.value !== 'all' && String(new Date(p.date_start).getFullYear()) !== programYear.value) {
+            return false;
+        }
+        if (!q) return true;
+        return p.program_title.toLowerCase().includes(q) ||
+            p.program_code?.toLowerCase().includes(q) ||
+            p.batch_label?.toLowerCase().includes(q);
+    });
+});
 
 watch(
     () => props.empcode,
     async (code) => {
         progress.value   = null;
         activeReqs.value = null;
+        programSearch.value = '';
+        programYear.value = 'all';
         if (!code) return;
 
         loading.value = true;
@@ -148,7 +176,7 @@ const submissionStatusColor = (status?: string) => {
             class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
             @click.self="close"
         >
-            <div class="bg-background rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="bg-background rounded-2xl shadow-2xl w-full max-w-2xl lg:max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
 
                 <!-- Loading -->
                 <div v-if="loading" class="flex items-center justify-center py-24">
@@ -156,6 +184,9 @@ const submissionStatusColor = (status?: string) => {
                 </div>
 
                 <template v-else-if="progress">
+                <!-- Own scroll container so the native scrollbar is clipped by the
+                     modal's rounded corners instead of poking past them. -->
+                <div class="overflow-y-auto flex-1 min-h-0">
 
                     <!-- Modal Header -->
                     <div class="sticky top-0 z-10 bg-gradient-to-r from-violet-600 to-purple-700 text-white px-6 py-4 rounded-t-2xl flex items-center justify-between">
@@ -195,6 +226,10 @@ const submissionStatusColor = (status?: string) => {
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Program Overview + Post-Training Submissions on the left, Enrolled Programs on the right (large screens); stacked on small screens -->
+                        <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+                        <div class="lg:col-span-2 flex flex-col gap-6">
 
                         <!-- Program Overview -->
                         <div>
@@ -276,12 +311,14 @@ const submissionStatusColor = (status?: string) => {
                             </div>
                         </div>
 
+                        </div>
+
                         <!-- Enrolled Programs -->
-                        <div>
+                        <div class="lg:col-span-3">
 
                             <div class="flex w-full items-center justify-between mb-3">
                                 <p class="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                                    <Award class="h-3.5 w-3.5" /> Enrolled Programs
+                                    <BookOpen class="h-3.5 w-3.5" /> Enrolled Programs
                                 </p>
 
                                 <a v-if="progress.enrolled_programs?.length"
@@ -292,14 +329,39 @@ const submissionStatusColor = (status?: string) => {
                                 </a>
                             </div>
 
+                            <!-- Search + Year filter -->
+                            <div v-if="progress.enrolled_programs?.length" class="flex items-center gap-2 mb-3">
+                                <div class="relative flex-1">
+                                    <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                    <input
+                                        v-model="programSearch"
+                                        type="text"
+                                        placeholder="Search enrolled programs..."
+                                        class="w-full rounded-lg border pl-9 pr-3 py-2 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                    />
+                                </div>
+                                <select
+                                    v-model="programYear"
+                                    class="rounded-lg border px-2 py-2 text-xs bg-background shrink-0 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                >
+                                    <option value="all">All Years</option>
+                                    <option v-for="y in availableProgramYears" :key="y" :value="y">{{ y }}</option>
+                                </select>
+                            </div>
+
                             <div v-if="progress.enrolled_programs?.length === 0" class="text-center py-8 text-muted-foreground">
-                                <Award class="h-8 w-8 mx-auto mb-2 opacity-30" />
+                                <BookOpen class="h-8 w-8 mx-auto mb-2 opacity-30" />
                                 <p class="text-sm">No enrolled programs yet.</p>
+                            </div>
+
+                            <div v-else-if="filteredPrograms.length === 0" class="text-center py-8 text-muted-foreground">
+                                <Search class="h-8 w-8 mx-auto mb-2 opacity-30" />
+                                <p class="text-sm">No programs match the current search/year filter.</p>
                             </div>
 
                             <div v-else class="flex flex-col gap-2">
                                 <div
-                                    v-for="prog in progress.enrolled_programs"
+                                    v-for="prog in filteredPrograms"
                                     :key="prog.participant_id"
                                     class="rounded-xl border p-4 hover:border-blue-300 transition-colors cursor-pointer"
                                     @click="activeReqs = activeReqs?.participant_id === prog.participant_id ? null : prog"
@@ -307,7 +369,7 @@ const submissionStatusColor = (status?: string) => {
                                     <div class="flex items-start justify-between gap-3">
                                         <div class="flex items-center gap-3 flex-1 min-w-0">
                                             <div class="h-10 w-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center shrink-0">
-                                                <Award class="h-5 w-5 text-emerald-600" />
+                                                <BookOpen class="h-5 w-5 text-emerald-600" />
                                             </div>
                                             <div class="min-w-0">
                                                 <a :href="`/programs/${prog.program_id}`"
@@ -323,29 +385,34 @@ const submissionStatusColor = (status?: string) => {
                                                 </p>
                                             </div>
                                         </div>
-                                        <div class="flex items-center gap-2 shrink-0">
-                                            <span
-                                                v-if="prog.total_requirements > 0"
-                                                class="text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1"
-                                                :class="prog.approved_submissions >= prog.total_requirements
-                                                    ? 'bg-emerald-100 text-emerald-700'
-                                                    : 'bg-amber-100 text-amber-700'"
-                                            >
-                                                <CheckCircle2 class="h-3 w-3" />
-                                                {{ prog.approved_submissions }}/{{ prog.total_requirements }} approved
-                                            </span>
-                                            <span
-                                                class="text-xs font-bold px-2.5 py-1 rounded-full"
-                                                :class="prog.is_completed
-                                                    ? 'bg-emerald-600 text-white'
-                                                    : prog.attendance === 'Complete'
-                                                        ? 'bg-blue-100 text-blue-700'
-                                                        : prog.attendance === 'Absent'
-                                                            ? 'bg-red-100 text-red-700'
-                                                            : 'bg-amber-100 text-amber-700'"
-                                            >
-                                                {{ prog.is_completed ? 'COMPLETED' : prog.attendance?.toUpperCase() }}
-                                            </span>
+                                        <div class="flex items-start gap-3 shrink-0">
+                                            <div v-if="prog.total_requirements > 0" class="flex flex-col items-center gap-1">
+                                                <span class="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">Requirements</span>
+                                                <span
+                                                    class="text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1"
+                                                    :class="prog.approved_submissions >= prog.total_requirements
+                                                        ? 'bg-emerald-100 text-emerald-700'
+                                                        : 'bg-amber-100 text-amber-700'"
+                                                >
+                                                    <CheckCircle2 class="h-3 w-3" />
+                                                    {{ prog.approved_submissions }}/{{ prog.total_requirements }} approved
+                                                </span>
+                                            </div>
+                                            <div class="flex flex-col items-center gap-1">
+                                                <span class="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">Status</span>
+                                                <span
+                                                    class="text-xs font-bold px-2.5 py-1 rounded-full"
+                                                    :class="prog.is_completed
+                                                        ? 'bg-emerald-600 text-white'
+                                                        : prog.attendance === 'Complete'
+                                                            ? 'bg-blue-100 text-blue-700'
+                                                            : prog.attendance === 'Absent'
+                                                                ? 'bg-red-100 text-red-700'
+                                                                : 'bg-amber-100 text-amber-700'"
+                                                >
+                                                    {{ prog.is_completed ? 'COMPLETED' : prog.attendance?.toUpperCase() }}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -416,6 +483,8 @@ const submissionStatusColor = (status?: string) => {
                             </div>
                         </div>
 
+                        </div>
+
                     </div>
 
                     <!-- Footer -->
@@ -425,6 +494,7 @@ const submissionStatusColor = (status?: string) => {
                         </button>
                     </div>
 
+                </div>
                 </template>
             </div>
         </div>

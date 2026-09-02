@@ -199,11 +199,58 @@ const destroy = async (batch: any) => {
 
 const statusColor = (status: string) => {
     switch (status) {
-        case 'Upcoming':  return 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300';
-        case 'Ongoing':   return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
-        case 'Completed': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300';
-        case 'Cancelled': return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300';
-        default:          return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
+        case 'Upcoming':    return 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300';
+        case 'Active':
+        case 'Ongoing':     return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
+        case 'Completed':   return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300';
+        case 'Cancelled':   return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300';
+        case 'Rescheduled': return 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300';
+        default:            return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
+    }
+};
+
+// Per-status theme for the batch card itself — left accent border, a subtle
+// corner wash, and a matching icon badge, so each batch's status reads at a
+// glance without having to look at the small badge text.
+const cardAccent = (status: string) => {
+    switch (status) {
+        case 'Upcoming':
+            return {
+                border: 'border-l-blue-500',
+                wash: 'from-blue-50 dark:from-blue-950/30',
+                icon: 'bg-blue-100 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400',
+            };
+        case 'Active':
+        case 'Ongoing':
+            return {
+                border: 'border-l-amber-500',
+                wash: 'from-amber-50 dark:from-amber-950/30',
+                icon: 'bg-amber-100 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400',
+            };
+        case 'Completed':
+            return {
+                border: 'border-l-emerald-500',
+                wash: 'from-emerald-50 dark:from-emerald-950/30',
+                icon: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400',
+            };
+        case 'Cancelled':
+            return {
+                border: 'border-l-red-500',
+                wash: 'from-red-50 dark:from-red-950/30',
+                icon: 'bg-red-100 text-red-600 dark:bg-red-950/50 dark:text-red-400',
+            };
+        case 'Rescheduled':
+            return {
+                border: 'border-l-violet-500',
+                wash: 'from-violet-50 dark:from-violet-950/30',
+                icon: 'bg-violet-100 text-violet-600 dark:bg-violet-950/50 dark:text-violet-400',
+            };
+        default:
+            return {
+                border: 'border-l-slate-400',
+                wash: 'from-slate-50 dark:from-slate-900/30',
+                icon: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+            };
     }
 };
 
@@ -271,12 +318,18 @@ const formatTime = (t: string) => {
             <div
                 v-for="batch in batches"
                 :key="batch.id"
-                class="rounded-xl border bg-card p-4 shadow-sm transition hover:shadow-md"
+                class="rounded-xl border border-l-4 bg-gradient-to-br to-background bg-card p-4 shadow-sm transition hover:shadow-md hover:-translate-y-0.5"
+                :class="[cardAccent(batch.status).border, cardAccent(batch.status).wash]"
             >
                 <div class="flex items-start justify-between">
-                    <div>
-                        <h3 class="text-sm font-extrabold leading-5">{{ batch.batch }}</h3>
-                        <p class="text-[11px] font-semibold text-slate-400">{{ batch.modality }}</p>
+                    <div class="flex items-center gap-2.5">
+                        <div class="h-8 w-8 rounded-lg flex items-center justify-center shrink-0" :class="cardAccent(batch.status).icon">
+                            <Layers class="h-4 w-4" />
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-extrabold leading-5">{{ batch.batch }}</h3>
+                            <p class="text-[11px] font-semibold text-slate-400">{{ batch.modality }}</p>
+                        </div>
                     </div>
                     <Badge :class="statusColor(batch.status)" class="text-[10px] font-bold border-0">
                         {{ batch.status }}
