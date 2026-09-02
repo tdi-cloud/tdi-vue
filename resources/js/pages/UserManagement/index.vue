@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useConfirm } from '@/composables/useConfirm';
 import { useInitials } from '@/composables/useInitials';
 import { Head, router, usePage } from '@inertiajs/vue3';
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import {
     Search, ShieldCheck, X, SlidersHorizontal,
     Mail, Hash, Crown, ChevronLeft, ChevronRight, Pencil,
@@ -17,6 +17,8 @@ interface UserRow {
     empcode: string | null;
     access: string;
     avatar: string | null;
+    last_active_at: string | null;
+    is_online: boolean;
 }
 
 interface PaginatedUsers {
@@ -67,6 +69,32 @@ const accessColor = (level: string) => {
     if (level === 'admin') return 'bg-violet-100 text-violet-700 border-violet-200';
     if (level === 'user') return 'bg-blue-100 text-blue-700 border-blue-200';
     return 'bg-gray-100 text-gray-600 border-gray-200';
+};
+
+/* ---- Online status: poll the page in the background so "Active now" stays fresh ---- */
+const POLL_INTERVAL_MS = 20_000;
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+onMounted(() => {
+    pollTimer = setInterval(() => {
+        router.reload({ only: ['users'], preserveScroll: true, preserveState: true });
+    }, POLL_INTERVAL_MS);
+});
+
+onUnmounted(() => {
+    if (pollTimer) clearInterval(pollTimer);
+});
+
+const timeAgo = (dateStr: string) => {
+    const seconds = Math.max(0, Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000));
+    if (seconds < 60) return 'just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} min${minutes === 1 ? '' : 's'} ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} hr${hours === 1 ? '' : 's'} ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days} day${days === 1 ? '' : 's'} ago`;
+    return new Date(dateStr).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
 const savingId = ref<number | null>(null);
@@ -244,6 +272,7 @@ async function removeAvatar() {
                         <tr class="bg-gradient-to-r from-rose-50 via-red-50 to-orange-50 dark:from-rose-950/40 dark:via-red-950/40 dark:to-orange-950/40 border-b-2 border-rose-200 dark:border-rose-900">
                             <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-rose-700 dark:text-rose-300">Empcode</th>
                             <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-rose-700 dark:text-rose-300">User</th>
+                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-rose-700 dark:text-rose-300">Status</th>
                             <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-rose-700 dark:text-rose-300">Current Access</th>
                             <th class="text-right font-bold px-4 py-3 text-xs uppercase tracking-wide text-rose-700 dark:text-rose-300">Change Access</th>
                             <th class="text-center font-bold px-4 py-3 text-xs uppercase tracking-wide text-rose-700 dark:text-rose-300">Edit</th>
@@ -267,6 +296,19 @@ async function removeAvatar() {
                                         <p class="text-xs text-muted-foreground flex items-center gap-1 mt-0.5"><Mail class="h-3 w-3" /> {{ u.email }}</p>
                                     </div>
                                 </div>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span v-if="u.is_online" class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                                    <span class="relative flex h-2 w-2">
+                                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                                        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                                    </span>
+                                    Active now
+                                </span>
+                                <span v-else class="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                                    <span class="h-2 w-2 rounded-full bg-gray-300 dark:bg-gray-600 shrink-0" />
+                                    {{ u.last_active_at ? `Last seen ${timeAgo(u.last_active_at)}` : 'Never logged in' }}
+                                </span>
                             </td>
                             <td class="px-4 py-3">
                                 <span class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border" :class="accessColor(u.access)">

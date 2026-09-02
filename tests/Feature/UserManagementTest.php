@@ -2,7 +2,21 @@
 
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+
+function userManagementSeedSession(User $user, int $secondsAgo): void
+{
+    DB::table('sessions')->insert([
+        'id' => Str::random(40),
+        'user_id' => $user->id,
+        'ip_address' => '127.0.0.1',
+        'user_agent' => 'PestTest',
+        'payload' => base64_encode('test-payload'),
+        'last_activity' => now()->subSeconds($secondsAgo)->timestamp,
+    ]);
+}
 
 function userManagementSuperadmin(string $empcode): User
 {
@@ -163,4 +177,62 @@ test('regular admin cannot edit a user\'s name or avatar', function () {
             'avatar' => UploadedFile::fake()->image('avatar.jpg'),
         ])
         ->assertForbidden();
+});
+
+test('a user with a recent session is marked as online', function () {
+    $superadmin = userManagementSuperadmin('EMP-SA-111');
+    $target = User::factory()->create(['empcode' => 'EMP-TARGET-111', 'access' => 'user']);
+    userManagementSeedSession($target, secondsAgo: 30);
+
+    $this->actingAs($superadmin)
+        ->get(route('user-management.index', ['search' => 'EMP-TARGET-111']))
+        ->assertInertia(fn ($page) => $page
+            ->where('users.data.0.is_online', true)
+            ->where('users.data.0.last_active_at', fn ($value) => $value !== null)
+        );
+});
+
+test('a user with a stale session is marked offline with a last-seen time', function () {
+    $superadmin = userManagementSuperadmin('EMP-SA-112');
+    $target = User::factory()->create(['empcode' => 'EMP-TARGET-112', 'access' => 'user']);
+    userManagementSeedSession($target, secondsAgo: 30 * 60);
+
+    $this->actingAs($superadmin)
+        ->get(route('user-management.index', ['search' => 'EMP-TARGET-112']))
+        ->assertInertia(fn ($page) => $page
+            ->where('users.data.0.is_online', false)
+            ->where('users.data.0.last_active_at', fn ($value) => $value !== null)
+        );
+});
+
+test('online users are listed before offline users', function () {
+    $superadmin = userManagementSuperadmin('EMP-SA-114');
+
+    $offline = User::factory()->create(['empcode' => 'EMP-TARGET-114A', 'access' => 'user', 'name' => 'Aaa Offline']);
+    userManagementSeedSession($offline, secondsAgo: 30 * 60);
+
+    $online = User::factory()->create(['empcode' => 'EMP-TARGET-114B', 'access' => 'user', 'name' => 'Zzz Online']);
+    userManagementSeedSession($online, secondsAgo: 10);
+
+    $response = $this->actingAs($superadmin)
+        ->get(route('user-management.index', ['search' => 'EMP-TARGET-114']));
+
+    $response->assertInertia(fn ($page) => $page
+        ->where('users.data.0.empcode', 'EMP-TARGET-114B')
+        ->where('users.data.0.is_online', true)
+        ->where('users.data.1.empcode', 'EMP-TARGET-114A')
+        ->where('users.data.1.is_online', false)
+    );
+});
+
+test('a user who never logged in has no last-active time', function () {
+    $superadmin = userManagementSuperadmin('EMP-SA-113');
+    User::factory()->create(['empcode' => 'EMP-TARGET-113', 'access' => 'user']);
+
+    $this->actingAs($superadmin)
+        ->get(route('user-management.index', ['search' => 'EMP-TARGET-113']))
+        ->assertInertia(fn ($page) => $page
+            ->where('users.data.0.is_online', false)
+            ->where('users.data.0.last_active_at', null)
+        );
 });
