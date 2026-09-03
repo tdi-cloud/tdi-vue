@@ -92,6 +92,7 @@ class DashboardController extends Controller
         $officeFilter = $request->office_filter;
         $office = $request->office;
         $year = $request->year;
+        $sgMin = $request->sg_min ?? 1;
 
         $allRegions = [
             'CO', 'NCR', 'R1', 'R2', 'R3', 'R4A', 'R4B', 'R5',
@@ -100,11 +101,12 @@ class DashboardController extends Controller
         ];
 
         $totalEmployees = $this->applyEmployeeFilters(
-            DB::table('employees'), $region, $statuses, $officeFilter, $office
+            DB::table('employees')->where('SG', '>=', $sgMin), $region, $statuses, $officeFilter, $office
         )->count();
 
         $trainedQuery = $this->applyEmployeeFilters(
             DB::table('employees')
+                ->where('employees.SG', '>=', $sgMin)
                 ->join('participants', 'employees.EMPCODE', '=', 'participants.empcode')
                 ->join('batches', 'participants.batch_id', '=', 'batches.id'),
             $region, $statuses, $officeFilter, $office, 'employees.'
@@ -128,7 +130,7 @@ class DashboardController extends Controller
             }
 
             $regTotal = $this->applyEmployeeFilters(
-                DB::table('employees')->where('REGION', $reg),
+                DB::table('employees')->where('REGION', $reg)->where('SG', '>=', $sgMin),
                 null, $statuses, $officeFilter, $office
             )->count();
 
@@ -136,7 +138,8 @@ class DashboardController extends Controller
                 DB::table('employees')
                     ->join('participants', 'employees.EMPCODE', '=', 'participants.empcode')
                     ->join('batches', 'participants.batch_id', '=', 'batches.id')
-                    ->where('employees.REGION', $reg),
+                    ->where('employees.REGION', $reg)
+                    ->where('employees.SG', '>=', $sgMin),
                 null, $statuses, $officeFilter, $office, 'employees.'
             )
                 ->where('participants.attendance', '!=', 'Absent')
@@ -166,6 +169,7 @@ class DashboardController extends Controller
             'office_filter' => $officeFilter,
             'office' => $office,
             'year' => $year,
+            'sg_min' => $sgMin,
             'regions' => $allRegions,
             'regions_trained' => $regionsTrained,
             'regions_not_trained' => $regionsNotTrained,
@@ -179,10 +183,11 @@ class DashboardController extends Controller
         $officeFilter = $request->office_filter;
         $office = $request->office;
         $year = $request->year;
+        $sgMin = $request->sg_min ?? 1;
         $type = $request->type === 'trained' ? 'trained' : 'not_trained';
 
         $query = $this->applyEmployeeFilters(
-            DB::table('employees'), $region, $statuses, $officeFilter, $office
+            DB::table('employees')->where('SG', '>=', $sgMin), $region, $statuses, $officeFilter, $office
         );
 
         $trainingExists = function ($q) use ($year) {
@@ -207,7 +212,7 @@ class DashboardController extends Controller
             ->select(
                 'EMPCODE', 'LASTNAME', 'FIRSTNAME', 'MI',
                 'POSITION', 'OFFICE/DIVISION as office_division',
-                'OFFICE', 'REGION', 'PLANTILLA STATUS as plantilla_status',
+                'OFFICE', 'REGION', 'SG', 'PLANTILLA STATUS as plantilla_status',
             )
             ->orderBy('LASTNAME')->orderBy('FIRSTNAME')
             ->get();

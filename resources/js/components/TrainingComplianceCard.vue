@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import axios from 'axios';
 import VueApexCharts from 'vue3-apexcharts';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -15,9 +16,13 @@ const props = defineProps<{
     target: 'Nationwide' | 'OPCR';
     region: string;
     selectedStatuses: string[];
-    year: string       
-    office: string 
+    year: string
+    office: string
 }>();
+
+// SG selector — local lang ito, para sa training compliance card lang
+const SG_OPTIONS = Array.from({ length: 33 }, (_, i) => i + 1); // 1–33
+const sgMin       = ref<number>(1); // default: SG ≥ 1 (lahat)
 
 /* ===================== STATS DATA ===================== */
 
@@ -67,8 +72,9 @@ const fetchStats = async () => {
                 region:        props.region,
                 office_filter: props.target,
                 plant_status:  props.selectedStatuses,
-                year:          props.year,    
-                office:        props.office,  
+                sg_min:        sgMin.value,
+                year:          props.year,
+                office:        props.office,
             },
         });
         stats.value = data;
@@ -86,7 +92,8 @@ const fetchStats = async () => {
 };
 
 onMounted(fetchStats);
-watch(() => [props.target, props.region, props.selectedStatuses, props.year, props.office], fetchStats, { deep: true });
+// Re-fetch kapag nagbago ang shared props O ang local sgMin
+watch(() => [props.target, props.region, props.selectedStatuses, sgMin.value, props.year, props.office], fetchStats, { deep: true });
 
 /* ===================== EMPLOYEE LIST MODAL ===================== */
 
@@ -98,6 +105,7 @@ interface EmployeeRow {
     POSITION: string;
     office_division: string;
     REGION: string;
+    SG: string;
     plantilla_status: string;
 }
 
@@ -120,8 +128,9 @@ const openList = async (type: 'trained' | 'not_trained') => {
                 region:        props.region,
                 office_filter: props.target,
                 plant_status:  props.selectedStatuses,
-                year:          props.year,    
-                office:        props.office,  
+                sg_min:        sgMin.value,
+                year:          props.year,
+                office:        props.office,
             },
         });
         employees.value = data.employees;
@@ -136,7 +145,7 @@ const filteredEmployees = computed(() => {
     const q = listSearch.value.trim().toLowerCase();
     if (!q) return employees.value;
     return employees.value.filter((e) =>
-        [e.EMPCODE, e.LASTNAME, e.FIRSTNAME, e.MI, e.POSITION, e.office_division, e.REGION, e.plantilla_status]
+        [e.EMPCODE, e.LASTNAME, e.FIRSTNAME, e.MI, e.POSITION, e.office_division, e.REGION, e.SG, e.plantilla_status]
             .join(' ').toLowerCase().includes(q),
     );
 });
@@ -151,9 +160,9 @@ const downloadCsv = () => {
         const s = String(val ?? '');
         return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const header = ['#', 'EMPCODE', 'NAME', 'POSITION', 'OFFICE/DIVISION', 'REGION', 'STATUS'];
+    const header = ['#', 'EMPCODE', 'NAME', 'POSITION', 'OFFICE/DIVISION', 'REGION', 'SG', 'STATUS'];
     const lines  = rows.map((e, i) =>
-        [i + 1, e.EMPCODE, fullName(e), e.POSITION, e.office_division, e.REGION, e.plantilla_status]
+        [i + 1, e.EMPCODE, fullName(e), e.POSITION, e.office_division, e.REGION, e.SG, e.plantilla_status]
             .map(escape).join(','),
     );
     const csv  = [header.join(','), ...lines].join('\n');
@@ -241,12 +250,26 @@ const chartOptions = {
                     </div>
                 </div>
 
-                <!-- RIGHT: total -->
-                <div class="flex flex-col items-center sm:items-start">
+                <!-- RIGHT: total + SG selector -->
+                <div class="flex flex-col items-center sm:items-start gap-2">
                     <p class="text-3xl font-extrabold text-slate-700 dark:text-slate-200 leading-none tabular-nums">{{ animatedTotal.toLocaleString() }}</p>
                     <p class="flex items-center gap-1.5 text-sm font-bold mt-1">
                         <Users class="h-4 w-4" /> Employees
                     </p>
+                    <!-- SG filter — dito lang siya, hindi sa shared filter bar -->
+                    <div class="flex items-center gap-1.5 mt-1">
+                        <span class="text-[11px] font-bold text-slate-400 tracking-wide">SG ≥</span>
+                        <Select v-model="sgMin">
+                            <SelectTrigger class="h-7 w-16 text-xs font-semibold px-2">
+                                <SelectValue>{{ sgMin }}</SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem v-for="sg in SG_OPTIONS" :key="sg" class="text-xs" :value="sg">
+                                    {{ sg }}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
 
             </div>
@@ -272,7 +295,9 @@ const chartOptions = {
                         </span>
                         Employees
                     </DialogTitle>
-                    <DialogDescription class="text-sm text-muted-foreground">Based on current filter selection</DialogDescription>
+                    <DialogDescription class="text-sm text-muted-foreground">
+                        SG ≥ {{ sgMin }} · Based on current filter selection
+                    </DialogDescription>
                 </DialogHeader>
 
                 <div class="shrink-0 relative">
@@ -291,6 +316,7 @@ const chartOptions = {
                                 <th class="px-3 py-2.5 font-bold tracking-wide">NAME</th>
                                 <th class="px-3 py-2.5 font-bold tracking-wide">POSITION</th>
                                 <th class="px-3 py-2.5 font-bold tracking-wide">OFFICE/DIVISION</th>
+                                <th class="px-3 py-2.5 font-bold tracking-wide text-center">SG</th>
                                 <th class="px-3 py-2.5 font-bold tracking-wide">STATUS</th>
                             </tr>
                         </thead>
@@ -300,6 +326,7 @@ const chartOptions = {
                                 <td class="px-3 py-2.5 font-bold uppercase">{{ fullName(emp) }}</td>
                                 <td class="px-3 py-2.5">{{ emp.POSITION }}</td>
                                 <td class="px-3 py-2.5 text-xs text-muted-foreground">{{ emp.office_division }}</td>
+                                <td class="px-3 py-2.5 text-center text-xs text-muted-foreground">{{ emp.SG }}</td>
                                 <td class="px-3 py-2.5">
                                     <span class="inline-block text-[11px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/60 dark:text-blue-300 rounded-full px-2.5 py-0.5 whitespace-nowrap">
                                         {{ emp.plantilla_status }}
