@@ -96,11 +96,13 @@ class RequirementsTrackerController extends Controller
 
     /**
      * Requirements na "required" pero wala pang matching Submission
-     * mula sa employee (via empcode) para dito, hindi absent ang participant.
+     * mula sa employee (via empcode), hindi absent ang participant.
+     * Reusable ng ibang controllers (hal. EmployeeMapController) na
+     * kailangan ng parehong "missing requirement" definition.
      */
-    private function scopedQuery(Request $request)
+    public static function missingRequirementsBaseQuery()
     {
-        $query = DB::table('requirements as r')
+        return DB::table('requirements as r')
             ->join('batches as b', 'r.batch_id', '=', 'b.id')
             ->join('programs as prog', 'b.program_code', '=', 'prog.program_code')
             ->join('participants as p', 'p.batch_id', '=', 'b.id')
@@ -114,6 +116,11 @@ class RequirementsTrackerController extends Controller
                     ->whereColumn('s.requirement_id', 'r.id')
                     ->whereColumn('p2.empcode', 'p.empcode');
             });
+    }
+
+    private function scopedQuery(Request $request)
+    {
+        $query = self::missingRequirementsBaseQuery();
 
         if ($request->filled('search')) {
             $search = $request->string('search');
