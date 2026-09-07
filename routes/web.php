@@ -25,6 +25,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrganizingSponsorController;
 use App\Http\Controllers\ParticipantController;
 use App\Http\Controllers\ProblemReportController;
+use App\Http\Controllers\ProgramActivityController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\RegionalReportController;
 use App\Http\Controllers\RequirementController;
@@ -62,6 +63,10 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     // PROGRAMS
     Route::get('/programs', [ProgramController::class, 'index'])->name('programs.index');
     Route::post('/programs', [ProgramController::class, 'store'])->name('programs.store');
+    // Hidden na "daily monitoring" page (walang link sa navigation) — dapat
+    // nasa itaas ng /programs/{program} para hindi ito ma-match bilang isang
+    // route-model-bound program.
+    Route::get('/programs/activity-log', [ProgramActivityController::class, 'index'])->name('programs.activity-log');
     Route::get('/programs/{program}', [ProgramController::class, 'show'])->name('programs.show');
     Route::delete('/programs/{program}', [ProgramController::class, 'destroy'])->name('programs.destroy');
     Route::get('/programs/{program}/edit', [ProgramController::class, 'edit'])->name('programs.edit');
