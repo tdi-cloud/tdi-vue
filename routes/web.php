@@ -111,7 +111,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
 
     // NEW: Lookup endpoints for filter dropdowns
     Route::get('/dashboard/offices', [DashboardController::class, 'offices'])->name('dashboard.offices');
-    Route::get('/dashboard/batch-years', [DashboardController::class, 'batchYears'])->name('dashboard.batch-years');
+    Route::get('/dashboard/export-csv', [DashboardController::class, 'exportCsv'])->name('dashboard.export-csv');
 
     // CALENDAR
     Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');

@@ -10,6 +10,7 @@ import SupervisoryComplianceCard from '../components/SupervisoryComplianceCard.v
 import TreapComplianceCard from '../components/TreapComplianceCard.vue';
 import ReapComplianceCard from '../components/ReapComplianceCard.vue';
 import TdorComplianceCard from '../components/TdorComplianceCard.vue';
+import ReportsModal from '../components/ReportsModal.vue';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -40,9 +41,7 @@ const target           = ref<'Nationwide' | 'OPCR'>('Nationwide');
 const region           = ref('ALL');
 const selectedStatuses = ref<string[]>(STATUS_OPTIONS.filter((s) => s !== 'JOB ORDER'));
 
-const year          = ref('ALL');
 const office        = ref('ALL');
-const yearOptions   = ref<string[]>([]);
 const officeOptions = ref<string[]>([]);
 
 const toggleStatus = (status: string) => {
@@ -59,11 +58,7 @@ const fetchOffices = async () => {
     office.value = 'ALL';
 };
 
-onMounted(async () => {
-    const yearsRes = await fetch('/dashboard/batch-years');
-    yearOptions.value = await yearsRes.json();
-    await fetchOffices();
-});
+onMounted(fetchOffices);
 
 watch(region, fetchOffices);
 </script>
@@ -120,23 +115,6 @@ watch(region, fetchOffices);
                     </SelectContent>
                 </Select>
 
-                <Select v-model="year">
-                    <SelectTrigger class="h-9 w-32 text-xs font-semibold">
-                        <SelectValue placeholder="All Years" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem class="text-xs" value="ALL">All Years</SelectItem>
-                        <SelectItem
-                            v-for="y in yearOptions"
-                            :key="y"
-                            class="text-xs"
-                            :value="y"
-                        >
-                            {{ y }}
-                        </SelectItem>
-                    </SelectContent>
-                </Select>
-
                 <!-- Divider -->
                 <div class="h-5 w-px bg-border"></div>
 
@@ -157,6 +135,15 @@ watch(region, fetchOffices);
                     </label>
                 </div>
 
+                <!-- Reports — pumili ng Report Time Range, tapos Download CSV (programs + batches + participants + attendance) -->
+                <ReportsModal
+                    class="ml-auto"
+                    :region="region"
+                    :office="office"
+                    :target="target"
+                    :selected-statuses="selectedStatuses"
+                />
+
             </div>
 
             <!-- ===================== TWO CARDS SIDE BY SIDE ===================== -->
@@ -165,14 +152,12 @@ watch(region, fetchOffices);
                     :target="target"
                     :region="region"
                     :selected-statuses="selectedStatuses"
-                    :year="year"
                     :office="office"
                 />
                 <SupervisoryComplianceCard
                     :target="target"
                     :region="region"
                     :selected-statuses="selectedStatuses"
-                    :year="year"
                     :office="office"
                 />
             </div>
@@ -182,7 +167,6 @@ watch(region, fetchOffices);
                 :target="target"
                 :region="region"
                 :selected-statuses="selectedStatuses"
-                :year="year"
                 :office="office"
             />
 
@@ -190,7 +174,6 @@ watch(region, fetchOffices);
                 :target="target"
                 :region="region"
                 :selected-statuses="selectedStatuses"
-                :year="year"
                 :office="office"
             />
 
@@ -199,7 +182,6 @@ watch(region, fetchOffices);
                 :target="target"
                 :region="region"
                 :selected-statuses="selectedStatuses"
-                :year="year"
                 :office="office"
             />
 

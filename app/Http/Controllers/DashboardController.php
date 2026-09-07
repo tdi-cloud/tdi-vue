@@ -9,6 +9,7 @@ use App\Models\Submission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DashboardController extends Controller
 {
@@ -66,23 +67,105 @@ class DashboardController extends Controller
             });
     }
 
-    private function applyYearFilter($query, $year)
+    /**
+     * Naka-scope sa isang date range ($dateFrom/$dateTo, parehong optional,
+     * 'Y-m-d' na format) — ginagamit lang ng "Reports" (Download CSV) na
+     * feature (Past 7/30/90 days o custom range). String comparison lang
+     * (`date_start` ay naka-store bilang 'Y-m-d' string sa DB), kaya sapat
+     * na ang lexicographic >=/<= — parehong MySQL at SQLite compatible.
+     */
+    private function applyDateRangeFilter($query, $dateFrom, $dateTo, string $column = 'batches.date_start')
     {
-        return $query->when($year && $year !== 'ALL', function ($q) use ($year) {
-            $q->where('batches.date_start', 'LIKE', $year.'%');
-        });
+        return $query
+            ->when($dateFrom, function ($q) use ($dateFrom, $column) {
+                $q->where($column, '>=', $dateFrom);
+            })
+            ->when($dateTo, function ($q) use ($dateTo, $column) {
+                $q->where($column, '<=', $dateTo);
+            });
     }
 
-    public function batchYears()
+    /**
+     * Isang CSV — lahat ng programs kasama ang mga batch, participants, at
+     * attendance nila — isang row kada participant enrollment, naka-scope
+     * sa parehong shared filters (target/region/office/plantilla status) at
+     * sa napiling date range mula sa "Reports" modal.
+     */
+    public function exportCsv(Request $request): StreamedResponse
     {
-        $years = DB::table('batches')
-            ->selectRaw('DISTINCT SUBSTRING(date_start, 1, 4) as year')
-            ->whereNotNull('date_start')
-            ->where('date_start', '!=', '')
-            ->orderByDesc('year')
-            ->pluck('year');
+        $region = $request->region;
+        $statuses = $request->plant_status;
+        $officeFilter = $request->office_filter;
+        $office = $request->office;
+        $dateFrom = $request->date_from;
+        $dateTo = $request->date_to;
 
-        return response()->json($years);
+        $query = DB::table('programs as prog')
+            ->join('batches as b', 'prog.program_code', '=', 'b.program_code')
+            ->join('participants as p', 'p.batch_id', '=', 'b.id')
+            ->leftJoin('employees as e', 'e.EMPCODE', '=', 'p.empcode')
+            ->select(
+                'prog.program_code', 'prog.title as program_title', 'prog.type as program_type',
+                'b.batch as batch_label', 'b.status as batch_status',
+                'b.date_start as batch_date_start', 'b.date_end as batch_date_end',
+                'p.empcode', 'e.FIRSTNAME as firstname', 'e.MI as mi', 'e.LASTNAME as lastname',
+                DB::raw('e.`OFFICE/DIVISION` as office_division'), 'e.REGION as region', 'e.SG as sg',
+                'p.attendance', 'p.hours',
+            );
+
+        $query = $this->applyEmployeeFilters($query, $region, $statuses, $officeFilter, $office, 'e.');
+        $query = $this->applyDateRangeFilter($query, $dateFrom, $dateTo, 'b.date_start');
+
+        $rows = $query
+            ->orderBy('prog.title')->orderBy('b.batch')->orderBy('e.LASTNAME')
+            ->get();
+
+        $filename = 'programs_batches_participants_'.now()->format('Ymd_His').'.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate',
+        ];
+
+        return response()->stream(function () use ($rows) {
+            $out = fopen('php://output', 'w');
+
+            fwrite($out, "\xEF\xBB\xBF");
+
+            fputcsv($out, [
+                'Program Code', 'Program Title', 'Program Type',
+                'Batch', 'Batch Status', 'Batch Start', 'Batch End',
+                'EMPCODE', 'Participant Name', 'Office/Division', 'Region', 'SG',
+                'Attendance', 'Hours',
+            ]);
+
+            foreach ($rows as $row) {
+                $mi = trim($row->mi ?? '');
+                $mi = $mi !== '' ? ' '.rtrim($mi, '.').'.' : '';
+                $name = trim(($row->firstname ?? '').$mi.' '.($row->lastname ?? ''));
+
+                fputcsv($out, [
+                    $row->program_code,
+                    $row->program_title,
+                    $row->program_type,
+                    $row->batch_label,
+                    $row->batch_status,
+                    $row->batch_date_start,
+                    $row->batch_date_end,
+                    $row->empcode,
+                    $name !== '' ? $name : null,
+                    $row->office_division,
+                    $row->region,
+                    $row->sg,
+                    $row->attendance,
+                    $row->hours,
+                ]);
+            }
+
+            fclose($out);
+        }, 200, $headers);
     }
 
     public function trainingCompliance(Request $request)
@@ -91,7 +174,6 @@ class DashboardController extends Controller
         $statuses = $request->plant_status;
         $officeFilter = $request->office_filter;
         $office = $request->office;
-        $year = $request->year;
         $sgMin = $request->sg_min ?? 1;
 
         $allRegions = [
@@ -112,9 +194,8 @@ class DashboardController extends Controller
             $region, $statuses, $officeFilter, $office, 'employees.'
         )
             ->where('participants.attendance', '!=', 'Absent')
-            ->where('batches.hours', '>=', 8);
+            ->whereRaw('CAST(batches.hours AS DECIMAL(10,2)) >= 8');
 
-        $trainedQuery = $this->applyYearFilter($trainedQuery, $year);
         $trainedEmployees = $trainedQuery->distinct()->count('employees.EMPCODE');
 
         $notTrained = $totalEmployees - $trainedEmployees;
@@ -143,9 +224,8 @@ class DashboardController extends Controller
                 null, $statuses, $officeFilter, $office, 'employees.'
             )
                 ->where('participants.attendance', '!=', 'Absent')
-                ->where('batches.hours', '>=', 8);
+                ->whereRaw('CAST(batches.hours AS DECIMAL(10,2)) >= 8');
 
-            $regTrainedQuery = $this->applyYearFilter($regTrainedQuery, $year);
             $regTrained = $regTrainedQuery->distinct()->count('employees.EMPCODE');
 
             $regionsBreakdown[] = [
@@ -168,7 +248,6 @@ class DashboardController extends Controller
             'region' => $region,
             'office_filter' => $officeFilter,
             'office' => $office,
-            'year' => $year,
             'sg_min' => $sgMin,
             'regions' => $allRegions,
             'regions_trained' => $regionsTrained,
@@ -182,7 +261,6 @@ class DashboardController extends Controller
         $statuses = $request->plant_status;
         $officeFilter = $request->office_filter;
         $office = $request->office;
-        $year = $request->year;
         $sgMin = $request->sg_min ?? 1;
         $type = $request->type === 'trained' ? 'trained' : 'not_trained';
 
@@ -190,16 +268,13 @@ class DashboardController extends Controller
             DB::table('employees')->where('SG', '>=', $sgMin), $region, $statuses, $officeFilter, $office
         );
 
-        $trainingExists = function ($q) use ($year) {
+        $trainingExists = function ($q) {
             $q->select(DB::raw(1))
                 ->from('participants')
                 ->join('batches', 'participants.batch_id', '=', 'batches.id')
                 ->whereColumn('participants.empcode', 'employees.EMPCODE')
                 ->where('participants.attendance', '!=', 'Absent')
-                ->where('batches.hours', '>=', 8)
-                ->when($year && $year !== 'ALL', function ($q) use ($year) {
-                    $q->where('batches.date_start', 'LIKE', $year.'%');
-                });
+                ->whereRaw('CAST(batches.hours AS DECIMAL(10,2)) >= 8');
         };
 
         if ($type === 'trained') {
@@ -230,7 +305,6 @@ class DashboardController extends Controller
         $statuses = $request->plant_status;
         $officeFilter = $request->office_filter;
         $office = $request->office;
-        $year = $request->year;
         $sgMin = $request->sg_min ?? 19;
 
         $allRegions = [
@@ -244,9 +318,6 @@ class DashboardController extends Controller
             ->join('programs', 'batches.program_code', '=', 'programs.program_code')
             ->where('programs.type', 'SUPERVISORY/MANAGERIAL')
             ->where('participants.attendance', '!=', 'Absent')
-            ->when($year && $year !== 'ALL', function ($q) use ($year) {
-                $q->where('batches.date_start', 'LIKE', $year.'%');
-            })
             ->select(
                 'participants.empcode',
                 DB::raw('SUM(CAST(batches.hours AS DECIMAL(10,2))) as total_hours')
@@ -315,7 +386,6 @@ class DashboardController extends Controller
             'sg_min' => $sgMin,
             'region' => $region,
             'office' => $office,
-            'year' => $year,
             'statuses' => $statuses,
             'office_filter' => $officeFilter,
             'regions' => $allRegions,
@@ -330,7 +400,6 @@ class DashboardController extends Controller
         $statuses = $request->plant_status;
         $officeFilter = $request->office_filter;
         $office = $request->office;
-        $year = $request->year;
         $sgMin = $request->sg_min ?? 19;
         $type = $request->type;
 
@@ -339,9 +408,6 @@ class DashboardController extends Controller
             ->join('programs', 'batches.program_code', '=', 'programs.program_code')
             ->where('programs.type', 'SUPERVISORY/MANAGERIAL')
             ->where('participants.attendance', '!=', 'Absent')
-            ->when($year && $year !== 'ALL', function ($q) use ($year) {
-                $q->where('batches.date_start', 'LIKE', $year.'%');
-            })
             ->select(
                 'participants.empcode',
                 DB::raw('SUM(CAST(batches.hours AS DECIMAL(10,2))) as total_hours')
@@ -402,7 +468,6 @@ class DashboardController extends Controller
         $region = $request->region;
         $statuses = $request->plant_status;
         $office = $request->office;
-        $year = $request->year;
         $officeFilter = $request->office_filter;
 
         $allRegions = [
@@ -425,10 +490,6 @@ class DashboardController extends Controller
         $baseParticipants = $this->applyEmployeeFilters(
             $baseParticipants, $region, $statuses, $officeFilter, $office, 'employees.'
         );
-
-        if ($year && $year !== 'ALL') {
-            $baseParticipants->where('batches.date_start', 'LIKE', $year.'%');
-        }
 
         $totalEmployees = (clone $baseParticipants)->distinct()->count('participants.empcode');
         $submittedEmployees = (clone $baseParticipants)->whereExists($submittedCond)->distinct()->count('participants.empcode');
@@ -461,10 +522,6 @@ class DashboardController extends Controller
                 $regBase, null, $statuses, $officeFilter, $office, 'employees.'
             );
 
-            if ($year && $year !== 'ALL') {
-                $regBase->where('batches.date_start', 'LIKE', $year.'%');
-            }
-
             $regTotal = (clone $regBase)->distinct()->count('participants.empcode');
             $regSubmitted = (clone $regBase)->whereExists($submittedCond)->distinct()->count('participants.empcode');
 
@@ -489,7 +546,6 @@ class DashboardController extends Controller
         $region = $request->region;
         $statuses = $request->plant_status;
         $office = $request->office;
-        $year = $request->year;
         $officeFilter = $request->office_filter;
         $reg = $request->reg;
         $type = $request->type;
@@ -508,10 +564,6 @@ class DashboardController extends Controller
         $query = $this->applyEmployeeFilters(
             $query, $region, $statuses, $officeFilter, $office, 'employees.'
         );
-
-        if ($year && $year !== 'ALL') {
-            $query->where('batches.date_start', 'LIKE', $year.'%');
-        }
 
         if ($reg && $reg !== 'ALL') {
             $query->where('employees.REGION', $reg);
@@ -575,7 +627,6 @@ class DashboardController extends Controller
         $region = $request->region;
         $statuses = $request->plant_status;
         $office = $request->office;
-        $year = $request->year;
         $officeFilter = $request->office_filter;
 
         $allRegions = [
@@ -598,10 +649,6 @@ class DashboardController extends Controller
         $baseParticipants = $this->applyEmployeeFilters(
             $baseParticipants, $region, $statuses, $officeFilter, $office, 'employees.'
         );
-
-        if ($year && $year !== 'ALL') {
-            $baseParticipants->where('batches.date_start', 'LIKE', $year.'%');
-        }
 
         $totalEmployees = (clone $baseParticipants)->distinct()->count('participants.empcode');
         $submittedEmployees = (clone $baseParticipants)->whereExists($submittedCond)->distinct()->count('participants.empcode');
@@ -634,10 +681,6 @@ class DashboardController extends Controller
                 $regBase, null, $statuses, $officeFilter, $office, 'employees.'
             );
 
-            if ($year && $year !== 'ALL') {
-                $regBase->where('batches.date_start', 'LIKE', $year.'%');
-            }
-
             $regTotal = (clone $regBase)->distinct()->count('participants.empcode');
             $regSubmitted = (clone $regBase)->whereExists($submittedCond)->distinct()->count('participants.empcode');
 
@@ -662,7 +705,6 @@ class DashboardController extends Controller
         $region = $request->region;
         $statuses = $request->plant_status;
         $office = $request->office;
-        $year = $request->year;
         $officeFilter = $request->office_filter;
         $reg = $request->reg;
         $type = $request->type;
@@ -681,10 +723,6 @@ class DashboardController extends Controller
         $query = $this->applyEmployeeFilters(
             $query, $region, $statuses, $officeFilter, $office, 'employees.'
         );
-
-        if ($year && $year !== 'ALL') {
-            $query->where('batches.date_start', 'LIKE', $year.'%');
-        }
 
         if ($reg && $reg !== 'ALL') {
             $query->where('employees.REGION', $reg);
@@ -748,7 +786,6 @@ class DashboardController extends Controller
         $region = $request->region;
         $statuses = $request->plant_status;
         $office = $request->office;
-        $year = $request->year;
         $officeFilter = $request->office_filter;
 
         $allRegions = [
@@ -771,10 +808,6 @@ class DashboardController extends Controller
         $baseParticipants = $this->applyEmployeeFilters(
             $baseParticipants, $region, $statuses, $officeFilter, $office, 'employees.'
         );
-
-        if ($year && $year !== 'ALL') {
-            $baseParticipants->where('batches.date_start', 'LIKE', $year.'%');
-        }
 
         $totalEmployees = (clone $baseParticipants)->distinct()->count('participants.empcode');
         $submittedEmployees = (clone $baseParticipants)->whereExists($submittedCond)->distinct()->count('participants.empcode');
@@ -807,10 +840,6 @@ class DashboardController extends Controller
                 $regBase, null, $statuses, $officeFilter, $office, 'employees.'
             );
 
-            if ($year && $year !== 'ALL') {
-                $regBase->where('batches.date_start', 'LIKE', $year.'%');
-            }
-
             $regTotal = (clone $regBase)->distinct()->count('participants.empcode');
             $regSubmitted = (clone $regBase)->whereExists($submittedCond)->distinct()->count('participants.empcode');
 
@@ -835,7 +864,6 @@ class DashboardController extends Controller
         $region = $request->region;
         $statuses = $request->plant_status;
         $office = $request->office;
-        $year = $request->year;
         $officeFilter = $request->office_filter;
         $reg = $request->reg;
         $type = $request->type;
@@ -854,10 +882,6 @@ class DashboardController extends Controller
         $query = $this->applyEmployeeFilters(
             $query, $region, $statuses, $officeFilter, $office, 'employees.'
         );
-
-        if ($year && $year !== 'ALL') {
-            $query->where('batches.date_start', 'LIKE', $year.'%');
-        }
 
         if ($reg && $reg !== 'ALL') {
             $query->where('employees.REGION', $reg);

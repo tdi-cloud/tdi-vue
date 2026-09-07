@@ -16,7 +16,6 @@ const props = defineProps<{
     target: 'Nationwide' | 'OPCR';
     region: string;
     selectedStatuses: string[];
-    year: string
     office: string
 }>();
 
@@ -73,7 +72,6 @@ const fetchStats = async () => {
                 office_filter: props.target,
                 plant_status:  props.selectedStatuses,
                 sg_min:        sgMin.value,
-                year:          props.year,
                 office:        props.office,
             },
         });
@@ -93,7 +91,7 @@ const fetchStats = async () => {
 
 onMounted(fetchStats);
 // Re-fetch kapag nagbago ang shared props O ang local sgMin
-watch(() => [props.target, props.region, props.selectedStatuses, sgMin.value, props.year, props.office], fetchStats, { deep: true });
+watch(() => [props.target, props.region, props.selectedStatuses, sgMin.value, props.office], fetchStats, { deep: true });
 
 /* ===================== EMPLOYEE LIST MODAL ===================== */
 
@@ -129,7 +127,6 @@ const openList = async (type: 'trained' | 'not_trained') => {
                 office_filter: props.target,
                 plant_status:  props.selectedStatuses,
                 sg_min:        sgMin.value,
-                year:          props.year,
                 office:        props.office,
             },
         });

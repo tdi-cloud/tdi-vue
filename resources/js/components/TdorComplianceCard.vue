@@ -8,7 +8,6 @@ const props = defineProps<{
     target: string;
     region: string;
     selectedStatuses: string[];
-    year: string;
     office: string;
 }>();
 
@@ -59,7 +58,6 @@ async function fetchData() {
     try {
         const params = new URLSearchParams({
             region:        props.region,
-            year:          props.year,
             office:        props.office,
             office_filter: props.target,
         });
@@ -72,7 +70,7 @@ async function fetchData() {
 }
 
 watch(
-    () => [props.region, props.selectedStatuses, props.year, props.office, props.target],
+    () => [props.region, props.selectedStatuses, props.office, props.target],
     fetchData,
     { immediate: true, deep: true }
 );
@@ -89,7 +87,6 @@ async function fetchList(type: 'submitted' | 'not_submitted', reg = 'ALL') {
     try {
         const params = new URLSearchParams({
             region:        props.region,
-            year:          props.year,
             office:        props.office,
             office_filter: props.target,
             type,
