@@ -5,30 +5,56 @@ namespace App\Http\Controllers;
 use App\Models\Requirement;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class RequirementsTrackerController extends Controller
 {
+    /**
+     * Performance note: ang `scopedQuery()` ay isang mabigat na query (4-way
+     * join + isang correlated NOT EXISTS subquery) — dating tumatakbo ito ng
+     * 4x kada page load (ang internal COUNT ng ->paginate(), ang SELECT
+     * mismo, saka 2 pang hiwalay na ->count() para sa stats cards). Dito,
+     * pinagsama ang total/overdue sa IISANG query (conditional aggregation
+     * sa halip na 2 ->count() calls), at ang pagination ay ginawa nang
+     * MANUAL gamit ang total na kinuha na natin, para hindi na mag-double
+     * COUNT pa ang Laravel — 4 na query bawat load, naging 2 na lang.
+     */
     public function index(Request $request)
     {
-        $query = $this->scopedQuery($request);
+        $today = now()->toDateString();
 
+        $statsRow = $this->scopedQuery($request)
+            ->selectRaw('COUNT(*) as total, SUM(CASE WHEN r.due_date < ? THEN 1 ELSE 0 END) as overdue', [$today])
+            ->first();
+
+        $total = (int) $statsRow->total;
+        $overdue = (int) $statsRow->overdue;
+
+        $query = $this->scopedQuery($request);
         if ($request->boolean('overdue_only')) {
-            $query->whereDate('r.due_date', '<', now()->toDateString());
+            $query->whereDate('r.due_date', '<', $today);
         }
 
-        $items = $this->selectColumns($query)
+        $perPage = 20;
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+
+        $rows = $this->selectColumns($query)
             ->orderBy('r.due_date')
-            ->paginate(20)
-            ->withQueryString();
+            ->forPage($currentPage, $perPage)
+            ->get()
+            ->map(fn ($row) => $this->decorateRow($row));
 
-        $items->getCollection()->transform(fn ($row) => $this->decorateRow($row));
-
-        $statsQuery = $this->scopedQuery($request);
-        $total = (clone $statsQuery)->count();
-        $overdue = (clone $statsQuery)->whereDate('r.due_date', '<', now()->toDateString())->count();
+        $items = new LengthAwarePaginator(
+            $rows,
+            $request->boolean('overdue_only') ? $overdue : $total,
+            $perPage,
+            $currentPage,
+            ['path' => LengthAwarePaginator::resolveCurrentPath()]
+        );
+        $items->withQueryString();
 
         return Inertia::render('RequirementsTracker/index', [
             'items' => $items,

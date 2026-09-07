@@ -129,6 +129,90 @@ test('tdor compliance endpoint counts submitted, not-submitted, and excludes abs
     expect($response->json('not_submitted'))->toBe(1);
 });
 
+test('tdor compliance endpoint reports correct per-region breakdown (grouped-query rewrite)', function () {
+    $admin = tdorTestAdmin('EMP-TDOR-ADM-06');
+    [$program, $batch, $requirement] = tdorTestSetup();
+
+    $ncrSubmitted = tdorTestEmployee('EMP-TDOR-NCR-SUB', 'Santos', 'NCR');
+    $ncrMissing = tdorTestEmployee('EMP-TDOR-NCR-MISS', 'Reyes', 'NCR');
+    $r5Missing = tdorTestEmployee('EMP-TDOR-R5-MISS', 'Cruz', 'R5');
+
+    $ncrSubmittedParticipant = Participant::create([
+        'sort_order' => 1, 'batch_id' => $batch->id, 'empcode' => $ncrSubmitted->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+    ]);
+    Participant::create([
+        'sort_order' => 2, 'batch_id' => $batch->id, 'empcode' => $ncrMissing->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+    ]);
+    Participant::create([
+        'sort_order' => 3, 'batch_id' => $batch->id, 'empcode' => $r5Missing->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+    ]);
+
+    Submission::create([
+        'participant_id' => $ncrSubmittedParticipant->id,
+        'program_code' => $program->program_code,
+        'batch_id' => $batch->id,
+        'requirement_id' => $requirement->id,
+        'status' => 'Pending',
+        'submitted_at' => now(),
+    ]);
+
+    $response = $this->actingAs($admin)->getJson(route('dashboard.tdor-compliance', [
+        'region' => 'ALL', 'year' => 'ALL', 'office' => 'ALL', 'office_filter' => 'ALL',
+    ]));
+
+    $response->assertOk();
+    $regions = $response->json('regions');
+    $submitted = $response->json('regions_submitted');
+    $notSubmitted = $response->json('regions_not_submitted');
+
+    $ncrIndex = array_search('NCR', $regions);
+    $r5Index = array_search('R5', $regions);
+
+    expect($submitted[$ncrIndex])->toBe(1);
+    expect($notSubmitted[$ncrIndex])->toBe(1);
+    expect($submitted[$r5Index])->toBe(0);
+    expect($notSubmitted[$r5Index])->toBe(1);
+
+    // Rehiyon na walang data — dapat 0/0, hindi crash/undefined.
+    $caragaIndex = array_search('CARAGA', $regions);
+    expect($submitted[$caragaIndex])->toBe(0);
+    expect($notSubmitted[$caragaIndex])->toBe(0);
+});
+
+test('tdor compliance endpoint zeroes out other regions when a single region filter is applied', function () {
+    $admin = tdorTestAdmin('EMP-TDOR-ADM-07');
+    [$program, $batch, $requirement] = tdorTestSetup();
+
+    tdorTestEmployee('EMP-TDOR-NCR-ONLY', 'Santos', 'NCR');
+    Participant::create([
+        'sort_order' => 1, 'batch_id' => $batch->id, 'empcode' => 'EMP-TDOR-NCR-ONLY',
+        'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+    ]);
+
+    $r5Employee = tdorTestEmployee('EMP-TDOR-R5-ONLY', 'Cruz', 'R5');
+    Participant::create([
+        'sort_order' => 2, 'batch_id' => $batch->id, 'empcode' => $r5Employee->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+    ]);
+
+    $response = $this->actingAs($admin)->getJson(route('dashboard.tdor-compliance', [
+        'region' => 'NCR', 'year' => 'ALL', 'office' => 'ALL', 'office_filter' => 'ALL',
+    ]));
+
+    $response->assertOk();
+    expect($response->json('total'))->toBe(1); // NCR lang dapat mabilang sa global total
+
+    $regions = $response->json('regions');
+    $notSubmitted = $response->json('regions_not_submitted');
+    $r5Index = array_search('R5', $regions);
+
+    // Kahit may data ang R5, dapat 0 ito dahil naka-filter tayo sa NCR lang.
+    expect($notSubmitted[$r5Index])->toBe(0);
+});
+
 test('tdor compliance list endpoint returns the correct employees per type', function () {
     $admin = tdorTestAdmin('EMP-TDOR-ADM-02');
     [$program, $batch, $requirement] = tdorTestSetup();

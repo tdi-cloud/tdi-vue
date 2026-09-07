@@ -187,6 +187,36 @@ test('requirement_title filter narrows results to the selected requirement', fun
     expect($items->first()['requirement_title'])->toBe('TDOR');
 });
 
+test('pagination and stats stay consistent with the manually-built paginator across multiple pages', function () {
+    $admin = trackerTestAdmin('EMP-ADM-PAGE');
+    [$program, $batch, $overdueRequirement, $upcomingRequirement] = trackerTestSetup();
+
+    // 22 magkakaibang empleyado, bawat isa'y participant na kulang sa TREAP
+    // lang (isineparate sa TDOR gamit ang requirement_title filter) — dapat
+    // 20 sa page 1, 2 sa page 2.
+    foreach (range(1, 22) as $i) {
+        $employee = trackerTestEmployee("EMP-PAGE-{$i}", "Reyes{$i}");
+        Participant::create([
+            'sort_order' => $i, 'batch_id' => $batch->id, 'empcode' => $employee->EMPCODE,
+            'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+        ]);
+    }
+
+    $page1 = $this->actingAs($admin)->get(route('requirements-tracker.index', ['requirement_title' => 'TREAP']));
+    $page1->assertOk();
+    expect($page1->inertiaProps('items.data'))->toHaveCount(20);
+    expect($page1->inertiaProps('items.current_page'))->toBe(1);
+    expect($page1->inertiaProps('items.last_page'))->toBe(2);
+    expect($page1->inertiaProps('stats.total_missing'))->toBe(22);
+    expect($page1->inertiaProps('stats.overdue'))->toBe(22); // TREAP overdue na sa trackerTestSetup
+
+    $page2 = $this->actingAs($admin)->get(route('requirements-tracker.index', ['requirement_title' => 'TREAP', 'page' => 2]));
+    $page2->assertOk();
+    expect($page2->inertiaProps('items.data'))->toHaveCount(2);
+    expect($page2->inertiaProps('items.current_page'))->toBe(2);
+    expect($page2->inertiaProps('stats.total_missing'))->toBe(22);
+});
+
 test('csv export streams a csv file with the outstanding requirements', function () {
     $admin = trackerTestAdmin('EMP-ADM-04');
     [$program, $batch, $overdueRequirement, $upcomingRequirement] = trackerTestSetup();

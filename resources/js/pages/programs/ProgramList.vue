@@ -34,7 +34,7 @@ const props = defineProps<{
     filterInitiated: string;
     filterBatchStatus: string;
     filterMonth: string;
-    filterProvider: string;
+    filterProvider: string[];
 }>();
 
 const filtered = computed(() => {
@@ -66,8 +66,8 @@ const filtered = computed(() => {
             return false;
         }
 
-        // Provider filter
-        if (props.filterProvider !== 'all' && p.provider !== props.filterProvider) {
+        // Provider filter (multi-select — empty array = walang filter)
+        if (props.filterProvider.length > 0 && (!p.provider || !props.filterProvider.includes(p.provider))) {
             return false;
         }
 

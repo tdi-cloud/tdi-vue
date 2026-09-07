@@ -202,41 +202,46 @@ class DashboardController extends Controller
         $trainedPercentage = $totalEmployees > 0 ? round(($trainedEmployees / $totalEmployees) * 100, 2) : 0;
         $notTrainedPercentage = $totalEmployees > 0 ? round(($notTrained / $totalEmployees) * 100, 2) : 0;
 
-        $regionsBreakdown = [];
+        // 2 GROUP BY na query lang (sa halip na 2 query * 18 region = 36
+        // hiwalay na query) — ito ang pinaka-malaking dahilan kung bakit
+        // mabagal mag-load ang Training Compliance na card sa Dashboard.
+        $totalByRegion = $this->applyEmployeeFilters(
+            DB::table('employees')->where('SG', '>=', $sgMin), null, $statuses, $officeFilter, $office
+        )
+            ->select('REGION as region', DB::raw('COUNT(*) as total'))
+            ->groupBy('REGION')
+            ->pluck('total', 'region');
+
+        $trainedByRegion = $this->applyEmployeeFilters(
+            DB::table('employees')
+                ->join('participants', 'employees.EMPCODE', '=', 'participants.empcode')
+                ->join('batches', 'participants.batch_id', '=', 'batches.id')
+                ->where('employees.SG', '>=', $sgMin),
+            null, $statuses, $officeFilter, $office, 'employees.'
+        )
+            ->where('participants.attendance', '!=', 'Absent')
+            ->whereRaw('CAST(batches.hours AS DECIMAL(10,2)) >= 8')
+            ->select('employees.REGION as region')
+            ->selectRaw('COUNT(DISTINCT employees.EMPCODE) as trained')
+            ->groupBy('employees.REGION')
+            ->pluck('trained', 'region');
+
+        $regionsTrained = [];
+        $regionsNotTrained = [];
+
         foreach ($allRegions as $reg) {
             if ($region && $region !== 'ALL' && $reg !== $region) {
-                $regionsBreakdown[] = ['total' => 0, 'trained' => 0, 'not_trained' => 0];
+                $regionsTrained[] = 0;
+                $regionsNotTrained[] = 0;
 
                 continue;
             }
 
-            $regTotal = $this->applyEmployeeFilters(
-                DB::table('employees')->where('REGION', $reg)->where('SG', '>=', $sgMin),
-                null, $statuses, $officeFilter, $office
-            )->count();
-
-            $regTrainedQuery = $this->applyEmployeeFilters(
-                DB::table('employees')
-                    ->join('participants', 'employees.EMPCODE', '=', 'participants.empcode')
-                    ->join('batches', 'participants.batch_id', '=', 'batches.id')
-                    ->where('employees.REGION', $reg)
-                    ->where('employees.SG', '>=', $sgMin),
-                null, $statuses, $officeFilter, $office, 'employees.'
-            )
-                ->where('participants.attendance', '!=', 'Absent')
-                ->whereRaw('CAST(batches.hours AS DECIMAL(10,2)) >= 8');
-
-            $regTrained = $regTrainedQuery->distinct()->count('employees.EMPCODE');
-
-            $regionsBreakdown[] = [
-                'total' => $regTotal,
-                'trained' => $regTrained,
-                'not_trained' => $regTotal - $regTrained,
-            ];
+            $regTotal = (int) ($totalByRegion[$reg] ?? 0);
+            $regTrained = (int) ($trainedByRegion[$reg] ?? 0);
+            $regionsTrained[] = $regTrained;
+            $regionsNotTrained[] = $regTotal - $regTrained;
         }
-
-        $regionsTrained = array_values(array_map(fn ($v) => $v['trained'], $regionsBreakdown));
-        $regionsNotTrained = array_values(array_map(fn ($v) => $v['not_trained'], $regionsBreakdown));
 
         return response()->json([
             'total' => $totalEmployees,
@@ -347,6 +352,21 @@ class DashboardController extends Controller
         $completedPct = $totalEmployees > 0 ? round(($completed / $totalEmployees) * 100, 2) : 0;
         $inProgressPct = $totalEmployees > 0 ? round(($inProgress / $totalEmployees) * 100, 2) : 0;
 
+        // Isang GROUP BY na query lang (sa halip na 2 query * 18 region =
+        // 36 hiwalay na query) — ito ang pinaka-malaking dahilan kung bakit
+        // mabagal mag-load ang Supervisory/Managerial na card sa Dashboard.
+        $regionRows = $this->applyEmployeeFilters(
+            DB::table('employees')->where('SG', '>=', $sgMin),
+            null, $statuses, $officeFilter, $office
+        )
+            ->joinSub($hoursSubquery, 'emp_hours', fn ($j) => $j->on('employees.EMPCODE', '=', 'emp_hours.empcode'))
+            ->select('employees.REGION as region')
+            ->selectRaw('COUNT(DISTINCT CASE WHEN emp_hours.total_hours >= 40 THEN employees.EMPCODE END) as completed')
+            ->selectRaw('COUNT(DISTINCT CASE WHEN emp_hours.total_hours < 40 AND emp_hours.total_hours > 0 THEN employees.EMPCODE END) as in_progress')
+            ->groupBy('employees.REGION')
+            ->get()
+            ->keyBy('region');
+
         $regionsCompleted = [];
         $regionsInProgress = [];
 
@@ -358,23 +378,9 @@ class DashboardController extends Controller
                 continue;
             }
 
-            $regBase = function () use ($reg, $statuses, $officeFilter, $office, $sgMin) {
-                return $this->applyEmployeeFilters(
-                    DB::table('employees')->where('REGION', $reg)->where('SG', '>=', $sgMin),
-                    null, $statuses, $officeFilter, $office
-                );
-            };
-
-            $regionsCompleted[] = $regBase()
-                ->joinSub($hoursSubquery, 'emp_hours', fn ($j) => $j->on('employees.EMPCODE', '=', 'emp_hours.empcode'))
-                ->where('emp_hours.total_hours', '>=', 40)
-                ->distinct()->count('employees.EMPCODE');
-
-            $regionsInProgress[] = $regBase()
-                ->joinSub($hoursSubquery, 'emp_hours', fn ($j) => $j->on('employees.EMPCODE', '=', 'emp_hours.empcode'))
-                ->where('emp_hours.total_hours', '<', 40)
-                ->where('emp_hours.total_hours', '>', 0)
-                ->distinct()->count('employees.EMPCODE');
+            $row = $regionRows->get($reg);
+            $regionsCompleted[] = (int) ($row->completed ?? 0);
+            $regionsInProgress[] = (int) ($row->in_progress ?? 0);
         }
 
         return response()->json([
@@ -445,6 +451,50 @@ class DashboardController extends Controller
         ]);
     }
 
+    /**
+     * Per-region na total/submitted breakdown gamit ang 2 GROUPED na query
+     * lang (sa halip na 2 query * 18 region = 36 hiwalay na query) — dating
+     * ginagawa ito sa isang foreach loop ng treap/reap/tdorCompliance(),
+     * ang pinaka-malaking dahilan kung bakit mabagal mag-load ang mga
+     * "compliance" na card sa Dashboard.
+     *
+     * @return array{0: array<int>, 1: array<int>} [regionsSubmitted, regionsNotSubmitted]
+     */
+    private function regionSubmissionBreakdown($baseParticipants, \Closure $submittedCond, array $allRegions, $filteredRegion): array
+    {
+        $totalByRegion = (clone $baseParticipants)
+            ->select('employees.REGION as region')
+            ->selectRaw('COUNT(DISTINCT participants.empcode) as total')
+            ->groupBy('employees.REGION')
+            ->pluck('total', 'region');
+
+        $submittedByRegion = (clone $baseParticipants)
+            ->whereExists($submittedCond)
+            ->select('employees.REGION as region')
+            ->selectRaw('COUNT(DISTINCT participants.empcode) as total')
+            ->groupBy('employees.REGION')
+            ->pluck('total', 'region');
+
+        $regionsSubmitted = [];
+        $regionsNotSubmitted = [];
+
+        foreach ($allRegions as $reg) {
+            if ($filteredRegion && $filteredRegion !== 'ALL' && $reg !== $filteredRegion) {
+                $regionsSubmitted[] = 0;
+                $regionsNotSubmitted[] = 0;
+
+                continue;
+            }
+
+            $regTotal = (int) ($totalByRegion[$reg] ?? 0);
+            $regSubmitted = (int) ($submittedByRegion[$reg] ?? 0);
+            $regionsSubmitted[] = $regSubmitted;
+            $regionsNotSubmitted[] = $regTotal - $regSubmitted;
+        }
+
+        return [$regionsSubmitted, $regionsNotSubmitted];
+    }
+
     // ── Shared submitted condition builder ────────────────────────────────────
     // Ginagamit ang empcode matching (hindi participant_id) para ma-catch
     // ang mga submission kahit sa ibang batch ng parehong program nag-submit.
@@ -498,36 +548,9 @@ class DashboardController extends Controller
         $submittedPct = $totalEmployees > 0 ? round(($submittedEmployees / $totalEmployees) * 100, 1) : 0;
         $notSubmittedPct = $totalEmployees > 0 ? round(($notSubmitted / $totalEmployees) * 100, 1) : 0;
 
-        $regionsSubmitted = [];
-        $regionsNotSubmitted = [];
-
-        foreach ($allRegions as $reg) {
-            if ($region && $region !== 'ALL' && $reg !== $region) {
-                $regionsSubmitted[] = 0;
-                $regionsNotSubmitted[] = 0;
-
-                continue;
-            }
-
-            $regBase = DB::table('participants')
-                ->join('batches', 'participants.batch_id', '=', 'batches.id')
-                ->join('requirements', 'requirements.batch_id', '=', 'batches.id')
-                ->join('employees', 'participants.empcode', '=', 'employees.EMPCODE')
-                ->where('requirements.title', 'TREAP')
-                ->where('requirements.due_date', '<=', $today)
-                ->where('participants.attendance', '!=', 'Absent')
-                ->where('employees.REGION', $reg);
-
-            $regBase = $this->applyEmployeeFilters(
-                $regBase, null, $statuses, $officeFilter, $office, 'employees.'
-            );
-
-            $regTotal = (clone $regBase)->distinct()->count('participants.empcode');
-            $regSubmitted = (clone $regBase)->whereExists($submittedCond)->distinct()->count('participants.empcode');
-
-            $regionsSubmitted[] = $regSubmitted;
-            $regionsNotSubmitted[] = $regTotal - $regSubmitted;
-        }
+        [$regionsSubmitted, $regionsNotSubmitted] = $this->regionSubmissionBreakdown(
+            $baseParticipants, $submittedCond, $allRegions, $region
+        );
 
         return response()->json([
             'total' => $totalEmployees,
@@ -657,36 +680,9 @@ class DashboardController extends Controller
         $submittedPct = $totalEmployees > 0 ? round(($submittedEmployees / $totalEmployees) * 100, 1) : 0;
         $notSubmittedPct = $totalEmployees > 0 ? round(($notSubmitted / $totalEmployees) * 100, 1) : 0;
 
-        $regionsSubmitted = [];
-        $regionsNotSubmitted = [];
-
-        foreach ($allRegions as $reg) {
-            if ($region && $region !== 'ALL' && $reg !== $region) {
-                $regionsSubmitted[] = 0;
-                $regionsNotSubmitted[] = 0;
-
-                continue;
-            }
-
-            $regBase = DB::table('participants')
-                ->join('batches', 'participants.batch_id', '=', 'batches.id')
-                ->join('requirements', 'requirements.batch_id', '=', 'batches.id')
-                ->join('employees', 'participants.empcode', '=', 'employees.EMPCODE')
-                ->where('requirements.title', 'REAP')
-                ->where('requirements.due_date', '<=', $today)
-                ->where('participants.attendance', '!=', 'Absent')
-                ->where('employees.REGION', $reg);
-
-            $regBase = $this->applyEmployeeFilters(
-                $regBase, null, $statuses, $officeFilter, $office, 'employees.'
-            );
-
-            $regTotal = (clone $regBase)->distinct()->count('participants.empcode');
-            $regSubmitted = (clone $regBase)->whereExists($submittedCond)->distinct()->count('participants.empcode');
-
-            $regionsSubmitted[] = $regSubmitted;
-            $regionsNotSubmitted[] = $regTotal - $regSubmitted;
-        }
+        [$regionsSubmitted, $regionsNotSubmitted] = $this->regionSubmissionBreakdown(
+            $baseParticipants, $submittedCond, $allRegions, $region
+        );
 
         return response()->json([
             'total' => $totalEmployees,
@@ -816,36 +812,9 @@ class DashboardController extends Controller
         $submittedPct = $totalEmployees > 0 ? round(($submittedEmployees / $totalEmployees) * 100, 1) : 0;
         $notSubmittedPct = $totalEmployees > 0 ? round(($notSubmitted / $totalEmployees) * 100, 1) : 0;
 
-        $regionsSubmitted = [];
-        $regionsNotSubmitted = [];
-
-        foreach ($allRegions as $reg) {
-            if ($region && $region !== 'ALL' && $reg !== $region) {
-                $regionsSubmitted[] = 0;
-                $regionsNotSubmitted[] = 0;
-
-                continue;
-            }
-
-            $regBase = DB::table('participants')
-                ->join('batches', 'participants.batch_id', '=', 'batches.id')
-                ->join('requirements', 'requirements.batch_id', '=', 'batches.id')
-                ->join('employees', 'participants.empcode', '=', 'employees.EMPCODE')
-                ->where('requirements.title', 'TDOR')
-                ->where('requirements.due_date', '<=', $today)
-                ->where('participants.attendance', '!=', 'Absent')
-                ->where('employees.REGION', $reg);
-
-            $regBase = $this->applyEmployeeFilters(
-                $regBase, null, $statuses, $officeFilter, $office, 'employees.'
-            );
-
-            $regTotal = (clone $regBase)->distinct()->count('participants.empcode');
-            $regSubmitted = (clone $regBase)->whereExists($submittedCond)->distinct()->count('participants.empcode');
-
-            $regionsSubmitted[] = $regSubmitted;
-            $regionsNotSubmitted[] = $regTotal - $regSubmitted;
-        }
+        [$regionsSubmitted, $regionsNotSubmitted] = $this->regionSubmissionBreakdown(
+            $baseParticipants, $submittedCond, $allRegions, $region
+        );
 
         return response()->json([
             'total' => $totalEmployees,

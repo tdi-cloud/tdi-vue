@@ -15,6 +15,7 @@ import {
 } from 'lucide-vue-next';
 import { ref, watch, onMounted, onUnmounted, nextTick, computed } from 'vue';
 import ProgramList from '@/pages/programs/ProgramList.vue';
+import MultiSelectFilter from '@/components/MultiSelectFilter.vue';
 import GenerateTPMRModal from '@/pages/programs/GenerateTPMRModal.vue';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -54,7 +55,7 @@ const search = ref('');
 const filterInitiated = ref('all');
 const filterBatchStatus = ref('all');
 const filterMonth = ref('all');
-const filterProvider = ref('all');
+const filterProvider = ref<string[]>([]);
 const showModal = ref(false);
 const showConfirm = ref(false);
 const showInfo = ref(false);
@@ -314,25 +315,15 @@ const monthLabel = (ym: string) => {
                     </Select>
                 </div>
 
-                <!-- Provider filter -->
+                <!-- Provider filter (multi-select, searchable) -->
                 <div class="grid gap-1">
                     <Label class="text-[11px] font-semibold text-slate-400">Provider</Label>
-                    <Select v-model="filterProvider">
-                        <SelectTrigger class="text-xs h-8 w-full shadow-md">
-                            <SelectValue placeholder="All providers" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem class="text-xs" value="all">All providers</SelectItem>
-                            <SelectItem
-                                v-for="p in availableProviders"
-                                :key="p"
-                                :value="p"
-                                class="text-xs"
-                            >
-                                {{ p }}
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <MultiSelectFilter
+                        v-model="filterProvider"
+                        :options="availableProviders"
+                        label="Provider"
+                        placeholder="All providers"
+                    />
                 </div>
 
             </div>
