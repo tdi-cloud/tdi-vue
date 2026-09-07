@@ -8,6 +8,7 @@ use App\Models\Program;
 use App\Models\Submission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -86,10 +87,16 @@ class DashboardController extends Controller
     }
 
     /**
-     * Isang CSV — lahat ng programs kasama ang mga batch, participants, at
-     * attendance nila — isang row kada participant enrollment, naka-scope
-     * sa parehong shared filters (target/region/office/plantilla status) at
-     * sa napiling date range mula sa "Reports" modal.
+     * Isang CSV — lahat ng programs kasama ang mga batch, participants,
+     * attendance, AT ang mga requirements nila (kasama ang link ng
+     * naipasang document, kung meron) — naka-scope sa parehong shared
+     * filters (target/region/office/plantilla status) at sa napiling date
+     * range mula sa "Reports" modal.
+     *
+     * Isang row kada (participant × requirement) — kung 3 ang requirements
+     * ng batch, 3 row ang isang participant dito (isa kada requirement).
+     * Kung walang requirement ang batch, isang row pa rin (walang laman
+     * ang requirement columns) — hindi nawawala ang participant.
      */
     public function exportCsv(Request $request): StreamedResponse
     {
@@ -104,6 +111,11 @@ class DashboardController extends Controller
             ->join('batches as b', 'prog.program_code', '=', 'b.program_code')
             ->join('participants as p', 'p.batch_id', '=', 'b.id')
             ->leftJoin('employees as e', 'e.EMPCODE', '=', 'p.empcode')
+            ->leftJoin('requirements as r', 'r.batch_id', '=', 'b.id')
+            ->leftJoin('submissions as s', function ($join) {
+                $join->on('s.requirement_id', '=', 'r.id')
+                    ->on('s.participant_id', '=', 'p.id');
+            })
             ->select(
                 'prog.program_code', 'prog.title as program_title', 'prog.type as program_type',
                 'b.batch as batch_label', 'b.status as batch_status',
@@ -111,13 +123,17 @@ class DashboardController extends Controller
                 'p.empcode', 'e.FIRSTNAME as firstname', 'e.MI as mi', 'e.LASTNAME as lastname',
                 DB::raw('e.`OFFICE/DIVISION` as office_division'), 'e.REGION as region', 'e.SG as sg',
                 'p.attendance', 'p.hours',
+                'r.title as requirement_title', 'r.name as requirement_name',
+                'r.due_date as requirement_due_date',
+                's.status as submission_status', 's.file_path as submission_file_path',
+                's.submitted_at as submission_submitted_at',
             );
 
         $query = $this->applyEmployeeFilters($query, $region, $statuses, $officeFilter, $office, 'e.');
         $query = $this->applyDateRangeFilter($query, $dateFrom, $dateTo, 'b.date_start');
 
         $rows = $query
-            ->orderBy('prog.title')->orderBy('b.batch')->orderBy('e.LASTNAME')
+            ->orderBy('prog.title')->orderBy('b.batch')->orderBy('e.LASTNAME')->orderBy('r.title')
             ->get();
 
         $filename = 'programs_batches_participants_'.now()->format('Ymd_His').'.csv';
@@ -139,12 +155,18 @@ class DashboardController extends Controller
                 'Batch', 'Batch Status', 'Batch Start', 'Batch End',
                 'EMPCODE', 'Participant Name', 'Office/Division', 'Region', 'SG',
                 'Attendance', 'Hours',
+                'Requirement', 'Requirement Name', 'Requirement Due Date',
+                'Submission Status', 'Submitted At', 'Document Link',
             ]);
 
             foreach ($rows as $row) {
                 $mi = trim($row->mi ?? '');
                 $mi = $mi !== '' ? ' '.rtrim($mi, '.').'.' : '';
                 $name = trim(($row->firstname ?? '').$mi.' '.($row->lastname ?? ''));
+
+                $documentLink = $row->submission_file_path
+                    ? Storage::disk('public')->url($row->submission_file_path)
+                    : null;
 
                 fputcsv($out, [
                     $row->program_code,
@@ -161,6 +183,12 @@ class DashboardController extends Controller
                     $row->sg,
                     $row->attendance,
                     $row->hours,
+                    $row->requirement_title,
+                    $row->requirement_name,
+                    $row->requirement_due_date,
+                    $row->submission_status ?? ($row->requirement_title ? 'Not Submitted' : null),
+                    $row->submission_submitted_at,
+                    $documentLink,
                 ]);
             }
 

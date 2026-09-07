@@ -4,7 +4,11 @@ use App\Models\Batch;
 use App\Models\Employee;
 use App\Models\Participant;
 use App\Models\Program;
+use App\Models\Requirement;
+use App\Models\Submission;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 function exportCsvTestAdmin(string $empcode): User
 {
@@ -173,6 +177,57 @@ test('dashboard export csv respects the date range filter', function () {
     $csv = $response->streamedContent();
     expect($csv)->toContain('August')
         ->and($csv)->not->toContain('January');
+});
+
+test('dashboard export csv includes one row per requirement, with a document link when submitted', function () {
+    Storage::fake('public');
+
+    $admin = exportCsvTestAdmin('EMP-EXP-ADM4');
+    [$program, $batch] = exportCsvTestBatch();
+
+    $employee = exportCsvTestEmployee('EMP-EXP-07', 'NCR', 'Delacruz');
+    $participant = Participant::create([
+        'sort_order' => 1, 'batch_id' => $batch->id, 'empcode' => $employee->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+    ]);
+
+    $treap = Requirement::create([
+        'batch_id' => $batch->id, 'title' => 'TREAP', 'name' => Requirement::nameFor('TREAP'),
+        'due_date' => now()->addDays(30)->toDateString(), 'is_required' => true,
+    ]);
+    $reap = Requirement::create([
+        'batch_id' => $batch->id, 'title' => 'REAP', 'name' => Requirement::nameFor('REAP'),
+        'due_date' => now()->addDays(30)->toDateString(), 'is_required' => true,
+    ]);
+
+    $file = UploadedFile::fake()->create('treap-report.pdf', 100);
+    $path = $file->store('submissions', 'public');
+
+    Submission::create([
+        'participant_id' => $participant->id, 'program_code' => $program->program_code,
+        'batch_id' => $batch->id, 'requirement_id' => $treap->id,
+        'status' => 'Approved', 'file_path' => $path, 'submitted_at' => now(),
+    ]);
+    // REAP: sinadyang walang Submission — dapat "Not Submitted" ito, walang link.
+
+    $response = $this->actingAs($admin)->get(route('dashboard.export-csv', [
+        'region' => 'ALL', 'office' => 'ALL', 'office_filter' => 'Nationwide',
+    ]));
+
+    $response->assertOk();
+    $csv = $response->streamedContent();
+    $lines = array_filter(explode("\n", $csv));
+
+    $treapRow = collect($lines)->first(fn ($l) => str_contains($l, 'EMP-EXP-07') && str_contains($l, 'TREAP'));
+    $reapRow = collect($lines)->first(fn ($l) => str_contains($l, 'EMP-EXP-07') && str_contains($l, 'REAP'));
+
+    expect($treapRow)->not->toBeNull()
+        ->and($treapRow)->toContain('Approved')
+        ->and($treapRow)->toContain(Storage::disk('public')->url($path));
+
+    expect($reapRow)->not->toBeNull()
+        ->and($reapRow)->toContain('Not Submitted')
+        ->and($reapRow)->not->toContain('/storage/');
 });
 
 test('non-admin users cannot access the dashboard csv export', function () {
