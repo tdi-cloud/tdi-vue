@@ -53,6 +53,7 @@ const INITIATED_OPTIONS = [
     { value: 'TDI', label: 'TESDA Development Institute (TDI)' },
     { value: 'NTTA', label: 'National TVET Trainors Academy (NTTA)' },
     { value: 'Other Executive Office', label: 'Other Executive Office' },
+    { value: 'Regional Office', label: 'Regional Office' },
     { value: 'Other Training Provider', label: 'Other Training Provider' },
 ];
 

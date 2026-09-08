@@ -34,6 +34,7 @@ interface ProgramListItem {
     description: string;
     initiated: string;
     provider: string | null;
+    category: string | null;
     batches_count: number;
     participants_count: number;
     requirements_count: number;
@@ -47,6 +48,7 @@ const INITIATED_OPTIONS = [
     { value: 'TDI', label: 'TESDA Development Institute (TDI)' },
     { value: 'NTTA', label: 'National TVET Trainors Academy (NTTA)' },
     { value: 'Other Executive Office', label: 'Other Executive Office' },
+    { value: 'Regional Office', label: 'Regional Office' },
     { value: 'Other Training Provider', label: 'Other Training Provider' },
 ];
 
@@ -56,6 +58,7 @@ const filterInitiated = ref('all');
 const filterBatchStatus = ref('all');
 const filterMonth = ref('all');
 const filterProvider = ref<string[]>([]);
+const filterCategory = ref<string[]>([]);
 const showModal = ref(false);
 const showConfirm = ref(false);
 const showInfo = ref(false);
@@ -197,6 +200,15 @@ const availableProviders = computed(() => {
     return Array.from(set).sort();
 });
 
+// ✅ Lahat ng unique na category values sa lahat ng programs, para sa Category filter dropdown
+const availableCategories = computed(() => {
+    const set = new Set<string>();
+    props.programs.forEach((p) => {
+        if (p.category) set.add(p.category);
+    });
+    return Array.from(set).sort();
+});
+
 const monthLabel = (ym: string) => {
     const [year, month] = ym.split('-');
     const date = new Date(Number(year), Number(month) - 1, 1);
@@ -326,6 +338,17 @@ const monthLabel = (ym: string) => {
                     />
                 </div>
 
+                <!-- Category filter (multi-select, searchable) -->
+                <div class="grid gap-1">
+                    <Label class="text-[11px] font-semibold text-slate-400">Category</Label>
+                    <MultiSelectFilter
+                        v-model="filterCategory"
+                        :options="availableCategories"
+                        label="Category"
+                        placeholder="All categories"
+                    />
+                </div>
+
             </div>
 
             <!-- Program List: fills the rest; only its inner list scrolls -->
@@ -336,6 +359,7 @@ const monthLabel = (ym: string) => {
                 :filter-batch-status="filterBatchStatus"
                 :filter-month="filterMonth"
                 :filter-provider="filterProvider"
+                :filter-category="filterCategory"
             />
 
             <!-- Confirmation Dialog -->

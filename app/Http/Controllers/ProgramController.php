@@ -28,7 +28,7 @@ class ProgramController extends Controller
      * REGION ng naka-login, NTTA at Other Training Provider na lang.
      */
     public const INITIATED_OPTIONS = [
-        'TDI', 'NTTA', 'Other Executive Office', 'Other Training Provider',
+        'TDI', 'NTTA', 'Other Executive Office', 'Regional Office', 'Other Training Provider',
     ];
 
     /**

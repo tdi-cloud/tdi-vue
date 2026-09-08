@@ -2,7 +2,6 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import axios from 'axios';
 import VueApexCharts from 'vue3-apexcharts';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -18,10 +17,6 @@ const props = defineProps<{
     selectedStatuses: string[];
     office: string
 }>();
-
-// SG selector — local lang ito, para sa training compliance card lang
-const SG_OPTIONS = Array.from({ length: 33 }, (_, i) => i + 1); // 1–33
-const sgMin       = ref<number>(1); // default: SG ≥ 1 (lahat)
 
 /* ===================== STATS DATA ===================== */
 
@@ -71,7 +66,6 @@ const fetchStats = async () => {
                 region:        props.region,
                 office_filter: props.target,
                 plant_status:  props.selectedStatuses,
-                sg_min:        sgMin.value,
                 office:        props.office,
             },
         });
@@ -90,8 +84,8 @@ const fetchStats = async () => {
 };
 
 onMounted(fetchStats);
-// Re-fetch kapag nagbago ang shared props O ang local sgMin
-watch(() => [props.target, props.region, props.selectedStatuses, sgMin.value, props.office], fetchStats, { deep: true });
+// Re-fetch kapag nagbago ang shared props
+watch(() => [props.target, props.region, props.selectedStatuses, props.office], fetchStats, { deep: true });
 
 /* ===================== EMPLOYEE LIST MODAL ===================== */
 
@@ -126,7 +120,6 @@ const openList = async (type: 'trained' | 'not_trained') => {
                 region:        props.region,
                 office_filter: props.target,
                 plant_status:  props.selectedStatuses,
-                sg_min:        sgMin.value,
                 office:        props.office,
             },
         });
@@ -247,26 +240,12 @@ const chartOptions = {
                     </div>
                 </div>
 
-                <!-- RIGHT: total + SG selector -->
+                <!-- RIGHT: total -->
                 <div class="flex flex-col items-center sm:items-start gap-2">
                     <p class="text-3xl font-extrabold text-slate-700 dark:text-slate-200 leading-none tabular-nums">{{ animatedTotal.toLocaleString() }}</p>
                     <p class="flex items-center gap-1.5 text-sm font-bold mt-1">
                         <Users class="h-4 w-4" /> Employees
                     </p>
-                    <!-- SG filter — dito lang siya, hindi sa shared filter bar -->
-                    <div class="flex items-center gap-1.5 mt-1">
-                        <span class="text-[11px] font-bold text-slate-400 tracking-wide">SG ≥</span>
-                        <Select v-model="sgMin">
-                            <SelectTrigger class="h-7 w-16 text-xs font-semibold px-2">
-                                <SelectValue>{{ sgMin }}</SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem v-for="sg in SG_OPTIONS" :key="sg" class="text-xs" :value="sg">
-                                    {{ sg }}
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
                 </div>
 
             </div>
@@ -293,7 +272,7 @@ const chartOptions = {
                         Employees
                     </DialogTitle>
                     <DialogDescription class="text-sm text-muted-foreground">
-                        SG ≥ {{ sgMin }} · Based on current filter selection
+                        Based on current filter selection
                     </DialogDescription>
                 </DialogHeader>
 

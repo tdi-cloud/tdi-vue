@@ -15,6 +15,7 @@ interface Program {
     description: string;
     initiated: string;
     provider: string | null;
+    category: string | null;
     batches_count: number;
     participants_count: number;
     requirements_count: number;
@@ -35,6 +36,7 @@ const props = defineProps<{
     filterBatchStatus: string;
     filterMonth: string;
     filterProvider: string[];
+    filterCategory: string[];
 }>();
 
 const filtered = computed(() => {
@@ -71,6 +73,11 @@ const filtered = computed(() => {
             return false;
         }
 
+        // Category filter (multi-select — empty array = walang filter)
+        if (props.filterCategory.length > 0 && (!p.category || !props.filterCategory.includes(p.category))) {
+            return false;
+        }
+
         return true;
     });
 });
@@ -83,7 +90,7 @@ const perPage = 12;
 const currentPage = ref(1);
 const isChangingPage = ref(false);
 
-watch(() => [props.search, props.filterInitiated, props.filterBatchStatus, props.filterMonth, props.filterProvider], () => {
+watch(() => [props.search, props.filterInitiated, props.filterBatchStatus, props.filterMonth, props.filterProvider, props.filterCategory], () => {
     currentPage.value = 1;
 });
 
