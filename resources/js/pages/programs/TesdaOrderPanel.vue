@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue';
 import { Button } from '@/components/ui/button';
 import {
     FileSignature, Download, Trash2, Plus, Loader2,
-    Calendar, Layers, UserCheck, Stamp,
+    Calendar, Layers, UserCheck,
 } from 'lucide-vue-next';
 import { router } from '@inertiajs/vue3';
 import TesdaOrderModal from '@/pages/programs/TesdaOrderModal.vue';
@@ -107,14 +107,7 @@ function accentFor(id: number) {
             v-else-if="orders.length === 0"
             class="flex flex-col items-center justify-center py-16 text-center text-muted-foreground rounded-2xl border border-dashed"
         >
-            <div class="relative mb-3">
-                <div class="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center rotate-[-6deg] shadow-sm">
-                    <FileSignature class="h-6 w-6 text-blue-500" />
-                </div>
-                <div class="absolute -bottom-1 -right-2 h-7 w-7 rounded-full bg-amber-100 flex items-center justify-center rotate-[8deg] shadow-sm">
-                    <Stamp class="h-3.5 w-3.5 text-amber-600" />
-                </div>
-            </div>
+            <img src="/storage/images/tesda-order.png" alt="TESDA Order" class="mb-4 w-40 drop-shadow-lg" />
             <p class="text-sm font-semibold">No TESDA Orders generated yet.</p>
             <p class="text-xs mt-1">Click "Generate TESDA Order" to create one.</p>
         </div>
@@ -126,9 +119,16 @@ function accentFor(id: number) {
                 :key="order.id"
                 class="group relative rounded-2xl border bg-card overflow-hidden shadow-sm hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5"
             >
+                <!-- Watermark — faded TESDA Order artwork sa likod ng card, ibabang-kanang bahagi -->
+                <img
+                    src="/storage/images/tesda-order.png"
+                    alt=""
+                    class="pointer-events-none select-none absolute -bottom-8 -right-8 z-0 w-40 opacity-10"
+                />
+
                 <!-- Colored header strip with document illustration -->
                 <div
-                    class="relative h-20 bg-gradient-to-br px-4 py-3 flex items-start justify-between overflow-hidden"
+                    class="relative z-10 h-20 bg-gradient-to-br px-4 py-3 flex items-start justify-between overflow-hidden"
                     :class="accentFor(order.id).bg"
                 >
                     <!-- Decorative stacked "paper" illustration -->
@@ -145,7 +145,7 @@ function accentFor(id: number) {
                 </div>
 
                 <!-- Body -->
-                <div class="p-4 flex flex-col gap-3">
+                <div class="relative z-10 p-4 flex flex-col gap-3">
                     <p class="text-sm font-bold leading-snug line-clamp-2 min-h-[2.5rem]">
                         {{ order.subject }}
                     </p>

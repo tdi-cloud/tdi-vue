@@ -196,6 +196,59 @@ test('admin can add, reorder, and delete facilitators', function () {
     expect(EvaluationFacilitator::find($second->id))->toBeNull();
 });
 
+test('admin can bulk add facilitators, each getting its own resource speaker and sort order', function () {
+    $admin = evalCrudAdmin('EMP-EVCRUD-BULK-01');
+    $program = evalCrudProgram();
+    $batch = evalCrudBatch($program);
+    $form = EvaluationForm::create(['batch_id' => $batch->id, 'slug' => EvaluationForm::generateSlugFor($batch)]);
+
+    // Nauna nang may isang existing facilitator — dapat magpatuloy ang
+    // sort_order mula dito, hindi mag-restart sa 0.
+    $form->facilitators()->create(['name' => 'Existing Facilitator', 'sort_order' => 0]);
+
+    $this->actingAs($admin)
+        ->post(route('evaluation-forms.facilitators.bulk-store', $form), [
+            'facilitators' => [
+                ['name' => 'Juan Dela Cruz', 'role' => 'Resource Person'],
+                ['name' => 'Maria Santos', 'role' => null],
+                ['name' => 'Jose Rizal', 'role' => 'Facilitator'],
+            ],
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    expect($form->facilitators()->count())->toBe(4);
+
+    $names = $form->facilitators()->orderBy('sort_order')->pluck('name')->all();
+    expect($names)->toBe(['Existing Facilitator', 'Juan Dela Cruz', 'Maria Santos', 'Jose Rizal']);
+
+    $juan = $form->facilitators()->where('name', 'Juan Dela Cruz')->firstOrFail();
+    expect($juan->role)->toBe('Resource Person');
+    expect($juan->resource_speaker_id)->not->toBeNull();
+    expect(ResourceSpeaker::find($juan->resource_speaker_id)->name)->toBe('Juan Dela Cruz');
+
+    $maria = $form->facilitators()->where('name', 'Maria Santos')->firstOrFail();
+    expect($maria->role)->toBeNull();
+});
+
+test('bulk add facilitators requires at least one facilitator with a name', function () {
+    $admin = evalCrudAdmin('EMP-EVCRUD-BULK-02');
+    $program = evalCrudProgram();
+    $batch = evalCrudBatch($program);
+    $form = EvaluationForm::create(['batch_id' => $batch->id, 'slug' => EvaluationForm::generateSlugFor($batch)]);
+
+    $this->actingAs($admin)
+        ->post(route('evaluation-forms.facilitators.bulk-store', $form), ['facilitators' => []])
+        ->assertSessionHasErrors('facilitators');
+
+    $this->actingAs($admin)
+        ->post(route('evaluation-forms.facilitators.bulk-store', $form), [
+            'facilitators' => [['role' => 'Resource Person']],
+        ])
+        ->assertSessionHasErrors('facilitators.0.name');
+
+    expect($form->facilitators()->count())->toBe(0);
+});
+
 test('adding a facilitator also creates a matching resource speaker on the program, and keeps them in sync', function () {
     $admin = evalCrudAdmin('EMP-EVCRUD-12');
     $program = evalCrudProgram();

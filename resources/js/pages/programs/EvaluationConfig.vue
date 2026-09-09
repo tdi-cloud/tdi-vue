@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import {
     ArrowLeft, ClipboardCheck, Copy, ExternalLink, Sparkles, Layers,
     Plus, Pencil, Trash2, ChevronUp, ChevronDown, Check, X, LoaderCircle,
-    ListChecks, Users, BarChart3,
+    ListChecks, Users, BarChart3, ClipboardPaste,
 } from 'lucide-vue-next';
 import { ref, computed } from 'vue';
 import { useConfirm } from '@/composables/useConfirm';
@@ -303,6 +303,94 @@ async function deleteFacilitator(facilitator: Facilitator) {
 function moveFacilitator(facilitator: Facilitator, dir: 'up' | 'down') {
     router.post(route(`evaluation-facilitators.move-${dir}`, facilitator.id), {}, { preserveScroll: true, preserveState: true });
 }
+
+/* ── Bulk Add Facilitators — a small spreadsheet-like grid you can paste
+ * directly into from Excel/Google Sheets. Pasting a multi-cell block into
+ * any cell fills the grid from that point onward (tab = next column,
+ * newline = next row), growing rows automatically as needed.
+ */
+interface BulkRow { name: string; role: string }
+
+const showBulkModal = ref(false);
+const bulkErrors = ref<Record<string, string>>({});
+const savingBulk = ref(false);
+const BULK_STARTER_ROWS = 5;
+
+function makeEmptyBulkRows(count: number): BulkRow[] {
+    return Array.from({ length: count }, () => ({ name: '', role: '' }));
+}
+
+const bulkRows = ref<BulkRow[]>(makeEmptyBulkRows(BULK_STARTER_ROWS));
+
+const filledBulkRows = computed<BulkRow[]>(() =>
+    bulkRows.value
+        .map((row) => ({ name: row.name.trim(), role: row.role.trim() }))
+        .filter((row) => row.name !== ''),
+);
+
+function openBulkAdd() {
+    bulkRows.value = makeEmptyBulkRows(BULK_STARTER_ROWS);
+    bulkErrors.value = {};
+    showBulkModal.value = true;
+}
+
+function addBulkRow() {
+    bulkRows.value.push({ name: '', role: '' });
+}
+
+function removeBulkRow(index: number) {
+    bulkRows.value.splice(index, 1);
+}
+
+// Ipinasok dito ang pinaste na block (mula sa Excel/Sheets — tab-separated
+// ang columns, newline-separated ang rows), simula sa cell kung saan
+// na-trigger ang paste. Lumalago ang grid kung kailangan pa ng rows.
+function handleBulkPaste(event: ClipboardEvent, rowIndex: number, col: 'name' | 'role') {
+    const text = event.clipboardData?.getData('text/plain') ?? '';
+    if (!text.includes('\t') && !text.includes('\n')) return; // single-cell paste — default behavior is fine
+
+    event.preventDefault();
+
+    const pastedRows = text.replace(/\r/g, '').split('\n').filter((line, i, arr) => !(i === arr.length - 1 && line === ''));
+    const startColIsName = col === 'name';
+
+    pastedRows.forEach((line, i) => {
+        const cells = line.split('\t');
+        const targetIndex = rowIndex + i;
+
+        while (bulkRows.value.length <= targetIndex) {
+            bulkRows.value.push({ name: '', role: '' });
+        }
+
+        const targetRow = bulkRows.value[targetIndex];
+        if (startColIsName) {
+            if (cells[0] !== undefined) targetRow.name = cells[0].trim();
+            if (cells[1] !== undefined) targetRow.role = cells[1].trim();
+        } else if (cells[0] !== undefined) {
+            targetRow.role = cells[0].trim();
+        }
+    });
+}
+
+function submitBulkFacilitators() {
+    if (!form.value || !filledBulkRows.value.length) return;
+    bulkErrors.value = {};
+    savingBulk.value = true;
+
+    const payload = {
+        facilitators: filledBulkRows.value.map((row) => ({
+            name: row.name,
+            role: row.role || null,
+        })),
+    };
+
+    router.post(route('evaluation-forms.facilitators.bulk-store', form.value.id), payload, {
+        preserveScroll: true,
+        onSuccess: () => { showBulkModal.value = false; },
+        onError: (errors: Record<string, string>) => { bulkErrors.value = errors; },
+        onFinish: () => { savingBulk.value = false; },
+    });
+}
 </script>
 
 <template>
@@ -539,9 +627,14 @@ function moveFacilitator(facilitator: Facilitator, dir: 'up' | 'down') {
                         <h2 class="text-sm font-extrabold flex items-center gap-1.5">
                             <Users class="h-4 w-4 text-rose-600" /> Facilitators to Rate
                         </h2>
-                        <Button size="sm" class="h-7 text-xs bg-rose-600 hover:bg-rose-700 dark:text-white" @click="openAddFacilitator">
-                            <Plus class="h-3 w-3 mr-1" /> Add Facilitator
-                        </Button>
+                        <div class="flex items-center gap-2">
+                            <Button size="sm" variant="outline" class="h-7 text-xs" @click="openBulkAdd">
+                                <ClipboardPaste class="h-3 w-3 mr-1" /> Bulk Add
+                            </Button>
+                            <Button size="sm" class="h-7 text-xs bg-rose-600 hover:bg-rose-700 dark:text-white" @click="openAddFacilitator">
+                                <Plus class="h-3 w-3 mr-1" /> Add Facilitator
+                            </Button>
+                        </div>
                     </div>
                     <p class="text-xs text-muted-foreground -mt-2">
                         Every facilitator added here will be rated separately by each respondent using the Section III questions above.
@@ -657,6 +750,90 @@ function moveFacilitator(facilitator: Facilitator, dir: 'up' | 'down') {
                     <Button type="button" size="sm" class="bg-rose-600 hover:bg-rose-700 dark:text-white" :disabled="savingFacilitator" @click="submitFacilitator">
                         <LoaderCircle v-if="savingFacilitator" class="h-3 w-3 animate-spin mr-1" />
                         {{ editingFacilitator ? 'Save Changes' : 'Add Facilitator' }}
+                    </Button>
+                </div>
+            </DialogContent>
+        </Dialog>
+
+        <!-- Bulk Add Facilitators Dialog -->
+        <Dialog :open="showBulkModal" @update:open="showBulkModal = $event">
+            <DialogContent class="max-w-2xl !rounded-2xl">
+                <DialogHeader>
+                    <DialogTitle class="flex items-center gap-2"><ClipboardPaste class="h-4 w-4" /> Bulk Add Facilitators</DialogTitle>
+                    <DialogDescription class="text-xs text-muted-foreground">
+                        Paste directly from Excel/Google Sheets into any cell below — the grid fills in and grows
+                        rows automatically. You can also type into cells manually. Empty rows are ignored.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div class="grid gap-2 py-2">
+                    <p v-if="bulkErrors.facilitators" class="text-xs text-red-500">{{ bulkErrors.facilitators }}</p>
+
+                    <div class="rounded-xl border overflow-hidden">
+                        <table class="w-full text-xs">
+                            <thead>
+                                <tr class="bg-muted/40 border-b">
+                                    <th class="w-8 px-2 py-2 text-left font-bold uppercase tracking-wide text-muted-foreground">#</th>
+                                    <th class="px-2 py-2 text-left font-bold uppercase tracking-wide text-muted-foreground">Name</th>
+                                    <th class="px-2 py-2 text-left font-bold uppercase tracking-wide text-muted-foreground">Role</th>
+                                    <th class="w-8 px-2 py-2"></th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y">
+                                <tr v-for="(row, i) in bulkRows" :key="i">
+                                    <td class="px-2 py-1 text-muted-foreground text-center">{{ i + 1 }}</td>
+                                    <td class="px-1 py-1">
+                                        <input
+                                            v-model="row.name"
+                                            type="text"
+                                            class="w-full rounded-md border px-2 py-1.5 text-xs bg-background focus:outline-none focus:ring-1 focus:ring-rose-500"
+                                            placeholder="Full name"
+                                            @paste="handleBulkPaste($event, i, 'name')"
+                                        />
+                                    </td>
+                                    <td class="px-1 py-1">
+                                        <input
+                                            v-model="row.role"
+                                            type="text"
+                                            class="w-full rounded-md border px-2 py-1.5 text-xs bg-background focus:outline-none focus:ring-1 focus:ring-rose-500"
+                                            placeholder="Role (optional)"
+                                            @paste="handleBulkPaste($event, i, 'role')"
+                                        />
+                                    </td>
+                                    <td class="px-1 py-1 text-center">
+                                        <button
+                                            type="button"
+                                            class="text-muted-foreground hover:text-red-600 transition-colors"
+                                            title="Remove row"
+                                            @click="removeBulkRow(i)"
+                                        >
+                                            <X class="h-3.5 w-3.5" />
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <button type="button" class="flex items-center gap-1 text-xs font-semibold text-rose-600 hover:text-rose-700 transition-colors w-fit" @click="addBulkRow">
+                            <Plus class="h-3.5 w-3.5" /> Add Row
+                        </button>
+                        <p class="text-[11px] text-muted-foreground">{{ filledBulkRows.length }} facilitator(s) will be added</p>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2 border-t">
+                    <Button type="button" variant="outline" size="sm" @click="showBulkModal = false">Cancel</Button>
+                    <Button
+                        type="button"
+                        size="sm"
+                        class="bg-rose-600 hover:bg-rose-700 dark:text-white"
+                        :disabled="savingBulk || !filledBulkRows.length"
+                        @click="submitBulkFacilitators"
+                    >
+                        <LoaderCircle v-if="savingBulk" class="h-3 w-3 animate-spin mr-1" />
+                        Add {{ filledBulkRows.length }} Facilitator{{ filledBulkRows.length === 1 ? '' : 's' }}
                     </Button>
                 </div>
             </DialogContent>

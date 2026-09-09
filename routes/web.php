@@ -170,6 +170,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::post('/evaluation-questions/{evaluationQuestion}/move-down', [EvaluationFormController::class, 'moveQuestionDown'])->name('evaluation-questions.move-down');
 
     Route::post('/evaluation-forms/{evaluationForm}/facilitators', [EvaluationFormController::class, 'storeFacilitator'])->name('evaluation-forms.facilitators.store');
+    Route::post('/evaluation-forms/{evaluationForm}/facilitators/bulk', [EvaluationFormController::class, 'bulkStoreFacilitators'])->name('evaluation-forms.facilitators.bulk-store');
     Route::put('/evaluation-facilitators/{evaluationFacilitator}', [EvaluationFormController::class, 'updateFacilitator'])->name('evaluation-facilitators.update');
     Route::delete('/evaluation-facilitators/{evaluationFacilitator}', [EvaluationFormController::class, 'destroyFacilitator'])->name('evaluation-facilitators.destroy');
     Route::post('/evaluation-facilitators/{evaluationFacilitator}/move-up', [EvaluationFormController::class, 'moveFacilitatorUp'])->name('evaluation-facilitators.move-up');

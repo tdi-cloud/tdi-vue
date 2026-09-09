@@ -244,6 +244,45 @@ class EvaluationFormController extends Controller
         return back()->with('success', 'Facilitator added.');
     }
 
+    // POST /evaluation-forms/{evaluationForm}/facilitators/bulk
+    // Ginagamit pag pinaste ng admin ang isang buong listahan (kadalasan
+    // mula sa Excel — Name + Role per row) sa halip na isa-isang idagdag.
+    public function bulkStoreFacilitators(Request $request, EvaluationForm $evaluationForm)
+    {
+        $data = $request->validate([
+            'facilitators' => 'required|array|min:1',
+            'facilitators.*.name' => 'required|string|max:255',
+            'facilitators.*.role' => 'nullable|string|max:255',
+        ]);
+
+        DB::transaction(function () use ($evaluationForm, $data) {
+            $program = $evaluationForm->batch->program;
+            $sortOrder = EvaluationFacilitator::nextSortOrder($evaluationForm->id);
+
+            foreach ($data['facilitators'] as $facilitator) {
+                // Parehong side effect ng single-add: idagdag din bilang
+                // Resource Speaker ng program, para magkatugma ang dalawang listahan.
+                $resourceSpeaker = $program->resourceSpeakers()->create([
+                    'program_code' => $program->program_code,
+                    'batch_id' => $evaluationForm->batch_id,
+                    'name' => $facilitator['name'],
+                    'designation' => $facilitator['role'] ?? null,
+                ]);
+
+                $evaluationForm->facilitators()->create([
+                    'name' => $facilitator['name'],
+                    'role' => $facilitator['role'] ?? null,
+                    'resource_speaker_id' => $resourceSpeaker->id,
+                    'sort_order' => $sortOrder++,
+                ]);
+            }
+        });
+
+        $count = count($data['facilitators']);
+
+        return back()->with('success', "{$count} facilitator(s) added.");
+    }
+
     // PUT /evaluation-facilitators/{evaluationFacilitator}
     public function updateFacilitator(Request $request, EvaluationFacilitator $evaluationFacilitator)
     {
