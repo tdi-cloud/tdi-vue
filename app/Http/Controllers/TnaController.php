@@ -19,7 +19,6 @@ use Inertia\Inertia;
 
 class TnaController extends Controller
 {
-   
     public const SCAN_TYPES = [
         'self' => 'self_rating_scan_path',
         'supervisory' => 'supervisor_rating_scan_path',
@@ -27,7 +26,6 @@ class TnaController extends Controller
         'result-supervisor' => 'result_scan_supervisor_path',
     ];
 
-  
     public static function bannerData($user): ?array
     {
         if (! $user || empty($user->empcode)) {
@@ -62,7 +60,6 @@ class TnaController extends Controller
         ];
     }
 
-   
     public static function supervisorBannerData($user): ?array
     {
         if (! $user || empty($user->empcode)) {
@@ -87,7 +84,6 @@ class TnaController extends Controller
         ];
     }
 
-   
     public function supervisoryIndex()
     {
         $user = auth()->user();
@@ -117,7 +113,6 @@ class TnaController extends Controller
         ]);
     }
 
-   
     public function supervisoryShow(TnaAssessment $assessment)
     {
         $user = auth()->user();
@@ -172,7 +167,6 @@ class TnaController extends Controller
         ]);
     }
 
-  
     public function supervisoryStore(Request $request, TnaAssessment $assessment)
     {
         $user = auth()->user();
@@ -288,7 +282,6 @@ class TnaController extends Controller
             ->with('success', 'Supervisory rating cleared. You may rate this assessment again.');
     }
 
-    
     public function editFasd(TnaAssessment $assessment)
     {
         $user = auth()->user();

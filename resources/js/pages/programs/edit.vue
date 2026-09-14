@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import AppLayout from '@/layouts/AppLayout.vue';
-import { type BreadcrumbItem } from '@/types';
-import { Head, useForm, router } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import AppLayout from '@/layouts/AppLayout.vue';
+import { type BreadcrumbItem } from '@/types';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import { ArrowLeft, LoaderCircle, Save } from 'lucide-vue-next';
 import { computed } from 'vue';
 
@@ -59,15 +59,11 @@ const INITIATED_OPTIONS = [
 ];
 
 const availableCategoryOptions = computed(() =>
-    isRegionRestricted.value
-        ? CATEGORY_OPTIONS.filter((o) => o.value === 'Regional')
-        : CATEGORY_OPTIONS,
+    isRegionRestricted.value ? CATEGORY_OPTIONS.filter((o) => o.value === 'Regional') : CATEGORY_OPTIONS,
 );
 
 const availableInitiatedOptions = computed(() =>
-    isRegionRestricted.value
-        ? INITIATED_OPTIONS.filter((o) => ['NTTA', 'Other Training Provider'].includes(o.value))
-        : INITIATED_OPTIONS,
+    isRegionRestricted.value ? INITIATED_OPTIONS.filter((o) => ['NTTA', 'Other Training Provider'].includes(o.value)) : INITIATED_OPTIONS,
 );
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -100,7 +96,6 @@ const submit = () => {
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex flex-1 flex-col gap-4">
-
             <!-- Header -->
             <div class="flex items-start justify-between gap-4 border-b px-6 pb-4 pt-6">
                 <div class="flex items-center gap-3">
@@ -108,31 +103,30 @@ const submit = () => {
                         <ArrowLeft class="h-4 w-4" />
                     </Button>
                     <div>
-                        <p class="text-xs text-slate-400 font-semibold">{{ program.program_code }}</p>
+                        <p class="text-xs font-semibold text-slate-400">{{ program.program_code }}</p>
                         <h1 class="text-xl font-extrabold leading-tight">Edit Program</h1>
                     </div>
                 </div>
                 <Button class="bg-blue-600 hover:bg-blue-700" size="sm" :disabled="form.processing" @click="submit">
-                    <LoaderCircle v-if="form.processing" class="h-3 w-3 animate-spin mr-1" />
-                    <Save class="h-4 w-4 mr-1" /> Save Changes
+                    <LoaderCircle v-if="form.processing" class="mr-1 h-3 w-3 animate-spin" />
+                    <Save class="mr-1 h-4 w-4" /> Save Changes
                 </Button>
             </div>
 
             <!-- Form -->
             <div class="px-6 pb-6">
                 <form @submit.prevent="submit" class="grid grid-cols-2 gap-4 py-2">
-
                     <!-- Title -->
                     <div class="col-span-2 grid gap-1">
                         <Label class="text-xs">Title <span class="text-red-500">*</span></Label>
-                        <Input class="text-xs h-8" v-model="form.title" placeholder="Program title" />
+                        <Input class="h-8 text-xs" v-model="form.title" placeholder="Program title" />
                         <p class="text-xs text-red-500">{{ form.errors.title }}</p>
                     </div>
 
                     <!-- Description -->
                     <div class="col-span-2 grid gap-1">
                         <Label class="text-xs">Description</Label>
-                        <Textarea class="text-xs min-h-[100px] resize-y" v-model="form.description" placeholder="Enter program description..." />
+                        <Textarea class="min-h-[100px] resize-y text-xs" v-model="form.description" placeholder="Enter program description..." />
                         <p class="text-xs text-red-500">{{ form.errors.description }}</p>
                     </div>
 
@@ -140,7 +134,7 @@ const submit = () => {
                     <div class="grid gap-1">
                         <Label class="text-xs">Modality <span class="text-red-500">*</span></Label>
                         <Select v-model="form.modality">
-                            <SelectTrigger class="text-xs h-8">
+                            <SelectTrigger class="h-8 text-xs">
                                 <SelectValue placeholder="Select modality" />
                             </SelectTrigger>
                             <SelectContent>
@@ -156,7 +150,7 @@ const submit = () => {
                     <!-- Pax -->
                     <div class="grid gap-1">
                         <Label class="text-xs">Pax <span class="text-red-500">*</span></Label>
-                        <Input class="text-xs h-8" v-model="form.pax" placeholder="Number of participants" />
+                        <Input class="h-8 text-xs" v-model="form.pax" placeholder="Number of participants" />
                         <p class="text-xs text-red-500">{{ form.errors.pax }}</p>
                     </div>
 
@@ -164,16 +158,16 @@ const submit = () => {
                     <div class="grid gap-1">
                         <Label class="text-xs">Category <span class="text-red-500">*</span></Label>
                         <Select v-model="form.category">
-                            <SelectTrigger class="text-xs h-8">
+                            <SelectTrigger class="h-8 text-xs">
                                 <SelectValue placeholder="Select category" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem v-for="o in availableCategoryOptions" :key="o.value" class="text-xs" :value="o.value">{{ o.label }}</SelectItem>
+                                <SelectItem v-for="o in availableCategoryOptions" :key="o.value" class="text-xs" :value="o.value">{{
+                                    o.label
+                                }}</SelectItem>
                             </SelectContent>
                         </Select>
-                        <p v-if="isRegionRestricted" class="text-[11px] text-gray-400">
-                            Limited to "Regional" for your region.
-                        </p>
+                        <p v-if="isRegionRestricted" class="text-[11px] text-gray-400">Limited to "Regional" for your region.</p>
                         <p class="text-xs text-red-500">{{ form.errors.category }}</p>
                     </div>
 
@@ -181,7 +175,7 @@ const submit = () => {
                     <div class="grid gap-1">
                         <Label class="text-xs">Program Type <span class="text-red-500">*</span></Label>
                         <Select v-model="form.type">
-                            <SelectTrigger class="text-xs h-8">
+                            <SelectTrigger class="h-8 text-xs">
                                 <SelectValue placeholder="Select type" />
                             </SelectTrigger>
                             <SelectContent>
@@ -199,34 +193,30 @@ const submit = () => {
                     <div class="grid gap-1">
                         <Label class="text-xs">Office Initiated <span class="text-red-500">*</span></Label>
                         <Select v-model="form.initiated">
-                            <SelectTrigger class="text-xs h-8">
+                            <SelectTrigger class="h-8 text-xs">
                                 <SelectValue placeholder="Select office" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem v-for="o in availableInitiatedOptions" :key="o.value" class="text-xs" :value="o.value">{{ o.label }}</SelectItem>
+                                <SelectItem v-for="o in availableInitiatedOptions" :key="o.value" class="text-xs" :value="o.value">{{
+                                    o.label
+                                }}</SelectItem>
                             </SelectContent>
                         </Select>
-                        <p v-if="isRegionRestricted" class="text-[11px] text-gray-400">
-                            Limited to NTTA / Other Training Provider for your region.
-                        </p>
+                        <p v-if="isRegionRestricted" class="text-[11px] text-gray-400">Limited to NTTA / Other Training Provider for your region.</p>
                         <p class="text-xs text-red-500">{{ form.errors.initiated }}</p>
                     </div>
 
                     <!-- Provider -->
                     <div class="grid gap-1">
                         <Label class="text-xs">Provider</Label>
-                        <Input
-                            class="text-xs h-8"
-                            v-model="form.provider"
-                            placeholder="Training provider"
-                        />
+                        <Input class="h-8 text-xs" v-model="form.provider" placeholder="Training provider" />
                         <p class="text-xs text-red-500">{{ form.errors.provider }}</p>
                     </div>
 
                     <!-- Cost -->
                     <div class="grid gap-1">
                         <Label class="text-xs">Cost <span class="text-red-500">*</span></Label>
-                        <Input class="text-xs h-8" v-model="form.cost" placeholder="e.g. 5000" />
+                        <Input class="h-8 text-xs" v-model="form.cost" placeholder="e.g. 5000" />
                         <p class="text-xs text-red-500">{{ form.errors.cost }}</p>
                     </div>
 
@@ -234,7 +224,7 @@ const submit = () => {
                     <div class="grid gap-1">
                         <Label class="text-xs">Fund Source <span class="text-red-500">*</span></Label>
                         <Select v-model="form.fund">
-                            <SelectTrigger class="text-xs h-8">
+                            <SelectTrigger class="h-8 text-xs">
                                 <SelectValue placeholder="Select fund source" />
                             </SelectTrigger>
                             <SelectContent>
@@ -250,7 +240,7 @@ const submit = () => {
                     <div class="grid gap-1">
                         <Label class="text-xs">Origin <span class="text-red-500">*</span></Label>
                         <Select v-model="form.origin">
-                            <SelectTrigger class="text-xs h-8">
+                            <SelectTrigger class="h-8 text-xs">
                                 <SelectValue placeholder="Select origin" />
                             </SelectTrigger>
                             <SelectContent>
@@ -260,10 +250,8 @@ const submit = () => {
                         </Select>
                         <p class="text-xs text-red-500">{{ form.errors.origin }}</p>
                     </div>
-
                 </form>
             </div>
-
         </div>
     </AppLayout>
 </template>

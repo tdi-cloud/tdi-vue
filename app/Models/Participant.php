@@ -21,7 +21,6 @@ class Participant extends Model
         return $this->belongsTo(Batch::class, 'batch_id');
     }
 
-   
     public function employee()
     {
         return $this->belongsTo(Employee::class, 'empcode', 'EMPCODE');

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import axios from 'axios';
 import { useConfirm } from '@/composables/useConfirm';
+import axios from 'axios';
+import { ref } from 'vue';
 
 const props = defineProps<{
     programId: number;

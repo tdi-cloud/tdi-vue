@@ -2,21 +2,19 @@
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
-import { ref, onMounted, watch } from 'vue';
-import PlaceholderPattern from '../components/PlaceholderPattern.vue';
+import { onMounted, ref, watch } from 'vue';
 import DashboardSummaryBanner from '../components/DashboardSummaryBanner.vue';
-import TrainingComplianceCard from '../components/TrainingComplianceCard.vue';
-import SupervisoryComplianceCard from '../components/SupervisoryComplianceCard.vue';
-import TreapComplianceCard from '../components/TreapComplianceCard.vue';
+import PlaceholderPattern from '../components/PlaceholderPattern.vue';
 import ReapComplianceCard from '../components/ReapComplianceCard.vue';
-import TdorComplianceCard from '../components/TdorComplianceCard.vue';
 import ReportsModal from '../components/ReportsModal.vue';
+import SupervisoryComplianceCard from '../components/SupervisoryComplianceCard.vue';
+import TdorComplianceCard from '../components/TdorComplianceCard.vue';
+import TrainingComplianceCard from '../components/TrainingComplianceCard.vue';
+import TreapComplianceCard from '../components/TreapComplianceCard.vue';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Dashboard', href: '/dashboard' },
-];
+const breadcrumbs: BreadcrumbItem[] = [{ title: 'Dashboard', href: '/dashboard' }];
 
 defineProps<{
     summary: {
@@ -29,19 +27,15 @@ defineProps<{
 
 /* ===================== SHARED FILTERS ===================== */
 
-const REGIONS = [
-    'ALL', 'CO', 'NCR', 'R1', 'R2', 'R3', 'R4A', 'R4B', 'R5',
-    'NIR', 'R6', 'R7', 'R8', 'R9', 'R10', 'R11', 'R12',
-    'CAR', 'CARAGA',
-];
+const REGIONS = ['ALL', 'CO', 'NCR', 'R1', 'R2', 'R3', 'R4A', 'R4B', 'R5', 'NIR', 'R6', 'R7', 'R8', 'R9', 'R10', 'R11', 'R12', 'CAR', 'CARAGA'];
 
 const STATUS_OPTIONS = ['PERMANENT', 'JOB ORDER', 'CONTRACTUAL', 'CTI'];
 
-const target           = ref<'Nationwide' | 'OPCR'>('Nationwide');
-const region           = ref('ALL');
-const selectedStatuses = ref<string[]>(STATUS_OPTIONS.filter((s) => s !== 'JOB ORDER'));
+const target = ref<'Nationwide' | 'OPCR'>('Nationwide');
+const region = ref('ALL');
+const selectedStatuses = ref<string[]>([...STATUS_OPTIONS]);
 
-const office        = ref('ALL');
+const office = ref('ALL');
 const officeOptions = ref<string[]>([]);
 
 const toggleStatus = (status: string) => {
@@ -68,13 +62,13 @@ watch(region, fetchOffices);
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-
             <!-- ===================== SUMMARY BANNER ===================== -->
             <DashboardSummaryBanner :summary="summary" />
 
             <!-- ===================== SHARED FILTER BAR ===================== -->
-            <div class="flex flex-wrap items-center gap-3 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-card px-5 py-3 shadow-sm">
-
+            <div
+                class="flex flex-wrap items-center gap-3 rounded-xl border border-sidebar-border/70 bg-card px-5 py-3 shadow-sm dark:border-sidebar-border"
+            >
                 <!-- Target filter -->
                 <Select v-model="target">
                     <SelectTrigger class="h-9 w-44 text-xs font-semibold">
@@ -104,12 +98,7 @@ watch(region, fetchOffices);
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem class="text-xs" value="ALL">All Offices</SelectItem>
-                        <SelectItem
-                            v-for="o in officeOptions"
-                            :key="o"
-                            class="text-xs"
-                            :value="o"
-                        >
+                        <SelectItem v-for="o in officeOptions" :key="o" class="text-xs" :value="o">
                             {{ o }}
                         </SelectItem>
                     </SelectContent>
@@ -120,14 +109,10 @@ watch(region, fetchOffices);
 
                 <!-- Plantilla status checkboxes -->
                 <div class="flex flex-wrap items-center gap-3">
-                    <label
-                        v-for="status in STATUS_OPTIONS"
-                        :key="status"
-                        class="flex items-center gap-1.5 cursor-pointer select-none"
-                    >
+                    <label v-for="status in STATUS_OPTIONS" :key="status" class="flex cursor-pointer select-none items-center gap-1.5">
                         <input
                             type="checkbox"
-                            class="h-4 w-4 rounded-full accent-amber-500 cursor-pointer"
+                            class="h-4 w-4 cursor-pointer rounded-full accent-amber-500"
                             :checked="selectedStatuses.includes(status)"
                             @change="toggleStatus(status)"
                         />
@@ -136,54 +121,22 @@ watch(region, fetchOffices);
                 </div>
 
                 <!-- Reports — pumili ng Report Time Range, tapos Download CSV (programs + batches + participants + attendance) -->
-                <ReportsModal
-                    class="ml-auto"
-                    :region="region"
-                    :office="office"
-                    :target="target"
-                    :selected-statuses="selectedStatuses"
-                />
-
+                <ReportsModal class="ml-auto" :region="region" :office="office" :target="target" :selected-statuses="selectedStatuses" />
             </div>
 
             <!-- ===================== TWO CARDS SIDE BY SIDE ===================== -->
             <div class="grid gap-4 md:grid-cols-2">
-                <TrainingComplianceCard
-                    :target="target"
-                    :region="region"
-                    :selected-statuses="selectedStatuses"
-                    :office="office"
-                />
-                <SupervisoryComplianceCard
-                    :target="target"
-                    :region="region"
-                    :selected-statuses="selectedStatuses"
-                    :office="office"
-                />
+                <TrainingComplianceCard :target="target" :region="region" :selected-statuses="selectedStatuses" :office="office" />
+                <SupervisoryComplianceCard :target="target" :region="region" :selected-statuses="selectedStatuses" :office="office" />
             </div>
 
             <!-- ===================== TREAP PANEL ===================== -->
-            <TreapComplianceCard
-                :target="target"
-                :region="region"
-                :selected-statuses="selectedStatuses"
-                :office="office"
-            />
+            <TreapComplianceCard :target="target" :region="region" :selected-statuses="selectedStatuses" :office="office" />
 
-            <ReapComplianceCard
-                :target="target"
-                :region="region"
-                :selected-statuses="selectedStatuses"
-                :office="office"
-            />
+            <ReapComplianceCard :target="target" :region="region" :selected-statuses="selectedStatuses" :office="office" />
 
             <!-- ===================== TDOR PANEL ===================== -->
-            <TdorComplianceCard
-                :target="target"
-                :region="region"
-                :selected-statuses="selectedStatuses"
-                :office="office"
-            />
+            <TdorComplianceCard :target="target" :region="region" :selected-statuses="selectedStatuses" :office="office" />
 
             <div class="grid auto-rows-min gap-4 md:grid-cols-3">
                 <div class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
@@ -200,7 +153,6 @@ watch(region, fetchOffices);
             <div class="relative min-h-[100vh] flex-1 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border md:min-h-min">
                 <PlaceholderPattern />
             </div>
-
         </div>
     </AppLayout>
 </template>

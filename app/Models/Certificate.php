@@ -28,8 +28,8 @@ class Certificate extends Model
 
     protected $casts = [
         'issued_date' => 'date',
-        'revoked_at'  => 'datetime',
-        'hours'       => 'decimal:1',
+        'revoked_at' => 'datetime',
+        'hours' => 'decimal:1',
     ];
 
     protected $appends = ['file_url'];
@@ -77,9 +77,9 @@ class Certificate extends Model
     {
         static::creating(function (Certificate $cert) {
             if (empty($cert->certificate_number)) {
-                $year  = now()->year;
+                $year = now()->year;
                 $count = static::whereYear('created_at', $year)->count() + 1;
-                $cert->certificate_number = 'TDI-' . $year . '-CERT-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+                $cert->certificate_number = 'TDI-'.$year.'-CERT-'.str_pad($count, 4, '0', STR_PAD_LEFT);
             }
         });
 

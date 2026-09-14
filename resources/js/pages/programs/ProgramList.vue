@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Trash2, ChevronRight, Layers, Users, ClipboardList, CalendarDays, BookOpen, UserCog, Building2 } from 'lucide-vue-next';
-import { router } from '@inertiajs/vue3';
-import { computed, ref, watch } from 'vue';
 import { useConfirm } from '@/composables/useConfirm';
+import { router } from '@inertiajs/vue3';
+import { BookOpen, Building2, CalendarDays, ChevronRight, ClipboardList, Layers, Trash2, UserCog, Users } from 'lucide-vue-next';
+import { computed, ref, watch } from 'vue';
 
 const { confirmDialog } = useConfirm();
 
@@ -27,8 +26,6 @@ interface Program {
     added_by: string | null;
 }
 
-
-
 const props = defineProps<{
     programs: Program[];
     search: string;
@@ -46,9 +43,7 @@ const filtered = computed(() => {
         // Search filter
         if (q) {
             const matches =
-                p.title.toLowerCase().includes(q) ||
-                p.description?.toLowerCase().includes(q) ||
-                p.program_code?.toLowerCase().includes(q);
+                p.title.toLowerCase().includes(q) || p.description?.toLowerCase().includes(q) || p.program_code?.toLowerCase().includes(q);
 
             if (!matches) return false;
         }
@@ -90,9 +85,12 @@ const perPage = 12;
 const currentPage = ref(1);
 const isChangingPage = ref(false);
 
-watch(() => [props.search, props.filterInitiated, props.filterBatchStatus, props.filterMonth, props.filterProvider, props.filterCategory], () => {
-    currentPage.value = 1;
-});
+watch(
+    () => [props.search, props.filterInitiated, props.filterBatchStatus, props.filterMonth, props.filterProvider, props.filterCategory],
+    () => {
+        currentPage.value = 1;
+    },
+);
 
 const totalPages = computed(() => Math.ceil(filtered.value.length / perPage));
 
@@ -153,30 +151,29 @@ const dateRange = (program: Program) => {
     <!-- No programs at all -->
     <div v-if="programs.length === 0" class="flex flex-col items-center justify-center py-20 text-center text-muted-foreground">
         <p class="text-sm font-semibold">No programs yet.</p>
-        <p class="text-xs mt-1">Click "Create Program" to add one.</p>
+        <p class="mt-1 text-xs">Click "Create Program" to add one.</p>
     </div>
 
     <template v-else>
-        <div class="flex flex-col gap-4 flex-1 min-h-0">
-
+        <div class="flex min-h-0 flex-1 flex-col gap-4">
             <!-- No search results -->
             <div v-if="filtered.length === 0" class="flex flex-col items-center justify-center py-20 text-center text-muted-foreground">
                 <p class="text-sm font-semibold">No programs found.</p>
-                <p class="text-xs mt-1">Try a different search term.</p>
+                <p class="mt-1 text-xs">Try a different search term.</p>
             </div>
 
             <!-- Scrollable list -->
-            <div v-else class="overflow-y-auto overflow-x-hidden flex-1 min-h-0 w-full max-w-full pb-4 px-1">
+            <div v-else class="min-h-0 w-full max-w-full flex-1 overflow-y-auto overflow-x-hidden px-1 pb-4">
                 <TransitionGroup
                     v-if="!isChangingPage"
                     tag="div"
-                    class="flex flex-col divide-y rounded-xl border bg-card overflow-hidden shadow-lg"
+                    class="flex flex-col divide-y overflow-hidden rounded-xl border bg-card shadow-lg"
                     appear
                 >
                     <div
                         v-for="(program, index) in paginated"
                         :key="program.id"
-                        class="group flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-muted/50"
+                        class="group flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50"
                         :style="{ animationDelay: `${index * 60}ms` }"
                         @click="viewProgram(program.id)"
                     >
@@ -189,16 +186,16 @@ const dateRange = (program: Program) => {
                         </div>
 
                         <!-- Text -->
-                        <div class="flex-1 min-w-0 overflow-hidden">
-                            <p class="text-sm font-extrabold dark:text-cyan-400 text-sky-900 line-clamp-1 break-words">
+                        <div class="min-w-0 flex-1 overflow-hidden">
+                            <p class="line-clamp-1 break-words text-sm font-extrabold text-sky-900 dark:text-cyan-400">
                                 {{ program.title }}
                             </p>
-                            <p class="text-xs text-muted-foreground line-clamp-1 break-words">
+                            <p class="line-clamp-1 break-words text-xs text-muted-foreground">
                                 {{ program.description || 'No description provided.' }}
                             </p>
 
                             <!-- Stats row -->
-                            <div class="flex items-center gap-3 mt-1.5 flex-wrap">
+                            <div class="mt-1.5 flex flex-wrap items-center gap-3">
                                 <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                                     <Layers class="h-3 w-3 text-blue-500" />
                                     {{ program.batches_count }} batch{{ program.batches_count === 1 ? '' : 'es' }}
@@ -211,15 +208,24 @@ const dateRange = (program: Program) => {
                                     <ClipboardList class="h-3 w-3 text-emerald-500" />
                                     {{ program.requirements_count }} requirement{{ program.requirements_count === 1 ? '' : 's' }}
                                 </span>
-                                <span v-if="dateRange(program)" class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                                <span
+                                    v-if="dateRange(program)"
+                                    class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400"
+                                >
                                     <CalendarDays class="h-3 w-3 text-amber-500" />
                                     {{ dateRange(program) }}
                                 </span>
-                                <span v-if="program.added_by" class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                                <span
+                                    v-if="program.added_by"
+                                    class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400"
+                                >
                                     <UserCog class="h-3 w-3 text-rose-500" />
                                     Added by {{ program.added_by }}
                                 </span>
-                                <span v-if="program.provider" class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                                <span
+                                    v-if="program.provider"
+                                    class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400"
+                                >
                                     <Building2 class="h-3 w-3 text-indigo-500" />
                                     {{ program.provider }}
                                 </span>
@@ -230,7 +236,7 @@ const dateRange = (program: Program) => {
                         <Button
                             variant="ghost"
                             size="icon"
-                            class="h-7 w-7 shrink-0 text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                            class="h-7 w-7 shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
                             @click.stop="deleteProgram(program.id)"
                         >
                             <Trash2 class="h-4 w-4" />
@@ -241,35 +247,36 @@ const dateRange = (program: Program) => {
             </div>
 
             <!-- Pagination fixed at bottom -->
-            <div v-if="totalPages > 1" class="shrink-0 flex items-center justify-between pt-4 border-t text-xs text-muted-foreground">
+            <div v-if="totalPages > 1" class="flex shrink-0 items-center justify-between border-t pt-4 text-xs text-muted-foreground">
                 <span>
-                    Showing {{ (currentPage - 1) * perPage + 1 }}–{{ Math.min(currentPage * perPage, filtered.length) }} of {{ filtered.length }} programs
+                    Showing {{ (currentPage - 1) * perPage + 1 }}–{{ Math.min(currentPage * perPage, filtered.length) }} of
+                    {{ filtered.length }} programs
                 </span>
-                <div class="flex gap-1 items-center flex-nowrap shrink-0">
+                <div class="flex shrink-0 flex-nowrap items-center gap-1">
                     <button
-                        class="px-3 py-1 rounded border text-xs disabled:opacity-40 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40 transition-colors"
+                        class="rounded border border-blue-200 px-3 py-1 text-xs text-blue-700 transition-colors hover:bg-blue-50 disabled:opacity-40 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40"
                         :disabled="currentPage === 1"
                         @click="changePage(currentPage - 1)"
                     >
                         Previous
                     </button>
                     <template v-for="(page, index) in pageNumbers" :key="`${page}-${index}`">
-                        <span v-if="page === '...'" class="px-1 text-xs text-muted-foreground select-none">
-                            &hellip;
-                        </span>
+                        <span v-if="page === '...'" class="select-none px-1 text-xs text-muted-foreground"> &hellip; </span>
                         <button
                             v-else
-                            class="px-3 py-1 rounded border text-xs transition-colors"
-                            :class="page === currentPage
-                                ? 'bg-blue-600 border-blue-600 text-white'
-                                : 'border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40'"
+                            class="rounded border px-3 py-1 text-xs transition-colors"
+                            :class="
+                                page === currentPage
+                                    ? 'border-blue-600 bg-blue-600 text-white'
+                                    : 'border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40'
+                            "
                             @click="changePage(Number(page))"
                         >
                             {{ page }}
                         </button>
                     </template>
                     <button
-                        class="px-3 py-1 rounded border text-xs disabled:opacity-40 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40 transition-colors"
+                        class="rounded border border-blue-200 px-3 py-1 text-xs text-blue-700 transition-colors hover:bg-blue-50 disabled:opacity-40 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40"
                         :disabled="currentPage === totalPages"
                         @click="changePage(currentPage + 1)"
                     >
@@ -277,7 +284,6 @@ const dateRange = (program: Program) => {
                     </button>
                 </div>
             </div>
-
         </div>
     </template>
 </template>

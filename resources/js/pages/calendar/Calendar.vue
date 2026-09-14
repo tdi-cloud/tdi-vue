@@ -2,26 +2,19 @@
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { computed, ref } from 'vue';
 
-import FullCalendar from '@fullcalendar/vue3';
 import type { CalendarOptions, EventClickArg } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
-import timeGridPlugin from '@fullcalendar/timegrid';
-import listPlugin from '@fullcalendar/list';
 import interactionPlugin from '@fullcalendar/interaction';
+import listPlugin from '@fullcalendar/list';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import FullCalendar from '@fullcalendar/vue3';
 
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ExternalLink } from 'lucide-vue-next';
 
 interface CalendarEvent {
@@ -57,9 +50,7 @@ const props = defineProps<{
     events: CalendarEvent[];
 }>();
 
-const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Calendar', href: '/calendar' },
-];
+const breadcrumbs: BreadcrumbItem[] = [{ title: 'Calendar', href: '/calendar' }];
 
 // Dialog state para sa clicked event
 const showDialog = ref(false);
@@ -90,18 +81,10 @@ function eventOrder(a: { start: number }, b: { start: number }): number {
 // ── Filter by program category ──────────────────────────────────────────────
 const selectedCategory = ref('all');
 
-const categories = computed(() =>
-    [...new Set(
-        props.events
-            .map((e) => e.extendedProps.category)
-            .filter((c): c is string => !!c)
-    )].sort()
-);
+const categories = computed(() => [...new Set(props.events.map((e) => e.extendedProps.category).filter((c): c is string => !!c))].sort());
 
 const filteredEvents = computed(() =>
-    selectedCategory.value === 'all'
-        ? props.events
-        : props.events.filter((e) => e.extendedProps.category === selectedCategory.value)
+    selectedCategory.value === 'all' ? props.events : props.events.filter((e) => e.extendedProps.category === selectedCategory.value),
 );
 
 const statusVariant = computed(() => {
@@ -165,18 +148,10 @@ const calendarOptions = computed<CalendarOptions>(() => ({
 
             <!-- Legend -->
             <div class="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                <span class="flex items-center gap-2">
-                    <span class="h-3 w-3 rounded-full bg-indigo-500" /> Upcoming
-                </span>
-                <span class="flex items-center gap-2">
-                    <span class="h-3 w-3 rounded-full bg-cyan-500" /> Active
-                </span>
-                <span class="flex items-center gap-2">
-                    <span class="h-3 w-3 rounded-full bg-emerald-500" /> Completed
-                </span>
-                <span class="flex items-center gap-2">
-                    <span class="h-3 w-3 rounded-full bg-amber-500" /> Rescheduled
-                </span>
+                <span class="flex items-center gap-2"> <span class="h-3 w-3 rounded-full bg-indigo-500" /> Upcoming </span>
+                <span class="flex items-center gap-2"> <span class="h-3 w-3 rounded-full bg-cyan-500" /> Active </span>
+                <span class="flex items-center gap-2"> <span class="h-3 w-3 rounded-full bg-emerald-500" /> Completed </span>
+                <span class="flex items-center gap-2"> <span class="h-3 w-3 rounded-full bg-amber-500" /> Rescheduled </span>
             </div>
         </div>
 
@@ -187,9 +162,7 @@ const calendarOptions = computed<CalendarOptions>(() => ({
                     <DialogTitle class="pr-6">
                         {{ selected?.program_title ?? selected?.program_code }}
                     </DialogTitle>
-                    <DialogDescription>
-                        {{ selected?.program_code }} · Batch {{ selected?.batch }}
-                    </DialogDescription>
+                    <DialogDescription> {{ selected?.program_code }} · Batch {{ selected?.batch }} </DialogDescription>
                 </DialogHeader>
 
                 <div v-if="selected" class="grid gap-3 text-sm">
@@ -208,22 +181,16 @@ const calendarOptions = computed<CalendarOptions>(() => ({
                             <p class="text-xs text-muted-foreground">Date</p>
                             <p class="font-medium">
                                 {{ selected.date_start }}
-                                <template v-if="selected.date_end !== selected.date_start">
-                                    – {{ selected.date_end }}
-                                </template>
+                                <template v-if="selected.date_end !== selected.date_start"> – {{ selected.date_end }} </template>
                             </p>
                         </div>
                         <div>
                             <p class="text-xs text-muted-foreground">Time</p>
-                            <p class="font-medium">
-                                {{ selected.time_start }} – {{ selected.time_end }}
-                            </p>
+                            <p class="font-medium">{{ selected.time_start }} – {{ selected.time_end }}</p>
                         </div>
                         <div>
                             <p class="text-xs text-muted-foreground">Duration</p>
-                            <p class="font-medium">
-                                {{ selected.days }} day(s) · {{ selected.hours }} hr(s)
-                            </p>
+                            <p class="font-medium">{{ selected.days }} day(s) · {{ selected.hours }} hr(s)</p>
                         </div>
                         <div>
                             <p class="text-xs text-muted-foreground">Participants</p>

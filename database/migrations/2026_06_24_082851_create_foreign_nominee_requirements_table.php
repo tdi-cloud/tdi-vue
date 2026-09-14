@@ -11,8 +11,8 @@ return new class extends Migration
         Schema::create('foreign_nominee_requirements', function (Blueprint $table) {
             $table->id();
             $table->foreignId('foreign_sponsor_config_id')
-                  ->constrained('foreign_sponsor_configs')
-                  ->cascadeOnDelete();
+                ->constrained('foreign_sponsor_configs')
+                ->cascadeOnDelete();
             $table->integer('sort_order')->default(0);
             $table->string('question');
             $table->text('description')->nullable();

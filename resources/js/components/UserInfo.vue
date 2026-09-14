@@ -24,7 +24,7 @@ const showAvatar = computed(() => props.user.avatar && props.user.avatar !== '')
 <template>
     <Avatar class="h-8 w-8 overflow-hidden rounded-lg bg-blue-600">
         <AvatarImage v-if="showAvatar" :src="user.avatar" :alt="user.name" />
-        <AvatarFallback class="rounded-lg text-white font-extrabold">
+        <AvatarFallback class="rounded-lg font-extrabold text-white">
             {{ getInitials(user.name) }}
         </AvatarFallback>
     </Avatar>

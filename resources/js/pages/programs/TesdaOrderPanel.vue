@@ -1,13 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
 import { Button } from '@/components/ui/button';
-import {
-    FileSignature, Download, Trash2, Plus, Loader2,
-    Calendar, Layers, UserCheck,
-} from 'lucide-vue-next';
-import { router } from '@inertiajs/vue3';
-import TesdaOrderModal from '@/pages/programs/TesdaOrderModal.vue';
 import { useConfirm } from '@/composables/useConfirm';
+import TesdaOrderModal from '@/pages/programs/TesdaOrderModal.vue';
+import { router } from '@inertiajs/vue3';
+import { Calendar, Download, FileSignature, Layers, Loader2, Plus, Trash2, UserCheck } from 'lucide-vue-next';
+import { onMounted, ref } from 'vue';
 
 const { confirmDialog } = useConfirm();
 
@@ -33,9 +30,9 @@ const props = defineProps<{
     tesdaOrders?: TesdaOrder[];
 }>();
 
-const orders     = ref<TesdaOrder[]>(props.tesdaOrders ?? []);
-const showModal  = ref(false);
-const loading    = ref(false);
+const orders = ref<TesdaOrder[]>(props.tesdaOrders ?? []);
+const showModal = ref(false);
+const loading = ref(false);
 
 async function refreshOrders() {
     loading.value = true;
@@ -70,10 +67,10 @@ function formatDate(d: string) {
 // Bahagyang nagbabago ang accent color ng bawat card depende sa series_year,
 // para may visual variety kahit maraming cards na ang nakikita.
 const accentPalette = [
-    { ring: 'ring-blue-100',    bg: 'from-blue-600 to-indigo-600',   chip: 'bg-blue-50 text-blue-700' },
-    { ring: 'ring-emerald-100', bg: 'from-emerald-600 to-teal-600',  chip: 'bg-emerald-50 text-emerald-700' },
-    { ring: 'ring-amber-100',   bg: 'from-amber-500 to-orange-600',  chip: 'bg-amber-50 text-amber-700' },
-    { ring: 'ring-purple-100',  bg: 'from-purple-600 to-fuchsia-600', chip: 'bg-purple-50 text-purple-700' },
+    { ring: 'ring-blue-100', bg: 'from-blue-600 to-indigo-600', chip: 'bg-blue-50 text-blue-700' },
+    { ring: 'ring-emerald-100', bg: 'from-emerald-600 to-teal-600', chip: 'bg-emerald-50 text-emerald-700' },
+    { ring: 'ring-amber-100', bg: 'from-amber-500 to-orange-600', chip: 'bg-amber-50 text-amber-700' },
+    { ring: 'ring-purple-100', bg: 'from-purple-600 to-fuchsia-600', chip: 'bg-purple-50 text-purple-700' },
 ];
 function accentFor(id: number) {
     return accentPalette[id % accentPalette.length];
@@ -82,18 +79,13 @@ function accentFor(id: number) {
 
 <template>
     <div class="flex flex-col gap-4">
-
         <div class="flex items-center justify-between">
             <div>
-                <h2 class="text-sm font-bold flex items-center gap-1.5">
-                    <FileSignature class="h-4 w-4 text-blue-600" /> TESDA Orders
-                </h2>
-                <p class="text-xs text-muted-foreground mt-0.5">
-                    Generate an official TESDA Order authorizing participants of this program.
-                </p>
+                <h2 class="flex items-center gap-1.5 text-sm font-bold"><FileSignature class="h-4 w-4 text-blue-600" /> TESDA Orders</h2>
+                <p class="mt-0.5 text-xs text-muted-foreground">Generate an official TESDA Order authorizing participants of this program.</p>
             </div>
             <Button size="sm" class="bg-blue-600 hover:bg-blue-700 dark:text-white" @click="showModal = true">
-                <Plus class="h-3.5 w-3.5 mr-1" /> Generate TESDA Order
+                <Plus class="mr-1 h-3.5 w-3.5" /> Generate TESDA Order
             </Button>
         </div>
 
@@ -105,48 +97,48 @@ function accentFor(id: number) {
         <!-- Empty state -->
         <div
             v-else-if="orders.length === 0"
-            class="flex flex-col items-center justify-center py-16 text-center text-muted-foreground rounded-2xl border border-dashed"
+            class="flex flex-col items-center justify-center rounded-2xl border border-dashed py-16 text-center text-muted-foreground"
         >
             <img src="/storage/images/tesda-order.png" alt="TESDA Order" class="mb-4 w-40 drop-shadow-lg" />
             <p class="text-sm font-semibold">No TESDA Orders generated yet.</p>
-            <p class="text-xs mt-1">Click "Generate TESDA Order" to create one.</p>
+            <p class="mt-1 text-xs">Click "Generate TESDA Order" to create one.</p>
         </div>
 
         <!-- Card grid -->
-        <div v-else class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <div
                 v-for="order in orders"
                 :key="order.id"
-                class="group relative rounded-2xl border bg-card overflow-hidden shadow-sm hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5"
+                class="group relative overflow-hidden rounded-2xl border bg-card shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
             >
                 <!-- Watermark — faded TESDA Order artwork sa likod ng card, ibabang-kanang bahagi -->
                 <img
                     src="/storage/images/tesda-order.png"
                     alt=""
-                    class="pointer-events-none select-none absolute -bottom-8 -right-8 z-0 w-40 opacity-10"
+                    class="pointer-events-none absolute -bottom-8 -right-8 z-0 w-40 select-none opacity-10"
                 />
 
                 <!-- Colored header strip with document illustration -->
                 <div
-                    class="relative z-10 h-20 bg-gradient-to-br px-4 py-3 flex items-start justify-between overflow-hidden"
+                    class="relative z-10 flex h-20 items-start justify-between overflow-hidden bg-gradient-to-br px-4 py-3"
                     :class="accentFor(order.id).bg"
                 >
                     <!-- Decorative stacked "paper" illustration -->
-                    <div class="absolute -right-3 -top-3 h-16 w-16 rounded-xl bg-white/15 rotate-12"></div>
-                    <div class="absolute -right-1 -top-5 h-16 w-16 rounded-xl bg-white/10 rotate-[24deg]"></div>
+                    <div class="absolute -right-3 -top-3 h-16 w-16 rotate-12 rounded-xl bg-white/15"></div>
+                    <div class="absolute -right-1 -top-5 h-16 w-16 rotate-[24deg] rounded-xl bg-white/10"></div>
 
-                    <div class="relative h-9 w-9 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center ring-1 ring-white/30">
+                    <div class="relative flex h-9 w-9 items-center justify-center rounded-lg bg-white/20 ring-1 ring-white/30 backdrop-blur-sm">
                         <FileSignature class="h-4.5 w-4.5 text-white" />
                     </div>
 
-                    <span class="relative text-[10px] font-bold text-white/90 bg-black/15 rounded-full px-2 py-1 backdrop-blur-sm">
+                    <span class="relative rounded-full bg-black/15 px-2 py-1 text-[10px] font-bold text-white/90 backdrop-blur-sm">
                         Series {{ order.series_year }}
                     </span>
                 </div>
 
                 <!-- Body -->
-                <div class="relative z-10 p-4 flex flex-col gap-3">
-                    <p class="text-sm font-bold leading-snug line-clamp-2 min-h-[2.5rem]">
+                <div class="relative z-10 flex flex-col gap-3 p-4">
+                    <p class="line-clamp-2 min-h-[2.5rem] text-sm font-bold leading-snug">
                         {{ order.subject }}
                     </p>
 
@@ -165,12 +157,12 @@ function accentFor(id: number) {
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-2 pt-1 border-t">
+                    <div class="flex items-center gap-2 border-t pt-1">
                         <a
                             v-if="order.pdf_path"
                             :href="route('tesda-orders.download', order.id)"
                             target="_blank"
-                            class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg text-xs font-bold py-2 transition-colors"
+                            class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold transition-colors"
                             :class="accentFor(order.id).chip + ' hover:brightness-95'"
                         >
                             <Download class="h-3.5 w-3.5" /> View PDF
@@ -178,7 +170,7 @@ function accentFor(id: number) {
                         <Button
                             variant="ghost"
                             size="icon"
-                            class="h-8 w-8 shrink-0 text-muted-foreground hover:text-red-500 hover:bg-red-50"
+                            class="h-8 w-8 shrink-0 text-muted-foreground hover:bg-red-50 hover:text-red-500"
                             @click="deleteOrder(order)"
                         >
                             <Trash2 class="h-3.5 w-3.5" />
@@ -188,11 +180,6 @@ function accentFor(id: number) {
             </div>
         </div>
 
-        <TesdaOrderModal
-            :open="showModal"
-            :program="program"
-            @close="showModal = false"
-            @generated="onGenerated"
-        />
+        <TesdaOrderModal :open="showModal" :program="program" @close="showModal = false" @generated="onGenerated" />
     </div>
 </template>

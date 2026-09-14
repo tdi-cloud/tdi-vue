@@ -1,11 +1,21 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount, computed } from 'vue';
 import axios from 'axios';
 import {
-    X, BarChart3, Users2, CheckCircle2,
-    Building2, CalendarDays, TrendingUp, Search,
-    ChevronLeft, ChevronRight, UserRound, Loader2, ListFilter,
+    BarChart3,
+    Building2,
+    CalendarDays,
+    CheckCircle2,
+    ChevronLeft,
+    ChevronRight,
+    ListFilter,
+    Loader2,
+    Search,
+    TrendingUp,
+    UserRound,
+    Users2,
+    X,
 } from 'lucide-vue-next';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import VueApexCharts from 'vue3-apexcharts';
 
 const emit = defineEmits(['close']);
@@ -30,50 +40,48 @@ interface NomineePage {
 }
 
 const statusOptions: Record<string, string> = {
-    for_interview:  'For Interview',
-    endorsed:       'Endorsed',
+    for_interview: 'For Interview',
+    endorsed: 'Endorsed',
     waiting_result: 'Waiting Result',
-    not_endorsed:   'Not Endorsed',
-    accepted:       'Accepted',
-    regret:         'Regret',
-    cancelled:      'Cancelled',
+    not_endorsed: 'Not Endorsed',
+    accepted: 'Accepted',
+    regret: 'Regret',
+    cancelled: 'Cancelled',
 };
 
 const statusGaugeColors: Record<string, [string, string]> = {
-    for_interview:  ['#60a5fa', '#2563eb'],
-    endorsed:       ['#a78bfa', '#7c3aed'],
+    for_interview: ['#60a5fa', '#2563eb'],
+    endorsed: ['#a78bfa', '#7c3aed'],
     waiting_result: ['#22d3ee', '#0891b2'],
-    not_endorsed:   ['#f87171', '#dc2626'],
-    accepted:       ['#38bdf8', '#34d399'],
-    regret:         ['#fbbf24', '#d97706'],
-    cancelled:      ['#9ca3af', '#4b5563'],
+    not_endorsed: ['#f87171', '#dc2626'],
+    accepted: ['#38bdf8', '#34d399'],
+    regret: ['#fbbf24', '#d97706'],
+    cancelled: ['#9ca3af', '#4b5563'],
 };
 
 const filterStatus = ref('accepted');
 const filterAgency = ref('TESDA');
-const filterYear   = ref('');
+const filterYear = ref('');
 
-const loading   = ref(false);
-const errorMsg  = ref('');
+const loading = ref(false);
+const errorMsg = ref('');
 const yearOptions = ref<number[]>([]);
 
 const selectedStatusCount = ref(0);
-const totalNominees       = ref(0);
+const totalNominees = ref(0);
 
-const gaugePercent = computed(() =>
-    totalNominees.value > 0
-        ? Math.round((selectedStatusCount.value / totalNominees.value) * 100)
-        : 0
-);
+const gaugePercent = computed(() => (totalNominees.value > 0 ? Math.round((selectedStatusCount.value / totalNominees.value) * 100) : 0));
 
-const gaugeSeries  = computed(() => [gaugePercent.value]);
+const gaugeSeries = computed(() => [gaugePercent.value]);
 const gaugeOptions = computed(() => {
     const [from, to] = statusGaugeColors[filterStatus.value] ?? ['#38bdf8', '#34d399'];
     return {
         chart: {
             type: 'radialBar',
             animations: {
-                enabled: true, easing: 'easeinout', speed: 700,
+                enabled: true,
+                easing: 'easeinout',
+                speed: 700,
                 animateGradually: { enabled: true, delay: 100 },
                 dynamicAnimation: { enabled: true, speed: 400 },
             },
@@ -84,11 +92,16 @@ const gaugeOptions = computed(() => {
                 track: { background: '#eef2f7', strokeWidth: '100%' },
                 dataLabels: {
                     name: {
-                        fontSize: '11px', fontWeight: 700, color: '#6b7280', offsetY: 22,
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        color: '#6b7280',
+                        offsetY: 22,
                         formatter: () => statusOptions[filterStatus.value]?.toUpperCase() ?? '',
                     },
                     value: {
-                        fontSize: '30px', fontWeight: 800, offsetY: -8,
+                        fontSize: '30px',
+                        fontWeight: 800,
+                        offsetY: -8,
                         formatter: (val: number) => val + '%',
                     },
                 },
@@ -98,21 +111,27 @@ const gaugeOptions = computed(() => {
         fill: {
             type: 'gradient',
             gradient: {
-                shade: 'light', type: 'horizontal', shadeIntensity: 0.5,
-                gradientToColors: [to], inverseColors: false, stops: [0, 100],
+                shade: 'light',
+                type: 'horizontal',
+                shadeIntensity: 0.5,
+                gradientToColors: [to],
+                inverseColors: false,
+                stops: [0, 100],
             },
         },
-        colors:  [from],
-        labels:  [statusOptions[filterStatus.value]],
+        colors: [from],
+        labels: [statusOptions[filterStatus.value]],
     };
 });
 
-const donutSeries  = ref<number[]>([]);
+const donutSeries = ref<number[]>([]);
 const donutOptions = ref<any>({
     chart: {
         type: 'donut',
         animations: {
-            enabled: true, easing: 'easeinout', speed: 600,
+            enabled: true,
+            easing: 'easeinout',
+            speed: 600,
             animateGradually: { enabled: true, delay: 120 },
             dynamicAnimation: { enabled: true, speed: 350 },
         },
@@ -128,10 +147,10 @@ const donutOptions = ref<any>({
             },
         },
     },
-    labels:  [],
-    legend:  { position: 'bottom', fontSize: '12px', markers: { offsetX: -2 } },
-    colors:  ['#3b82f6', '#8b5cf6', '#06b6d4', '#ef4444', '#10b981', '#f59e0b', '#9ca3af'],
-    stroke:  { width: 3, colors: ['#ffffff'] },
+    labels: [],
+    legend: { position: 'bottom', fontSize: '12px', markers: { offsetX: -2 } },
+    colors: ['#3b82f6', '#8b5cf6', '#06b6d4', '#ef4444', '#10b981', '#f59e0b', '#9ca3af'],
+    stroke: { width: 3, colors: ['#ffffff'] },
     dataLabels: { enabled: true, formatter: (val: number) => val.toFixed(0) + '%' },
     plotOptions: {
         pie: {
@@ -148,13 +167,16 @@ const donutOptions = ref<any>({
     },
 });
 
-const barReceived      = ref<number[]>([]);
-const barDisseminated  = ref<number[]>([]);
-const barOptions       = ref<any>({
+const barReceived = ref<number[]>([]);
+const barDisseminated = ref<number[]>([]);
+const barOptions = ref<any>({
     chart: {
-        type: 'bar', toolbar: { show: false },
+        type: 'bar',
+        toolbar: { show: false },
         animations: {
-            enabled: true, easing: 'easeinout', speed: 600,
+            enabled: true,
+            easing: 'easeinout',
+            speed: 600,
             animateGradually: { enabled: true, delay: 120 },
             dynamicAnimation: { enabled: true, speed: 350 },
         },
@@ -170,45 +192,45 @@ const barOptions       = ref<any>({
         },
     },
     plotOptions: { bar: { columnWidth: '50%', borderRadius: 6, borderRadiusApplication: 'end' } },
-    dataLabels:  { enabled: false },
-    xaxis:       { categories: [], labels: { style: { fontSize: '11px' } } },
+    dataLabels: { enabled: false },
+    xaxis: { categories: [], labels: { style: { fontSize: '11px' } } },
     fill: {
         type: 'gradient',
         gradient: { shade: 'light', type: 'vertical', shadeIntensity: 0.3, opacityFrom: 1, opacityTo: 0.85, stops: [0, 100] },
     },
     colors: ['#3b82f6', '#10b981'],
     legend: { position: 'top' },
-    grid:   { borderColor: '#f1f5f9' },
+    grid: { borderColor: '#f1f5f9' },
 });
 
 let activeController: AbortController | null = null;
 
 const fetchDashboard = async () => {
     if (activeController) activeController.abort();
-    const controller  = new AbortController();
-    activeController  = controller;
-    loading.value     = true;
-    errorMsg.value    = '';
+    const controller = new AbortController();
+    activeController = controller;
+    loading.value = true;
+    errorMsg.value = '';
 
     try {
         const { data } = await axios.get(route('foreign-programs.dashboard-data'), {
             params: {
                 status: filterStatus.value || undefined,
                 agency: filterAgency.value || undefined,
-                year:   filterYear.value   || undefined,
+                year: filterYear.value || undefined,
             },
             signal: controller.signal,
         });
 
-        yearOptions.value         = data.years ?? [];
+        yearOptions.value = data.years ?? [];
         selectedStatusCount.value = data.participants.selectedStatusCount;
-        totalNominees.value       = data.participants.totalParticipants;
+        totalNominees.value = data.participants.totalParticipants;
 
         donutOptions.value = { ...donutOptions.value, labels: data.participants.statusLabels };
-        donutSeries.value  = data.participants.statusSeries;
+        donutSeries.value = data.participants.statusSeries;
 
-        barOptions.value      = { ...barOptions.value, xaxis: { ...barOptions.value.xaxis, categories: data.programs.sponsors } };
-        barReceived.value     = data.programs.received;
+        barOptions.value = { ...barOptions.value, xaxis: { ...barOptions.value.xaxis, categories: data.programs.sponsors } };
+        barReceived.value = data.programs.received;
         barDisseminated.value = data.programs.disseminated;
     } catch (err: any) {
         if (axios.isCancel(err) || err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') return;
@@ -216,7 +238,7 @@ const fetchDashboard = async () => {
         errorMsg.value = `Failed to load dashboard data${err?.response?.status ? ` (${err.response.status})` : ''}.`;
     } finally {
         if (activeController === controller) {
-            loading.value    = false;
+            loading.value = false;
             activeController = null;
         }
     }
@@ -231,15 +253,18 @@ watch([filterStatus, filterAgency, filterYear], () => {
 onMounted(fetchDashboard);
 onBeforeUnmount(() => {
     clearTimeout(debounce);
-    if (activeController) { activeController.abort(); activeController = null; }
+    if (activeController) {
+        activeController.abort();
+        activeController = null;
+    }
 });
 
 // ── Participants drill-down panel (buksan sa pag-click ng chart) ────────────
 
 const showParticipantsPanel = ref(false);
-const panelTitle    = ref('');
-const panelLoading  = ref(false);
-const panelSearch   = ref('');
+const panelTitle = ref('');
+const panelLoading = ref(false);
+const panelSearch = ref('');
 const panelNominees = ref<NomineePage | null>(null);
 let panelFilters: { status?: string; organizing_sponsor?: string } = {};
 let panelController: AbortController | null = null;
@@ -247,7 +272,7 @@ let panelController: AbortController | null = null;
 async function fetchPanelNominees(page = 1) {
     if (panelController) panelController.abort();
     const controller = new AbortController();
-    panelController  = controller;
+    panelController = controller;
     panelLoading.value = true;
 
     try {
@@ -255,8 +280,8 @@ async function fetchPanelNominees(page = 1) {
             params: {
                 ...panelFilters,
                 agency: filterAgency.value || undefined,
-                year:   filterYear.value   || undefined,
-                search: panelSearch.value  || undefined,
+                year: filterYear.value || undefined,
+                search: panelSearch.value || undefined,
                 page,
             },
             signal: controller.signal,
@@ -268,7 +293,7 @@ async function fetchPanelNominees(page = 1) {
     } finally {
         if (panelController === controller) {
             panelLoading.value = false;
-            panelController    = null;
+            panelController = null;
         }
     }
 }
@@ -296,79 +321,111 @@ function onPanelSearchInput() {
     <Transition name="backdrop" appear>
         <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="emit('close')">
             <Transition name="pop" appear>
-                <div class="bg-background rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
-
+                <div class="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-2xl bg-background shadow-2xl">
                     <!-- Header -->
-                    <div class="sticky top-0 z-10 bg-gradient-to-r from-indigo-600 via-violet-600 to-blue-600 border-b px-6 py-4 rounded-t-2xl flex items-center gap-3 text-white">
-                        <div class="flex items-center justify-center h-9 w-9 rounded-xl bg-white/20 backdrop-blur shadow">
+                    <div
+                        class="sticky top-0 z-10 flex items-center gap-3 rounded-t-2xl border-b bg-gradient-to-r from-indigo-600 via-violet-600 to-blue-600 px-6 py-4 text-white"
+                    >
+                        <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 shadow backdrop-blur">
                             <BarChart3 class="h-4 w-4 text-white" />
                         </div>
                         <div>
                             <h2 class="text-base font-bold leading-none">Foreign Programs Dashboard</h2>
-                            <p class="text-xs text-white/75 mt-0.5">Overview of nominees and programs</p>
+                            <p class="mt-0.5 text-xs text-white/75">Overview of nominees and programs</p>
                         </div>
-                        <button class="ml-auto text-white/80 hover:text-white transition-colors" @click="emit('close')">
+                        <button class="ml-auto text-white/80 transition-colors hover:text-white" @click="emit('close')">
                             <X class="h-5 w-5" />
                         </button>
                     </div>
 
-                    <div class="p-6 flex flex-col gap-6">
-
+                    <div class="flex flex-col gap-6 p-6">
                         <!-- Filters -->
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <div class="anim-in rounded-xl border border-indigo-200 dark:border-indigo-900 bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/30 dark:to-background p-3 flex flex-col gap-1.5" style="animation-delay:0ms">
-                                <label class="text-[10px] font-bold uppercase tracking-wide text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
-                                    <span class="flex items-center justify-center h-5 w-5 rounded-md bg-indigo-600 shadow-sm">
+                        <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+                            <div
+                                class="anim-in flex flex-col gap-1.5 rounded-xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-white p-3 dark:border-indigo-900 dark:from-indigo-950/30 dark:to-background"
+                                style="animation-delay: 0ms"
+                            >
+                                <label
+                                    class="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-indigo-600 dark:text-indigo-400"
+                                >
+                                    <span class="flex h-5 w-5 items-center justify-center rounded-md bg-indigo-600 shadow-sm">
                                         <CheckCircle2 class="h-3 w-3 text-white" />
                                     </span>
                                     Status
                                 </label>
-                                <select v-model="filterStatus" class="border border-indigo-200 dark:border-indigo-900 rounded-lg px-2 py-1.5 text-xs bg-white dark:bg-background focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                                <select
+                                    v-model="filterStatus"
+                                    class="rounded-lg border border-indigo-200 bg-white px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:border-indigo-900 dark:bg-background"
+                                >
                                     <option v-for="(label, key) in statusOptions" :key="key" :value="key">{{ label }}</option>
                                 </select>
                             </div>
 
-                            <div class="anim-in rounded-xl border border-emerald-200 dark:border-emerald-900 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/30 dark:to-background p-3 flex flex-col gap-1.5" style="animation-delay:80ms">
-                                <label class="text-[10px] font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-                                    <span class="flex items-center justify-center h-5 w-5 rounded-md bg-emerald-600 shadow-sm">
+                            <div
+                                class="anim-in flex flex-col gap-1.5 rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-3 dark:border-emerald-900 dark:from-emerald-950/30 dark:to-background"
+                                style="animation-delay: 80ms"
+                            >
+                                <label
+                                    class="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400"
+                                >
+                                    <span class="flex h-5 w-5 items-center justify-center rounded-md bg-emerald-600 shadow-sm">
                                         <Building2 class="h-3 w-3 text-white" />
                                     </span>
                                     Agency
                                 </label>
-                                <select v-model="filterAgency" class="border border-emerald-200 dark:border-emerald-900 rounded-lg px-2 py-1.5 text-xs bg-white dark:bg-background focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                                <select
+                                    v-model="filterAgency"
+                                    class="rounded-lg border border-emerald-200 bg-white px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400 dark:border-emerald-900 dark:bg-background"
+                                >
                                     <option value="TESDA">TESDA</option>
                                     <option value="">All Other Offices</option>
                                 </select>
                             </div>
 
-                            <div class="anim-in rounded-xl border border-amber-200 dark:border-amber-900 bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/30 dark:to-background p-3 flex flex-col gap-1.5" style="animation-delay:160ms">
-                                <label class="text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-                                    <span class="flex items-center justify-center h-5 w-5 rounded-md bg-amber-500 shadow-sm">
+                            <div
+                                class="anim-in flex flex-col gap-1.5 rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-3 dark:border-amber-900 dark:from-amber-950/30 dark:to-background"
+                                style="animation-delay: 160ms"
+                            >
+                                <label
+                                    class="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400"
+                                >
+                                    <span class="flex h-5 w-5 items-center justify-center rounded-md bg-amber-500 shadow-sm">
                                         <CalendarDays class="h-3 w-3 text-white" />
                                     </span>
                                     Year
                                 </label>
-                                <select v-model="filterYear" class="border border-amber-200 dark:border-amber-900 rounded-lg px-2 py-1.5 text-xs bg-white dark:bg-background focus:outline-none focus:ring-2 focus:ring-amber-400">
+                                <select
+                                    v-model="filterYear"
+                                    class="rounded-lg border border-amber-200 bg-white px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400 dark:border-amber-900 dark:bg-background"
+                                >
                                     <option value="">All Years</option>
                                     <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
                                 </select>
                             </div>
                         </div>
 
-                        <p v-if="errorMsg" class="text-xs text-red-600 text-center">{{ errorMsg }}</p>
+                        <p v-if="errorMsg" class="text-center text-xs text-red-600">{{ errorMsg }}</p>
 
                         <!-- KPI: gauge + stat tiles -->
-                        <div class="grid grid-cols-1 md:grid-cols-[1.1fr_1fr] gap-4">
-                            <div class="anim-in rounded-2xl border p-4 flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/40 dark:to-background" style="animation-delay:200ms">
-                                <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground self-start mb-1 flex items-center gap-1.5">
+                        <div class="grid grid-cols-1 gap-4 md:grid-cols-[1.1fr_1fr]">
+                            <div
+                                class="anim-in flex flex-col items-center justify-center rounded-2xl border bg-gradient-to-br from-slate-50 to-white p-4 dark:from-slate-900/40 dark:to-background"
+                                style="animation-delay: 200ms"
+                            >
+                                <p
+                                    class="mb-1 flex items-center gap-1.5 self-start text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                                >
                                     <TrendingUp class="h-3.5 w-3.5 text-indigo-500" /> Status Rate
                                 </p>
                                 <VueApexCharts type="radialBar" height="220" :options="gaugeOptions" :series="gaugeSeries" />
                             </div>
 
                             <div class="grid grid-cols-1 gap-4">
-                                <div class="anim-in rounded-xl border bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-950/40 dark:to-indigo-900/20 p-4 flex items-center gap-3" style="animation-delay:260ms">
-                                    <div class="h-10 w-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-sm">
+                                <div
+                                    class="anim-in flex items-center gap-3 rounded-xl border bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 dark:from-indigo-950/40 dark:to-indigo-900/20"
+                                    style="animation-delay: 260ms"
+                                >
+                                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 shadow-sm">
                                         <Users2 class="h-5 w-5 text-white" />
                                     </div>
                                     <div>
@@ -376,8 +433,11 @@ function onPanelSearchInput() {
                                         <p class="text-2xl font-bold">{{ selectedStatusCount }}</p>
                                     </div>
                                 </div>
-                                <div class="anim-in rounded-xl border bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/40 dark:to-blue-900/20 p-4 flex items-center gap-3" style="animation-delay:320ms">
-                                    <div class="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-sm">
+                                <div
+                                    class="anim-in flex items-center gap-3 rounded-xl border bg-gradient-to-br from-blue-50 to-blue-100 p-4 dark:from-blue-950/40 dark:to-blue-900/20"
+                                    style="animation-delay: 320ms"
+                                >
+                                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 shadow-sm">
                                         <Users2 class="h-5 w-5 text-white" />
                                     </div>
                                     <div>
@@ -389,29 +449,41 @@ function onPanelSearchInput() {
                         </div>
 
                         <!-- Charts -->
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div class="anim-in rounded-xl border p-4" style="animation-delay:380ms">
-                                <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center justify-between gap-1.5">
+                        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                            <div class="anim-in rounded-xl border p-4" style="animation-delay: 380ms">
+                                <p
+                                    class="mb-2 flex items-center justify-between gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                                >
                                     <span class="flex items-center gap-1.5">
                                         <span class="h-2 w-2 rounded-full bg-violet-500"></span> Nominees by Status
                                     </span>
-                                    <span class="normal-case font-normal text-[10px] text-muted-foreground/70">Click a slice for details</span>
+                                    <span class="text-[10px] font-normal normal-case text-muted-foreground/70">Click a slice for details</span>
                                 </p>
                                 <VueApexCharts type="donut" height="300" :options="donutOptions" :series="donutSeries" class="cursor-pointer" />
                             </div>
-                            <div class="anim-in rounded-xl border p-4" style="animation-delay:440ms">
-                                <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center justify-between gap-1.5">
+                            <div class="anim-in rounded-xl border p-4" style="animation-delay: 440ms">
+                                <p
+                                    class="mb-2 flex items-center justify-between gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                                >
                                     <span class="flex items-center gap-1.5">
                                         <span class="h-2 w-2 rounded-full bg-blue-500"></span> Programs per Organizing Sponsor
                                     </span>
-                                    <span class="normal-case font-normal text-[10px] text-muted-foreground/70">Click a bar for details</span>
+                                    <span class="text-[10px] font-normal normal-case text-muted-foreground/70">Click a bar for details</span>
                                 </p>
-                                <VueApexCharts type="bar" height="300" :options="barOptions" class="cursor-pointer"
-                                    :series="[{ name: 'Received', data: barReceived }, { name: 'Disseminated', data: barDisseminated }]" />
+                                <VueApexCharts
+                                    type="bar"
+                                    height="300"
+                                    :options="barOptions"
+                                    class="cursor-pointer"
+                                    :series="[
+                                        { name: 'Received', data: barReceived },
+                                        { name: 'Disseminated', data: barDisseminated },
+                                    ]"
+                                />
                             </div>
                         </div>
 
-                        <p v-if="loading" class="text-xs text-muted-foreground text-center">Loading...</p>
+                        <p v-if="loading" class="text-center text-xs text-muted-foreground">Loading...</p>
                     </div>
                 </div>
             </Transition>
@@ -420,35 +492,35 @@ function onPanelSearchInput() {
 
     <!-- ===== Participants Drill-down Panel ===== -->
     <Transition name="slide-panel">
-        <div v-if="showParticipantsPanel" class="fixed inset-y-0 right-0 z-[60] w-full max-w-md bg-background border-l shadow-2xl flex flex-col">
-            <div class="sticky top-0 bg-gradient-to-r from-indigo-600 via-violet-600 to-blue-600 text-white px-5 py-4 flex items-center gap-3">
-                <div class="h-8 w-8 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center shrink-0">
+        <div v-if="showParticipantsPanel" class="fixed inset-y-0 right-0 z-[60] flex w-full max-w-md flex-col border-l bg-background shadow-2xl">
+            <div class="sticky top-0 flex items-center gap-3 bg-gradient-to-r from-indigo-600 via-violet-600 to-blue-600 px-5 py-4 text-white">
+                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/20 backdrop-blur">
                     <ListFilter class="h-4 w-4 text-white" />
                 </div>
-                <div class="flex-1 min-w-0">
-                    <h2 class="font-bold text-sm truncate">{{ panelTitle }}</h2>
+                <div class="min-w-0 flex-1">
+                    <h2 class="truncate text-sm font-bold">{{ panelTitle }}</h2>
                     <p class="text-xs text-white/75">{{ panelNominees?.total ?? 0 }} participant(s)</p>
                 </div>
-                <button class="text-white/80 hover:text-white transition-colors" @click="closeParticipantsPanel">
+                <button class="text-white/80 transition-colors hover:text-white" @click="closeParticipantsPanel">
                     <X class="h-5 w-5" />
                 </button>
             </div>
 
-            <div class="p-4 border-b">
+            <div class="border-b p-4">
                 <div class="relative">
-                    <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <input
                         v-model="panelSearch"
                         type="text"
                         placeholder="Search name, agency, position..."
-                        class="w-full border rounded-xl pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-background shadow-sm"
+                        class="w-full rounded-xl border bg-background py-2 pl-9 pr-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         @input="onPanelSearchInput"
                     />
                 </div>
             </div>
 
             <div class="flex-1 overflow-y-auto p-4">
-                <div v-if="panelLoading" class="flex items-center justify-center gap-2 text-xs text-muted-foreground py-8">
+                <div v-if="panelLoading" class="flex items-center justify-center gap-2 py-8 text-xs text-muted-foreground">
                     <Loader2 class="h-4 w-4 animate-spin" /> Loading...
                 </div>
 
@@ -456,22 +528,24 @@ function onPanelSearchInput() {
                     <div v-for="n in panelNominees.data" :key="n.id" class="rounded-xl border px-3 py-2.5">
                         <div class="flex items-start gap-2.5">
                             <div
-                                class="h-7 w-7 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                                class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
                                 :class="n.sex === 'female' ? 'bg-pink-100 dark:bg-pink-950/50' : 'bg-sky-100 dark:bg-sky-950/50'"
                             >
                                 <UserRound class="h-4 w-4" :class="n.sex === 'female' ? 'text-pink-500' : 'text-sky-600'" />
                             </div>
                             <div class="min-w-0 flex-1">
-                                <p class="font-bold text-sm leading-tight truncate">{{ n.name }}</p>
+                                <p class="truncate text-sm font-bold leading-tight">{{ n.name }}</p>
                                 <p class="text-xs text-muted-foreground">{{ n.position }}</p>
-                                <p class="text-xs text-muted-foreground flex items-center gap-1">
+                                <p class="flex items-center gap-1 text-xs text-muted-foreground">
                                     <Building2 class="h-3 w-3 shrink-0" /> {{ n.agency }}
                                 </p>
-                                <p v-if="n.program_title" class="text-[11px] text-muted-foreground/80 mt-0.5 truncate">
+                                <p v-if="n.program_title" class="mt-0.5 truncate text-[11px] text-muted-foreground/80">
                                     {{ n.program_title }}
                                 </p>
                             </div>
-                            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 shrink-0">
+                            <span
+                                class="shrink-0 rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
+                            >
                                 {{ n.status_label }}
                             </span>
                         </div>
@@ -481,18 +555,16 @@ function onPanelSearchInput() {
                     <div v-if="panelNominees.last_page > 1" class="flex items-center justify-between pt-2 text-xs">
                         <button
                             type="button"
-                            class="flex items-center gap-1 px-2 py-1 rounded border disabled:opacity-40"
+                            class="flex items-center gap-1 rounded border px-2 py-1 disabled:opacity-40"
                             :disabled="panelNominees.current_page <= 1"
                             @click="fetchPanelNominees(panelNominees.current_page - 1)"
                         >
                             <ChevronLeft class="h-3 w-3" /> Previous
                         </button>
-                        <span class="text-muted-foreground">
-                            Page {{ panelNominees.current_page }} of {{ panelNominees.last_page }}
-                        </span>
+                        <span class="text-muted-foreground"> Page {{ panelNominees.current_page }} of {{ panelNominees.last_page }} </span>
                         <button
                             type="button"
-                            class="flex items-center gap-1 px-2 py-1 rounded border disabled:opacity-40"
+                            class="flex items-center gap-1 rounded border px-2 py-1 disabled:opacity-40"
                             :disabled="panelNominees.current_page >= panelNominees.last_page"
                             @click="fetchPanelNominees(panelNominees.current_page + 1)"
                         >
@@ -501,7 +573,7 @@ function onPanelSearchInput() {
                     </div>
                 </div>
 
-                <p v-else class="text-xs text-muted-foreground text-center py-8">No participants found.</p>
+                <p v-else class="py-8 text-center text-xs text-muted-foreground">No participants found.</p>
             </div>
         </div>
     </Transition>
@@ -510,23 +582,51 @@ function onPanelSearchInput() {
 
 <style scoped>
 @keyframes fadeSlideIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to   { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 .anim-in {
     opacity: 0;
     animation: fadeSlideIn 0.45s ease-out forwards;
 }
 .backdrop-enter-active,
-.backdrop-leave-active { transition: opacity 0.2s ease; }
+.backdrop-leave-active {
+    transition: opacity 0.2s ease;
+}
 .backdrop-enter-from,
-.backdrop-leave-to     { opacity: 0; }
-.pop-enter-active { transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
-.pop-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
-.pop-enter-from   { opacity: 0; transform: scale(0.94) translateY(8px); }
-.pop-leave-to     { opacity: 0; transform: scale(0.97); }
+.backdrop-leave-to {
+    opacity: 0;
+}
+.pop-enter-active {
+    transition:
+        opacity 0.25s ease,
+        transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.pop-leave-active {
+    transition:
+        opacity 0.15s ease,
+        transform 0.15s ease;
+}
+.pop-enter-from {
+    opacity: 0;
+    transform: scale(0.94) translateY(8px);
+}
+.pop-leave-to {
+    opacity: 0;
+    transform: scale(0.97);
+}
 .slide-panel-enter-active,
-.slide-panel-leave-active { transition: transform 0.25s ease; }
+.slide-panel-leave-active {
+    transition: transform 0.25s ease;
+}
 .slide-panel-enter-from,
-.slide-panel-leave-to     { transform: translateX(100%); }
+.slide-panel-leave-to {
+    transform: translateX(100%);
+}
 </style>

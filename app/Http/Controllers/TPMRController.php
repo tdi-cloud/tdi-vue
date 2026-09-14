@@ -10,7 +10,6 @@ use Illuminate\Http\Request;
 
 class TPMRController extends Controller
 {
-    
     public function generate(Request $request)
     {
         $validated = $request->validate([
@@ -35,7 +34,7 @@ class TPMRController extends Controller
         $batchesQuery = Batch::query()->with('program');
 
         if ($filter === 'monthly' && $month) {
-           
+
             $batchesQuery->whereYear('date_start', $year)
                 ->whereMonth('date_start', $month);
         } elseif ($filter === 'annual') {
@@ -56,7 +55,7 @@ class TPMRController extends Controller
             foreach ($batch->participants as $participant) {
                 $employee = $employees->get($participant->empcode);
 
-                if (!$employee) {
+                if (! $employee) {
                     continue; // walang match sa employees table, skip
                 }
 
@@ -68,7 +67,7 @@ class TPMRController extends Controller
                     'program_title' => optional($batch->program)->title ?? '(Unknown Program)',
                     'start' => $batch->date_start,
                     'end' => $batch->date_end,
-                    'name' => trim($employee->FIRSTNAME . ' ' . $employee->MI . ' ' . $employee->LASTNAME),
+                    'name' => trim($employee->FIRSTNAME.' '.$employee->MI.' '.$employee->LASTNAME),
                     'office' => $employee->{'OFFICE/DIVISION'},
                     'position' => $employee->POSITION,
                     // ito ang requirement mo: attendance === 'Complete' -> Completed
@@ -107,7 +106,7 @@ class TPMRController extends Controller
 
         $pdf->setPaper('legal', 'portrait');
 
-        return $pdf->stream('TPMR-' . now()->format('Ymd-His') . '.pdf');
+        return $pdf->stream('TPMR-'.now()->format('Ymd-His').'.pdf');
     }
 
     public function searchEmployees(Request $request)

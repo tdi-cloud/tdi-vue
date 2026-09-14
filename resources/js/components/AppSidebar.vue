@@ -2,38 +2,28 @@
 // import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
 // import NavUser from '@/components/NavUser.vue';
-import {
-    Sidebar,
-    SidebarContent,
-    SidebarFooter,
-    SidebarHeader,
-    SidebarMenu,
-    SidebarMenuButton,
-    SidebarMenuItem,
-    SidebarTrigger,
-} from '@/components/ui/sidebar';
+import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
+import { Toaster } from '@/components/ui/toast';
+import { useFlash } from '@/composables/useFlash';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
 import {
     BookOpen,
-    Folder,
-    ChartPie,
     CalendarRange,
-    Users,
     ChartBarStacked,
+    ChartPie,
+    ClipboardCheck,
+    ClipboardList,
     Earth,
     FileStack,
-    ClipboardList,
     Gauge,
-    Map,
-    ShieldCheck,
     Images,
-    ClipboardCheck,
+    Map,
     MessageSquareWarning,
+    ShieldCheck,
+    Users,
 } from 'lucide-vue-next';
-import { useFlash } from '@/composables/useFlash';
-import { Toaster } from '@/components/ui/toast';
+import { computed } from 'vue';
 import AppLogo from './AppLogo.vue';
 
 useFlash();
@@ -169,19 +159,6 @@ const mainNavItems = computed<NavItem[]>(() => {
     }
     return items;
 });
-
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Github Repo',
-        href: 'https://github.com/laravel/vue-starter-kit',
-        icon: Folder,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits',
-        icon: BookOpen,
-    },
-];
 </script>
 
 <template>
@@ -189,13 +166,11 @@ const footerNavItems: NavItem[] = [
         <SidebarHeader>
             <SidebarMenu>
                 <SidebarMenuItem>
-
                     <SidebarMenuButton size="lg" as-child>
                         <Link :href="isAdmin ? route('dashboard') : route('home')">
                             <AppLogo />
                         </Link>
                     </SidebarMenuButton>
-
                 </SidebarMenuItem>
             </SidebarMenu>
         </SidebarHeader>

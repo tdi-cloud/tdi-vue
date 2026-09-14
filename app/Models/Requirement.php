@@ -18,7 +18,7 @@ class Requirement extends Model
 
     protected $casts = [
         'is_required' => 'boolean',
-        'due_date'    => 'date:Y-m-d',
+        'due_date' => 'date:Y-m-d',
     ];
 
     /**
@@ -27,33 +27,33 @@ class Requirement extends Model
      */
     public const TYPES = [
         'TREAP' => [
-            'name'  => 'Terminal Report',
-            'unit'  => 'days',
+            'name' => 'Terminal Report',
+            'unit' => 'days',
             'value' => 5,
         ],
         'REAP' => [
-            'name'  => 'Terminal Report and Re-entry Action Plan',
-            'unit'  => 'days',
+            'name' => 'Terminal Report and Re-entry Action Plan',
+            'unit' => 'days',
             'value' => 15,
         ],
         'TDOR' => [
-            'name'  => 'Training Development Outcome Report',
-            'unit'  => 'months',
+            'name' => 'Training Development Outcome Report',
+            'unit' => 'months',
             'value' => 6,
         ],
         'Feedback Report' => [
-            'name'  => 'Feedback Report',
-            'unit'  => 'days',
+            'name' => 'Feedback Report',
+            'unit' => 'days',
             'value' => 5, // ⚠️ PALITAN kung iba ang tamang bilang ng days
         ],
         'Benchmarking Report' => [
-            'name'  => 'Benchmarking Report',
-            'unit'  => 'days',
+            'name' => 'Benchmarking Report',
+            'unit' => 'days',
             'value' => 5,
         ],
         'After Activity Report' => [
-            'name'  => 'After Activity Report',
-            'unit'  => 'days',
+            'name' => 'After Activity Report',
+            'unit' => 'days',
             'value' => 5,
         ],
     ];

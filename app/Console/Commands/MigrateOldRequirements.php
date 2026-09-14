@@ -29,6 +29,7 @@ class MigrateOldRequirements extends Command
     {
         if (! Schema::hasTable('old_requirements')) {
             $this->error("Walang 'old_requirements' table. I-import muna ang lumang data (tingnan ang instructions).");
+
             return self::FAILURE;
         }
 
@@ -36,6 +37,7 @@ class MigrateOldRequirements extends Command
 
         if ($oldRows->isEmpty()) {
             $this->warn('Walang laman ang old_requirements table.');
+
             return self::SUCCESS;
         }
 
@@ -51,6 +53,7 @@ class MigrateOldRequirements extends Command
             // Siguraduhing kilala ng bagong system ang title na ito
             if (! array_key_exists($title, Requirement::TYPES)) {
                 $this->warn("Nilaktawan: hindi kilalang title '{$row->title}' (program {$row->program_code})");
+
                 continue;
             }
 
@@ -60,11 +63,13 @@ class MigrateOldRequirements extends Command
 
             if (! $program) {
                 $missingPrograms[] = $row->program_code;
+
                 continue;
             }
 
             if ($program->batches->isEmpty()) {
                 $noBatches[] = $row->program_code;
+
                 continue;
             }
 
@@ -73,13 +78,13 @@ class MigrateOldRequirements extends Command
                 $requirement = Requirement::updateOrCreate(
                     [
                         'batch_id' => $batch->id,
-                        'title'    => $title,
+                        'title' => $title,
                     ],
                     [
-                        'name'        => Requirement::nameFor($title),
-                        'due_date'    => Requirement::dueDateFor($title, $batch->date_end),
+                        'name' => Requirement::nameFor($title),
+                        'due_date' => Requirement::dueDateFor($title, $batch->date_end),
                         'is_required' => $row->required === 'on' || $row->required === '1' || $row->required === 1,
-                        'note'        => $row->description,
+                        'note' => $row->description,
                     ]
                 );
 
@@ -87,21 +92,21 @@ class MigrateOldRequirements extends Command
             }
         }
 
-        $this->info("✅ Tapos na!");
+        $this->info('✅ Tapos na!');
         $this->line("   Nagawa: {$created} requirement(s)");
         $this->line("   Nilaktawan (existing na): {$skippedExisting}");
 
         if ($missingPrograms) {
-            $this->warn('   Mga program_code na WALA sa bagong database: ' . implode(', ', array_unique($missingPrograms)));
+            $this->warn('   Mga program_code na WALA sa bagong database: '.implode(', ', array_unique($missingPrograms)));
         }
 
         if ($noBatches) {
-            $this->warn('   Mga program na WALANG batches (walang malilikha): ' . implode(', ', array_unique($noBatches)));
+            $this->warn('   Mga program na WALANG batches (walang malilikha): '.implode(', ', array_unique($noBatches)));
         }
 
         $this->line('');
-        $this->line("Kapag na-verify mo nang tama ang nalipat, pwede mo nang burahin ang temp table:");
-        $this->line("   DROP TABLE old_requirements;");
+        $this->line('Kapag na-verify mo nang tama ang nalipat, pwede mo nang burahin ang temp table:');
+        $this->line('   DROP TABLE old_requirements;');
 
         return self::SUCCESS;
     }

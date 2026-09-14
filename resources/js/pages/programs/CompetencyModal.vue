@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
-import { router } from '@inertiajs/vue3';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Lightbulb, Search, Plus, TriangleAlert, X, LoaderCircle } from 'lucide-vue-next';
+import { router } from '@inertiajs/vue3';
+import { Lightbulb, LoaderCircle, Plus, Search, TriangleAlert, X } from 'lucide-vue-next';
+import { computed, ref, watch } from 'vue';
 
 interface CompetencyItem {
     domain: string;
@@ -91,41 +91,39 @@ const selected = ref<CompetencyItem[]>([]);
 const processing = ref(false);
 
 // I-reset ang state tuwing bubuksan ang modal
-watch(() => props.open, (val) => {
-    if (val) {
-        search.value = '';
-        selected.value = [];
-    }
-});
+watch(
+    () => props.open,
+    (val) => {
+        if (val) {
+            search.value = '';
+            selected.value = [];
+        }
+    },
+);
 
 // Choices: grouped by domain, tinatanggal ang naka-add na at ang hindi tugma sa search
 const grouped = computed(() => {
     const q = search.value.trim().toLowerCase();
-    return DOMAIN_ORDER
-        .map((domain) => ({
-            domain,
-            items: COMPETENCIES.filter(
-                (c) =>
-                    c.domain === domain &&
-                    !props.existing.includes(c.competency) &&
-                    (q === '' || c.competency.toLowerCase().includes(q) || c.domain.toLowerCase().includes(q)),
-            ),
-        }))
-        .filter((g) => g.items.length > 0);
+    return DOMAIN_ORDER.map((domain) => ({
+        domain,
+        items: COMPETENCIES.filter(
+            (c) =>
+                c.domain === domain &&
+                !props.existing.includes(c.competency) &&
+                (q === '' || c.competency.toLowerCase().includes(q) || c.domain.toLowerCase().includes(q)),
+        ),
+    })).filter((g) => g.items.length > 0);
 });
 
 // Selected items, grouped din para sa "ADDED" panel
 const selectedGrouped = computed(() =>
-    DOMAIN_ORDER
-        .map((domain) => ({
-            domain,
-            items: selected.value.filter((c) => c.domain === domain),
-        }))
-        .filter((g) => g.items.length > 0),
+    DOMAIN_ORDER.map((domain) => ({
+        domain,
+        items: selected.value.filter((c) => c.domain === domain),
+    })).filter((g) => g.items.length > 0),
 );
 
-const isSelected = (item: CompetencyItem) =>
-    selected.value.some((s) => s.competency === item.competency);
+const isSelected = (item: CompetencyItem) => selected.value.some((s) => s.competency === item.competency);
 
 const toggle = (item: CompetencyItem) => {
     if (isSelected(item)) {
@@ -163,52 +161,40 @@ const submit = () => {
 
 <template>
     <Dialog :open="open" @update:open="emit('update:open', $event)">
-        <DialogContent class="!max-w-3xl p-0 overflow-hidden !rounded-2xl gap-0">
-
+        <DialogContent class="!max-w-3xl gap-0 overflow-hidden !rounded-2xl p-0">
             <!-- Header -->
-            <DialogHeader class="px-5 py-4 border-b shrink-0">
+            <DialogHeader class="shrink-0 border-b px-5 py-4">
                 <DialogTitle>
-                    <span class="flex items-center gap-2">
-                        <Lightbulb class="h-5 w-5 text-yellow-500" /> Competencies
-                    </span>
+                    <span class="flex items-center gap-2"> <Lightbulb class="h-5 w-5 text-yellow-500" /> Competencies </span>
                 </DialogTitle>
             </DialogHeader>
 
             <!-- Body: choices (left) + added preview (right) -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 h-[480px]">
-
+            <div class="grid h-[480px] grid-cols-1 sm:grid-cols-2">
                 <!-- LEFT: search + grouped choices + footer -->
-                <div class="flex flex-col border-r min-h-0">
-
+                <div class="flex min-h-0 flex-col border-r">
                     <!-- Search -->
-                    <div class="p-3 shrink-0">
+                    <div class="shrink-0 p-3">
                         <div class="relative">
-                            <Search class="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                            <Input
-                                v-model="search"
-                                class="text-xs h-9 pl-8 rounded-xl"
-                                placeholder="Search..."
-                            />
+                            <Search class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                            <Input v-model="search" class="h-9 rounded-xl pl-8 text-xs" placeholder="Search..." />
                         </div>
                     </div>
 
                     <!-- Choices list -->
-                    <div class="flex-1 overflow-y-auto px-3 pb-3 space-y-4 min-h-0">
+                    <div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 pb-3">
                         <div v-for="group in grouped" :key="group.domain">
-                            <p
-                                class="text-[11px] font-extrabold uppercase tracking-wide mb-1.5"
-                                :class="DOMAIN_COLORS[group.domain]"
-                            >
+                            <p class="mb-1.5 text-[11px] font-extrabold uppercase tracking-wide" :class="DOMAIN_COLORS[group.domain]">
                                 {{ group.domain }}
                             </p>
                             <label
                                 v-for="item in group.items"
                                 :key="item.competency"
-                                class="flex items-start gap-2.5 px-1.5 py-1.5 rounded-lg cursor-pointer hover:bg-muted/60 transition-colors"
+                                class="flex cursor-pointer items-start gap-2.5 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-muted/60"
                             >
                                 <input
                                     type="checkbox"
-                                    class="mt-0.5 h-4 w-4 shrink-0 rounded border-input accent-blue-600 cursor-pointer"
+                                    class="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-input accent-blue-600"
                                     :checked="isSelected(item)"
                                     @change="toggle(item)"
                                 />
@@ -216,43 +202,37 @@ const submit = () => {
                             </label>
                         </div>
 
-                        <div
-                            v-if="grouped.length === 0"
-                            class="flex flex-col items-center justify-center py-10 text-center text-muted-foreground"
-                        >
+                        <div v-if="grouped.length === 0" class="flex flex-col items-center justify-center py-10 text-center text-muted-foreground">
                             <p class="text-xs font-semibold">No competencies found.</p>
-                            <p class="text-[11px] mt-1">Try a different search, or everything has been added already.</p>
+                            <p class="mt-1 text-[11px]">Try a different search, or everything has been added already.</p>
                         </div>
                     </div>
 
                     <!-- Footer -->
-                    <div class="shrink-0 flex items-center justify-between border-t px-4 py-3">
-                        <p class="text-xs text-muted-foreground font-medium">{{ selected.length }} selected</p>
+                    <div class="flex shrink-0 items-center justify-between border-t px-4 py-3">
+                        <p class="text-xs font-medium text-muted-foreground">{{ selected.length }} selected</p>
                         <Button
                             size="sm"
-                            class="bg-blue-600 hover:bg-blue-700 dark:text-white rounded-full px-5"
+                            class="rounded-full bg-blue-600 px-5 hover:bg-blue-700 dark:text-white"
                             :disabled="selected.length === 0 || processing"
                             @click="submit"
                         >
-                            <LoaderCircle v-if="processing" class="h-3 w-3 animate-spin mr-1" />
-                            <Plus v-else class="h-4 w-4 mr-1" /> Add
+                            <LoaderCircle v-if="processing" class="mr-1 h-3 w-3 animate-spin" />
+                            <Plus v-else class="mr-1 h-4 w-4" /> Add
                         </Button>
                     </div>
                 </div>
 
                 <!-- RIGHT: "ADDED" preview ng mga napili -->
-                <div class="hidden sm:flex flex-col min-h-0">
-                    <div class="px-4 py-3 shrink-0">
+                <div class="hidden min-h-0 flex-col sm:flex">
+                    <div class="shrink-0 px-4 py-3">
                         <p class="text-xs font-extrabold tracking-wide text-muted-foreground">
-                            ADDED <span class="text-blue-600 ml-1">{{ selected.length }}</span>
+                            ADDED <span class="ml-1 text-blue-600">{{ selected.length }}</span>
                         </p>
                     </div>
 
                     <!-- Empty state -->
-                    <div
-                        v-if="selected.length === 0"
-                        class="flex-1 flex flex-col items-center justify-center text-center px-6"
-                    >
+                    <div v-if="selected.length === 0" class="flex flex-1 flex-col items-center justify-center px-6 text-center">
                         <span class="flex items-center gap-2 text-muted-foreground">
                             <TriangleAlert class="h-4 w-4 text-red-500" />
                             <span class="text-sm">Nothing added yet.</span>
@@ -260,23 +240,20 @@ const submit = () => {
                     </div>
 
                     <!-- Selected list -->
-                    <div v-else class="flex-1 overflow-y-auto px-4 pb-4 space-y-4 min-h-0">
+                    <div v-else class="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-4">
                         <div v-for="group in selectedGrouped" :key="group.domain">
-                            <p
-                                class="text-[11px] font-extrabold uppercase tracking-wide mb-1.5"
-                                :class="DOMAIN_COLORS[group.domain]"
-                            >
+                            <p class="mb-1.5 text-[11px] font-extrabold uppercase tracking-wide" :class="DOMAIN_COLORS[group.domain]">
                                 {{ group.domain }}
                             </p>
                             <div
                                 v-for="item in group.items"
                                 :key="item.competency"
-                                class="flex items-start justify-between gap-2 rounded-lg border px-2.5 py-1.5 mb-1.5"
+                                class="mb-1.5 flex items-start justify-between gap-2 rounded-lg border px-2.5 py-1.5"
                             >
                                 <span class="text-xs leading-snug">{{ item.competency }}</span>
                                 <button
                                     type="button"
-                                    class="shrink-0 mt-0.5 text-muted-foreground hover:text-red-500 transition-colors"
+                                    class="mt-0.5 shrink-0 text-muted-foreground transition-colors hover:text-red-500"
                                     @click="remove(item)"
                                 >
                                     <X class="h-3.5 w-3.5" />
@@ -285,7 +262,6 @@ const submit = () => {
                         </div>
                     </div>
                 </div>
-
             </div>
         </DialogContent>
     </Dialog>

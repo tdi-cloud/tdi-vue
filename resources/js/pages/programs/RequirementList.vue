@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { router, useForm } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Plus, LoaderCircle, Save, ClipboardList, CalendarClock, Trash2, BadgeCheck, StickyNote } from 'lucide-vue-next';
-import { ref, computed } from 'vue';
+import { Textarea } from '@/components/ui/textarea';
 import { useConfirm } from '@/composables/useConfirm';
+import { router, useForm } from '@inertiajs/vue3';
+import { BadgeCheck, CalendarClock, ClipboardList, LoaderCircle, Plus, Save, StickyNote, Trash2 } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 
 const { confirmDialog } = useConfirm();
 
@@ -72,13 +72,9 @@ const existingTitles = computed(() => {
     return titles;
 });
 
-const availableTypes = computed(() =>
-    REQUIREMENT_TYPES.filter((t) => !existingTitles.value.has(t.title)),
-);
+const availableTypes = computed(() => REQUIREMENT_TYPES.filter((t) => !existingTitles.value.has(t.title)));
 
-const selectedType = computed<RequirementType | undefined>(() =>
-    REQUIREMENT_TYPES.find((t) => t.title === form.title),
-);
+const selectedType = computed<RequirementType | undefined>(() => REQUIREMENT_TYPES.find((t) => t.title === form.title));
 
 /*
  * ✅ BINAGO: hindi na kasama ang weekend sa pagbilang.
@@ -114,8 +110,7 @@ const computeDueDate = (dateEnd: string, type: RequirementType): Date => {
     return addBusinessDays(d, type.value);
 };
 
-const formatDate = (date: string | Date) =>
-    new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+const formatDate = (date: string | Date) => new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 
 // Preview ng magiging due date PER BATCH habang pumipili sa modal
 const duePreview = computed(() => {
@@ -162,14 +157,13 @@ const removeRequirement = async (requirement: Requirement) => {
 
 <template>
     <div class="flex flex-col gap-4">
-
         <!-- Header row -->
         <div class="flex items-center justify-between">
             <div>
                 <h1 class="font-bold">Requirements</h1>
                 <p class="text-xs text-muted-foreground">
-                    Requirements that participants must submit after attending this program.
-                    Due dates are auto-computed from each batch's end date (working days only).
+                    Requirements that participants must submit after attending this program. Due dates are auto-computed from each batch's end date
+                    (working days only).
                 </p>
             </div>
             <Button
@@ -178,15 +172,12 @@ const removeRequirement = async (requirement: Requirement) => {
                 :disabled="!batches.length || !availableTypes.length"
                 @click="openModal"
             >
-                <Plus class="h-4 w-4 mr-1" /> Add Requirement
+                <Plus class="mr-1 h-4 w-4" /> Add Requirement
             </Button>
         </div>
 
         <!-- Walang batch pa -->
-        <div
-            v-if="!batches.length"
-            class="flex flex-col items-center justify-center py-16 px-6 text-center rounded-2xl border gap-3"
-        >
+        <div v-if="!batches.length" class="flex flex-col items-center justify-center gap-3 rounded-2xl border px-6 py-16 text-center">
             <!-- Illustration: empty clipboard / no batches -->
             <svg viewBox="0 0 200 160" class="h-40 w-auto" xmlns="http://www.w3.org/2000/svg">
                 <ellipse cx="100" cy="142" rx="70" ry="8" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
@@ -199,18 +190,14 @@ const removeRequirement = async (requirement: Requirement) => {
                 <path d="M140 105 h16 M148 97 v16" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" class="text-amber-500" />
             </svg>
             <p class="text-sm font-bold text-slate-500">No batches yet</p>
-            <p class="text-xs text-slate-400 max-w-xs">Add a batch first in the Participants tab before adding requirements.</p>
+            <p class="max-w-xs text-xs text-slate-400">Add a batch first in the Participants tab before adding requirements.</p>
         </div>
 
         <!-- Per-batch sections -->
         <template v-else>
-            <div
-                v-for="batch in batches"
-                :key="batch.id"
-                class="rounded-2xl border p-4 shadow-sm flex flex-col gap-3"
-            >
+            <div v-for="batch in batches" :key="batch.id" class="flex flex-col gap-3 rounded-2xl border p-4 shadow-sm">
                 <div class="flex items-center justify-between">
-                    <p class="text-sm font-bold flex items-center gap-1.5">
+                    <p class="flex items-center gap-1.5 text-sm font-bold">
                         <ClipboardList class="h-4 w-4 text-blue-500" />
                         {{ batch.batch }}
                     </p>
@@ -221,18 +208,16 @@ const removeRequirement = async (requirement: Requirement) => {
 
                 <!-- Requirements ng batch na ito -->
                 <template v-if="batch.requirements?.length">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                         <div
                             v-for="r in batch.requirements"
                             :key="r.id"
                             class="group relative flex flex-col gap-2 rounded-xl border p-3.5 shadow-sm transition-shadow hover:shadow-md"
-                            :class="r.is_required
-                                ? 'border-blue-200 dark:border-blue-800/40 bg-blue-50/40 dark:bg-blue-950/10'
-                                : 'bg-card'"
+                            :class="r.is_required ? 'border-blue-200 bg-blue-50/40 dark:border-blue-800/40 dark:bg-blue-950/10' : 'bg-card'"
                         >
                             <button
                                 type="button"
-                                class="absolute top-2.5 right-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all"
+                                class="absolute right-2.5 top-2.5 text-muted-foreground opacity-0 transition-all hover:text-red-500 group-hover:opacity-100"
                                 @click="removeRequirement(r)"
                             >
                                 <Trash2 class="h-3.5 w-3.5" />
@@ -240,29 +225,29 @@ const removeRequirement = async (requirement: Requirement) => {
 
                             <span
                                 v-if="r.is_required"
-                                class="self-start inline-flex items-center gap-1 rounded-full bg-blue-600/10 text-blue-600 dark:text-blue-400 px-2 py-0.5 text-[11px] font-bold"
+                                class="inline-flex items-center gap-1 self-start rounded-full bg-blue-600/10 px-2 py-0.5 text-[11px] font-bold text-blue-600 dark:text-blue-400"
                             >
                                 <BadgeCheck class="h-3 w-3" /> Required
                             </span>
                             <span
                                 v-else
-                                class="self-start inline-flex items-center rounded-full bg-muted text-muted-foreground px-2 py-0.5 text-[11px] font-semibold"
+                                class="inline-flex items-center self-start rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground"
                             >
                                 Optional
                             </span>
 
                             <div class="pr-4">
                                 <p class="text-sm font-bold leading-snug">{{ r.title }}</p>
-                                <p class="text-xs text-muted-foreground leading-snug">{{ r.name }}</p>
+                                <p class="text-xs leading-snug text-muted-foreground">{{ r.name }}</p>
                             </div>
 
-                            <p class="text-xs text-muted-foreground flex items-center gap-1 mt-auto pt-1">
+                            <p class="mt-auto flex items-center gap-1 pt-1 text-xs text-muted-foreground">
                                 <CalendarClock class="h-3.5 w-3.5 shrink-0" />
                                 Due <span class="font-semibold text-foreground">{{ formatDate(r.due_date) }}</span>
                             </p>
 
-                            <p v-if="r.note" class="text-xs text-muted-foreground flex items-start gap-1 border-t pt-2">
-                                <StickyNote class="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                            <p v-if="r.note" class="flex items-start gap-1 border-t pt-2 text-xs text-muted-foreground">
+                                <StickyNote class="mt-0.5 h-3.5 w-3.5 shrink-0" />
                                 <span class="leading-snug">{{ r.note }}</span>
                             </p>
                         </div>
@@ -270,19 +255,46 @@ const removeRequirement = async (requirement: Requirement) => {
                 </template>
 
                 <!-- Empty state per batch -->
-                <div
-                    v-else
-                    class="flex flex-col sm:flex-row items-center gap-3 py-4 px-3 text-center sm:text-left rounded-xl border border-dashed"
-                >
+                <div v-else class="flex flex-col items-center gap-3 rounded-xl border border-dashed px-3 py-4 text-center sm:flex-row sm:text-left">
                     <!-- Illustration: small empty checklist -->
                     <svg viewBox="0 0 100 80" class="h-16 w-auto shrink-0" xmlns="http://www.w3.org/2000/svg">
                         <rect x="20" y="8" width="60" height="64" rx="6" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
                         <rect x="32" y="2" width="36" height="12" rx="3" fill="currentColor" class="text-slate-300 dark:text-slate-700" />
-                        <rect x="30" y="28" width="6" height="6" rx="2" stroke="currentColor" stroke-width="2" fill="none" class="text-slate-300 dark:text-slate-600" />
+                        <rect
+                            x="30"
+                            y="28"
+                            width="6"
+                            height="6"
+                            rx="2"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            fill="none"
+                            class="text-slate-300 dark:text-slate-600"
+                        />
                         <rect x="42" y="29" width="28" height="4" rx="2" fill="currentColor" class="text-slate-300 dark:text-slate-700" />
-                        <rect x="30" y="42" width="6" height="6" rx="2" stroke="currentColor" stroke-width="2" fill="none" class="text-slate-300 dark:text-slate-600" />
+                        <rect
+                            x="30"
+                            y="42"
+                            width="6"
+                            height="6"
+                            rx="2"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            fill="none"
+                            class="text-slate-300 dark:text-slate-600"
+                        />
                         <rect x="42" y="43" width="20" height="4" rx="2" fill="currentColor" class="text-slate-300 dark:text-slate-700" />
-                        <rect x="30" y="56" width="6" height="6" rx="2" stroke="currentColor" stroke-width="2" fill="none" class="text-slate-300 dark:text-slate-600" />
+                        <rect
+                            x="30"
+                            y="56"
+                            width="6"
+                            height="6"
+                            rx="2"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            fill="none"
+                            class="text-slate-300 dark:text-slate-600"
+                        />
                         <rect x="42" y="57" width="24" height="4" rx="2" fill="currentColor" class="text-slate-300 dark:text-slate-700" />
                     </svg>
                     <p class="text-xs font-semibold text-muted-foreground">No requirements for this batch yet.</p>
@@ -295,64 +307,57 @@ const removeRequirement = async (requirement: Requirement) => {
             <DialogContent class="max-w-lg !rounded-2xl">
                 <DialogHeader>
                     <DialogTitle>
-                        <span class="flex gap-2 items-center">
-                            <ClipboardList class="h-5 w-5" /> Add Requirement
-                        </span>
+                        <span class="flex items-center gap-2"> <ClipboardList class="h-5 w-5" /> Add Requirement </span>
                     </DialogTitle>
                     <DialogDescription class="text-xs text-muted-foreground">
                         This requirement will be created for
                         <span class="font-semibold">all {{ batches.length }} batch(es)</span>
-                        of this program. The due date is computed automatically from each batch's end date,
-                        excluding weekends.
+                        of this program. The due date is computed automatically from each batch's end date, excluding weekends.
                     </DialogDescription>
                 </DialogHeader>
 
                 <!-- Kapag wala na ibang available types -->
-                <div v-if="!availableTypes.length" class="flex flex-col items-center justify-center py-10 text-center gap-3">
+                <div v-if="!availableTypes.length" class="flex flex-col items-center justify-center gap-3 py-10 text-center">
                     <svg viewBox="0 0 100 80" class="h-20 w-auto" xmlns="http://www.w3.org/2000/svg">
                         <circle cx="50" cy="38" r="28" fill="currentColor" class="text-emerald-100 dark:text-emerald-900/40" />
-                        <path d="M38 38 l8 8 l16 -18" stroke="currentColor" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-500" />
+                        <path
+                            d="M38 38 l8 8 l16 -18"
+                            stroke="currentColor"
+                            stroke-width="4"
+                            fill="none"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            class="text-emerald-500"
+                        />
                     </svg>
                     <p class="text-sm font-bold text-slate-500">All requirement types added</p>
-                    <p class="text-xs text-slate-400 max-w-xs">Every available requirement type has already been added to this program's batches.</p>
+                    <p class="max-w-xs text-xs text-slate-400">Every available requirement type has already been added to this program's batches.</p>
                 </div>
 
                 <form v-else @submit.prevent="submit" class="flex flex-col gap-4 pt-1">
-
                     <!-- Title -->
                     <div class="grid gap-1">
                         <Label class="text-xs">Requirement <span class="text-red-500">*</span></Label>
                         <Select v-model="form.title">
-                            <SelectTrigger class="text-xs h-8">
+                            <SelectTrigger class="h-8 text-xs">
                                 <SelectValue placeholder="Select requirement" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem
-                                    v-for="t in availableTypes"
-                                    :key="t.title"
-                                    :value="t.title"
-                                    class="text-xs"
-                                >
+                                <SelectItem v-for="t in availableTypes" :key="t.title" :value="t.title" class="text-xs">
                                     {{ t.title }} — {{ t.name }}
                                 </SelectItem>
                             </SelectContent>
                         </Select>
-                        <p v-if="selectedType" class="text-[11px] text-muted-foreground">
-                            Due date rule: {{ ruleLabel(selectedType) }}
-                        </p>
+                        <p v-if="selectedType" class="text-[11px] text-muted-foreground">Due date rule: {{ ruleLabel(selectedType) }}</p>
                         <p class="text-xs text-red-500">{{ form.errors.title }}</p>
                     </div>
 
                     <!-- Auto due date preview per batch -->
-                    <div v-if="duePreview.length" class="rounded-xl border bg-muted/40 p-3 flex flex-col gap-1.5">
-                        <p class="text-[11px] font-extrabold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                    <div v-if="duePreview.length" class="flex flex-col gap-1.5 rounded-xl border bg-muted/40 p-3">
+                        <p class="flex items-center gap-1 text-[11px] font-extrabold uppercase tracking-wide text-muted-foreground">
                             <CalendarClock class="h-3.5 w-3.5" /> Due Date Preview
                         </p>
-                        <div
-                            v-for="p in duePreview"
-                            :key="p.batch"
-                            class="flex items-center justify-between text-xs"
-                        >
+                        <div v-for="p in duePreview" :key="p.batch" class="flex items-center justify-between text-xs">
                             <span class="font-semibold">{{ p.batch }}</span>
                             <span class="text-muted-foreground">
                                 ends {{ p.dateEnd }} →
@@ -364,7 +369,7 @@ const removeRequirement = async (requirement: Requirement) => {
                     <!-- Required checkbox (default: checked) -->
                     <div class="flex items-center gap-2">
                         <Checkbox id="is_required" v-model:checked="form.is_required" />
-                        <Label for="is_required" class="text-xs cursor-pointer">
+                        <Label for="is_required" class="cursor-pointer text-xs">
                             This requirement is <span class="font-bold">required</span> for participants
                         </Label>
                     </div>
@@ -373,7 +378,7 @@ const removeRequirement = async (requirement: Requirement) => {
                     <div class="grid gap-1">
                         <Label class="text-xs">Note</Label>
                         <Textarea
-                            class="text-xs min-h-[80px] resize-y"
+                            class="min-h-[80px] resize-y text-xs"
                             v-model="form.note"
                             placeholder="Note for participants (e.g. where or how to submit this requirement)..."
                         />
@@ -381,7 +386,7 @@ const removeRequirement = async (requirement: Requirement) => {
                     </div>
 
                     <!-- Footer -->
-                    <div class="flex justify-end gap-2 pt-2 border-t">
+                    <div class="flex justify-end gap-2 border-t pt-2">
                         <Button type="button" variant="outline" size="sm" @click="showModal = false">Cancel</Button>
                         <Button
                             type="submit"
@@ -389,13 +394,12 @@ const removeRequirement = async (requirement: Requirement) => {
                             class="bg-blue-600 hover:bg-blue-700 dark:text-white"
                             :disabled="form.processing || !form.title"
                         >
-                            <LoaderCircle v-if="form.processing" class="h-3 w-3 animate-spin mr-1" />
+                            <LoaderCircle v-if="form.processing" class="mr-1 h-3 w-3 animate-spin" />
                             <Save class="h-4 w-4" /> Save Requirement
                         </Button>
                     </div>
                 </form>
             </DialogContent>
         </Dialog>
-
     </div>
 </template>

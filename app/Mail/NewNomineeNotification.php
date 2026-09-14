@@ -22,12 +22,12 @@ class NewNomineeNotification extends Mailable
             ? route('foreign-programs.show', $program->id)
             : null;
 
-        return $this->subject('New Nomination Submitted — ' . ($program->program_title ?? 'Foreign Program'))
+        return $this->subject('New Nomination Submitted — '.($program->program_title ?? 'Foreign Program'))
             ->view('emails.new-nominee')
             ->with([
-                'nominee'    => $this->nominee,
-                'program'    => $program,
-                'config'     => $this->nominee->sponsorConfig,
+                'nominee' => $this->nominee,
+                'program' => $program,
+                'config' => $this->nominee->sponsorConfig,
                 'programUrl' => $programUrl,
             ]);
     }

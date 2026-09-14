@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Employee;
 use App\Models\Program;
 use App\Models\TesdaOrder;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TesdaOrderController extends Controller
@@ -30,14 +31,14 @@ class TesdaOrderController extends Controller
 
         return response()->json(
             $batches->map(fn ($batch) => [
-                'id'           => $batch->id,
-                'batch'        => $batch->batch,
+                'id' => $batch->id,
+                'batch' => $batch->batch,
                 'participants' => $batch->participants
                     ->filter(fn ($p) => $p->employee)
                     ->map(fn ($p) => [
-                        'id'       => $p->id,
-                        'office'   => $p->employee->{'OFFICE/DIVISION'} ?? '',
-                        'name'     => $p->employee->name,
+                        'id' => $p->id,
+                        'office' => $p->employee->{'OFFICE/DIVISION'} ?? '',
+                        'name' => $p->employee->name,
                         'position' => $p->employee->POSITION ?? '',
                     ])
                     ->values(),
@@ -48,24 +49,24 @@ class TesdaOrderController extends Controller
     public function store(Request $request, Program $program)
     {
         $data = $request->validate([
-            'subject'               => 'required|string|max:5000',
-            'date_issued'           => 'nullable|date',
-            'effectivity'           => 'nullable|string',
-            'supersedes'            => 'nullable|string',
-            'series_year'           => 'nullable|integer|min:2000|max:2099',
-            'body'                  => 'required|string',
-            'include_participants'  => 'boolean',
-            'include_batch_data'    => 'boolean',
-            'closure'               => 'required|string',
-            'signatory_empcode'     => 'nullable|string',
-            'signatory_name'        => 'required|string',
-            'signatory_position'    => 'required|string',
-            'ordered_batches'       => 'nullable|string', // JSON — custom ordering mula sa modal
+            'subject' => 'required|string|max:5000',
+            'date_issued' => 'nullable|date',
+            'effectivity' => 'nullable|string',
+            'supersedes' => 'nullable|string',
+            'series_year' => 'nullable|integer|min:2000|max:2099',
+            'body' => 'required|string',
+            'include_participants' => 'boolean',
+            'include_batch_data' => 'boolean',
+            'closure' => 'required|string',
+            'signatory_empcode' => 'nullable|string',
+            'signatory_name' => 'required|string',
+            'signatory_position' => 'required|string',
+            'ordered_batches' => 'nullable|string', // JSON — custom ordering mula sa modal
         ]);
 
-        $data['program_id']   = $program->id;
-        $data['effectivity']  = $data['effectivity'] ?: 'As indicated';
-        $data['series_year']  = !empty($data['series_year']) ? (int) $data['series_year'] : now()->year;
+        $data['program_id'] = $program->id;
+        $data['effectivity'] = $data['effectivity'] ?: 'As indicated';
+        $data['series_year'] = ! empty($data['series_year']) ? (int) $data['series_year'] : now()->year;
         $data['generated_by'] = auth()->user()->name ?? 'system';
 
         // ── Auto-map signatory position ────────────────────────────────────────
@@ -76,21 +77,21 @@ class TesdaOrderController extends Controller
 
         // Load participants — kung may custom ordering mula sa modal, gamitin iyon
         $participants = [];
-        if (!empty($data['include_participants'])) {
+        if (! empty($data['include_participants'])) {
 
-            if (!empty($data['ordered_batches'])) {
+            if (! empty($data['ordered_batches'])) {
                 // Gamitin ang custom ordering na ginawa ng user sa modal
                 $orderedBatches = json_decode($data['ordered_batches'], true) ?? [];
                 foreach ($orderedBatches as $batch) {
                     $rows = collect($batch['participants'])->map(fn ($p) => [
-                        'office'   => $p['office'],
-                        'name'     => $p['name'],
+                        'office' => $p['office'],
+                        'name' => $p['name'],
                         'position' => $p['position'],
                     ])->values();
 
                     $participants[] = [
                         'batch_label' => $data['include_batch_data'] ? ($batch['batch'] ?? null) : null,
-                        'rows'        => $rows,
+                        'rows' => $rows,
                     ];
                 }
             } else {
@@ -104,8 +105,8 @@ class TesdaOrderController extends Controller
                     $rows = $batch->participants
                         ->filter(fn ($p) => $p->employee)
                         ->map(fn ($p) => [
-                            'office'   => $p->employee->{'OFFICE/DIVISION'} ?? '',
-                            'name'     => $p->employee->name,
+                            'office' => $p->employee->{'OFFICE/DIVISION'} ?? '',
+                            'name' => $p->employee->name,
                             'position' => $p->employee->POSITION ?? '',
                         ])
                         ->sortBy('office')
@@ -113,7 +114,7 @@ class TesdaOrderController extends Controller
 
                     $participants[] = [
                         'batch_label' => $data['include_batch_data'] ? $batch->batch : null,
-                        'rows'        => $rows,
+                        'rows' => $rows,
                     ];
                 }
             }
@@ -123,7 +124,7 @@ class TesdaOrderController extends Controller
             ->flatMap(fn ($b) => $b['rows'])
             ->contains(fn ($r) => str_contains(strtolower($r['position']), 'director'));
 
-        $data['body']    = $this->sanitizeRichText($data['body']);
+        $data['body'] = $this->sanitizeRichText($data['body']);
         $data['closure'] = $this->sanitizeRichText($data['closure']);
 
         // Huwag i-save ang ordered_batches sa DB (hindi ito column)
@@ -132,10 +133,10 @@ class TesdaOrderController extends Controller
         $tesdaOrder = TesdaOrder::create($data);
 
         $pdf = Pdf::loadView('tesda-orders.pdf', [
-            'order'        => $tesdaOrder,
-            'program'      => $program,
+            'order' => $tesdaOrder,
+            'program' => $program,
             'participants' => $participants,
-            'hasDirector'  => $hasDirector,
+            'hasDirector' => $hasDirector,
         ])->setPaper('a4', 'portrait');
 
         $pdf->render();
@@ -150,11 +151,11 @@ class TesdaOrderController extends Controller
 
         $tesdaOrder->update([
             'total_pages' => $pageCount,
-            'pdf_path'    => $filename,
+            'pdf_path' => $filename,
         ]);
 
         return back()->with([
-            'success'      => 'TESDA Order generated successfully.',
+            'success' => 'TESDA Order generated successfully.',
             'new_order_id' => $tesdaOrder->id,
         ]);
     }
@@ -168,19 +169,19 @@ class TesdaOrderController extends Controller
 
         $tesdaOrder->load('program');
         $programTitle = $tesdaOrder->program->title ?? 'Program';
-        $safeName     = preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $programTitle);
-        $safeName     = trim(preg_replace('/\s+/', '_', $safeName));
-        $safeName     = substr($safeName, 0, 80);
-        $pdfFilename  = "TESDA_Order_{$safeName}.pdf";
+        $safeName = preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $programTitle);
+        $safeName = trim(preg_replace('/\s+/', '_', $safeName));
+        $safeName = substr($safeName, 0, 80);
+        $pdfFilename = "TESDA_Order_{$safeName}.pdf";
 
         return new StreamedResponse(function () use ($disk, $tesdaOrder) {
             $stream = $disk->readStream($tesdaOrder->pdf_path);
             fpassthru($stream);
             fclose($stream);
         }, 200, [
-            'Content-Type'        => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . $pdfFilename . '"',
-            'Cache-Control'       => 'private, max-age=0, must-revalidate',
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$pdfFilename.'"',
+            'Cache-Control' => 'private, max-age=0, must-revalidate',
         ]);
     }
 
@@ -198,19 +199,19 @@ class TesdaOrderController extends Controller
     {
         $q = $request->query('q');
 
-        $employees = \App\Models\Employee::query()
+        $employees = Employee::query()
             ->when($q, fn ($query) => $query->where(function ($w) use ($q) {
                 $w->where('LASTNAME', 'LIKE', "%{$q}%")
-                  ->orWhere('FIRSTNAME', 'LIKE', "%{$q}%")
-                  ->orWhere('EMPCODE', 'LIKE', "%{$q}%");
+                    ->orWhere('FIRSTNAME', 'LIKE', "%{$q}%")
+                    ->orWhere('EMPCODE', 'LIKE', "%{$q}%");
             }))
             ->limit(10)
             ->get();
 
         return response()->json(
             $employees->map(fn ($e) => [
-                'empcode'  => $e->EMPCODE,
-                'name'     => $e->name,
+                'empcode' => $e->EMPCODE,
+                'name' => $e->name,
                 'position' => $e->POSITION ?? '',
             ])
         );
@@ -233,11 +234,11 @@ class TesdaOrderController extends Controller
             $office = null;
 
             if ($empcode) {
-                $employee = \App\Models\Employee::where('EMPCODE', $empcode)->first();
-                $office   = $employee?->SECTION ?? null;
+                $employee = Employee::where('EMPCODE', $empcode)->first();
+                $office = $employee?->SECTION ?? null;
             }
 
-            return 'Deputy Director General' . ($office ? ', ' . $office : '');
+            return 'Deputy Director General'.($office ? ', '.$office : '');
         }
 
         return $trimmed;
@@ -245,8 +246,8 @@ class TesdaOrderController extends Controller
 
     private function sanitizeRichText(string $html): string
     {
-        $dom = new \DOMDocument();
-        @$dom->loadHTML('<?xml encoding="utf-8" ?>' . $html, LIBXML_NOERROR);
+        $dom = new \DOMDocument;
+        @$dom->loadHTML('<?xml encoding="utf-8" ?>'.$html, LIBXML_NOERROR);
 
         $xpath = new \DOMXPath($dom);
         foreach ($xpath->query('//*[@style]') as $node) {

@@ -1,70 +1,82 @@
 <template>
-  <Head title="TESDA Development Institute" />
-  <div class="tdi-home">
-    <TheNavbar :logo="siteImages.navbar_logo" />
-    <HeroSection :images="siteImages" />
+    <Head title="TESDA Development Institute" />
+    <div class="tdi-home">
+        <TheNavbar :logo="siteImages.navbar_logo" />
+        <HeroSection :images="siteImages" />
 
-    <!-- Lalabas lang kung naka-login AT may TNA Tool (tna !== null) -->
-    <TnaBanner v-if="tna" :data="tna" />
+        <!-- Lalabas lang kung naka-login AT may TNA Tool (tna !== null) -->
+        <TnaBanner v-if="tna" :data="tna" />
 
-    <!-- Lalabas lang kung may pending na ira-rate ang supervisor -->
-    <SupervisorBanner v-if="supervisorTna" :data="supervisorTna" />
+        <!-- Lalabas lang kung may pending na ira-rate ang supervisor -->
+        <SupervisorBanner v-if="supervisorTna" :data="supervisorTna" />
 
-    <!-- Lalabas lang kung NHRDC member at may nominees na dapat i-rate -->
-    <NhrdcRatingBanner v-if="nhrdcRating" :data="nhrdcRating" />
+        <!-- Lalabas lang kung NHRDC member at may nominees na dapat i-rate -->
+        <NhrdcRatingBanner v-if="nhrdcRating" :data="nhrdcRating" />
 
-    <EnrolledProgramsSection :programs="enrolledPrograms" />
-    <ImagePanels :images="siteImages" />
-    <AboutSection :image="siteImages.about_photo" />
-    <ProgramsSection />
-    <ForeignScholarshipSection :images="siteImages" />
-    <PathwaySection />
-    <ResourcesSection />
-    <CtaBanner />
-    <TheFooter />
-  </div>
+        <EnrolledProgramsSection :programs="enrolledPrograms" />
+        <ImagePanels :images="siteImages" />
+        <AboutSection :image="siteImages.about_photo" />
+        <ProgramsSection />
+        <ForeignScholarshipSection :images="siteImages" />
+        <PathwaySection />
+        <ResourcesSection />
+        <CtaBanner />
+        <TheFooter />
+    </div>
 </template>
 
-<script setup>
-import { Head } from '@inertiajs/vue3'
-import TheNavbar          from './sections/TheNavbar.vue'
-import HeroSection        from './sections/HeroSection.vue'
-import TnaBanner          from './sections/TnaBanner.vue'
-import SupervisorBanner   from './sections/SupervisorBanner.vue'
-import NhrdcRatingBanner  from './sections/NhrdcRatingBanner.vue'
-import EnrolledProgramsSection from './sections/EnrolledProgramsSection.vue'
-import ImagePanels        from './sections/ImagePanels.vue'
-import AboutSection       from './sections/AboutSection.vue'
-import ProgramsSection    from './sections/ProgramsSection.vue'
+<script setup lang="ts">
+import { Head } from '@inertiajs/vue3';
+import AboutSection from './sections/AboutSection.vue';
+import EnrolledProgramsSection from './sections/EnrolledProgramsSection.vue';
+import HeroSection from './sections/HeroSection.vue';
+import ImagePanels from './sections/ImagePanels.vue';
+import NhrdcRatingBanner from './sections/NhrdcRatingBanner.vue';
+import ProgramsSection from './sections/ProgramsSection.vue';
+import SupervisorBanner from './sections/SupervisorBanner.vue';
+import TheNavbar from './sections/TheNavbar.vue';
+import TnaBanner from './sections/TnaBanner.vue';
 // import ScholarshipsSection from './sections/ScholarshipsSection.vue'
-import PathwaySection     from './sections/PathwaySection.vue'
-import ResourcesSection   from './sections/ResourcesSection.vue'
-import CtaBanner          from './sections/CtaBanner.vue'
-import TheFooter          from './sections/TheFooter.vue'
-import ForeignScholarshipSection from './sections/ForeignScholarshipSection.vue'
-
+import CtaBanner from './sections/CtaBanner.vue';
+import ForeignScholarshipSection from './sections/ForeignScholarshipSection.vue';
+import PathwaySection from './sections/PathwaySection.vue';
+import ResourcesSection from './sections/ResourcesSection.vue';
+import TheFooter from './sections/TheFooter.vue';
 
 defineProps({
-  enrolledPrograms: { type: Array, default: () => [] },
-  tna: { type: Object, default: null },
-  supervisorTna: { type: Object, default: null },
-  nhrdcRating: { type: Object, default: null },
-  siteImages: { type: Object, default: () => ({}) },
-})
+    enrolledPrograms: { type: Array, default: () => [] },
+    tna: { type: Object, default: null },
+    supervisorTna: { type: Object, default: null },
+    nhrdcRating: { type: Object, default: null },
+    siteImages: { type: Object, default: () => ({}) },
+});
 </script>
 
 <style>
 /* Global base reset — only runs once */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
 
 .tdi-home {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  color: #1a2744;
-  background: #fff;
-  overflow-x: hidden;
+    font-family:
+        'Inter',
+        system-ui,
+        -apple-system,
+        sans-serif;
+    color: #1a2744;
+    background: #fff;
+    overflow-x: hidden;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * { animation: none !important; transition: none !important; }
+    * {
+        animation: none !important;
+        transition: none !important;
+    }
 }
 </style>

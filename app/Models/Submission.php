@@ -22,7 +22,7 @@ class Submission extends Model
 
     protected $casts = [
         'submitted_at' => 'datetime',
-        'reviewed_at'  => 'datetime',
+        'reviewed_at' => 'datetime',
     ];
 
     public function participant()

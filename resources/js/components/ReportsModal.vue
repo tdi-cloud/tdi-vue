@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
 import axios from 'axios';
-import { FileSpreadsheet, X, Download, Loader2 } from 'lucide-vue-next';
+import { Download, FileSpreadsheet, Loader2, X } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 
 /**
  * "Reports" — isang button na nagbubukas ng modal kung saan pinipili muna
@@ -67,14 +67,16 @@ function close() {
     open.value = false;
 }
 
-const csvHref = computed(() => route('dashboard.export-csv', {
-    office_filter: props.target,
-    region: props.region,
-    office: props.office,
-    date_from: rangeFrom.value,
-    date_to: rangeTo.value,
-    plant_status: props.selectedStatuses,
-}));
+const csvHref = computed(() =>
+    route('dashboard.export-csv', {
+        office_filter: props.target,
+        region: props.region,
+        office: props.office,
+        date_from: rangeFrom.value,
+        date_to: rangeTo.value,
+        plant_status: props.selectedStatuses,
+    }),
+);
 
 /**
  * Fetched via axios (hindi plain <a href>) para may loading state tayo na
@@ -117,7 +119,7 @@ async function downloadCsv() {
     <div>
         <button
             type="button"
-            class="h-9 px-3.5 rounded-lg border bg-background text-xs font-semibold flex items-center gap-1.5 shadow-sm hover:bg-muted/50 transition-colors"
+            class="flex h-9 items-center gap-1.5 rounded-lg border bg-background px-3.5 text-xs font-semibold shadow-sm transition-colors hover:bg-muted/50"
             @click="openModal"
         >
             <FileSpreadsheet class="h-3.5 w-3.5 text-muted-foreground" />
@@ -126,28 +128,30 @@ async function downloadCsv() {
 
         <Teleport to="body">
             <div v-if="open" class="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4" @click.self="close">
-                <div class="bg-background rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
-                    <div class="px-5 py-4 border-b flex items-start justify-between gap-3">
+                <div class="w-full max-w-lg overflow-hidden rounded-2xl bg-background shadow-2xl">
+                    <div class="flex items-start justify-between gap-3 border-b px-5 py-4">
                         <div>
-                            <h3 class="font-bold text-sm">Report Time Range</h3>
-                            <p class="text-xs text-muted-foreground mt-0.5">Select a predefined or custom time range, then download the CSV.</p>
+                            <h3 class="text-sm font-bold">Report Time Range</h3>
+                            <p class="mt-0.5 text-xs text-muted-foreground">Select a predefined or custom time range, then download the CSV.</p>
                         </div>
-                        <button type="button" class="text-muted-foreground hover:text-foreground transition-colors" @click="close">
+                        <button type="button" class="text-muted-foreground transition-colors hover:text-foreground" @click="close">
                             <X class="h-4.5 w-4.5" />
                         </button>
                     </div>
 
                     <div class="flex">
                         <!-- Preset list -->
-                        <div class="w-40 border-r py-2 shrink-0">
+                        <div class="w-40 shrink-0 border-r py-2">
                             <button
                                 v-for="opt in PRESETS"
                                 :key="opt.key"
                                 type="button"
-                                class="w-full text-left px-4 py-2.5 text-xs font-semibold border-l-2 transition-colors"
-                                :class="selectedPreset === opt.key
-                                    ? 'border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400'
-                                    : 'border-transparent hover:bg-muted/50 text-foreground'"
+                                class="w-full border-l-2 px-4 py-2.5 text-left text-xs font-semibold transition-colors"
+                                :class="
+                                    selectedPreset === opt.key
+                                        ? 'border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400'
+                                        : 'border-transparent text-foreground hover:bg-muted/50'
+                                "
                                 @click="selectPreset(opt.key)"
                             >
                                 {{ opt.label }}
@@ -155,7 +159,7 @@ async function downloadCsv() {
                         </div>
 
                         <!-- Date inputs -->
-                        <div class="flex-1 p-5 flex flex-col gap-3">
+                        <div class="flex flex-1 flex-col gap-3 p-5">
                             <p class="text-xs text-muted-foreground">
                                 {{ selectedPreset === 'custom' ? 'Pick a start and end date.' : 'Computed automatically for this preset.' }}
                             </p>
@@ -167,10 +171,10 @@ async function downloadCsv() {
                                         v-model="rangeFrom"
                                         :max="rangeTo ?? undefined"
                                         :disabled="selectedPreset !== 'custom'"
-                                        class="w-full mt-1 rounded-lg border px-3 py-2 text-sm bg-background disabled:opacity-60 disabled:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        class="mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-muted/40 disabled:opacity-60"
                                     />
                                 </div>
-                                <span class="text-muted-foreground pb-2.5">–</span>
+                                <span class="pb-2.5 text-muted-foreground">–</span>
                                 <div class="flex-1">
                                     <label class="text-[11px] font-semibold text-muted-foreground">End date</label>
                                     <input
@@ -178,7 +182,7 @@ async function downloadCsv() {
                                         v-model="rangeTo"
                                         :min="rangeFrom ?? undefined"
                                         :disabled="selectedPreset !== 'custom'"
-                                        class="w-full mt-1 rounded-lg border px-3 py-2 text-sm bg-background disabled:opacity-60 disabled:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        class="mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-muted/40 disabled:opacity-60"
                                     />
                                 </div>
                             </div>
@@ -186,12 +190,12 @@ async function downloadCsv() {
                     </div>
 
                     <!-- Download CSV — sa baba ng Report Time Range -->
-                    <div class="px-5 py-4 border-t bg-muted/20 flex items-center justify-between gap-3">
+                    <div class="flex items-center justify-between gap-3 border-t bg-muted/20 px-5 py-4">
                         <p class="text-xs text-muted-foreground">Programs, batches, participants &amp; attendance for the selected range.</p>
                         <button
                             type="button"
                             :disabled="downloading"
-                            class="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-70 disabled:cursor-not-allowed text-white shadow-sm transition-colors shrink-0"
+                            class="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-emerald-600 px-4 text-xs font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
                             @click="downloadCsv"
                         >
                             <Loader2 v-if="downloading" class="h-3.5 w-3.5 animate-spin" />

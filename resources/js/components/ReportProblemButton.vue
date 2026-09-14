@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useForm } from '@inertiajs/vue3';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import InputError from '@/components/InputError.vue';
-import { MessageSquareWarning, LoaderCircle } from 'lucide-vue-next';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { useForm } from '@inertiajs/vue3';
+import { LoaderCircle, MessageSquareWarning } from 'lucide-vue-next';
+import { ref } from 'vue';
 
 withDefaults(
     defineProps<{
@@ -51,9 +51,7 @@ const submit = () => {
     <Dialog :open="open" @update:open="open = $event">
         <DialogContent class="!max-w-md !rounded-2xl">
             <DialogHeader>
-                <DialogTitle class="flex items-center gap-2">
-                    <MessageSquareWarning class="h-5 w-5 text-amber-500" /> Report a Problem
-                </DialogTitle>
+                <DialogTitle class="flex items-center gap-2"> <MessageSquareWarning class="h-5 w-5 text-amber-500" /> Report a Problem </DialogTitle>
                 <DialogDescription class="text-xs text-muted-foreground">
                     Describe the issue you encountered. This will be sent directly to our team.
                 </DialogDescription>

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { X, Plus, Trash2, Users, LoaderCircle, Search, ChevronUp, ChevronDown } from 'lucide-vue-next';
-import axios from 'axios';
 import { useConfirm } from '@/composables/useConfirm';
+import axios from 'axios';
+import { ChevronDown, ChevronUp, LoaderCircle, Plus, Search, Trash2, Users, X } from 'lucide-vue-next';
+import { onMounted, ref } from 'vue';
 
 const { confirmDialog } = useConfirm();
 
@@ -32,17 +32,17 @@ const emit = defineEmits<{
     (e: 'updated'): void;
 }>();
 
-const members     = ref<Member[]>([]);
-const loading     = ref(false);
-const deletingId  = ref<number | null>(null);
-const movingId    = ref<number | null>(null);
+const members = ref<Member[]>([]);
+const loading = ref(false);
+const deletingId = ref<number | null>(null);
+const movingId = ref<number | null>(null);
 
-const query       = ref('');
-const results     = ref<EmployeeResult[]>([]);
-const searching   = ref(false);
-const open        = ref(false);
-const adding      = ref(false);
-const error       = ref('');
+const query = ref('');
+const results = ref<EmployeeResult[]>([]);
+const searching = ref(false);
+const open = ref(false);
+const adding = ref(false);
+const error = ref('');
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
 const fetchMembers = async () => {
@@ -139,39 +139,35 @@ onMounted(fetchMembers);
 
 <template>
     <div class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4" @click.self="emit('close')">
-        <div class="bg-background rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[80vh]">
-
+        <div class="flex max-h-[80vh] w-full max-w-md flex-col rounded-2xl bg-background shadow-2xl">
             <!-- Header -->
-            <div class="flex items-center gap-3 px-5 py-4 border-b shrink-0">
-                <div class="flex items-center justify-center h-8 w-8 rounded-xl bg-indigo-600">
+            <div class="flex shrink-0 items-center gap-3 border-b px-5 py-4">
+                <div class="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-600">
                     <Users class="h-4 w-4 text-white" />
                 </div>
                 <div>
                     <h3 class="text-sm font-extrabold leading-none">NHRDC Members</h3>
-                    <p class="text-xs text-muted-foreground mt-0.5">Manage who can rate nominee interviews</p>
+                    <p class="mt-0.5 text-xs text-muted-foreground">Manage who can rate nominee interviews</p>
                 </div>
-                <button class="ml-auto text-muted-foreground hover:text-foreground transition-colors" @click="emit('close')">
+                <button class="ml-auto text-muted-foreground transition-colors hover:text-foreground" @click="emit('close')">
                     <X class="h-5 w-5" />
                 </button>
             </div>
 
             <!-- Add new -->
-            <div class="px-5 py-3 border-b shrink-0">
+            <div class="shrink-0 border-b px-5 py-3">
                 <div class="relative">
-                    <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Search class="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                     <input
                         v-model="query"
                         type="text"
                         placeholder="Search employee name or empcode…"
-                        class="w-full border rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        class="w-full rounded-lg border py-2 pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         @input="onQueryInput"
                         @focus="query.trim().length >= 2 && (open = true)"
                     />
-                    <div
-                        v-if="open"
-                        class="absolute z-10 mt-1 w-full rounded-lg border bg-background shadow-lg max-h-48 overflow-y-auto"
-                    >
-                        <div v-if="searching" class="px-3 py-2 text-xs text-muted-foreground flex items-center gap-1.5">
+                    <div v-if="open" class="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border bg-background shadow-lg">
+                        <div v-if="searching" class="flex items-center gap-1.5 px-3 py-2 text-xs text-muted-foreground">
                             <LoaderCircle class="h-3 w-3 animate-spin" /> Searching…
                         </div>
                         <template v-else>
@@ -180,21 +176,21 @@ onMounted(fetchMembers);
                                 :key="emp.empcode"
                                 type="button"
                                 :disabled="isMember(emp.empcode) || adding"
-                                class="w-full flex items-center justify-between gap-2 text-left px-3 py-2 text-xs hover:bg-muted/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                class="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
                                 @click="addMember(emp)"
                             >
                                 <span>
                                     <span class="font-semibold">{{ emp.name }}</span>
                                     <span class="text-muted-foreground"> · {{ emp.position }}</span>
                                 </span>
-                                <span v-if="isMember(emp.empcode)" class="text-[10px] font-bold text-emerald-600 shrink-0">Added</span>
-                                <Plus v-else class="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+                                <span v-if="isMember(emp.empcode)" class="shrink-0 text-[10px] font-bold text-emerald-600">Added</span>
+                                <Plus v-else class="h-3.5 w-3.5 shrink-0 text-indigo-600" />
                             </button>
                             <p v-if="!results.length" class="px-3 py-2 text-xs text-muted-foreground">No matches.</p>
                         </template>
                     </div>
                 </div>
-                <p v-if="error" class="text-xs text-red-500 mt-1">{{ error }}</p>
+                <p v-if="error" class="mt-1 text-xs text-red-500">{{ error }}</p>
             </div>
 
             <!-- Roster -->
@@ -202,23 +198,23 @@ onMounted(fetchMembers);
                 <div v-if="loading" class="flex items-center justify-center py-10">
                     <LoaderCircle class="h-5 w-5 animate-spin text-indigo-500" />
                 </div>
-                <div v-else-if="!members.length" class="flex flex-col items-center justify-center py-10 text-center text-muted-foreground gap-2">
+                <div v-else-if="!members.length" class="flex flex-col items-center justify-center gap-2 py-10 text-center text-muted-foreground">
                     <Users class="h-8 w-8 text-slate-300" />
                     <p class="text-xs font-semibold">No NHRDC members yet.</p>
                     <p class="text-xs">Search above to add one.</p>
                 </div>
-                <div v-else class="divide-y rounded-xl border overflow-hidden">
+                <div v-else class="divide-y overflow-hidden rounded-xl border">
                     <div
                         v-for="(member, index) in members"
                         :key="member.id"
-                        class="flex items-center justify-between gap-1 px-3 py-2.5 hover:bg-muted/40 transition-colors group"
+                        class="group flex items-center justify-between gap-1 px-3 py-2.5 transition-colors hover:bg-muted/40"
                     >
                         <!-- Reorder -->
-                        <div class="flex flex-col shrink-0">
+                        <div class="flex shrink-0 flex-col">
                             <button
                                 type="button"
                                 :disabled="index === 0 || movingId !== null"
-                                class="rounded p-0.5 text-muted-foreground hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+                                class="rounded p-0.5 text-muted-foreground transition-colors hover:bg-indigo-50 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-25 dark:hover:bg-indigo-950/40"
                                 title="Move up"
                                 @click="moveMember(member, 'up')"
                             >
@@ -227,7 +223,7 @@ onMounted(fetchMembers);
                             <button
                                 type="button"
                                 :disabled="index === members.length - 1 || movingId !== null"
-                                class="rounded p-0.5 text-muted-foreground hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+                                class="rounded p-0.5 text-muted-foreground transition-colors hover:bg-indigo-50 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-25 dark:hover:bg-indigo-950/40"
                                 title="Move down"
                                 @click="moveMember(member, 'down')"
                             >
@@ -235,23 +231,19 @@ onMounted(fetchMembers);
                             </button>
                         </div>
 
-                        <button
-                            type="button"
-                            class="text-left flex-1 min-w-0 hover:text-indigo-600 transition-colors"
-                            @click="selectMember(member)"
-                        >
-                            <div class="flex items-center gap-1.5 flex-wrap">
-                                <p class="text-sm font-semibold truncate">{{ member.name }}</p>
-                                <span class="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full" :class="roleBadgeClass(member.role)">
+                        <button type="button" class="min-w-0 flex-1 text-left transition-colors hover:text-indigo-600" @click="selectMember(member)">
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                <p class="truncate text-sm font-semibold">{{ member.name }}</p>
+                                <span class="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold" :class="roleBadgeClass(member.role)">
                                     {{ member.role }}
                                 </span>
                             </div>
-                            <p class="text-xs text-muted-foreground truncate">{{ member.position }}</p>
+                            <p class="truncate text-xs text-muted-foreground">{{ member.position }}</p>
                         </button>
                         <button
                             type="button"
                             :disabled="deletingId === member.id"
-                            class="text-muted-foreground hover:text-red-500 transition-colors p-1 rounded-md opacity-0 group-hover:opacity-100 shrink-0"
+                            class="shrink-0 rounded-md p-1 text-muted-foreground opacity-0 transition-colors hover:text-red-500 group-hover:opacity-100"
                             @click="deleteMember(member)"
                         >
                             <LoaderCircle v-if="deletingId === member.id" class="h-3.5 w-3.5 animate-spin" />
@@ -262,10 +254,11 @@ onMounted(fetchMembers);
             </div>
 
             <!-- Footer -->
-            <div class="px-5 py-3 border-t shrink-0 text-right">
-                <p class="text-xs text-muted-foreground">Use the arrows to reorder — the top two set the Chairperson and Vice Chairperson. Click a name to assign them.</p>
+            <div class="shrink-0 border-t px-5 py-3 text-right">
+                <p class="text-xs text-muted-foreground">
+                    Use the arrows to reorder — the top two set the Chairperson and Vice Chairperson. Click a name to assign them.
+                </p>
             </div>
-
         </div>
     </div>
 </template>

@@ -1,13 +1,22 @@
 <script setup lang="ts">
+import TnaSummaryDashboardModal from '@/components/TnaSummaryDashboardModal.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { computed, ref, watch } from 'vue';
 import {
-    Gauge, Search, Building2, MapPin, CalendarClock,
-    Eye, AlertTriangle, CheckCircle2, BarChart3,
-    SlidersHorizontal, X, ListChecks,
+    AlertTriangle,
+    BarChart3,
+    Building2,
+    CalendarClock,
+    CheckCircle2,
+    Eye,
+    Gauge,
+    ListChecks,
+    MapPin,
+    Search,
+    SlidersHorizontal,
+    X,
 } from 'lucide-vue-next';
-import TnaSummaryDashboardModal from '@/components/TnaSummaryDashboardModal.vue';
+import { computed, ref, watch } from 'vue';
 
 interface Priority {
     unit: string;
@@ -58,18 +67,14 @@ const region = ref(props.filters.region ?? 'all');
 const office = ref(props.filters.office ?? 'all');
 const unit = ref(props.filters.unit ?? 'all');
 
-const allOffices = computed(() =>
-    Array.from(new Set(Object.values(props.officesByRegion).flat())).sort()
-);
+const allOffices = computed(() => Array.from(new Set(Object.values(props.officesByRegion).flat())).sort());
 
-const availableOffices = computed(() =>
-    region.value !== 'all' ? (props.officesByRegion[region.value] ?? []) : allOffices.value
-);
+const availableOffices = computed(() => (region.value !== 'all' ? (props.officesByRegion[region.value] ?? []) : allOffices.value));
 
 // Kapag pinalitan ang region, i-reset ang office kung wala na ito sa
 // bagong listahan ng offices ng napiling region.
 watch(region, () => {
-    if (office.value !== 'all' && ! availableOffices.value.includes(office.value)) {
+    if (office.value !== 'all' && !availableOffices.value.includes(office.value)) {
         office.value = 'all';
     }
 });
@@ -78,12 +83,16 @@ let debounce: ReturnType<typeof setTimeout>;
 watch([search, region, office, unit], () => {
     clearTimeout(debounce);
     debounce = setTimeout(() => {
-        router.get(route('tna-summary.index'), {
-            search: search.value || undefined,
-            region: region.value !== 'all' ? region.value : undefined,
-            office: office.value !== 'all' ? office.value : undefined,
-            unit: unit.value !== 'all' ? unit.value : undefined,
-        }, { preserveScroll: true, preserveState: true, replace: true });
+        router.get(
+            route('tna-summary.index'),
+            {
+                search: search.value || undefined,
+                region: region.value !== 'all' ? region.value : undefined,
+                office: office.value !== 'all' ? office.value : undefined,
+                unit: unit.value !== 'all' ? unit.value : undefined,
+            },
+            { preserveScroll: true, preserveState: true, replace: true },
+        );
     }, 350);
 });
 
@@ -110,16 +119,17 @@ const priorityColor = (label: string) => {
 
     <AppLayout>
         <div class="flex flex-1 flex-col gap-5 p-4 md:p-6">
-
             <!-- Header -->
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div class="flex items-center gap-3">
-                    <div class="h-11 w-11 rounded-2xl bg-gradient-to-br from-indigo-600 to-blue-600 flex items-center justify-center shadow-sm shrink-0">
+                    <div
+                        class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-blue-600 shadow-sm"
+                    >
                         <Gauge class="h-5.5 w-5.5 text-white" />
                     </div>
                     <div>
                         <h1 class="text-2xl font-extrabold">TNA Summary</h1>
-                        <p class="text-sm text-muted-foreground mt-0.5">
+                        <p class="mt-0.5 text-sm text-muted-foreground">
                             All employees with a finalized Training Needs Analysis Result, and their top training priorities.
                         </p>
                     </div>
@@ -127,7 +137,7 @@ const priorityColor = (label: string) => {
 
                 <button
                     type="button"
-                    class="inline-flex items-center gap-1.5 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl shadow-sm transition-colors"
+                    class="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700"
                     @click="showDashboard = true"
                 >
                     <BarChart3 class="h-4 w-4" /> Dashboard Summary
@@ -137,53 +147,53 @@ const priorityColor = (label: string) => {
             <!-- Filters -->
             <div class="flex flex-col gap-3">
                 <div class="flex items-center gap-2">
-                    <div class="relative flex-1 max-w-sm">
-                        <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <div class="relative max-w-sm flex-1">
+                        <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <input
                             v-model="search"
                             type="text"
                             placeholder="Search by name or empcode..."
-                            class="w-full border rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-background shadow-sm"
+                            class="w-full rounded-lg border bg-background py-2 pl-9 pr-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                     </div>
-                    <div class="flex items-center gap-1.5 text-xs text-muted-foreground px-2 py-1.5 rounded-lg border bg-muted/30">
+                    <div class="flex items-center gap-1.5 rounded-lg border bg-muted/30 px-2 py-1.5 text-xs text-muted-foreground">
                         <SlidersHorizontal class="h-3.5 w-3.5" />
                         <span>Filters</span>
                     </div>
                     <button
                         v-if="hasActiveFilters()"
                         type="button"
-                        class="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1.5"
+                        class="flex items-center gap-1 px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
                         @click="clearFilters"
                     >
                         <X class="h-3.5 w-3.5" /> Clear all
                     </button>
                 </div>
 
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-2 p-3 rounded-xl border bg-muted/30">
+                <div class="grid grid-cols-2 gap-2 rounded-xl border bg-muted/30 p-3 md:grid-cols-3">
                     <div class="flex flex-col gap-1">
-                        <label class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                        <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                             <MapPin class="h-3 w-3" /> Region
                         </label>
-                        <select v-model="region" class="border rounded-lg px-2 py-1.5 text-xs bg-background shadow-sm">
+                        <select v-model="region" class="rounded-lg border bg-background px-2 py-1.5 text-xs shadow-sm">
                             <option value="all">All</option>
                             <option v-for="r in regions" :key="r" :value="r">{{ r }}</option>
                         </select>
                     </div>
                     <div class="flex flex-col gap-1">
-                        <label class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                        <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                             <Building2 class="h-3 w-3" /> Office
                         </label>
-                        <select v-model="office" class="border rounded-lg px-2 py-1.5 text-xs bg-background shadow-sm">
+                        <select v-model="office" class="rounded-lg border bg-background px-2 py-1.5 text-xs shadow-sm">
                             <option value="all">All</option>
                             <option v-for="o in availableOffices" :key="o" :value="o">{{ o }}</option>
                         </select>
                     </div>
                     <div class="flex flex-col gap-1">
-                        <label class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                        <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                             <ListChecks class="h-3 w-3" /> Unit of Competency
                         </label>
-                        <select v-model="unit" class="border rounded-lg px-2 py-1.5 text-xs bg-background shadow-sm">
+                        <select v-model="unit" class="rounded-lg border bg-background px-2 py-1.5 text-xs shadow-sm">
                             <option value="all">All</option>
                             <option v-for="u in units" :key="u" :value="u">{{ u }}</option>
                         </select>
@@ -192,34 +202,44 @@ const priorityColor = (label: string) => {
             </div>
 
             <!-- List -->
-            <div class="rounded-2xl border overflow-hidden shadow-sm bg-background">
+            <div class="overflow-hidden rounded-2xl border bg-background shadow-sm">
                 <table v-if="assessments.data.length" class="w-full text-sm">
                     <thead>
-                        <tr class="bg-gradient-to-r from-indigo-50 via-blue-50 to-sky-50 dark:from-indigo-950/40 dark:via-blue-950/40 dark:to-sky-950/40 border-b-2 border-indigo-200 dark:border-indigo-900">
-                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Employee</th>
-                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Region / Office</th>
-                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Period</th>
-                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Top 3 Training Priorities</th>
-                            <th class="text-right font-bold px-4 py-3 text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Action</th>
+                        <tr
+                            class="border-b-2 border-indigo-200 bg-gradient-to-r from-indigo-50 via-blue-50 to-sky-50 dark:border-indigo-900 dark:from-indigo-950/40 dark:via-blue-950/40 dark:to-sky-950/40"
+                        >
+                            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">
+                                Employee
+                            </th>
+                            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">
+                                Region / Office
+                            </th>
+                            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Period</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">
+                                Top 3 Training Priorities
+                            </th>
+                            <th class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">
+                                Action
+                            </th>
                         </tr>
                     </thead>
                     <tbody class="divide-y">
-                        <tr v-for="row in assessments.data" :key="row.id" class="hover:bg-muted/30 transition-colors">
+                        <tr v-for="row in assessments.data" :key="row.id" class="transition-colors hover:bg-muted/30">
                             <td class="px-4 py-3">
-                                <p class="font-bold text-sm leading-tight">{{ row.name?.toUpperCase() }}</p>
+                                <p class="text-sm font-bold leading-tight">{{ row.name?.toUpperCase() }}</p>
                                 <p class="text-xs text-muted-foreground">{{ row.position }}</p>
                             </td>
                             <td class="px-4 py-3">
-                                <p class="text-xs text-muted-foreground flex items-center gap-1">
+                                <p class="flex items-center gap-1 text-xs text-muted-foreground">
                                     <MapPin class="h-3 w-3 shrink-0" /> {{ row.region ?? '—' }}
                                 </p>
-                                <p class="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                <p class="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
                                     <Building2 class="h-3 w-3 shrink-0" /> {{ row.office_division ?? row.office ?? '—' }}
                                 </p>
                             </td>
                             <td class="px-4 py-3">
                                 <p class="text-sm font-semibold">{{ row.period }}</p>
-                                <p class="text-xs text-muted-foreground flex items-center gap-1">
+                                <p class="flex items-center gap-1 text-xs text-muted-foreground">
                                     <CalendarClock class="h-3 w-3 shrink-0" /> {{ row.reviewed_at ?? '—' }}
                                 </p>
                             </td>
@@ -228,7 +248,7 @@ const priorityColor = (label: string) => {
                                     <span
                                         v-for="p in row.top_priorities"
                                         :key="p.unit"
-                                        class="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full w-fit max-w-full"
+                                        class="inline-flex w-fit max-w-full items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold"
                                         :class="priorityColor(p.label)"
                                     >
                                         <AlertTriangle class="h-3 w-3 shrink-0" />
@@ -236,14 +256,17 @@ const priorityColor = (label: string) => {
                                         <span class="shrink-0">({{ p.score }})</span>
                                     </span>
                                 </div>
-                                <span v-else class="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+                                <span
+                                    v-else
+                                    class="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
+                                >
                                     <CheckCircle2 class="h-3 w-3" /> No urgent training needs
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <Link
                                     :href="route('tna.result.show', row.id)"
-                                    class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border hover:bg-muted/50 transition-colors"
+                                    class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-muted/50"
                                 >
                                     <Eye class="h-3.5 w-3.5" /> View Result
                                 </Link>
@@ -253,7 +276,7 @@ const priorityColor = (label: string) => {
                 </table>
 
                 <!-- Empty state -->
-                <div v-else class="flex flex-col items-center justify-center py-16 px-6 text-center gap-3">
+                <div v-else class="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
                     <svg viewBox="0 0 200 160" class="h-40 w-auto" xmlns="http://www.w3.org/2000/svg">
                         <ellipse cx="100" cy="142" rx="70" ry="8" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
                         <rect x="55" y="45" width="90" height="80" rx="6" fill="currentColor" class="text-indigo-100 dark:text-indigo-900/30" />
@@ -261,10 +284,18 @@ const priorityColor = (label: string) => {
                         <rect x="68" y="75" width="64" height="6" rx="3" fill="currentColor" class="text-indigo-300 dark:text-indigo-700/60" />
                         <rect x="68" y="90" width="40" height="6" rx="3" fill="currentColor" class="text-indigo-300 dark:text-indigo-700/60" />
                         <circle cx="145" cy="100" r="18" fill="currentColor" class="text-blue-100 dark:text-blue-900/40" />
-                        <path d="M138 100 l5 5 l10 -10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" class="text-blue-500" />
+                        <path
+                            d="M138 100 l5 5 l10 -10"
+                            stroke="currentColor"
+                            stroke-width="3"
+                            fill="none"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            class="text-blue-500"
+                        />
                     </svg>
                     <p class="text-sm font-bold text-slate-500">No TNA Results found</p>
-                    <p class="text-xs text-slate-400 max-w-xs">
+                    <p class="max-w-xs text-xs text-slate-400">
                         {{ hasActiveFilters() ? 'No employees match your filters.' : 'No employee has a finalized TNA Result yet.' }}
                     </p>
                 </div>
@@ -272,25 +303,24 @@ const priorityColor = (label: string) => {
 
             <!-- Pagination -->
             <div v-if="assessments.data.length" class="flex items-center justify-between text-sm">
-                <p class="text-xs text-muted-foreground">
-                    Showing {{ assessments.from ?? 0 }}–{{ assessments.to ?? 0 }} of {{ assessments.total }}
-                </p>
+                <p class="text-xs text-muted-foreground">Showing {{ assessments.from ?? 0 }}–{{ assessments.to ?? 0 }} of {{ assessments.total }}</p>
                 <div class="flex items-center gap-1">
                     <template v-for="link in assessments.links" :key="link.label">
-                        <a v-if="link.url"
+                        <a
+                            v-if="link.url"
                             :href="link.url"
-                            class="inline-flex items-center justify-center h-8 w-8 rounded-lg border text-xs transition-colors"
-                            :class="link.active ? 'bg-indigo-600 text-white border-indigo-600' : 'hover:bg-muted text-muted-foreground'"
+                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border text-xs transition-colors"
+                            :class="link.active ? 'border-indigo-600 bg-indigo-600 text-white' : 'text-muted-foreground hover:bg-muted'"
                             v-html="link.label.includes('Previous') ? '&lsaquo;' : link.label.includes('Next') ? '&rsaquo;' : link.label"
                         />
-                        <span v-else
-                            class="inline-flex items-center justify-center h-8 w-8 rounded-lg text-xs text-muted-foreground opacity-40"
+                        <span
+                            v-else
+                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-xs text-muted-foreground opacity-40"
                             v-html="link.label.includes('Previous') ? '&lsaquo;' : link.label.includes('Next') ? '&rsaquo;' : link.label"
                         />
                     </template>
                 </div>
             </div>
-
         </div>
 
         <TnaSummaryDashboardModal

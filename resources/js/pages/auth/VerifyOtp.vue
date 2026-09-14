@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import AuthBase from '@/layouts/AuthLayout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import { LoaderCircle, Mail } from 'lucide-vue-next';
-import { ref, onMounted } from 'vue';
+import { onMounted, ref } from 'vue';
 
 const props = defineProps<{ email: string }>();
 
@@ -72,15 +72,17 @@ onMounted(() => {
 
             <form @submit.prevent="submit" class="flex w-full flex-col items-center gap-6">
                 <!-- 6-digit inputs -->
-                <div class="flex flex-col items-center gap-2 w-full">
-                    <label class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                        One-Time Password
-                    </label>
+                <div class="flex w-full flex-col items-center gap-2">
+                    <label class="text-xs font-semibold uppercase tracking-widest text-muted-foreground"> One-Time Password </label>
                     <div class="flex gap-3" @paste="onPaste">
                         <Input
                             v-for="(_, i) in digits"
                             :key="i"
-                            :ref="el => { if (el) inputs[i] = (el as any).$el ?? el }"
+                            :ref="
+                                (el) => {
+                                    if (el) inputs[i] = (el as any).$el ?? el;
+                                }
+                            "
                             type="text"
                             inputmode="numeric"
                             maxlength="1"
@@ -93,11 +95,7 @@ onMounted(() => {
                     <p v-if="form.errors.otp" class="text-sm text-destructive">{{ form.errors.otp }}</p>
                 </div>
 
-                <Button
-                    type="submit"
-                    class="w-full"
-                    :disabled="form.processing || form.otp.length < 6"
-                >
+                <Button type="submit" class="w-full" :disabled="form.processing || form.otp.length < 6">
                     <LoaderCircle v-if="form.processing" class="mr-2 h-4 w-4 animate-spin" />
                     Verify OTP
                 </Button>

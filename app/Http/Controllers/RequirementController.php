@@ -17,9 +17,9 @@ class RequirementController extends Controller
     public function store(Request $request, Program $program)
     {
         $validated = $request->validate([
-            'title'       => ['required', 'string', Rule::in(array_keys(Requirement::TYPES))],
+            'title' => ['required', 'string', Rule::in(array_keys(Requirement::TYPES))],
             'is_required' => ['boolean'],
-            'note'        => ['nullable', 'string', 'max:2000'],
+            'note' => ['nullable', 'string', 'max:2000'],
         ]);
 
         $batches = $program->batches;
@@ -41,12 +41,12 @@ class RequirementController extends Controller
             }
 
             Requirement::create([
-                'batch_id'    => $batch->id,
-                'title'       => $validated['title'],
-                'name'        => Requirement::nameFor($validated['title']),
-                'due_date'    => Requirement::dueDateFor($validated['title'], $batch->date_end),
+                'batch_id' => $batch->id,
+                'title' => $validated['title'],
+                'name' => Requirement::nameFor($validated['title']),
+                'due_date' => Requirement::dueDateFor($validated['title'], $batch->date_end),
                 'is_required' => $validated['is_required'] ?? true,
-                'note'        => $validated['note'] ?? null,
+                'note' => $validated['note'] ?? null,
             ]);
         }
 

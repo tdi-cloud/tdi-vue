@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('foreign_programs', function (Blueprint $table) {
             $table->id();
             $table->string('program_title');
-            $table->text('description')->nullable();        
+            $table->text('description')->nullable();
             $table->date('program_start');
             $table->date('program_end');
             $table->integer('slots');
@@ -26,13 +26,13 @@ return new class extends Migration
             $table->date('inperson_start')->nullable();
             $table->date('inperson_end')->nullable();
 
-            $table->string('program_cost')->nullable();     
-            $table->enum('fund_source', [                    
+            $table->string('program_cost')->nullable();
+            $table->enum('fund_source', [
                 'SDP',
                 'Other Office',
                 'Sponsoring Organization',
             ])->nullable();
-            $table->enum('category', ['Foreign', 'Bilateral']); 
+            $table->enum('category', ['Foreign', 'Bilateral']);
 
             $table->string('organizing_sponsor');
             $table->enum('status', [

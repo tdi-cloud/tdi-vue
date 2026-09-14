@@ -14,19 +14,19 @@ class ForeignSponsorConfig extends Model
         'is_active',
         'available_courses',
         'accomplished_form_note',
-        'selected_program_ids',   
+        'selected_program_ids',
     ];
 
     protected $casts = [
-        'available_courses'    => 'array',
-        'is_active'            => 'boolean',
-        'selected_program_ids' => 'array',  
+        'available_courses' => 'array',
+        'is_active' => 'boolean',
+        'selected_program_ids' => 'array',
     ];
 
     public function requirements(): HasMany
     {
         return $this->hasMany(ForeignNomineeRequirement::class, 'foreign_sponsor_config_id')
-                    ->orderBy('sort_order');
+            ->orderBy('sort_order');
     }
 
     public function nominees(): HasMany

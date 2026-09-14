@@ -113,8 +113,6 @@ return [
         'name' => env('MAIL_FROM_NAME', 'Example'),
     ],
 
-    'nomination_notify' => env('NOMINATION_NOTIFY_EMAIL'),    
+    'nomination_notify' => env('NOMINATION_NOTIFY_EMAIL'),
 
 ];
-
-

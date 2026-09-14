@@ -50,7 +50,7 @@ const currentPath = window.location.pathname;
                         variant="ghost"
                         :class="[
                             'w-full justify-start gap-2.5 rounded-xl',
-                            currentPath === item.href ? 'bg-background shadow-sm font-semibold' : 'hover:bg-background/60',
+                            currentPath === item.href ? 'bg-background font-semibold shadow-sm' : 'hover:bg-background/60',
                         ]"
                         as-child
                     >
@@ -62,7 +62,9 @@ const currentPath = window.location.pathname;
                 </nav>
 
                 <!-- Decorative illustration (large screens only) -->
-                <div class="mt-4 hidden overflow-hidden rounded-2xl border bg-gradient-to-br from-blue-50 to-indigo-50 p-4 dark:from-blue-950/20 dark:to-indigo-950/20 lg:block">
+                <div
+                    class="mt-4 hidden overflow-hidden rounded-2xl border bg-gradient-to-br from-blue-50 to-indigo-50 p-4 dark:from-blue-950/20 dark:to-indigo-950/20 lg:block"
+                >
                     <svg viewBox="0 0 160 120" class="mx-auto h-24 w-auto" xmlns="http://www.w3.org/2000/svg">
                         <ellipse cx="80" cy="104" rx="55" ry="7" fill="currentColor" class="text-blue-100 dark:text-blue-900/40" />
                         <circle cx="80" cy="55" r="38" fill="currentColor" class="text-blue-100 dark:text-blue-900/30" />

@@ -1,6 +1,6 @@
+import { useToast } from '@/components/ui/toast/use-toast';
 import { usePage } from '@inertiajs/vue3';
 import { watch } from 'vue';
-import { useToast } from '@/components/ui/toast/use-toast';
 
 export function useFlash() {
     const page = usePage();
@@ -24,6 +24,6 @@ export function useFlash() {
                 });
             }
         },
-        { deep: true }
+        { deep: true },
     );
 }

@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('foreign_participants', function (Blueprint $table) {
             $table->id();
             $table->foreignId('foreign_program_id')
-                  ->constrained('foreign_programs')
-                  ->cascadeOnDelete();
+                ->constrained('foreign_programs')
+                ->cascadeOnDelete();
             $table->string('name');
             $table->enum('sex', ['male', 'female', 'other']);
             $table->string('position');

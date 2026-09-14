@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { X, Plus, Trash2, Building2, LoaderCircle, Pencil, Check } from 'lucide-vue-next';
-import axios from 'axios';
 import { useConfirm } from '@/composables/useConfirm';
+import axios from 'axios';
+import { Building2, Check, LoaderCircle, Pencil, Plus, Trash2, X } from 'lucide-vue-next';
+import { onMounted, ref } from 'vue';
 
 interface Sponsor {
     id: number;
@@ -18,17 +18,17 @@ const emit = defineEmits<{
 
 const { confirmDialog } = useConfirm();
 
-const sponsors     = ref<Sponsor[]>([]);
-const loading      = ref(false);
-const newName      = ref('');
-const newFullName  = ref('');
-const adding       = ref(false);
-const error        = ref('');
-const deletingId   = ref<number | null>(null);
+const sponsors = ref<Sponsor[]>([]);
+const loading = ref(false);
+const newName = ref('');
+const newFullName = ref('');
+const adding = ref(false);
+const error = ref('');
+const deletingId = ref<number | null>(null);
 
-const editingId    = ref<number | null>(null);
+const editingId = ref<number | null>(null);
 const editFullName = ref('');
-const savingId     = ref<number | null>(null);
+const savingId = ref<number | null>(null);
 
 const fetchSponsors = async () => {
     loading.value = true;
@@ -112,42 +112,41 @@ onMounted(fetchSponsors);
 
 <template>
     <div class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4" @click.self="emit('close')">
-        <div class="bg-background rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[80vh]">
-
+        <div class="flex max-h-[80vh] w-full max-w-md flex-col rounded-2xl bg-background shadow-2xl">
             <!-- Header -->
-            <div class="flex items-center gap-3 px-5 py-4 border-b shrink-0">
-                <div class="flex items-center justify-center h-8 w-8 rounded-xl bg-blue-600">
+            <div class="flex shrink-0 items-center gap-3 border-b px-5 py-4">
+                <div class="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-600">
                     <Building2 class="h-4 w-4 text-white" />
                 </div>
                 <div>
                     <h3 class="text-sm font-extrabold leading-none">Organizing Sponsors</h3>
-                    <p class="text-xs text-muted-foreground mt-0.5">Manage the list of sponsors</p>
+                    <p class="mt-0.5 text-xs text-muted-foreground">Manage the list of sponsors</p>
                 </div>
-                <button class="ml-auto text-muted-foreground hover:text-foreground transition-colors" @click="emit('close')">
+                <button class="ml-auto text-muted-foreground transition-colors hover:text-foreground" @click="emit('close')">
                     <X class="h-5 w-5" />
                 </button>
             </div>
 
             <!-- Add new -->
-            <div class="px-5 py-3 border-b shrink-0">
+            <div class="shrink-0 border-b px-5 py-3">
                 <div class="flex flex-col gap-2">
                     <input
                         v-model="newName"
                         type="text"
                         placeholder="Abbreviation, e.g. JICA"
-                        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        class="rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         @keydown.enter="addSponsor"
                     />
                     <input
                         v-model="newFullName"
                         type="text"
                         placeholder="Full name, e.g. Japan International Cooperation Agency (optional)"
-                        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        class="rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         @keydown.enter="addSponsor"
                     />
                     <button
                         :disabled="adding || !newName.trim()"
-                        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        class="flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                         @click="addSponsor"
                     >
                         <LoaderCircle v-if="adding" class="h-3.5 w-3.5 animate-spin" />
@@ -155,7 +154,7 @@ onMounted(fetchSponsors);
                         Add Sponsor
                     </button>
                 </div>
-                <p v-if="error" class="text-xs text-red-500 mt-1">{{ error }}</p>
+                <p v-if="error" class="mt-1 text-xs text-red-500">{{ error }}</p>
             </div>
 
             <!-- List -->
@@ -163,21 +162,17 @@ onMounted(fetchSponsors);
                 <div v-if="loading" class="flex items-center justify-center py-10">
                     <LoaderCircle class="h-5 w-5 animate-spin text-blue-500" />
                 </div>
-                <div v-else-if="!sponsors.length" class="flex flex-col items-center justify-center py-10 text-center text-muted-foreground gap-2">
+                <div v-else-if="!sponsors.length" class="flex flex-col items-center justify-center gap-2 py-10 text-center text-muted-foreground">
                     <Building2 class="h-8 w-8 text-slate-300" />
                     <p class="text-xs font-semibold">No sponsors yet.</p>
                     <p class="text-xs">Add one above to get started.</p>
                 </div>
-                <div v-else class="divide-y rounded-xl border overflow-hidden">
-                    <div
-                        v-for="sponsor in sponsors"
-                        :key="sponsor.id"
-                        class="px-3 py-2.5 hover:bg-muted/40 transition-colors group"
-                    >
+                <div v-else class="divide-y overflow-hidden rounded-xl border">
+                    <div v-for="sponsor in sponsors" :key="sponsor.id" class="group px-3 py-2.5 transition-colors hover:bg-muted/40">
                         <div class="flex items-center justify-between gap-2">
                             <button
                                 type="button"
-                                class="text-sm font-semibold text-left flex-1 hover:text-blue-600 transition-colors"
+                                class="flex-1 text-left text-sm font-semibold transition-colors hover:text-blue-600"
                                 @click="selectSponsor(sponsor.name)"
                             >
                                 {{ sponsor.name }}
@@ -185,7 +180,7 @@ onMounted(fetchSponsors);
                             <button
                                 v-if="editingId !== sponsor.id"
                                 type="button"
-                                class="text-muted-foreground hover:text-blue-600 transition-colors p-1 rounded-md opacity-0 group-hover:opacity-100"
+                                class="rounded-md p-1 text-muted-foreground opacity-0 transition-colors hover:text-blue-600 group-hover:opacity-100"
                                 title="Edit full name"
                                 @click="startEditFullName(sponsor)"
                             >
@@ -194,7 +189,7 @@ onMounted(fetchSponsors);
                             <button
                                 type="button"
                                 :disabled="deletingId === sponsor.id"
-                                class="text-muted-foreground hover:text-red-500 transition-colors p-1 rounded-md opacity-0 group-hover:opacity-100"
+                                class="rounded-md p-1 text-muted-foreground opacity-0 transition-colors hover:text-red-500 group-hover:opacity-100"
                                 @click="deleteSponsor(sponsor)"
                             >
                                 <LoaderCircle v-if="deletingId === sponsor.id" class="h-3.5 w-3.5 animate-spin" />
@@ -203,28 +198,24 @@ onMounted(fetchSponsors);
                         </div>
 
                         <!-- Full name: display -->
-                        <p
-                            v-if="editingId !== sponsor.id"
-                            class="text-xs text-muted-foreground mt-0.5"
-                            :class="{ italic: !sponsor.full_name }"
-                        >
+                        <p v-if="editingId !== sponsor.id" class="mt-0.5 text-xs text-muted-foreground" :class="{ italic: !sponsor.full_name }">
                             {{ sponsor.full_name ?? 'No full name set' }}
                         </p>
 
                         <!-- Full name: inline edit -->
-                        <div v-else class="flex items-center gap-1.5 mt-1.5">
+                        <div v-else class="mt-1.5 flex items-center gap-1.5">
                             <input
                                 v-model="editFullName"
                                 type="text"
                                 placeholder="Full name"
-                                class="flex-1 border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                class="flex-1 rounded-lg border px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 @keydown.enter="saveFullName(sponsor)"
                                 @keydown.escape="cancelEditFullName"
                             />
                             <button
                                 type="button"
                                 :disabled="savingId === sponsor.id"
-                                class="text-emerald-600 hover:text-emerald-700 transition-colors p-1 rounded-md"
+                                class="rounded-md p-1 text-emerald-600 transition-colors hover:text-emerald-700"
                                 title="Save"
                                 @click="saveFullName(sponsor)"
                             >
@@ -233,7 +224,7 @@ onMounted(fetchSponsors);
                             </button>
                             <button
                                 type="button"
-                                class="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md"
+                                class="rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground"
                                 title="Cancel"
                                 @click="cancelEditFullName"
                             >
@@ -245,10 +236,9 @@ onMounted(fetchSponsors);
             </div>
 
             <!-- Footer -->
-            <div class="px-5 py-3 border-t shrink-0 text-right">
+            <div class="shrink-0 border-t px-5 py-3 text-right">
                 <p class="text-xs text-muted-foreground">Click a sponsor name to select it.</p>
             </div>
-
         </div>
     </div>
 </template>

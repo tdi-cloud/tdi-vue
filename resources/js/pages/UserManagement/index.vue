@@ -1,14 +1,11 @@
 <script setup lang="ts">
-import AppLayout from '@/layouts/AppLayout.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useConfirm } from '@/composables/useConfirm';
 import { useInitials } from '@/composables/useInitials';
+import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
-import {
-    Search, ShieldCheck, X, SlidersHorizontal,
-    Mail, Hash, Crown, ChevronLeft, ChevronRight, Pencil,
-} from 'lucide-vue-next';
+import { ChevronLeft, ChevronRight, Crown, Hash, Mail, Pencil, Search, ShieldCheck, SlidersHorizontal, X } from 'lucide-vue-next';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 interface UserRow {
     id: number;
@@ -57,10 +54,14 @@ let debounce: ReturnType<typeof setTimeout>;
 watch([search, access], () => {
     clearTimeout(debounce);
     debounce = setTimeout(() => {
-        router.get(route('user-management.index'), {
-            search: search.value || undefined,
-            access: access.value !== 'all' ? access.value : undefined,
-        }, { preserveScroll: true, preserveState: true, replace: true });
+        router.get(
+            route('user-management.index'),
+            {
+                search: search.value || undefined,
+                access: access.value !== 'all' ? access.value : undefined,
+            },
+            { preserveScroll: true, preserveState: true, replace: true },
+        );
     }, 350);
 });
 
@@ -102,11 +103,17 @@ const savingId = ref<number | null>(null);
 const updateAccess = (user: UserRow, newAccess: string) => {
     if (newAccess === user.access) return;
     savingId.value = user.id;
-    router.put(route('user-management.update', user.id), { access: newAccess }, {
-        preserveScroll: true,
-        preserveState: true,
-        onFinish: () => { savingId.value = null; },
-    });
+    router.put(
+        route('user-management.update', user.id),
+        { access: newAccess },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onFinish: () => {
+                savingId.value = null;
+            },
+        },
+    );
 };
 
 /* ---- Edit modal: name + avatar ---- */
@@ -138,7 +145,7 @@ function closeEditModal() {
 // parehong user sa bagong `users.data` para ma-refresh ang laman ng modal
 // (avatar/name) nang hindi ito nagsasara.
 function refreshEditingUser(userId: number) {
-    const updated = props.users.data.find(u => u.id === userId);
+    const updated = props.users.data.find((u) => u.id === userId);
     if (updated) editingUser.value = updated;
 }
 
@@ -151,13 +158,21 @@ function saveName() {
     const userId = editingUser.value.id;
     savingName.value = true;
     nameError.value = '';
-    router.put(route('user-management.update', userId), { name: nameDraft.value }, {
-        preserveScroll: true,
-        preserveState: true,
-        onSuccess: () => refreshEditingUser(userId),
-        onError: (errors) => { nameError.value = errors.name || 'Failed to update name.'; },
-        onFinish: () => { savingName.value = false; },
-    });
+    router.put(
+        route('user-management.update', userId),
+        { name: nameDraft.value },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => refreshEditingUser(userId),
+            onError: (errors) => {
+                nameError.value = errors.name || 'Failed to update name.';
+            },
+            onFinish: () => {
+                savingName.value = false;
+            },
+        },
+    );
 }
 
 function triggerAvatarPick() {
@@ -191,8 +206,12 @@ function handleAvatarChange(e: Event) {
         preserveScroll: true,
         preserveState: true,
         onSuccess: () => refreshEditingUser(userId),
-        onError: (errors) => { avatarError.value = errors.avatar || 'Upload failed. Please try again.'; },
-        onFinish: () => { avatarProcessing.value = false; },
+        onError: (errors) => {
+            avatarError.value = errors.avatar || 'Upload failed. Please try again.';
+        },
+        onFinish: () => {
+            avatarProcessing.value = false;
+        },
     });
 }
 
@@ -205,7 +224,9 @@ async function removeAvatar() {
         preserveScroll: true,
         preserveState: true,
         onSuccess: () => refreshEditingUser(userId),
-        onFinish: () => { avatarProcessing.value = false; },
+        onFinish: () => {
+            avatarProcessing.value = false;
+        },
     });
 }
 </script>
@@ -215,103 +236,118 @@ async function removeAvatar() {
 
     <AppLayout>
         <div class="flex h-full flex-1 flex-col gap-4 p-4">
-
             <!-- Header -->
             <div class="flex items-center gap-3">
-                <div class="flex items-center justify-center h-10 w-10 rounded-xl bg-rose-600 shadow-md">
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-600 shadow-md">
                     <ShieldCheck class="h-5 w-5 text-white" />
                 </div>
                 <div>
                     <h1 class="text-xl font-bold leading-none">User Management</h1>
-                    <p class="text-sm text-muted-foreground mt-0.5">Manage user access levels — superadmin only</p>
+                    <p class="mt-0.5 text-sm text-muted-foreground">Manage user access levels — superadmin only</p>
                 </div>
             </div>
 
             <!-- Search & Filter Bar -->
             <div class="flex flex-col gap-3">
                 <div class="flex items-center gap-2">
-                    <div class="relative flex-1 max-w-sm">
-                        <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <div class="relative max-w-sm flex-1">
+                        <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <input
                             v-model="search"
                             type="text"
                             placeholder="Search by name, email, or empcode..."
-                            class="w-full border rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 bg-background shadow-sm"
+                            class="w-full rounded-lg border bg-background py-2 pl-9 pr-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
                         />
                     </div>
-                    <div class="flex items-center gap-1.5 text-xs text-muted-foreground px-2 py-1.5 rounded-lg border bg-muted/30">
+                    <div class="flex items-center gap-1.5 rounded-lg border bg-muted/30 px-2 py-1.5 text-xs text-muted-foreground">
                         <SlidersHorizontal class="h-3.5 w-3.5" />
                         <span>Filters</span>
                     </div>
-                    <button v-if="hasActiveFilters" class="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1.5" @click="clearFilters">
+                    <button
+                        v-if="hasActiveFilters"
+                        class="flex items-center gap-1 px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                        @click="clearFilters"
+                    >
                         <X class="h-3.5 w-3.5" /> Clear all
                     </button>
                 </div>
 
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 p-3 rounded-xl border bg-muted/30">
+                <div class="grid grid-cols-2 gap-2 rounded-xl border bg-muted/30 p-3 md:grid-cols-4">
                     <div class="flex flex-col gap-1">
-                        <label class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                        <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                             <Crown class="h-3 w-3" /> Access Level
                         </label>
-                        <select v-model="access" class="border rounded-lg px-2 py-1.5 text-xs bg-background shadow-sm">
+                        <select v-model="access" class="rounded-lg border bg-background px-2 py-1.5 text-xs shadow-sm">
                             <option value="all">All</option>
                             <option v-for="lvl in accessLevels" :key="lvl" :value="lvl">{{ lvl.toUpperCase() }}</option>
                         </select>
                     </div>
                 </div>
 
-                <p class="text-xs text-muted-foreground">
-                    Showing {{ users.from ?? 0 }}–{{ users.to ?? 0 }} of {{ users.total }} user(s)
-                </p>
+                <p class="text-xs text-muted-foreground">Showing {{ users.from ?? 0 }}–{{ users.to ?? 0 }} of {{ users.total }} user(s)</p>
             </div>
 
             <!-- Table -->
-            <div class="rounded-2xl border overflow-hidden shadow-sm bg-background">
+            <div class="overflow-hidden rounded-2xl border bg-background shadow-sm">
                 <table v-if="users.data.length" class="w-full text-sm">
                     <thead>
-                        <tr class="bg-gradient-to-r from-rose-50 via-red-50 to-orange-50 dark:from-rose-950/40 dark:via-red-950/40 dark:to-orange-950/40 border-b-2 border-rose-200 dark:border-rose-900">
-                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-rose-700 dark:text-rose-300">Empcode</th>
-                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-rose-700 dark:text-rose-300">User</th>
-                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-rose-700 dark:text-rose-300">Status</th>
-                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-rose-700 dark:text-rose-300">Current Access</th>
-                            <th class="text-right font-bold px-4 py-3 text-xs uppercase tracking-wide text-rose-700 dark:text-rose-300">Change Access</th>
-                            <th class="text-center font-bold px-4 py-3 text-xs uppercase tracking-wide text-rose-700 dark:text-rose-300">Edit</th>
+                        <tr
+                            class="border-b-2 border-rose-200 bg-gradient-to-r from-rose-50 via-red-50 to-orange-50 dark:border-rose-900 dark:from-rose-950/40 dark:via-red-950/40 dark:to-orange-950/40"
+                        >
+                            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-rose-700 dark:text-rose-300">Empcode</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-rose-700 dark:text-rose-300">User</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-rose-700 dark:text-rose-300">Status</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-rose-700 dark:text-rose-300">
+                                Current Access
+                            </th>
+                            <th class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wide text-rose-700 dark:text-rose-300">
+                                Change Access
+                            </th>
+                            <th class="px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-rose-700 dark:text-rose-300">Edit</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y">
-                        <tr v-for="u in users.data" :key="u.id" class="hover:bg-muted/30 transition-colors">
-                            <td class="px-4 py-3 text-muted-foreground font-mono text-xs">
+                        <tr v-for="u in users.data" :key="u.id" class="transition-colors hover:bg-muted/30">
+                            <td class="px-4 py-3 font-mono text-xs text-muted-foreground">
                                 <span class="flex items-center gap-1.5"><Hash class="h-3 w-3" /> {{ u.empcode ?? '—' }}</span>
                             </td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2.5">
-                                    <Avatar class="h-8 w-8 overflow-hidden rounded-full bg-rose-600 shrink-0">
+                                    <Avatar class="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-rose-600">
                                         <AvatarImage v-if="u.avatar" :src="u.avatar" :alt="u.name" />
                                         <AvatarFallback class="rounded-full text-xs font-extrabold text-white">
                                             {{ getInitials(u.name) }}
                                         </AvatarFallback>
                                     </Avatar>
                                     <div class="min-w-0">
-                                        <p class="font-bold text-sm leading-tight truncate">{{ u.name }}</p>
-                                        <p class="text-xs text-muted-foreground flex items-center gap-1 mt-0.5"><Mail class="h-3 w-3" /> {{ u.email }}</p>
+                                        <p class="truncate text-sm font-bold leading-tight">{{ u.name }}</p>
+                                        <p class="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                                            <Mail class="h-3 w-3" /> {{ u.email }}
+                                        </p>
                                     </div>
                                 </div>
                             </td>
                             <td class="px-4 py-3">
-                                <span v-if="u.is_online" class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                                <span
+                                    v-if="u.is_online"
+                                    class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400"
+                                >
                                     <span class="relative flex h-2 w-2">
-                                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                                        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                                        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                                        <span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
                                     </span>
                                     Active now
                                 </span>
                                 <span v-else class="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                                    <span class="h-2 w-2 rounded-full bg-gray-300 dark:bg-gray-600 shrink-0" />
+                                    <span class="h-2 w-2 shrink-0 rounded-full bg-gray-300 dark:bg-gray-600" />
                                     {{ u.last_active_at ? `Last seen ${timeAgo(u.last_active_at)}` : 'Never logged in' }}
                                 </span>
                             </td>
                             <td class="px-4 py-3">
-                                <span class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border" :class="accessColor(u.access)">
+                                <span
+                                    class="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold"
+                                    :class="accessColor(u.access)"
+                                >
                                     <Crown v-if="u.access === 'superadmin'" class="h-3 w-3" />
                                     {{ u.access.toUpperCase() }}
                                 </span>
@@ -321,7 +357,7 @@ async function removeAvatar() {
                                     :value="u.access"
                                     :disabled="u.id === currentUserId || savingId === u.id"
                                     :title="u.id === currentUserId ? 'You cannot change your own access level' : ''"
-                                    class="border rounded-lg px-2 py-1.5 text-xs bg-background shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                    class="rounded-lg border bg-background px-2 py-1.5 text-xs shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
                                     @change="updateAccess(u, ($event.target as HTMLSelectElement).value)"
                                 >
                                     <option v-for="lvl in accessLevels" :key="lvl" :value="lvl">{{ lvl.toUpperCase() }}</option>
@@ -330,7 +366,7 @@ async function removeAvatar() {
                             <td class="px-4 py-3 text-center">
                                 <button
                                     type="button"
-                                    class="inline-flex items-center justify-center h-8 w-8 rounded-lg text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                                    class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30"
                                     title="Edit name / profile picture"
                                     @click="openEditModal(u)"
                                 >
@@ -341,7 +377,7 @@ async function removeAvatar() {
                     </tbody>
                 </table>
 
-                <div v-else class="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
+                <div v-else class="flex flex-col items-center justify-center gap-2 py-16 text-muted-foreground">
                     <ShieldCheck class="h-10 w-10 opacity-30" />
                     <p class="text-sm font-semibold">No users found.</p>
                 </div>
@@ -349,20 +385,20 @@ async function removeAvatar() {
 
             <!-- Pagination -->
             <div v-if="users.last_page > 1" class="flex items-center justify-between text-sm">
-                <p class="text-muted-foreground text-xs">Page {{ users.current_page }} of {{ users.last_page }}</p>
+                <p class="text-xs text-muted-foreground">Page {{ users.current_page }} of {{ users.last_page }}</p>
                 <div class="flex items-center gap-1">
                     <template v-for="link in users.links" :key="link.label">
                         <a
                             v-if="link.url"
                             :href="link.url"
-                            class="inline-flex items-center justify-center h-8 w-8 rounded-lg border text-xs transition-colors"
-                            :class="link.active ? 'bg-rose-600 text-white border-rose-600' : 'hover:bg-muted text-muted-foreground'"
+                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border text-xs transition-colors"
+                            :class="link.active ? 'border-rose-600 bg-rose-600 text-white' : 'text-muted-foreground hover:bg-muted'"
                         >
                             <ChevronLeft v-if="link.label.includes('Previous')" class="h-3.5 w-3.5" />
                             <ChevronRight v-else-if="link.label.includes('Next')" class="h-3.5 w-3.5" />
                             <span v-else v-html="link.label" />
                         </a>
-                        <span v-else class="inline-flex items-center justify-center h-8 w-8 rounded-lg text-xs text-muted-foreground opacity-40">
+                        <span v-else class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-xs text-muted-foreground opacity-40">
                             <ChevronLeft v-if="link.label.includes('Previous')" class="h-3.5 w-3.5" />
                             <ChevronRight v-else-if="link.label.includes('Next')" class="h-3.5 w-3.5" />
                             <span v-else v-html="link.label" />
@@ -370,45 +406,40 @@ async function removeAvatar() {
                     </template>
                 </div>
             </div>
-
         </div>
 
         <!-- ===== Edit User Modal (name + avatar) ===== -->
         <Teleport to="body">
-            <div
-                v-if="editingUser"
-                class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
-                @click.self="closeEditModal"
-            >
-                <div class="bg-background rounded-2xl shadow-2xl w-full max-w-md">
-                    <div class="flex items-center gap-3 px-5 py-4 border-b">
-                        <div class="flex items-center justify-center h-9 w-9 rounded-xl bg-rose-600 shrink-0">
+            <div v-if="editingUser" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" @click.self="closeEditModal">
+                <div class="w-full max-w-md rounded-2xl bg-background shadow-2xl">
+                    <div class="flex items-center gap-3 border-b px-5 py-4">
+                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-600">
                             <Pencil class="h-4 w-4 text-white" />
                         </div>
                         <div class="min-w-0">
                             <h3 class="text-sm font-extrabold leading-none">Edit User</h3>
-                            <p class="text-xs text-muted-foreground mt-0.5 truncate">{{ editingUser.email }}</p>
+                            <p class="mt-0.5 truncate text-xs text-muted-foreground">{{ editingUser.email }}</p>
                         </div>
-                        <button class="ml-auto text-muted-foreground hover:text-foreground transition-colors shrink-0" @click="closeEditModal">
+                        <button class="ml-auto shrink-0 text-muted-foreground transition-colors hover:text-foreground" @click="closeEditModal">
                             <X class="h-5 w-5" />
                         </button>
                     </div>
 
-                    <div class="p-5 flex flex-col gap-6">
+                    <div class="flex flex-col gap-6 p-5">
                         <!-- Avatar -->
                         <div class="flex items-center gap-4">
-                            <Avatar class="h-16 w-16 overflow-hidden rounded-full bg-rose-600 shrink-0">
+                            <Avatar class="h-16 w-16 shrink-0 overflow-hidden rounded-full bg-rose-600">
                                 <AvatarImage v-if="editingUser.avatar" :src="editingUser.avatar" :alt="editingUser.name" />
                                 <AvatarFallback class="rounded-full text-lg font-extrabold text-white">
                                     {{ getInitials(editingUser.name) }}
                                 </AvatarFallback>
                             </Avatar>
 
-                            <div class="flex flex-col gap-2 min-w-0">
+                            <div class="flex min-w-0 flex-col gap-2">
                                 <div class="flex items-center gap-2">
                                     <button
                                         type="button"
-                                        class="rounded-lg border px-3 py-1.5 text-xs font-semibold hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        class="rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                                         :disabled="avatarProcessing"
                                         @click="triggerAvatarPick"
                                     >
@@ -417,7 +448,7 @@ async function removeAvatar() {
                                     <button
                                         v-if="editingUser.avatar"
                                         type="button"
-                                        class="rounded-lg border px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        class="rounded-lg border px-3 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-red-950/30"
                                         :disabled="avatarProcessing"
                                         @click="removeAvatar"
                                     >
@@ -443,23 +474,23 @@ async function removeAvatar() {
                             <input
                                 v-model="nameDraft"
                                 type="text"
-                                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 bg-background"
+                                class="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
                             />
                             <p v-if="nameError" class="text-xs text-red-600">{{ nameError }}</p>
                         </div>
                     </div>
 
-                    <div class="flex items-center justify-end gap-2 px-5 py-4 border-t">
+                    <div class="flex items-center justify-end gap-2 border-t px-5 py-4">
                         <button
                             type="button"
-                            class="rounded-lg border px-3.5 py-2 text-sm font-semibold hover:bg-muted transition-colors"
+                            class="rounded-lg border px-3.5 py-2 text-sm font-semibold transition-colors hover:bg-muted"
                             @click="closeEditModal"
                         >
                             Close
                         </button>
                         <button
                             type="button"
-                            class="rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm px-4 py-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                            class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
                             :disabled="savingName || nameDraft === editingUser.name"
                             @click="saveName"
                         >

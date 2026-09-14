@@ -1,13 +1,10 @@
 <script setup lang="ts">
+import NhrdcSelfSignedCopyUpload from '@/components/NhrdcSelfSignedCopyUpload.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
-import {
-    ArrowLeft, ClipboardCheck, Calendar, Building2, Users,
-    ChevronDown, Save, CheckCircle2, MessageSquareText, FileText,
-} from 'lucide-vue-next';
-import { computed, reactive, ref } from 'vue';
 import axios from 'axios';
-import NhrdcSelfSignedCopyUpload from '@/components/NhrdcSelfSignedCopyUpload.vue';
+import { ArrowLeft, Building2, Calendar, CheckCircle2, ChevronDown, ClipboardCheck, FileText, MessageSquareText, Save, Users } from 'lucide-vue-next';
+import { computed, reactive, ref } from 'vue';
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
 
@@ -64,7 +61,9 @@ const hasSignedCopy = ref(props.hasSignedCopy);
 
 const REQUIREMENT_CRITERIA = [
     {
-        key: 'need_for_training', label: "Nominee's Need for Training", max: 20,
+        key: 'need_for_training',
+        label: "Nominee's Need for Training",
+        max: 20,
         options: [
             { value: 20, label: 'Less than 10 hours of relevant training' },
             { value: 17, label: 'With 10 to 20 hours of relevant training' },
@@ -73,7 +72,9 @@ const REQUIREMENT_CRITERIA = [
         ],
     },
     {
-        key: 'relevance_to_duties', label: 'Relevance of the Course to the Present Duties and Responsibilities', max: 30,
+        key: 'relevance_to_duties',
+        label: 'Relevance of the Course to the Present Duties and Responsibilities',
+        max: 30,
         options: [
             { value: 30, label: 'Relevant to present work assignment' },
             { value: 28, label: 'Relevant to other work assignment' },
@@ -81,7 +82,9 @@ const REQUIREMENT_CRITERIA = [
         ],
     },
     {
-        key: 'meets_donor_requirements', label: 'Nominee Meets Donor Requirements', max: 10,
+        key: 'meets_donor_requirements',
+        label: 'Nominee Meets Donor Requirements',
+        max: 10,
         options: [
             { value: 10, label: 'Meets all requirements' },
             { value: 8, label: 'Lacks 1 requirement' },
@@ -90,7 +93,9 @@ const REQUIREMENT_CRITERIA = [
         ],
     },
     {
-        key: 'completion_of_documents', label: 'Completion of Documentary Requirements', max: 10,
+        key: 'completion_of_documents',
+        label: 'Completion of Documentary Requirements',
+        max: 10,
         options: [
             { value: 10, label: 'Submits complete requirements' },
             { value: 8, label: 'Lacks 1 requirement' },
@@ -118,9 +123,9 @@ type Scores = Record<string, number>;
 // ── My rating draft state ────────────────────────────────────────────────────
 
 const expandedId = ref<number | null>(null);
-const draft      = reactive<Record<number, Scores>>({});
-const savingId   = ref<number | null>(null);
-const savedId    = ref<number | null>(null);
+const draft = reactive<Record<number, Scores>>({});
+const savingId = ref<number | null>(null);
+const savedId = ref<number | null>(null);
 
 function blankDraft(): Scores {
     const s: Scores = {};
@@ -174,7 +179,7 @@ function fmt(value: number | string | null | undefined): string {
 
 function optionLabel(criterion: (typeof REQUIREMENT_CRITERIA)[number], value: number | string | null | undefined): string {
     const n = Number(value ?? NaN);
-    return criterion.options.find(o => o.value === n)?.label ?? '';
+    return criterion.options.find((o) => o.value === n)?.label ?? '';
 }
 
 async function saveRating(nominee: Nominee) {
@@ -184,7 +189,9 @@ async function saveRating(nominee: Nominee) {
         const res = await axios.post(route('nhrdc.ratings.save', nominee.id), draft[nominee.id]);
         nominee.my_rating = res.data;
         savedId.value = nominee.id;
-        setTimeout(() => { if (savedId.value === nominee.id) savedId.value = null; }, 2000);
+        setTimeout(() => {
+            if (savedId.value === nominee.id) savedId.value = null;
+        }, 2000);
     } finally {
         savingId.value = null;
     }
@@ -256,64 +263,63 @@ const sponsorDisplay = computed(() => {
 
     <AppLayout>
         <div class="flex flex-1 flex-col gap-5 p-4">
-
             <!-- Back -->
             <button
-                class="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground w-fit transition-colors"
+                class="flex w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
                 @click="router.visit(route('nhrdc.programs.index'))"
             >
                 <ArrowLeft class="h-4 w-4" /> Back to Programs
             </button>
 
             <!-- Hero -->
-            <div class="relative rounded-2xl bg-gradient-to-br from-indigo-700 via-blue-700 to-sky-600 p-6 text-white shadow-xl overflow-hidden">
-                <div class="absolute inset-0 overflow-hidden pointer-events-none">
-                    <div class="absolute -top-8 -right-8 h-48 w-48 rounded-full bg-white/5" />
+            <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-700 via-blue-700 to-sky-600 p-6 text-white shadow-xl">
+                <div class="pointer-events-none absolute inset-0 overflow-hidden">
+                    <div class="absolute -right-8 -top-8 h-48 w-48 rounded-full bg-white/5" />
                     <div class="absolute -bottom-12 -right-4 h-64 w-64 rounded-full bg-white/5" />
                 </div>
 
                 <div class="relative flex flex-col gap-3">
-                    <span class="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-white/20 uppercase tracking-wide w-fit">
+                    <span
+                        class="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1 text-xs font-bold uppercase tracking-wide"
+                    >
                         <ClipboardCheck class="h-3.5 w-3.5" /> Interview Rating
                     </span>
 
-                    <h1 class="text-xl md:text-2xl font-bold leading-tight">{{ program.program_title }}</h1>
+                    <h1 class="text-xl font-bold leading-tight md:text-2xl">{{ program.program_title }}</h1>
 
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mt-2">
+                    <div class="mt-2 grid grid-cols-2 gap-4 md:grid-cols-3">
                         <div class="rounded-xl bg-white/10 px-4 py-3">
-                            <p class="text-[11px] font-semibold uppercase tracking-wide text-white/70 flex items-center gap-1.5">
+                            <p class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-white/70">
                                 <Calendar class="h-3 w-3" /> Duration
                             </p>
-                            <p class="text-sm font-bold mt-1">{{ formatDate(program.program_start) }} – {{ formatDate(program.program_end) }}</p>
+                            <p class="mt-1 text-sm font-bold">{{ formatDate(program.program_start) }} – {{ formatDate(program.program_end) }}</p>
                             <p v-if="durationDays" class="text-[11px] text-white/70">{{ durationDays }} day{{ durationDays > 1 ? 's' : '' }}</p>
                         </div>
                         <div class="rounded-xl bg-white/10 px-4 py-3">
-                            <p class="text-[11px] font-semibold uppercase tracking-wide text-white/70 flex items-center gap-1.5">
+                            <p class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-white/70">
                                 <Building2 class="h-3 w-3" /> Sponsoring Donor
                             </p>
-                            <p class="text-sm font-bold mt-1">{{ sponsorDisplay }}</p>
+                            <p class="mt-1 text-sm font-bold">{{ sponsorDisplay }}</p>
                         </div>
                         <div class="rounded-xl bg-white/10 px-4 py-3">
-                            <p class="text-[11px] font-semibold uppercase tracking-wide text-white/70 flex items-center gap-1.5">
+                            <p class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-white/70">
                                 <Users class="h-3 w-3" /> Slot(s)
                             </p>
-                            <p class="text-sm font-bold mt-1">{{ nominees.length }} of {{ program.slots }}</p>
+                            <p class="mt-1 text-sm font-bold">{{ nominees.length }} of {{ program.slots }}</p>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- My assessment sheet: PDF + signed copy -->
-            <div class="rounded-2xl border bg-background shadow-sm p-5 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-background p-5 shadow-sm">
                 <div>
-                    <p class="text-sm font-bold flex items-center gap-1.5">
-                        <FileText class="h-4 w-4 text-indigo-600" /> My Assessment Sheet
-                    </p>
+                    <p class="flex items-center gap-1.5 text-sm font-bold"><FileText class="h-4 w-4 text-indigo-600" /> My Assessment Sheet</p>
                     <a
                         :href="route('nhrdc.programs.assessment-pdf', program.id)"
                         target="_blank"
                         rel="noopener"
-                        class="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700 mt-1"
+                        class="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700"
                     >
                         <FileText class="h-3 w-3" /> Generate PDF
                     </a>
@@ -332,32 +338,28 @@ const sponsorDisplay = computed(() => {
             </div>
 
             <div v-else class="flex flex-col gap-3">
-                <div
-                    v-for="n in nominees"
-                    :key="n.id"
-                    class="rounded-2xl border bg-background shadow-sm overflow-hidden"
-                >
+                <div v-for="n in nominees" :key="n.id" class="overflow-hidden rounded-2xl border bg-background shadow-sm">
                     <!-- Nominee summary row -->
                     <button
                         type="button"
-                        class="w-full flex items-center justify-between gap-3 px-5 py-4 hover:bg-muted/30 transition-colors text-left"
+                        class="flex w-full items-center justify-between gap-3 px-5 py-4 text-left transition-colors hover:bg-muted/30"
                         @click="toggleExpand(n)"
                     >
-                        <div class="flex items-center gap-3 min-w-0">
+                        <div class="flex min-w-0 items-center gap-3">
                             <div
-                                class="shrink-0 h-10 w-10 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
                                 :class="avatarClasses(n)"
                             >
                                 {{ initials(n) }}
                             </div>
                             <div class="min-w-0">
-                                <p class="text-sm font-bold truncate">{{ fullName(n) }}</p>
-                                <p class="text-xs text-muted-foreground truncate">{{ n.position }} · {{ n.agency }}</p>
+                                <p class="truncate text-sm font-bold">{{ fullName(n) }}</p>
+                                <p class="truncate text-xs text-muted-foreground">{{ n.position }} · {{ n.agency }}</p>
                             </div>
                         </div>
 
-                        <div class="flex items-center gap-3 shrink-0">
-                            <span class="text-xs font-bold px-3 py-1.5 rounded-full" :class="gradeBadgeClass(n)">
+                        <div class="flex shrink-0 items-center gap-3">
+                            <span class="rounded-full px-3 py-1.5 text-xs font-bold" :class="gradeBadgeClass(n)">
                                 <template v-if="hasAnyScore(n)">
                                     {{ n.my_rating ? `My rating: ${n.my_rating.total}/${INTERVIEW_MAX}` : 'Not yet rated' }}
                                 </template>
@@ -368,90 +370,95 @@ const sponsorDisplay = computed(() => {
                     </button>
 
                     <!-- Rating sheet -->
-                    <div v-if="expandedId === n.id" class="border-t bg-muted/10 px-5 py-5 flex flex-col gap-6">
-
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-
-                        <!-- Requirements: read-only, encoded by admin -->
-                        <div>
-                            <div class="flex items-center justify-between mb-3">
-                                <h3 class="text-sm font-bold flex items-center gap-1.5">
-                                    <ClipboardCheck class="h-4 w-4 text-blue-600" />
-                                    I. Requirements Assessment <span class="font-normal text-muted-foreground text-xs">(encoded by admin)</span>
-                                </h3>
-                                <span class="text-xs font-bold text-blue-700 dark:text-blue-400">
-                                    {{ n.assessment ? fmt(n.assessment.requirements_total) : '—' }} / {{ REQUIREMENTS_MAX }}
-                                </span>
-                            </div>
-
-                            <div v-if="n.assessment" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div v-for="c in REQUIREMENT_CRITERIA" :key="c.key" class="rounded-lg border bg-background px-3 py-2">
-                                    <p class="text-[11px] text-muted-foreground leading-tight">{{ c.label }}</p>
-                                    <p class="text-sm font-bold mt-0.5">{{ fmt((n.assessment as any)[c.key]) }} <span class="text-xs font-normal text-muted-foreground">/ {{ c.max }}</span></p>
-                                    <p class="text-[11px] text-muted-foreground italic mt-0.5">{{ optionLabel(c, (n.assessment as any)[c.key]) }}</p>
+                    <div v-if="expandedId === n.id" class="flex flex-col gap-6 border-t bg-muted/10 px-5 py-5">
+                        <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+                            <!-- Requirements: read-only, encoded by admin -->
+                            <div>
+                                <div class="mb-3 flex items-center justify-between">
+                                    <h3 class="flex items-center gap-1.5 text-sm font-bold">
+                                        <ClipboardCheck class="h-4 w-4 text-blue-600" />
+                                        I. Requirements Assessment <span class="text-xs font-normal text-muted-foreground">(encoded by admin)</span>
+                                    </h3>
+                                    <span class="text-xs font-bold text-blue-700 dark:text-blue-400">
+                                        {{ n.assessment ? fmt(n.assessment.requirements_total) : '—' }} / {{ REQUIREMENTS_MAX }}
+                                    </span>
                                 </div>
-                            </div>
-                            <p v-else class="text-xs text-amber-700 dark:text-amber-400">
-                                Not yet encoded by the admin.
-                            </p>
-                        </div>
 
-                        <!-- Interview: my rating -->
-                        <div>
-                            <div class="flex items-center justify-between mb-3">
-                                <h3 class="text-sm font-bold flex items-center gap-1.5">
-                                    <MessageSquareText class="h-4 w-4 text-indigo-600" />
-                                    II. Interview — My Rating
-                                </h3>
-                                <span class="text-xs font-bold text-indigo-700 dark:text-indigo-400">
-                                    {{ draftTotal(n.id) }} / {{ INTERVIEW_MAX }}
-                                </span>
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
-                                <div v-for="c in INTERVIEW_CRITERIA" :key="c.key" class="grid grid-cols-[1fr_auto] gap-x-4 items-center">
-                                    <p class="text-xs font-semibold">{{ c.label }}</p>
-                                    <div class="flex items-center gap-1.5 justify-end shrink-0">
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            :max="c.max"
-                                            step="0.5"
-                                            :value="draft[n.id][c.key]"
-                                            @input="draft[n.id][c.key] = clampScore(($event.target as HTMLInputElement).value, c.max)"
-                                            class="w-16 rounded-lg border px-2 py-1 text-sm font-bold text-right tabular-nums bg-background focus:outline-none focus:ring-2"
-                                            :class="scoreColor(draft[n.id][c.key], c.max)"
-                                        />
-                                        <span class="text-xs text-muted-foreground font-normal">/ {{ c.max }}</span>
+                                <div v-if="n.assessment" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    <div v-for="c in REQUIREMENT_CRITERIA" :key="c.key" class="rounded-lg border bg-background px-3 py-2">
+                                        <p class="text-[11px] leading-tight text-muted-foreground">{{ c.label }}</p>
+                                        <p class="mt-0.5 text-sm font-bold">
+                                            {{ fmt((n.assessment as any)[c.key]) }}
+                                            <span class="text-xs font-normal text-muted-foreground">/ {{ c.max }}</span>
+                                        </p>
+                                        <p class="mt-0.5 text-[11px] italic text-muted-foreground">
+                                            {{ optionLabel(c, (n.assessment as any)[c.key]) }}
+                                        </p>
                                     </div>
                                 </div>
+                                <p v-else class="text-xs text-amber-700 dark:text-amber-400">Not yet encoded by the admin.</p>
                             </div>
 
-                            <div class="flex items-center justify-end gap-3 mt-3">
-                                <span v-if="savedId === n.id" class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
-                                    <CheckCircle2 class="h-3.5 w-3.5" /> Saved
-                                </span>
-                                <button
-                                    type="button"
-                                    class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3 py-1.5 transition-colors disabled:opacity-60"
-                                    :disabled="savingId === n.id"
-                                    @click="saveRating(n)"
-                                >
-                                    <Save class="h-3.5 w-3.5" /> {{ savingId === n.id ? 'Saving…' : 'Save My Rating' }}
-                                </button>
-                            </div>
-                        </div>
+                            <!-- Interview: my rating -->
+                            <div>
+                                <div class="mb-3 flex items-center justify-between">
+                                    <h3 class="flex items-center gap-1.5 text-sm font-bold">
+                                        <MessageSquareText class="h-4 w-4 text-indigo-600" />
+                                        II. Interview — My Rating
+                                    </h3>
+                                    <span class="text-xs font-bold text-indigo-700 dark:text-indigo-400">
+                                        {{ draftTotal(n.id) }} / {{ INTERVIEW_MAX }}
+                                    </span>
+                                </div>
 
+                                <div class="grid grid-cols-1 gap-x-6 gap-y-2 md:grid-cols-2">
+                                    <div v-for="c in INTERVIEW_CRITERIA" :key="c.key" class="grid grid-cols-[1fr_auto] items-center gap-x-4">
+                                        <p class="text-xs font-semibold">{{ c.label }}</p>
+                                        <div class="flex shrink-0 items-center justify-end gap-1.5">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                :max="c.max"
+                                                step="0.5"
+                                                :value="draft[n.id][c.key]"
+                                                @input="draft[n.id][c.key] = clampScore(($event.target as HTMLInputElement).value, c.max)"
+                                                class="w-16 rounded-lg border bg-background px-2 py-1 text-right text-sm font-bold tabular-nums focus:outline-none focus:ring-2"
+                                                :class="scoreColor(draft[n.id][c.key], c.max)"
+                                            />
+                                            <span class="text-xs font-normal text-muted-foreground">/ {{ c.max }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-3 flex items-center justify-end gap-3">
+                                    <span v-if="savedId === n.id" class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
+                                        <CheckCircle2 class="h-3.5 w-3.5" /> Saved
+                                    </span>
+                                    <button
+                                        type="button"
+                                        class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-indigo-700 disabled:opacity-60"
+                                        :disabled="savingId === n.id"
+                                        @click="saveRating(n)"
+                                    >
+                                        <Save class="h-3.5 w-3.5" /> {{ savingId === n.id ? 'Saving…' : 'Save My Rating' }}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- My Grand Total -->
-                        <div class="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-4">
+                        <div class="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-4 text-white">
                             <p class="text-[11px] font-semibold uppercase tracking-wide text-white/70">My Grand Total</p>
                             <template v-if="myGrandTotal(n) !== null">
-                                <p class="text-2xl font-extrabold">{{ myGrandTotal(n) }} <span class="text-sm font-semibold text-white/70">/ {{ GRAND_MAX }}</span></p>
-                                <p class="text-[11px] text-white/70">Requirements {{ n.assessment?.requirements_total }}/{{ REQUIREMENTS_MAX }} + My Interview {{ n.my_rating?.total }}/{{ INTERVIEW_MAX }}</p>
+                                <p class="text-2xl font-extrabold">
+                                    {{ myGrandTotal(n) }} <span class="text-sm font-semibold text-white/70">/ {{ GRAND_MAX }}</span>
+                                </p>
+                                <p class="text-[11px] text-white/70">
+                                    Requirements {{ n.assessment?.requirements_total }}/{{ REQUIREMENTS_MAX }} + My Interview
+                                    {{ n.my_rating?.total }}/{{ INTERVIEW_MAX }}
+                                </p>
                             </template>
-                            <p v-else class="text-xs text-white/70 mt-1">
+                            <p v-else class="mt-1 text-xs text-white/70">
                                 Appears once the admin encodes Requirements and you save your interview rating.
                             </p>
                         </div>

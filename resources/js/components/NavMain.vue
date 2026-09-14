@@ -2,8 +2,8 @@
 import { SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
 import type { Component } from 'vue';
+import { computed } from 'vue';
 
 interface NavItem {
     title: string;

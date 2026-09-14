@@ -41,7 +41,7 @@ class SupportingDocumentController extends Controller
 
         return Inertia::render('supporting-documents/index', [
             'documents' => $documents,
-            'filters'   => $filters,
+            'filters' => $filters,
 
             // Lookups para sa filter dropdowns
             'documentTypes' => ProgramSupportingDocument::query()
@@ -54,9 +54,9 @@ class SupportingDocumentController extends Controller
 
             // Stats para sa cards sa taas ng page
             'stats' => [
-                'total'     => ProgramSupportingDocument::count(),
-                'thisYear'  => ProgramSupportingDocument::where('document_series', now()->year)->count(),
-                'types'     => ProgramSupportingDocument::distinct()->count('document_type'),
+                'total' => ProgramSupportingDocument::count(),
+                'thisYear' => ProgramSupportingDocument::where('document_series', now()->year)->count(),
+                'types' => ProgramSupportingDocument::distinct()->count('document_type'),
                 'withLinks' => ProgramSupportingDocument::whereNotNull('link')->where('link', '!=', '')->count(),
             ],
         ]);
@@ -68,13 +68,13 @@ class SupportingDocumentController extends Controller
     public function store(Request $request, Program $program)
     {
         $validated = $request->validate([
-            'document_type'   => 'required|string|max:255',
-            'subject'         => 'required|string|max:255',
+            'document_type' => 'required|string|max:255',
+            'subject' => 'required|string|max:255',
             'document_series' => 'required|integer|min:1900|max:2100',
-            'origin'          => 'nullable|string|max:255',
+            'origin' => 'nullable|string|max:255',
             'document_number' => 'required|string|max:255',
-            'date_issued'     => 'nullable|date',
-            'link'            => 'nullable|string|max:2048|url',
+            'date_issued' => 'nullable|date',
+            'link' => 'nullable|string|max:2048|url',
         ]);
 
         $program->supportingDocuments()->create(array_merge($validated, [
@@ -92,13 +92,13 @@ class SupportingDocumentController extends Controller
         abort_unless($supportingDocument->program_id === $program->id, 404);
 
         $validated = $request->validate([
-            'document_type'   => 'required|string|max:255',
-            'subject'         => 'required|string|max:255',
+            'document_type' => 'required|string|max:255',
+            'subject' => 'required|string|max:255',
             'document_series' => 'required|integer|min:1900|max:2100',
-            'origin'          => 'nullable|string|max:255',
+            'origin' => 'nullable|string|max:255',
             'document_number' => 'required|string|max:255',
-            'date_issued'     => 'nullable|date',
-            'link'            => 'nullable|string|max:2048|url',
+            'date_issued' => 'nullable|date',
+            'link' => 'nullable|string|max:2048|url',
         ]);
 
         $supportingDocument->update($validated);

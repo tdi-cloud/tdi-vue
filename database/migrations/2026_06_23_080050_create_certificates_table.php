@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('participant_id')->constrained('participants')->cascadeOnDelete();
             $table->foreignId('batch_id')->constrained('batches')->cascadeOnDelete();
             $table->string('program_code');
-            $table->string('empcode'); 
+            $table->string('empcode');
             $table->string('certificate_number')->unique()->nullable();
             $table->string('type')->default('Participation');
             // Participation, Completion, Appearance, Appreciation, Recognition, Achievement
@@ -22,9 +22,9 @@ return new class extends Migration
             $table->string('status')->default('Pending');
             // Pending, Issued, Revoked
             $table->text('file_path')->nullable();
-            $table->string('file_name')->nullable(); 
-            $table->string('uploaded_by')->nullable(); 
-            $table->string('issued_by')->nullable();   
+            $table->string('file_name')->nullable();
+            $table->string('uploaded_by')->nullable();
+            $table->string('issued_by')->nullable();
             $table->text('remarks')->nullable();
             $table->timestamp('revoked_at')->nullable();
             $table->string('revoked_reason')->nullable();

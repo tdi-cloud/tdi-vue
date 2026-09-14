@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { SharedData } from '@/types';
 import { usePage } from '@inertiajs/vue3';
+import { CalendarCheck, ClipboardList, GraduationCap, Users } from 'lucide-vue-next';
 import { computed } from 'vue';
-import { Users, GraduationCap, CalendarCheck, ClipboardList } from 'lucide-vue-next';
 
 const props = defineProps<{
     summary: {
@@ -34,15 +34,13 @@ const stats = computed(() => [
 
 <template>
     <div class="rounded-2xl bg-gradient-to-br from-blue-800 via-blue-700 to-sky-600 px-6 py-5 text-white shadow-md">
-        <p class="text-lg font-bold">{{ greeting }}<template v-if="firstName">, {{ firstName }}</template> 👋</p>
+        <p class="text-lg font-bold">
+            {{ greeting }}<template v-if="firstName">, {{ firstName }}</template> 👋
+        </p>
         <p class="mt-0.5 text-sm text-white/80">Here's a quick look at what's happening across your programs today.</p>
 
         <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div
-                v-for="stat in stats"
-                :key="stat.label"
-                class="flex items-center gap-3 rounded-xl bg-white/10 px-4 py-3 backdrop-blur-sm"
-            >
+            <div v-for="stat in stats" :key="stat.label" class="flex items-center gap-3 rounded-xl bg-white/10 px-4 py-3 backdrop-blur-sm">
                 <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/15">
                     <component :is="stat.icon" class="h-4.5 w-4.5" />
                 </div>

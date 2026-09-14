@@ -1,21 +1,40 @@
 <script setup lang="ts">
-import { router } from '@inertiajs/vue3';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import {
-    Users, Search, X, UserPlus, LoaderCircle, Trash2, ChevronLeft, ChevronRight,
-    ListFilter, ClipboardCheck, ClipboardList, FileText, Save, Upload,
-    ClipboardPaste, ChevronDown, ChevronUp, Download,
-    CheckCircle2, XCircle, Clock, FileX, CloudUpload,
-} from 'lucide-vue-next';
-import { ref, watch, computed } from 'vue';
-import BulkAddParticipants from '@/pages/programs/BulkAddParticipants.vue';
-import { useConfirm } from '@/composables/useConfirm';
 import { useToast } from '@/components/ui/toast/use-toast';
+import { useConfirm } from '@/composables/useConfirm';
+import BulkAddParticipants from '@/pages/programs/BulkAddParticipants.vue';
+import { router } from '@inertiajs/vue3';
+import {
+    CheckCircle2,
+    ChevronDown,
+    ChevronLeft,
+    ChevronRight,
+    ChevronUp,
+    ClipboardCheck,
+    ClipboardList,
+    ClipboardPaste,
+    Clock,
+    CloudUpload,
+    Download,
+    FileText,
+    FileX,
+    ListFilter,
+    LoaderCircle,
+    Save,
+    Search,
+    Trash2,
+    Upload,
+    UserPlus,
+    Users,
+    X,
+    XCircle,
+} from 'lucide-vue-next';
+import { computed, ref, watch } from 'vue';
 
 const { confirmDialog } = useConfirm();
 const { toast } = useToast();
@@ -48,7 +67,7 @@ const participants = computed(() =>
     [...(props.batch?.participants ?? [])].sort((a, b) => {
         if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
         return a.id - b.id; // tiebreaker
-    })
+    }),
 );
 const requirements = computed(() => props.batch?.requirements ?? []);
 
@@ -67,9 +86,7 @@ const filteredParticipants = computed(() => {
     });
 });
 
-const totalPages = computed(() =>
-    Math.max(1, Math.ceil(filteredParticipants.value.length / perPage))
-);
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredParticipants.value.length / perPage)));
 
 const paginatedParticipants = computed(() => {
     const start = (page.value - 1) * perPage;
@@ -100,14 +117,10 @@ const batchHours = computed(() => Number(props.batch?.hours ?? 0));
 const openAttendance = (p: any) => {
     attendanceTarget.value = p;
 
-    const current = ['Pending', 'Complete', 'Absent'].includes(p.attendance)
-        ? p.attendance
-        : 'Pending';
+    const current = ['Pending', 'Complete', 'Absent'].includes(p.attendance) ? p.attendance : 'Pending';
     attStatus.value = current as any;
 
-    attHours.value = current === 'Complete' && p.hours
-        ? String(p.hours)
-        : String(batchHours.value || '');
+    attHours.value = current === 'Complete' && p.hours ? String(p.hours) : String(batchHours.value || '');
 
     attFile.value = null;
     attErrors.value = {};
@@ -157,7 +170,7 @@ const submitAttendance = () => {
             onFinish: () => {
                 attProcessing.value = false;
             },
-        }
+        },
     );
 };
 
@@ -254,7 +267,7 @@ const saveSubmission = (row: any) => {
             onFinish: () => {
                 subProcessing.value = false;
             },
-        }
+        },
     );
 };
 
@@ -273,24 +286,15 @@ const deleteSubmission = async (submissionId: number) => {
 /* ---------- Helpers ---------- */
 const attendanceColor = (status: string) => {
     switch (status) {
-        case 'Complete': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300';
-        case 'Absent':   return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300';
-        case 'Pending':  return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
-        default:         return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
-    }
-};
-
-const submissionStatusColor = (status: string | null | undefined) => {
-    switch (normalizeStatus(status)) {
-        case 'Approved': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300';
-        case 'Rejected': return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300';
+        case 'Complete':
+            return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300';
+        case 'Absent':
+            return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300';
         case 'Pending':
-        default:         return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
+            return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
+        default:
+            return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
     }
-};
-
-const submissionStatusLabel = (status: string | null | undefined) => {
-    return normalizeStatus(status);
 };
 
 const formatDueDate = (d: string) => {
@@ -317,8 +321,21 @@ const exportCsv = () => {
 
     // ── Single header row (lahat ng column sa isang linya) ──
     const header = [
-        'Program Code', 'Program Title', 'Batch', 'Status', 'Modality', 'Venue', 'Schedule', 'Total Hours',
-        '#', 'Employee Name', 'Employee Code', 'Position', 'Office', 'Attendance', 'Hours',
+        'Program Code',
+        'Program Title',
+        'Batch',
+        'Status',
+        'Modality',
+        'Venue',
+        'Schedule',
+        'Total Hours',
+        '#',
+        'Employee Name',
+        'Employee Code',
+        'Position',
+        'Office',
+        'Attendance',
+        'Hours',
     ];
     for (const r of reqs) header.push(r.title ?? r.name ?? `Req ${r.id}`);
     header.push('Generated');
@@ -327,7 +344,7 @@ const exportCsv = () => {
     // ── Participant rows (inuulit ang program/batch info kada row) ──
     participants.value.forEach((p: any, i: number) => {
         const subMap: Record<number, string> = {};
-        for (const s of (p.submissions ?? [])) {
+        for (const s of p.submissions ?? []) {
             subMap[s.requirement_id] = normalizeStatus(s.status);
         }
 
@@ -371,19 +388,22 @@ const exportCsv = () => {
     URL.revokeObjectURL(url);
 };
 
-watch(() => props.open, (isOpen) => {
-    if (isOpen) {
-        query.value = '';
-        results.value = [];
-        selected.value = [];
-        showDropdown.value = false;
-        listQuery.value = '';
-        page.value = 1;
-        showSubmissions.value = false;
-        submissionsTargetId.value = null;
-        editingRow.value = null;
-    }
-});
+watch(
+    () => props.open,
+    (isOpen) => {
+        if (isOpen) {
+            query.value = '';
+            results.value = [];
+            selected.value = [];
+            showDropdown.value = false;
+            listQuery.value = '';
+            page.value = 1;
+            showSubmissions.value = false;
+            submissionsTargetId.value = null;
+            editingRow.value = null;
+        }
+    },
+);
 
 watch(query, (val) => {
     if (debounceTimer) clearTimeout(debounceTimer);
@@ -404,11 +424,9 @@ watch(query, (val) => {
             const res = await fetch(url, { headers: { Accept: 'application/json' } });
             const data: EmployeeOption[] = await res.json();
 
-            results.value = data.filter(
-                (emp) => !selected.value.some((s) => s.empcode === emp.empcode)
-            );
+            results.value = data.filter((emp) => !selected.value.some((s) => s.empcode === emp.empcode));
             showDropdown.value = true;
-        } catch (e) {
+        } catch {
             results.value = [];
         } finally {
             searching.value = false;
@@ -445,7 +463,7 @@ const addParticipants = () => {
             onFinish: () => {
                 processing.value = false;
             },
-        }
+        },
     );
 };
 
@@ -474,8 +492,10 @@ const reorder = (participant: any, direction: 'up' | 'down') => {
         { direction },
         {
             preserveScroll: true,
-            onFinish: () => { reordering.value = null; },
-        }
+            onFinish: () => {
+                reordering.value = null;
+            },
+        },
     );
 };
 
@@ -523,7 +543,6 @@ const clearAllParticipants = async () => {
     deleteOne(0);
 };
 
-
 const applyToAll = async () => {
     if (!attendanceTarget.value) return;
     attErrors.value = {};
@@ -534,15 +553,15 @@ const applyToAll = async () => {
         return;
     }
 
-    const eligibleCount = participants.value.filter(
-        (p: any) => p.attendance !== 'Absent'
-    ).length;
+    const eligibleCount = participants.value.filter((p: any) => p.attendance !== 'Absent').length;
 
-    if (!(await confirmDialog(
-        `Apply ${h} hr(s) / Complete to all ${eligibleCount} participant(s) in this batch? ` +
-        `Absent participants will be skipped.`,
-        { confirmText: 'Apply', variant: 'default' }
-    ))) return;
+    if (
+        !(await confirmDialog(
+            `Apply ${h} hr(s) / Complete to all ${eligibleCount} participant(s) in this batch? ` + `Absent participants will be skipped.`,
+            { confirmText: 'Apply', variant: 'default' },
+        ))
+    )
+        return;
 
     attProcessing.value = true;
     router.post(
@@ -554,9 +573,13 @@ const applyToAll = async () => {
                 showAttendance.value = false;
                 attendanceTarget.value = null;
             },
-            onError: (errors) => { attErrors.value = errors as any; },
-            onFinish: () => { attProcessing.value = false; },
-        }
+            onError: (errors) => {
+                attErrors.value = errors as any;
+            },
+            onFinish: () => {
+                attProcessing.value = false;
+            },
+        },
     );
 };
 
@@ -572,17 +595,26 @@ const statusMeta = (status: string | null | undefined, hasSubmission: boolean) =
     }
     switch (normalizeStatus(status)) {
         case 'Approved':
-            return { label: 'Approved', icon: CheckCircle2,
+            return {
+                label: 'Approved',
+                icon: CheckCircle2,
                 badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
-                ring: 'border-emerald-200 dark:border-emerald-800' };
+                ring: 'border-emerald-200 dark:border-emerald-800',
+            };
         case 'Rejected':
-            return { label: 'Rejected', icon: XCircle,
+            return {
+                label: 'Rejected',
+                icon: XCircle,
                 badge: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
-                ring: 'border-red-200 dark:border-red-800' };
+                ring: 'border-red-200 dark:border-red-800',
+            };
         default:
-            return { label: 'Pending', icon: Clock,
+            return {
+                label: 'Pending',
+                icon: Clock,
                 badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
-                ring: 'border-amber-200 dark:border-amber-800' };
+                ring: 'border-amber-200 dark:border-amber-800',
+            };
     }
 };
 
@@ -593,17 +625,14 @@ const submissionSummary = computed(() => {
     const approved = subs.filter((s: any) => normalizeStatus(s.status) === 'Approved').length;
     return { done: approved, total: requirements.value.length };
 });
-
-
 </script>
 
 <template>
     <Dialog :open="open" @update:open="emit('update:open', $event)">
-        <DialogContent class="max-w-4xl flex flex-col max-h-[90vh] overflow-hidden !rounded-2xl p-0 gap-0">
-
+        <DialogContent class="flex max-h-[90vh] max-w-4xl flex-col gap-0 overflow-hidden !rounded-2xl p-0">
             <!-- ── Modal Header ── -->
-            <div class="flex items-center gap-3 px-6 py-4 border-b shrink-0">
-                <div class="flex items-center justify-center w-9 h-9 rounded-xl bg-blue-600 shrink-0">
+            <div class="flex shrink-0 items-center gap-3 border-b px-6 py-4">
+                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600">
                     <Users class="h-4 w-4 text-white" />
                 </div>
                 <div>
@@ -615,64 +644,61 @@ const submissionSummary = computed(() => {
                     v-if="participants.length"
                     variant="outline"
                     size="sm"
-                    class="ml-auto mr-5 text-xs border-emerald-200 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                    class="ml-auto mr-5 border-emerald-200 text-xs text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-950/30"
                     @click="exportCsv"
                 >
-                    <Download class="h-3.5 w-3.5 mr-1" />
+                    <Download class="mr-1 h-3.5 w-3.5" />
                     Export CSV
                 </Button>
             </div>
 
-            <div class="flex flex-col gap-0 overflow-y-auto flex-1">
-
+            <div class="flex flex-1 flex-col gap-0 overflow-y-auto">
                 <!-- ══════════════════════════════════════════
                      SECTION 1 — ADD PARTICIPANTS
                 ══════════════════════════════════════════ -->
-                <div class="bg-blue-50 dark:bg-blue-950/30 border-b px-6 py-4 flex flex-col gap-3">
-
+                <div class="flex flex-col gap-3 border-b bg-blue-50 px-6 py-4 dark:bg-blue-950/30">
                     <!-- Section title -->
                     <div class="flex items-center gap-2">
-                        <div class="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-600 shrink-0">
+                        <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-blue-600">
                             <UserPlus class="h-3.5 w-3.5 text-white" />
                         </div>
                         <div>
-                            <p class="text-xs font-bold text-blue-900 dark:text-blue-100 leading-none">Add Participants</p>
-                            <p class="text-[11px] text-blue-600 dark:text-blue-400 mt-0.5">Search employees or paste a list of employee codes</p>
+                            <p class="text-xs font-bold leading-none text-blue-900 dark:text-blue-100">Add Participants</p>
+                            <p class="mt-0.5 text-[11px] text-blue-600 dark:text-blue-400">Search employees or paste a list of employee codes</p>
                         </div>
                     </div>
 
                     <!-- Search input -->
                     <div class="relative">
-                        <Search class="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-blue-400" />
+                        <Search class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-blue-400" />
                         <Input
                             v-model="query"
-                            class="text-xs h-9 pl-8 bg-white dark:bg-blue-950/50 border-blue-200 dark:border-blue-800 focus-visible:ring-blue-400"
+                            class="h-9 border-blue-200 bg-white pl-8 text-xs focus-visible:ring-blue-400 dark:border-blue-800 dark:bg-blue-950/50"
                             placeholder="Search employee by name or empcode..."
                         />
-                        <LoaderCircle
-                            v-if="searching"
-                            class="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-blue-400"
-                        />
+                        <LoaderCircle v-if="searching" class="absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-blue-400" />
 
                         <!-- Dropdown results -->
                         <div
                             v-if="showDropdown && results.length"
-                            class="absolute z-50 mt-1 w-full rounded-xl border border-blue-100 bg-white dark:bg-slate-900 shadow-lg max-h-48 overflow-y-auto"
+                            class="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-blue-100 bg-white shadow-lg dark:bg-slate-900"
                         >
                             <button
                                 v-for="emp in results"
                                 :key="emp.empcode"
                                 type="button"
-                                class="flex w-full items-center justify-between px-3 py-2 text-left text-xs hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors"
+                                class="flex w-full items-center justify-between px-3 py-2 text-left text-xs transition-colors hover:bg-blue-50 dark:hover:bg-blue-950/40"
                                 @click="selectEmployee(emp)"
                             >
                                 <span class="font-semibold">{{ emp.name }}</span>
-                                <span class="text-muted-foreground text-[11px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-full">{{ emp.empcode }}</span>
+                                <span class="rounded-full bg-slate-100 px-1.5 py-0.5 text-[11px] text-muted-foreground dark:bg-slate-800">{{
+                                    emp.empcode
+                                }}</span>
                             </button>
                         </div>
                         <div
                             v-else-if="showDropdown && !searching && query.length >= 2"
-                            class="absolute z-50 mt-1 w-full rounded-xl border bg-white dark:bg-slate-900 shadow-md px-3 py-2 text-xs text-muted-foreground"
+                            class="absolute z-50 mt-1 w-full rounded-xl border bg-white px-3 py-2 text-xs text-muted-foreground shadow-md dark:bg-slate-900"
                         >
                             No employees found.
                         </div>
@@ -683,12 +709,12 @@ const submissionSummary = computed(() => {
                         <Badge
                             v-for="emp in selected"
                             :key="emp.empcode"
-                            class="text-[11px] font-semibold pl-2 pr-1 py-1 gap-1 bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200 border-blue-200 dark:border-blue-700 hover:bg-blue-100"
+                            class="gap-1 border-blue-200 bg-blue-100 py-1 pl-2 pr-1 text-[11px] font-semibold text-blue-800 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-900/60 dark:text-blue-200"
                         >
                             {{ emp.name }}
                             <button
                                 type="button"
-                                class="rounded-full hover:bg-blue-200 dark:hover:bg-blue-800 p-0.5 transition-colors"
+                                class="rounded-full p-0.5 transition-colors hover:bg-blue-200 dark:hover:bg-blue-800"
                                 @click="removeSelected(emp.empcode)"
                             >
                                 <X class="h-3 w-3" />
@@ -699,32 +725,36 @@ const submissionSummary = computed(() => {
                     <!-- Action buttons -->
                     <div class="flex items-center justify-between gap-2">
                         <!-- Stats pill -->
-                        <div v-if="selected.length" class="text-[11px] text-blue-600 dark:text-blue-400 font-semibold">
+                        <div v-if="selected.length" class="text-[11px] font-semibold text-blue-600 dark:text-blue-400">
                             {{ selected.length }} employee{{ selected.length > 1 ? 's' : '' }} selected
                         </div>
-                        <div v-else class="text-[11px] text-blue-400 dark:text-blue-500 italic">
-                            Select employees above to add them
-                        </div>
+                        <div v-else class="text-[11px] italic text-blue-400 dark:text-blue-500">Select employees above to add them</div>
 
-                        <div class="flex gap-2 ml-auto">
+                        <div class="ml-auto flex gap-2">
                             <Button
                                 variant="outline"
                                 size="sm"
-                                class="text-xs border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 bg-white dark:bg-transparent"
+                                class="border-blue-200 bg-white text-xs text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:bg-transparent dark:text-blue-300 dark:hover:bg-blue-900/40"
                                 @click="showBulkAdd = true"
                             >
-                                <ClipboardPaste class="h-3.5 w-3.5 mr-1" />
+                                <ClipboardPaste class="mr-1 h-3.5 w-3.5" />
                                 Bulk Add
                             </Button>
                             <Button
                                 size="sm"
-                                class="bg-blue-600 hover:bg-blue-700 dark:text-white text-xs font-bold"
+                                class="bg-blue-600 text-xs font-bold hover:bg-blue-700 dark:text-white"
                                 :disabled="!selected.length || processing"
                                 @click="addParticipants"
                             >
-                                <LoaderCircle v-if="processing" class="h-3 w-3 animate-spin mr-1" />
-                                <UserPlus v-else class="h-3.5 w-3.5 mr-1" />
-                                Add{{ selected.length > 1 ? ` ${selected.length} Participants` : selected.length === 1 ? ' Participant' : ' Participants' }}
+                                <LoaderCircle v-if="processing" class="mr-1 h-3 w-3 animate-spin" />
+                                <UserPlus v-else class="mr-1 h-3.5 w-3.5" />
+                                Add{{
+                                    selected.length > 1
+                                        ? ` ${selected.length} Participants`
+                                        : selected.length === 1
+                                          ? ' Participant'
+                                          : ' Participants'
+                                }}
                             </Button>
                         </div>
                     </div>
@@ -733,112 +763,164 @@ const submissionSummary = computed(() => {
                 <!-- ══════════════════════════════════════════
                      SECTION 2 — ENROLLED PARTICIPANTS LIST
                 ══════════════════════════════════════════ -->
-                <div class="px-6 py-4 flex flex-col gap-3">
-
+                <div class="flex flex-col gap-3 px-6 py-4">
                     <!-- Section title -->
                     <div class="flex items-center justify-between gap-2">
                         <div class="flex items-center gap-2">
-                            <div class="flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-600 shrink-0">
+                            <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-emerald-600">
                                 <Users class="h-3.5 w-3.5 text-white" />
                             </div>
                             <div>
-                                <p class="text-xs font-bold text-slate-700 dark:text-slate-200 leading-none">
+                                <p class="text-xs font-bold leading-none text-slate-700 dark:text-slate-200">
                                     Enrolled Participants
                                     <span class="ml-1.5 text-[11px] font-normal text-muted-foreground">({{ participants.length }} total)</span>
                                 </p>
-                                <p class="text-[11px] text-muted-foreground mt-0.5">Manage attendance, submissions, and order</p>
+                                <p class="mt-0.5 text-[11px] text-muted-foreground">Manage attendance, submissions, and order</p>
                             </div>
                         </div>
 
                         <!-- Search -->
                         <div v-if="participants.length" class="relative w-52">
-                            <Search class="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-                            <Input
-                                v-model="listQuery"
-                                class="text-xs h-7 pl-6"
-                                placeholder="Search enrolled..."
-                            />
+                            <Search class="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+                            <Input v-model="listQuery" class="h-7 pl-6 text-xs" placeholder="Search enrolled..." />
                         </div>
                     </div>
 
                     <!-- Empty: no participants -->
                     <div
                         v-if="!participants.length"
-                        class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 py-10 px-6 text-center gap-2"
+                        class="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-10 text-center dark:border-emerald-800 dark:bg-emerald-950/20"
                     >
                         <svg viewBox="0 0 160 110" class="h-24 w-auto" xmlns="http://www.w3.org/2000/svg">
                             <ellipse cx="80" cy="98" rx="60" ry="6" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
                             <circle cx="55" cy="40" r="18" fill="currentColor" class="text-emerald-100 dark:text-emerald-900/40" />
-                            <path d="M30 85 c0 -18 12 -28 25 -28 s25 10 25 28" fill="currentColor" class="text-emerald-100 dark:text-emerald-900/40" />
+                            <path
+                                d="M30 85 c0 -18 12 -28 25 -28 s25 10 25 28"
+                                fill="currentColor"
+                                class="text-emerald-100 dark:text-emerald-900/40"
+                            />
                             <circle cx="105" cy="36" r="22" fill="currentColor" class="text-emerald-200 dark:text-emerald-800/60" />
-                            <path d="M75 88 c0 -22 14 -34 30 -34 s30 12 30 34" fill="currentColor" class="text-emerald-200 dark:text-emerald-800/60" />
-                            <circle cx="105" cy="36" r="22" stroke="currentColor" stroke-width="2" fill="none" class="text-emerald-300 dark:text-emerald-700/60" stroke-dasharray="4 4" />
-                            <path d="M95 36 l7 7 l12 -14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-500 dark:text-emerald-400" />
+                            <path
+                                d="M75 88 c0 -22 14 -34 30 -34 s30 12 30 34"
+                                fill="currentColor"
+                                class="text-emerald-200 dark:text-emerald-800/60"
+                            />
+                            <circle
+                                cx="105"
+                                cy="36"
+                                r="22"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                fill="none"
+                                class="text-emerald-300 dark:text-emerald-700/60"
+                                stroke-dasharray="4 4"
+                            />
+                            <path
+                                d="M95 36 l7 7 l12 -14"
+                                stroke="currentColor"
+                                stroke-width="2.5"
+                                fill="none"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                class="text-emerald-500 dark:text-emerald-400"
+                            />
                         </svg>
                         <p class="text-sm font-bold text-slate-500">No participants yet</p>
-                        <p class="text-xs text-slate-400 max-w-xs">Use the search above to find and add employees, or use "Bulk Add" to paste a list of employee codes.</p>
+                        <p class="max-w-xs text-xs text-slate-400">
+                            Use the search above to find and add employees, or use "Bulk Add" to paste a list of employee codes.
+                        </p>
                     </div>
 
                     <!-- Empty: filter no match -->
                     <div
                         v-else-if="!filteredParticipants.length"
-                        class="flex flex-col items-center justify-center rounded-2xl border border-dashed py-8 px-6 text-center gap-2"
+                        class="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed px-6 py-8 text-center"
                     >
                         <svg viewBox="0 0 140 100" class="h-20 w-auto" xmlns="http://www.w3.org/2000/svg">
                             <ellipse cx="70" cy="90" rx="50" ry="6" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
                             <circle cx="60" cy="45" r="28" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
-                            <circle cx="60" cy="45" r="28" stroke="currentColor" stroke-width="5" fill="none" class="text-blue-300 dark:text-blue-700/60" />
-                            <line x1="80" y1="65" x2="102" y2="87" stroke="currentColor" stroke-width="7" stroke-linecap="round" class="text-blue-300 dark:text-blue-700/60" />
-                            <path d="M48 45 h24 M60 33 v24" stroke="currentColor" stroke-width="4" stroke-linecap="round" class="text-slate-300 dark:text-slate-700" />
+                            <circle
+                                cx="60"
+                                cy="45"
+                                r="28"
+                                stroke="currentColor"
+                                stroke-width="5"
+                                fill="none"
+                                class="text-blue-300 dark:text-blue-700/60"
+                            />
+                            <line
+                                x1="80"
+                                y1="65"
+                                x2="102"
+                                y2="87"
+                                stroke="currentColor"
+                                stroke-width="7"
+                                stroke-linecap="round"
+                                class="text-blue-300 dark:text-blue-700/60"
+                            />
+                            <path
+                                d="M48 45 h24 M60 33 v24"
+                                stroke="currentColor"
+                                stroke-width="4"
+                                stroke-linecap="round"
+                                class="text-slate-300 dark:text-slate-700"
+                            />
                         </svg>
                         <p class="text-xs font-bold text-slate-500">No participant matching "{{ listQuery }}"</p>
                     </div>
 
                     <!-- Participant list -->
                     <template v-else>
-                        <div class="rounded-xl border overflow-hidden divide-y">
-
+                        <div class="divide-y overflow-hidden rounded-xl border">
                             <!-- List header -->
-                            <div class="grid grid-cols-[2rem_1fr_auto] gap-2 items-center px-3 py-1.5 bg-muted/40 border-b">
-                                <span class="text-[10px] font-bold uppercase tracking-wide text-muted-foreground text-center">#</span>
+                            <div class="grid grid-cols-[2rem_1fr_auto] items-center gap-2 border-b bg-muted/40 px-3 py-1.5">
+                                <span class="text-center text-[10px] font-bold uppercase tracking-wide text-muted-foreground">#</span>
                                 <span class="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Employee</span>
-                                <span class="text-[10px] font-bold uppercase tracking-wide text-muted-foreground text-right pr-1">Actions</span>
+                                <span class="pr-1 text-right text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Actions</span>
                             </div>
 
                             <div
                                 v-for="(p, i) in paginatedParticipants"
                                 :key="p.id"
-                                class="flex items-center justify-between px-3 py-2.5 hover:bg-muted/20 transition-colors"
+                                class="flex items-center justify-between px-3 py-2.5 transition-colors hover:bg-muted/20"
                             >
                                 <!-- Left: number + name -->
-                                <div class="flex items-center gap-2.5 min-w-0">
+                                <div class="flex min-w-0 items-center gap-2.5">
                                     <!-- Row number -->
-                                    <span class="text-[11px] font-bold text-slate-400 w-6 text-right shrink-0">
-                                        {{ rowNumber(i) }}.
-                                    </span>
+                                    <span class="w-6 shrink-0 text-right text-[11px] font-bold text-slate-400"> {{ rowNumber(i) }}. </span>
 
                                     <!-- Avatar circle -->
-                                    <div class="shrink-0 w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-300">
-                                        {{ (p.employee?.name ?? p.empcode).split(' ').map((n: string) => n[0]).slice(0,2).join('').toUpperCase() }}
+                                    <div
+                                        class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+                                    >
+                                        {{
+                                            (p.employee?.name ?? p.empcode)
+                                                .split(' ')
+                                                .map((n: string) => n[0])
+                                                .slice(0, 2)
+                                                .join('')
+                                                .toUpperCase()
+                                        }}
                                     </div>
 
                                     <div class="min-w-0">
-                                        <p class="text-xs font-bold leading-4 truncate">
+                                        <p class="truncate text-xs font-bold leading-4">
                                             {{ p.employee?.name ?? p.empcode }}
                                         </p>
-                                        <p class="text-[11px] text-muted-foreground truncate">
+                                        <p class="truncate text-[11px] text-muted-foreground">
                                             <span v-if="p.employee?.['OFFICE/DIVISION'] ?? p.employee?.OFFICE">
                                                 {{ p.employee?.['OFFICE/DIVISION'] ?? p.employee?.OFFICE }} ·
                                             </span>
                                             {{ p.empcode }}
-                                            <span v-if="p.attendance === 'Complete'" class="text-emerald-600 dark:text-emerald-400 font-semibold">
+                                            <span v-if="p.attendance === 'Complete'" class="font-semibold text-emerald-600 dark:text-emerald-400">
                                                 · {{ p.hours }} hr/s
                                             </span>
                                         </p>
-                                        <a v-if="p.attendance === 'Absent' && p.justification"
+                                        <a
+                                            v-if="p.attendance === 'Absent' && p.justification"
                                             :href="`/storage/${p.justification.file_path}`"
                                             target="_blank"
-                                            class="inline-flex items-center gap-0.5 text-[11px] text-blue-600 hover:underline font-semibold"
+                                            class="inline-flex items-center gap-0.5 text-[11px] font-semibold text-blue-600 hover:underline"
                                         >
                                             <FileText class="h-3 w-3" /> View memo
                                         </a>
@@ -846,23 +928,22 @@ const submissionSummary = computed(() => {
                                 </div>
 
                                 <!-- Right: actions -->
-                                <div class="flex items-center gap-2.5 shrink-0">
-
+                                <div class="flex shrink-0 items-center gap-2.5">
                                     <!-- Reorder -->
                                     <div class="flex gap-0.5">
                                         <button
                                             type="button"
                                             :disabled="reordering === p.id || rowNumber(i) === 1"
-                                            class="rounded p-0.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                                            class="rounded p-0.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-slate-800"
                                             title="Move up"
                                             @click="reorder(p, 'up')"
                                         >
-                                            <ChevronUp  class="h-5 w-5" />
+                                            <ChevronUp class="h-5 w-5" />
                                         </button>
                                         <button
                                             type="button"
                                             :disabled="reordering === p.id || rowNumber(i) === filteredParticipants.length"
-                                            class="rounded p-0.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                                            class="rounded p-0.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-slate-800"
                                             title="Move down"
                                             @click="reorder(p, 'down')"
                                         >
@@ -870,7 +951,7 @@ const submissionSummary = computed(() => {
                                         </button>
                                     </div>
 
-                                    <div class="w-px h-4 bg-border" />
+                                    <div class="h-4 w-px bg-border" />
 
                                     <!-- Submissions badge -->
                                     <div class="flex flex-col items-center gap-0.5">
@@ -883,10 +964,12 @@ const submissionSummary = computed(() => {
                                         >
                                             <Badge
                                                 variant="outline"
-                                                class="text-[10px] font-bold cursor-pointer flex items-center gap-1"
-                                                :class="(p.submissions?.length ?? 0) === requirements.length && requirements.length > 0
-                                                    ? 'border-emerald-300 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30'
-                                                    : ''"
+                                                class="flex cursor-pointer items-center gap-1 text-[10px] font-bold"
+                                                :class="
+                                                    (p.submissions?.length ?? 0) === requirements.length && requirements.length > 0
+                                                        ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400'
+                                                        : ''
+                                                "
                                             >
                                                 <ClipboardList class="h-3 w-3" />
                                                 {{ p.submissions?.length ?? 0 }}/{{ requirements.length }}
@@ -903,19 +986,19 @@ const submissionSummary = computed(() => {
                                             title="Set attendance"
                                             @click="openAttendance(p)"
                                         >
-                                            <Badge :class="attendanceColor(p.attendance)" class="text-[10px] font-bold border-0 cursor-pointer">
+                                            <Badge :class="attendanceColor(p.attendance)" class="cursor-pointer border-0 text-[10px] font-bold">
                                                 {{ p.attendance }}
                                             </Badge>
                                         </button>
                                     </div>
 
-                                    <div class="w-px h-4 bg-border" />
+                                    <div class="h-4 w-px bg-border" />
 
                                     <!-- Remove -->
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        class="h-7 w-7 p-0 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                        class="h-7 w-7 p-0 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
                                         @click="removeParticipant(p)"
                                     >
                                         <Trash2 class="h-3.5 w-3.5" />
@@ -925,16 +1008,16 @@ const submissionSummary = computed(() => {
                         </div>
 
                         <!-- Pagination -->
-                        <div v-if="totalPages > 1" class="flex items-center justify-between mt-1">
+                        <div v-if="totalPages > 1" class="mt-1 flex items-center justify-between">
                             <p class="text-[11px] font-semibold text-slate-400">
-                                Showing {{ (page - 1) * perPage + 1 }}–{{ Math.min(page * perPage, filteredParticipants.length) }}
-                                of {{ filteredParticipants.length }}
+                                Showing {{ (page - 1) * perPage + 1 }}–{{ Math.min(page * perPage, filteredParticipants.length) }} of
+                                {{ filteredParticipants.length }}
                             </p>
                             <div class="flex items-center gap-1">
                                 <Button variant="outline" size="sm" class="h-7 w-7 p-0" :disabled="page <= 1" @click="page--">
                                     <ChevronLeft class="h-3.5 w-3.5" />
                                 </Button>
-                                <span class="text-[11px] font-bold text-slate-500 px-1.5">{{ page }} / {{ totalPages }}</span>
+                                <span class="px-1.5 text-[11px] font-bold text-slate-500">{{ page }} / {{ totalPages }}</span>
                                 <Button variant="outline" size="sm" class="h-7 w-7 p-0" :disabled="page >= totalPages" @click="page++">
                                     <ChevronRight class="h-3.5 w-3.5" />
                                 </Button>
@@ -947,12 +1030,12 @@ const submissionSummary = computed(() => {
                         <Button
                             variant="ghost"
                             size="sm"
-                            class="h-7 px-2 text-[11px] font-bold text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 shrink-0"
+                            class="h-7 shrink-0 px-2 text-[11px] font-bold text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
                             :disabled="clearingAll"
                             @click="clearAllParticipants"
                         >
-                            <LoaderCircle v-if="clearingAll" class="h-3 w-3 animate-spin mr-1" />
-                            <Trash2 v-else class="h-3 w-3 mr-1" />
+                            <LoaderCircle v-if="clearingAll" class="mr-1 h-3 w-3 animate-spin" />
+                            <Trash2 v-else class="mr-1 h-3 w-3" />
                             Clear All
                         </Button>
                     </div>
@@ -964,9 +1047,7 @@ const submissionSummary = computed(() => {
                 <DialogContent class="max-w-sm !rounded-2xl">
                     <DialogHeader>
                         <DialogTitle>
-                            <span class="flex gap-2 items-center">
-                                <ClipboardCheck class="h-5 w-5 text-blue-600" /> Set Attendance
-                            </span>
+                            <span class="flex items-center gap-2"> <ClipboardCheck class="h-5 w-5 text-blue-600" /> Set Attendance </span>
                         </DialogTitle>
                         <DialogDescription class="text-xs text-muted-foreground">
                             {{ attendanceTarget?.employee?.name ?? attendanceTarget?.empcode }}
@@ -978,7 +1059,7 @@ const submissionSummary = computed(() => {
                         <div class="grid gap-1">
                             <Label class="text-xs">Attendance <span class="text-red-500">*</span></Label>
                             <Select v-model="attStatus">
-                                <SelectTrigger class="text-xs h-8">
+                                <SelectTrigger class="h-8 text-xs">
                                     <SelectValue placeholder="Select attendance" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -990,11 +1071,8 @@ const submissionSummary = computed(() => {
                         </div>
 
                         <div v-if="attStatus === 'Complete'" class="grid gap-1">
-                            <Label class="text-xs">
-                                Completed Hours <span class="text-red-500">*</span>
-                            </Label>
-                            <Input type="number" step="0.5" min="0.5"
-                                class="text-xs h-8" v-model="attHours" placeholder="e.g. 16" />
+                            <Label class="text-xs"> Completed Hours <span class="text-red-500">*</span> </Label>
+                            <Input type="number" step="0.5" min="0.5" class="h-8 text-xs" v-model="attHours" placeholder="e.g. 16" />
                             <p class="text-xs text-red-500">{{ attErrors.hours }}</p>
                         </div>
 
@@ -1008,17 +1086,21 @@ const submissionSummary = computed(() => {
                                 v-if="attendanceTarget?.justification"
                                 :href="`/storage/${attendanceTarget.justification.file_path}`"
                                 target="_blank"
-                                class="inline-flex items-center gap-1 w-fit rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-400 transition"
+                                class="inline-flex w-fit items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-400"
                             >
                                 <FileText class="h-3 w-3" /> View currently uploaded memo
                             </a>
 
-                            <input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                class="text-xs file:mr-2 file:rounded-md file:border-0 file:bg-blue-600 file:px-2.5 file:py-1.5 file:text-[11px] file:font-bold file:text-white hover:file:bg-blue-500 cursor-pointer"
-                                @change="onFileChange" />
+                            <input
+                                type="file"
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                class="cursor-pointer text-xs file:mr-2 file:rounded-md file:border-0 file:bg-blue-600 file:px-2.5 file:py-1.5 file:text-[11px] file:font-bold file:text-white hover:file:bg-blue-500"
+                                @change="onFileChange"
+                            />
                             <p class="text-[11px] text-muted-foreground">PDF, Word, or image. Max 5MB.</p>
                             <p v-if="attendanceTarget?.justification && !attFile" class="text-[11px] text-slate-500">
-                                A memo is already on file (see the link above). You don't need to upload again — this only applies if you pick a new file.
+                                A memo is already on file (see the link above). You don't need to upload again — this only applies if you pick a new
+                                file.
                             </p>
                             <p class="text-xs text-red-500">{{ attErrors.justification }}</p>
                         </div>
@@ -1030,16 +1112,14 @@ const submissionSummary = computed(() => {
 
                     <div class="flex justify-end gap-2 pt-2">
                         <Button variant="outline" size="sm" @click="showAttendance = false">Cancel</Button>
-                        <Button v-if="attStatus === 'Complete'" variant="outline" size="sm"
-                            :disabled="attProcessing" @click="applyToAll">
-                            <LoaderCircle v-if="attProcessing" class="h-3 w-3 animate-spin mr-1" />
-                            <Users v-else class="h-3.5 w-3.5 mr-1" />
+                        <Button v-if="attStatus === 'Complete'" variant="outline" size="sm" :disabled="attProcessing" @click="applyToAll">
+                            <LoaderCircle v-if="attProcessing" class="mr-1 h-3 w-3 animate-spin" />
+                            <Users v-else class="mr-1 h-3.5 w-3.5" />
                             Apply to all
                         </Button>
-                        <Button class="bg-blue-600 hover:bg-blue-700 dark:text-white" size="sm"
-                            :disabled="attProcessing" @click="submitAttendance">
-                            <LoaderCircle v-if="attProcessing" class="h-3 w-3 animate-spin mr-1" />
-                            <Save v-else class="h-3.5 w-3.5 mr-1" />
+                        <Button class="bg-blue-600 hover:bg-blue-700 dark:text-white" size="sm" :disabled="attProcessing" @click="submitAttendance">
+                            <LoaderCircle v-if="attProcessing" class="mr-1 h-3 w-3 animate-spin" />
+                            <Save v-else class="mr-1 h-3.5 w-3.5" />
                             Save Attendance
                         </Button>
                     </div>
@@ -1050,68 +1130,104 @@ const submissionSummary = computed(() => {
 
             <!-- ── Submissions Dialog ── -->
             <Dialog :open="showSubmissions" @update:open="showSubmissions = $event">
-                <DialogContent class="max-w-2xl flex flex-col max-h-[90vh] overflow-hidden border-0 p-0 !rounded-2xl shadow-2xl gap-0">
-
+                <DialogContent class="flex max-h-[90vh] max-w-2xl flex-col gap-0 overflow-hidden !rounded-2xl border-0 p-0 shadow-2xl">
                     <!-- Gradient header -->
-                    <DialogHeader class="relative shrink-0 overflow-hidden bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-500 px-6 pb-5 pt-5 text-left">
-                        <div class="pointer-events-none absolute inset-0 opacity-20"
-                            style="background-image: radial-gradient(circle at 20% 20%, white 1px, transparent 1px); background-size: 18px 18px;"></div>
+                    <DialogHeader
+                        class="relative shrink-0 overflow-hidden bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-500 px-6 pb-5 pt-5 text-left"
+                    >
+                        <div
+                            class="pointer-events-none absolute inset-0 opacity-20"
+                            style="background-image: radial-gradient(circle at 20% 20%, white 1px, transparent 1px); background-size: 18px 18px"
+                        ></div>
                         <div class="pointer-events-none absolute -right-6 -top-8 h-28 w-28 rounded-full bg-white/10 blur-2xl"></div>
 
                         <div class="relative z-10 flex items-center gap-3">
-                            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/30 backdrop-blur">
+                            <div
+                                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/30 backdrop-blur"
+                            >
                                 <ClipboardList class="h-5 w-5 text-white" />
                             </div>
                             <div class="min-w-0 flex-1">
-                                <DialogTitle class="text-base font-bold text-white truncate">
+                                <DialogTitle class="truncate text-base font-bold text-white">
                                     {{ submissionsTarget?.employee?.name ?? submissionsTarget?.empcode }}
                                 </DialogTitle>
-                                <DialogDescription class="text-xs text-blue-100">
-                                    Submissions — {{ batch?.batch }}
-                                </DialogDescription>
+                                <DialogDescription class="text-xs text-blue-100"> Submissions — {{ batch?.batch }} </DialogDescription>
                             </div>
 
                             <!-- Approved/total pill -->
-                            <div v-if="requirements.length" class="relative z-10 shrink-0 rounded-xl bg-white/15 px-3 py-1.5 text-center ring-1 ring-white/25 backdrop-blur">
-                                <p class="text-sm font-extrabold leading-none text-white">{{ submissionSummary.done }}/{{ submissionSummary.total }}</p>
+                            <div
+                                v-if="requirements.length"
+                                class="relative z-10 shrink-0 rounded-xl bg-white/15 px-3 py-1.5 text-center ring-1 ring-white/25 backdrop-blur"
+                            >
+                                <p class="text-sm font-extrabold leading-none text-white">
+                                    {{ submissionSummary.done }}/{{ submissionSummary.total }}
+                                </p>
                                 <p class="text-[9px] font-semibold uppercase tracking-wide text-blue-100">Approved</p>
                             </div>
                         </div>
                     </DialogHeader>
 
-                    <div class="overflow-y-auto flex-1 px-5 py-4 bg-muted/20">
+                    <div class="flex-1 overflow-y-auto bg-muted/20 px-5 py-4">
                         <!-- Empty: walang requirements -->
-                        <div v-if="!requirements.length"
-                            class="flex flex-col items-center justify-center rounded-2xl border border-dashed py-10 px-6 text-center gap-2 bg-card">
+                        <div
+                            v-if="!requirements.length"
+                            class="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed bg-card px-6 py-10 text-center"
+                        >
                             <svg viewBox="0 0 120 100" class="h-20 w-auto" xmlns="http://www.w3.org/2000/svg">
                                 <ellipse cx="60" cy="92" rx="44" ry="6" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
                                 <rect x="22" y="10" width="76" height="76" rx="8" fill="currentColor" class="text-blue-100 dark:text-blue-900/40" />
                                 <rect x="38" y="2" width="44" height="14" rx="4" fill="currentColor" class="text-blue-300 dark:text-blue-700/60" />
-                                <rect x="34" y="34" width="8" height="8" rx="2" stroke="currentColor" stroke-width="2" fill="none" class="text-slate-300 dark:text-slate-600" />
+                                <rect
+                                    x="34"
+                                    y="34"
+                                    width="8"
+                                    height="8"
+                                    rx="2"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    fill="none"
+                                    class="text-slate-300 dark:text-slate-600"
+                                />
                                 <rect x="50" y="35" width="34" height="5" rx="2.5" fill="currentColor" class="text-slate-300 dark:text-slate-700" />
-                                <rect x="34" y="52" width="8" height="8" rx="2" stroke="currentColor" stroke-width="2" fill="none" class="text-slate-300 dark:text-slate-600" />
+                                <rect
+                                    x="34"
+                                    y="52"
+                                    width="8"
+                                    height="8"
+                                    rx="2"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    fill="none"
+                                    class="text-slate-300 dark:text-slate-600"
+                                />
                                 <rect x="50" y="53" width="26" height="5" rx="2.5" fill="currentColor" class="text-slate-300 dark:text-slate-700" />
                             </svg>
                             <p class="text-sm font-bold text-slate-500">No requirements set</p>
-                            <p class="text-xs text-slate-400 max-w-xs">Add requirements to this batch in the Requirements tab to track participant submissions here.</p>
+                            <p class="max-w-xs text-xs text-slate-400">
+                                Add requirements to this batch in the Requirements tab to track participant submissions here.
+                            </p>
                         </div>
 
                         <div v-else class="flex flex-col gap-2.5">
-                            <div v-for="row in mergedSubmissions" :key="row.requirement.id"
+                            <div
+                                v-for="row in mergedSubmissions"
+                                :key="row.requirement.id"
                                 class="rounded-xl border bg-card shadow-sm transition hover:shadow-md"
-                                :class="statusMeta(row.submission?.status, !!row.submission).ring">
-
+                                :class="statusMeta(row.submission?.status, !!row.submission).ring"
+                            >
                                 <!-- VIEW MODE -->
                                 <div v-if="editingRow !== row.requirement.id" class="flex items-center justify-between gap-2 p-3">
-                                    <div class="flex items-start gap-3 min-w-0">
+                                    <div class="flex min-w-0 items-start gap-3">
                                         <!-- Status icon chip -->
-                                        <div class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-                                            :class="statusMeta(row.submission?.status, !!row.submission).badge">
+                                        <div
+                                            class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                                            :class="statusMeta(row.submission?.status, !!row.submission).badge"
+                                        >
                                             <component :is="statusMeta(row.submission?.status, !!row.submission).icon" class="h-4 w-4" />
                                         </div>
 
                                         <div class="min-w-0">
-                                            <p class="text-xs font-bold leading-4 truncate">
+                                            <p class="truncate text-xs font-bold leading-4">
                                                 {{ row.requirement.name }}
                                                 <span class="text-[10px] font-semibold text-blue-500">({{ row.requirement.title }})</span>
                                             </p>
@@ -1119,47 +1235,71 @@ const submissionSummary = computed(() => {
                                                 Due: {{ formatDueDate(row.requirement.due_date) }}
                                                 <span v-if="!row.requirement.is_required" class="ml-1 text-slate-400">(optional)</span>
                                             </p>
-                                            <p v-if="row.submission?.remarks" class="text-[11px] text-slate-500 mt-0.5 italic">
+                                            <p v-if="row.submission?.remarks" class="mt-0.5 text-[11px] italic text-slate-500">
                                                 "{{ row.submission.remarks }}"
                                             </p>
-                                            <a v-if="row.submission?.file_path" :href="`/storage/${row.submission.file_path}`"
-                                                target="_blank" class="inline-flex items-center gap-0.5 text-[11px] text-blue-600 hover:underline font-semibold mt-0.5">
+                                            <a
+                                                v-if="row.submission?.file_path"
+                                                :href="`/storage/${row.submission.file_path}`"
+                                                target="_blank"
+                                                class="mt-0.5 inline-flex items-center gap-0.5 text-[11px] font-semibold text-blue-600 hover:underline"
+                                            >
                                                 <FileText class="h-3 w-3" /> View file
                                             </a>
                                         </div>
                                     </div>
 
-                                    <div class="flex items-center gap-2 shrink-0">
-                                        <Badge :class="statusMeta(row.submission?.status, !!row.submission).badge" class="text-[10px] font-bold border-0 gap-1">
+                                    <div class="flex shrink-0 items-center gap-2">
+                                        <Badge
+                                            :class="statusMeta(row.submission?.status, !!row.submission).badge"
+                                            class="gap-1 border-0 text-[10px] font-bold"
+                                        >
                                             <component :is="statusMeta(row.submission?.status, !!row.submission).icon" class="h-3 w-3" />
                                             {{ statusMeta(row.submission?.status, !!row.submission).label }}
                                         </Badge>
-                                        <Button variant="ghost" size="sm" class="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/30" @click="startEdit(row)">
-                                            <Upload class="h-3 w-3 mr-1" /> Set
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            class="h-7 px-2 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-950/30"
+                                            @click="startEdit(row)"
+                                        >
+                                            <Upload class="mr-1 h-3 w-3" /> Set
                                         </Button>
-                                        <Button v-if="row.submission" variant="ghost" size="sm"
-                                            class="h-7 w-7 p-0 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                                            @click="deleteSubmission(row.submission.id)">
+                                        <Button
+                                            v-if="row.submission"
+                                            variant="ghost"
+                                            size="sm"
+                                            class="h-7 w-7 p-0 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
+                                            @click="deleteSubmission(row.submission.id)"
+                                        >
                                             <Trash2 class="h-3.5 w-3.5" />
                                         </Button>
                                     </div>
                                 </div>
 
                                 <!-- EDIT MODE -->
-                                <div v-else class="grid gap-2 p-3 bg-blue-50/50 dark:bg-blue-950/20 rounded-xl">
-                                    <p class="text-xs font-bold leading-4 flex items-center gap-2">
+                                <div v-else class="grid gap-2 rounded-xl bg-blue-50/50 p-3 dark:bg-blue-950/20">
+                                    <p class="flex items-center gap-2 text-xs font-bold leading-4">
                                         <CloudUpload class="h-4 w-4 text-blue-600" />
                                         {{ row.requirement.name }}
                                         <span class="text-[10px] font-semibold text-blue-500">({{ row.requirement.title }})</span>
-                                        <Badge v-if="row.submission?.file_path" variant="outline" class="text-[9px] font-bold gap-0.5 border-emerald-300 text-emerald-700">
+                                        <Badge
+                                            v-if="row.submission?.file_path"
+                                            variant="outline"
+                                            class="gap-0.5 border-emerald-300 text-[9px] font-bold text-emerald-700"
+                                        >
                                             <FileText class="h-3 w-3" /> File on record
                                         </Badge>
                                     </p>
                                     <div class="grid grid-cols-2 gap-2">
                                         <div class="grid gap-1">
-                                            <Label class="text-xs flex items-center gap-1"><ClipboardCheck class="h-3 w-3 text-slate-400" /> Status</Label>
+                                            <Label class="flex items-center gap-1 text-xs"
+                                                ><ClipboardCheck class="h-3 w-3 text-slate-400" /> Status</Label
+                                            >
                                             <Select v-model="subStatus">
-                                                <SelectTrigger class="text-xs h-8 bg-white dark:bg-slate-900"><SelectValue placeholder="Select status" /></SelectTrigger>
+                                                <SelectTrigger class="h-8 bg-white text-xs dark:bg-slate-900"
+                                                    ><SelectValue placeholder="Select status"
+                                                /></SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem class="text-xs" value="Pending">Pending</SelectItem>
                                                     <SelectItem class="text-xs" value="Approved">Approved</SelectItem>
@@ -1168,10 +1308,15 @@ const submissionSummary = computed(() => {
                                             </Select>
                                         </div>
                                         <div class="grid gap-1">
-                                            <Label class="text-xs flex items-center gap-1"><FileText class="h-3 w-3 text-slate-400" /> File (PDF)</Label>
-                                            <input type="file" accept=".pdf"
-                                                class="text-xs file:mr-2 file:rounded-md file:border-0 file:bg-blue-600 file:px-2.5 file:py-1.5 file:text-[11px] file:font-bold file:text-white hover:file:bg-blue-500 cursor-pointer"
-                                                @change="onSubFileChange" />
+                                            <Label class="flex items-center gap-1 text-xs"
+                                                ><FileText class="h-3 w-3 text-slate-400" /> File (PDF)</Label
+                                            >
+                                            <input
+                                                type="file"
+                                                accept=".pdf"
+                                                class="cursor-pointer text-xs file:mr-2 file:rounded-md file:border-0 file:bg-blue-600 file:px-2.5 file:py-1.5 file:text-[11px] file:font-bold file:text-white hover:file:bg-blue-500"
+                                                @change="onSubFileChange"
+                                            />
                                             <p v-if="row.submission?.file_path && !subFile" class="text-[11px] text-slate-500">
                                                 Naka-upload na. Mag-upload ulit para palitan.
                                             </p>
@@ -1179,15 +1324,23 @@ const submissionSummary = computed(() => {
                                         </div>
                                     </div>
                                     <div class="grid gap-1">
-                                        <Label class="text-xs flex items-center gap-1"><ListFilter class="h-3 w-3 text-slate-400" /> Remarks</Label>
-                                        <Input class="text-xs h-8 bg-white dark:bg-slate-900" v-model="subRemarks" placeholder="e.g. Needs revision on section 3" />
+                                        <Label class="flex items-center gap-1 text-xs"><ListFilter class="h-3 w-3 text-slate-400" /> Remarks</Label>
+                                        <Input
+                                            class="h-8 bg-white text-xs dark:bg-slate-900"
+                                            v-model="subRemarks"
+                                            placeholder="e.g. Needs revision on section 3"
+                                        />
                                     </div>
                                     <div class="flex justify-end gap-2 pt-1">
                                         <Button variant="outline" size="sm" @click="cancelEdit">Cancel</Button>
-                                        <Button class="bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md shadow-blue-500/25 hover:from-blue-700 hover:to-blue-600" size="sm"
-                                            :disabled="subProcessing" @click="saveSubmission(row)">
-                                            <LoaderCircle v-if="subProcessing" class="h-3 w-3 animate-spin mr-1" />
-                                            <Save v-else class="h-3.5 w-3.5 mr-1" />
+                                        <Button
+                                            class="bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md shadow-blue-500/25 hover:from-blue-700 hover:to-blue-600"
+                                            size="sm"
+                                            :disabled="subProcessing"
+                                            @click="saveSubmission(row)"
+                                        >
+                                            <LoaderCircle v-if="subProcessing" class="mr-1 h-3 w-3 animate-spin" />
+                                            <Save v-else class="mr-1 h-3.5 w-3.5" />
                                             Save
                                         </Button>
                                     </div>
@@ -1196,12 +1349,11 @@ const submissionSummary = computed(() => {
                         </div>
                     </div>
 
-                    <div class="shrink-0 flex justify-end px-5 py-3 border-t bg-card">
+                    <div class="flex shrink-0 justify-end border-t bg-card px-5 py-3">
                         <Button variant="outline" size="sm" @click="showSubmissions = false">Close</Button>
                     </div>
                 </DialogContent>
             </Dialog>
-
         </DialogContent>
     </Dialog>
 </template>

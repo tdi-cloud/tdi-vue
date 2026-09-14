@@ -15,13 +15,13 @@ return new class extends Migration
             $table->id();
             $table->string('region');
             $table->string('month');
-            $table->integer('year');                          
+            $table->integer('year');
             $table->string('file_name');
             $table->string('file_path');
-            $table->timestamp('submitted_at')->nullable();    
-            $table->text('notes')->nullable();                
+            $table->timestamp('submitted_at')->nullable();
+            $table->text('notes')->nullable();
             $table->string('added_by');
-            $table->timestamps();   
+            $table->timestamps();
         });
     }
 

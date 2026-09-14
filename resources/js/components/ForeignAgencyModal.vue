@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { X, Plus, Trash2, Building2, Loader2 } from 'lucide-vue-next';
-import axios from 'axios';
 import { useConfirm } from '@/composables/useConfirm';
+import axios from 'axios';
+import { Building2, Loader2, Plus, Trash2, X } from 'lucide-vue-next';
+import { onMounted, ref } from 'vue';
 
 interface Agency {
     id: number;
@@ -19,15 +19,15 @@ const emit = defineEmits<{
 
 const { confirmDialog } = useConfirm();
 const agencies = ref<Agency[]>([]);
-const newName  = ref('');
-const loading  = ref(false);
-const adding   = ref(false);
-const error    = ref('');
+const newName = ref('');
+const loading = ref(false);
+const adding = ref(false);
+const error = ref('');
 
 async function fetchAgencies() {
     loading.value = true;
     try {
-        const res      = await axios.get(route('foreign-agencies.index'));
+        const res = await axios.get(route('foreign-agencies.index'));
         agencies.value = res.data;
     } finally {
         loading.value = false;
@@ -36,7 +36,7 @@ async function fetchAgencies() {
 
 async function addAgency() {
     if (!newName.value.trim()) return;
-    error.value  = '';
+    error.value = '';
     adding.value = true;
     try {
         await axios.post(route('foreign-agencies.store'), {
@@ -73,20 +73,16 @@ onMounted(fetchAgencies);
 
 <template>
     <Teleport to="body">
-        <div
-            class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
-            @click.self="emit('close')"
-        >
-            <div class="bg-background rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[85vh] overflow-hidden">
-
+        <div class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" @click.self="emit('close')">
+            <div class="flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-background shadow-2xl">
                 <!-- Header -->
-                <div class="flex items-center gap-3 px-5 py-4 border-b shrink-0">
-                    <div class="h-9 w-9 rounded-xl bg-blue-600 flex items-center justify-center shrink-0">
+                <div class="flex shrink-0 items-center gap-3 border-b px-5 py-4">
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600">
                         <Building2 class="h-4 w-4 text-white" />
                     </div>
                     <div class="flex-1">
                         <h2 class="text-sm font-bold leading-none">Manage Agencies</h2>
-                        <p class="text-xs text-muted-foreground mt-0.5">Add or remove agencies for foreign participants</p>
+                        <p class="mt-0.5 text-xs text-muted-foreground">Add or remove agencies for foreign participants</p>
                     </div>
                     <button class="text-muted-foreground hover:text-foreground" @click="emit('close')">
                         <X class="h-4 w-4" />
@@ -94,17 +90,12 @@ onMounted(fetchAgencies);
                 </div>
 
                 <!-- Add new -->
-                <div class="px-5 py-3 border-b shrink-0">
+                <div class="shrink-0 border-b px-5 py-3">
                     <div class="flex gap-2">
-                        <Input
-                            v-model="newName"
-                            placeholder="e.g. TESDA"
-                            class="h-9 text-sm flex-1"
-                            @keydown.enter="addAgency"
-                        />
+                        <Input v-model="newName" placeholder="e.g. TESDA" class="h-9 flex-1 text-sm" @keydown.enter="addAgency" />
                         <Button
                             size="sm"
-                            class="h-9 bg-blue-600 hover:bg-blue-700 text-white shrink-0"
+                            class="h-9 shrink-0 bg-blue-600 text-white hover:bg-blue-700"
                             :disabled="adding || !newName.trim()"
                             @click="addAgency"
                         >
@@ -113,31 +104,31 @@ onMounted(fetchAgencies);
                             Add
                         </Button>
                     </div>
-                    <p v-if="error" class="text-xs text-red-500 mt-1">{{ error }}</p>
+                    <p v-if="error" class="mt-1 text-xs text-red-500">{{ error }}</p>
                 </div>
 
                 <!-- List -->
-                <div class="flex-1 overflow-y-auto px-5 py-3 flex flex-col gap-1">
+                <div class="flex flex-1 flex-col gap-1 overflow-y-auto px-5 py-3">
                     <div v-if="loading" class="flex justify-center py-8">
                         <Loader2 class="h-5 w-5 animate-spin text-muted-foreground" />
                     </div>
 
-                    <div v-else-if="agencies.length === 0" class="text-center py-8 text-xs text-muted-foreground">
+                    <div v-else-if="agencies.length === 0" class="py-8 text-center text-xs text-muted-foreground">
                         No agencies yet. Add one above.
                     </div>
 
                     <div
                         v-for="agency in agencies"
                         :key="agency.id"
-                        class="flex items-center justify-between gap-2 rounded-lg border px-3 py-2 hover:bg-muted/40 group transition-colors cursor-pointer"
+                        class="group flex cursor-pointer items-center justify-between gap-2 rounded-lg border px-3 py-2 transition-colors hover:bg-muted/40"
                         @click="select(agency)"
                     >
-                        <div class="flex items-center gap-2 min-w-0">
+                        <div class="flex min-w-0 items-center gap-2">
                             <Building2 class="h-3.5 w-3.5 shrink-0 text-blue-400" />
-                            <span class="text-sm truncate">{{ agency.name }}</span>
+                            <span class="truncate text-sm">{{ agency.name }}</span>
                         </div>
                         <button
-                            class="shrink-0 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-muted-foreground hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all"
+                            class="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-all hover:bg-red-100 hover:text-red-600 group-hover:opacity-100 dark:hover:bg-red-900/30"
                             title="Remove"
                             @click.stop="removeAgency(agency)"
                         >
@@ -147,10 +138,9 @@ onMounted(fetchAgencies);
                 </div>
 
                 <!-- Footer -->
-                <div class="px-5 py-3 border-t shrink-0">
+                <div class="shrink-0 border-t px-5 py-3">
                     <Button variant="outline" class="w-full" size="sm" @click="emit('close')">Close</Button>
                 </div>
-
             </div>
         </div>
     </Teleport>

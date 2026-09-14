@@ -1,198 +1,190 @@
 <template>
-  <section class="fstp" id="foreign-scholarships">
-    <div class="fstp__inner">
+    <section class="fstp" id="foreign-scholarships">
+        <div class="fstp__inner">
+            <!-- Header -->
+            <div class="fstp__top">
+                <div class="fstp__header">
+                    <span class="eyebrow">FOREIGN SCHOLARSHIP &amp; TRAINING PROGRAM</span>
+                    <h2 class="fstp__title">Connecting government personnel to learning opportunities abroad.</h2>
+                    <p class="fstp__sub">
+                        The Foreign Scholarship and Training Program (FSTP) is the unit of the TESDA Development Institute responsible for processing
+                        international scholarships and training programs made available through partner sponsoring organizations, for nominees from
+                        government agencies across the Philippines.
+                    </p>
 
-      <!-- Header -->
-      <div class="fstp__top">
-        <div class="fstp__header">
-          <span class="eyebrow">FOREIGN SCHOLARSHIP &amp; TRAINING PROGRAM</span>
-          <h2 class="fstp__title">Connecting government personnel to learning opportunities abroad.</h2>
-          <p class="fstp__sub">
-            The Foreign Scholarship and Training Program (FSTP) is the unit of the TESDA Development
-            Institute responsible for processing international scholarships and training programs made
-            available through partner sponsoring organizations, for nominees from government agencies
-            across the Philippines.
-          </p>
+                    <a href="https://lawphil.net/executive/execord/eo2005/pdf/eo_402_2005.pdf" target="_blank" rel="noopener" class="eo-chip">
+                        <span class="eo-chip__icon">§</span>
+                        <span>
+                            Governed by <strong>Executive Order No. 402, s. 2005</strong> — Promoting the Foreign Scholarship and Training Program for
+                            Government Personnel
+                        </span>
+                        <span class="eo-chip__arrow">→</span>
+                    </a>
+                </div>
 
-          <a
-            href="https://lawphil.net/executive/execord/eo2005/pdf/eo_402_2005.pdf"
-            target="_blank"
-            rel="noopener"
-            class="eo-chip"
-          >
-            <span class="eo-chip__icon">§</span>
-            <span>
-              Governed by <strong>Executive Order No. 402, s. 2005</strong> — Promoting the Foreign Scholarship
-              and Training Program for Government Personnel
-            </span>
-            <span class="eo-chip__arrow">→</span>
-          </a>
-        </div>
-
-        <!--
+                <!--
           Ang mga larawan na ito ay customizable ng superadmin sa
           /site-images (Homepage Images) — nasa ibaba ang mga fallback
           na larawan kung wala pang na-upload na override.
         -->
-        <div class="fstp__media" ref="mediaRef">
-          <div class="snap snap--1" :class="{ 'snap--visible': snapVisible }" @click="openLightbox(0)">
-            <img :src="images.fstp_photo_1" alt="Delegates during a foreign training session" />
-            <span class="snap__zoom">🔍</span>
-          </div>
-          <div class="snap snap--2" :class="{ 'snap--visible': snapVisible }" @click="openLightbox(1)">
-            <img :src="images.fstp_photo_2" alt="Group photo of Filipino delegates abroad" />
-            <span class="snap__zoom">🔍</span>
-          </div>
-          <div class="snap snap--3" :class="{ 'snap--visible': snapVisible }" @click="openLightbox(2)">
-            <img :src="images.fstp_photo_3" alt="Nominees in a classroom setting abroad" />
-            <span class="snap__zoom">🔍</span>
-          </div>
-          <div class="snap snap--4" :class="{ 'snap--visible': snapVisible }" @click="openLightbox(3)">
-            <img :src="images.fstp_photo_4" alt="Delegates posing at a foreign training venue" />
-            <span class="snap__zoom">🔍</span>
-          </div>
-          <span class="fstp__media-tag" :class="{ 'fstp__media-tag--visible': snapVisible }">FSTP nominees abroad</span>
-        </div>
-      </div>
-
-      <!-- How to avail -->
-      <div class="fstp__process">
-        <div class="fstp__process-label">How to avail of a program</div>
-
-        <div class="fstp__avail">
-          <p class="fstp__avail-text">
-            Available programs are announced by each sponsoring organization and disseminated
-            through government agencies, including TESDA. Employees who wish to take part in a
-            program should watch for these announcements through their respective agency and
-            coordinate with their HR or training office for endorsement as a nominee.
-          </p>
-
-          <a href="mailto:fstp.unit@tesda.gov.ph" class="fstp__contact">
-            <span class="fstp__contact-icon">✉</span>
-            <span>
-              For concerns and questions, reach the FSTP unit at
-              <strong>fstp.unit@tesda.gov.ph</strong>
-            </span>
-          </a>
-        </div>
-      </div>
-
-      <!-- Sponsoring Organizations -->
-      <div class="fstp__sponsors">
-        <div class="fstp__sponsors-header">
-          <div>
-            <div class="fstp__process-label">Currently processed by FSTP</div>
-            <h3 class="fstp__sponsors-title">Our Sponsoring Organizations</h3>
-          </div>
-          <p class="fstp__sponsors-note">
-            Each sponsor maintains its own set of programs, requirements, and reference materials.
-            Nominated employees are guided through a dedicated nomination form per sponsor.
-          </p>
-        </div>
-
-        <div class="fstp__sponsors-grid">
-          <component
-            :is="org.url ? 'a' : 'div'"
-            v-for="org in sponsors"
-            :key="org.name"
-            v-bind="org.url ? { href: org.url, target: '_blank', rel: 'noopener' } : {}"
-            class="sponsor-card"
-          >
-            <div class="sponsor-card__mark">
-              <img
-                :src="org.logo"
-                :alt="`${org.name} logo`"
-                class="sponsor-card__logo"
-                loading="lazy"
-                @error="handleLogoError"
-              />
-              <span class="sponsor-card__fallback sponsor-card__fallback--hidden">{{ org.initials }}</span>
+                <div class="fstp__media" ref="mediaRef">
+                    <div class="snap snap--1" :class="{ 'snap--visible': snapVisible }" @click="openLightbox(0)">
+                        <img :src="images.fstp_photo_1" alt="Delegates during a foreign training session" />
+                        <span class="snap__zoom">🔍</span>
+                    </div>
+                    <div class="snap snap--2" :class="{ 'snap--visible': snapVisible }" @click="openLightbox(1)">
+                        <img :src="images.fstp_photo_2" alt="Group photo of Filipino delegates abroad" />
+                        <span class="snap__zoom">🔍</span>
+                    </div>
+                    <div class="snap snap--3" :class="{ 'snap--visible': snapVisible }" @click="openLightbox(2)">
+                        <img :src="images.fstp_photo_3" alt="Nominees in a classroom setting abroad" />
+                        <span class="snap__zoom">🔍</span>
+                    </div>
+                    <div class="snap snap--4" :class="{ 'snap--visible': snapVisible }" @click="openLightbox(3)">
+                        <img :src="images.fstp_photo_4" alt="Delegates posing at a foreign training venue" />
+                        <span class="snap__zoom">🔍</span>
+                    </div>
+                    <span class="fstp__media-tag" :class="{ 'fstp__media-tag--visible': snapVisible }">FSTP nominees abroad</span>
+                </div>
             </div>
-            <div class="sponsor-card__name">{{ org.name }}</div>
-          </component>
+
+            <!-- How to avail -->
+            <div class="fstp__process">
+                <div class="fstp__process-label">How to avail of a program</div>
+
+                <div class="fstp__avail">
+                    <p class="fstp__avail-text">
+                        Available programs are announced by each sponsoring organization and disseminated through government agencies, including
+                        TESDA. Employees who wish to take part in a program should watch for these announcements through their respective agency and
+                        coordinate with their HR or training office for endorsement as a nominee.
+                    </p>
+
+                    <a href="mailto:fstp.unit@tesda.gov.ph" class="fstp__contact">
+                        <span class="fstp__contact-icon">✉</span>
+                        <span>
+                            For concerns and questions, reach the FSTP unit at
+                            <strong>fstp.unit@tesda.gov.ph</strong>
+                        </span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Sponsoring Organizations -->
+            <div class="fstp__sponsors">
+                <div class="fstp__sponsors-header">
+                    <div>
+                        <div class="fstp__process-label">Currently processed by FSTP</div>
+                        <h3 class="fstp__sponsors-title">Our Sponsoring Organizations</h3>
+                    </div>
+                    <p class="fstp__sponsors-note">
+                        Each sponsor maintains its own set of programs, requirements, and reference materials. Nominated employees are guided through
+                        a dedicated nomination form per sponsor.
+                    </p>
+                </div>
+
+                <div class="fstp__sponsors-grid">
+                    <component
+                        :is="org.url ? 'a' : 'div'"
+                        v-for="org in sponsors"
+                        :key="org.name"
+                        v-bind="org.url ? { href: org.url, target: '_blank', rel: 'noopener' } : {}"
+                        class="sponsor-card"
+                    >
+                        <div class="sponsor-card__mark">
+                            <img :src="org.logo" :alt="`${org.name} logo`" class="sponsor-card__logo" loading="lazy" @error="handleLogoError" />
+                            <span class="sponsor-card__fallback sponsor-card__fallback--hidden">{{ org.initials }}</span>
+                        </div>
+                        <div class="sponsor-card__name">{{ org.name }}</div>
+                    </component>
+                </div>
+            </div>
         </div>
-      </div>
 
-    </div>
+        <!-- Lightbox: malaking view ng FSTP photos -->
+        <Teleport to="body">
+            <div v-if="lightboxOpen" class="lightbox" @click.self="closeLightbox">
+                <button class="lightbox__close" type="button" @click="closeLightbox" aria-label="Close">✕</button>
 
-    <!-- Lightbox: malaking view ng FSTP photos -->
-    <Teleport to="body">
-      <div v-if="lightboxOpen" class="lightbox" @click.self="closeLightbox">
-        <button class="lightbox__close" type="button" @click="closeLightbox" aria-label="Close">✕</button>
+                <button class="lightbox__nav lightbox__nav--prev" type="button" @click.stop="prevPhoto" aria-label="Previous photo">‹</button>
 
-        <button class="lightbox__nav lightbox__nav--prev" type="button" @click.stop="prevPhoto" aria-label="Previous photo">‹</button>
+                <figure class="lightbox__figure">
+                    <img :src="activePhoto?.src" :alt="activePhoto?.alt" class="lightbox__img" />
+                    <figcaption class="lightbox__caption">
+                        <span class="lightbox__count">{{ lightboxIndex + 1 }} / {{ fstpPhotos.length }}</span>
+                    </figcaption>
+                </figure>
 
-        <figure class="lightbox__figure">
-          <img :src="activePhoto?.src" :alt="activePhoto?.alt" class="lightbox__img" />
-          <figcaption class="lightbox__caption">
-            <span class="lightbox__count">{{ lightboxIndex + 1 }} / {{ fstpPhotos.length }}</span>
-          </figcaption>
-        </figure>
-
-        <button class="lightbox__nav lightbox__nav--next" type="button" @click.stop="nextPhoto" aria-label="Next photo">›</button>
-      </div>
-    </Teleport>
-  </section>
+                <button class="lightbox__nav lightbox__nav--next" type="button" @click.stop="nextPhoto" aria-label="Next photo">›</button>
+            </div>
+        </Teleport>
+    </section>
 </template>
 
-<script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+<script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 const props = defineProps({
-  images: { type: Object, default: () => ({}) }
-})
+    images: { type: Object, default: () => ({}) },
+});
 
-const mediaRef    = ref(null)
-const snapVisible = ref(false)
-let observer       = null
+const mediaRef = ref(null);
+const snapVisible = ref(false);
+let observer = null;
 
 onMounted(() => {
-  observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        snapVisible.value = true
-        observer.unobserve(entry.target)
-      }
-    })
-  }, { threshold: 0.25 })
+    observer = new IntersectionObserver(
+        (entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    snapVisible.value = true;
+                    observer.unobserve(entry.target);
+                }
+            });
+        },
+        { threshold: 0.25 },
+    );
 
-  if (mediaRef.value) observer.observe(mediaRef.value)
-  window.addEventListener('keydown', onLightboxKeydown)
-})
+    if (mediaRef.value) observer.observe(mediaRef.value);
+    window.addEventListener('keydown', onLightboxKeydown);
+});
 
 onBeforeUnmount(() => {
-  observer?.disconnect()
-  window.removeEventListener('keydown', onLightboxKeydown)
-})
+    observer?.disconnect();
+    window.removeEventListener('keydown', onLightboxKeydown);
+});
 
 /* ===================== LIGHTBOX ===================== */
 
 const fstpPhotos = computed(() => [
-  { src: props.images.fstp_photo_1, alt: 'Delegates during a foreign training session' },
-  { src: props.images.fstp_photo_2, alt: 'Group photo of Filipino delegates abroad' },
-  { src: props.images.fstp_photo_3, alt: 'Nominees in a classroom setting abroad' },
-  { src: props.images.fstp_photo_4, alt: 'Delegates posing at a foreign training venue' },
-])
+    { src: props.images.fstp_photo_1, alt: 'Delegates during a foreign training session' },
+    { src: props.images.fstp_photo_2, alt: 'Group photo of Filipino delegates abroad' },
+    { src: props.images.fstp_photo_3, alt: 'Nominees in a classroom setting abroad' },
+    { src: props.images.fstp_photo_4, alt: 'Delegates posing at a foreign training venue' },
+]);
 
-const lightboxIndex = ref(null)
-const lightboxOpen  = computed(() => lightboxIndex.value !== null)
-const activePhoto   = computed(() => lightboxIndex.value !== null ? fstpPhotos.value[lightboxIndex.value] : null)
+const lightboxIndex = ref(null);
+const lightboxOpen = computed(() => lightboxIndex.value !== null);
+const activePhoto = computed(() => (lightboxIndex.value !== null ? fstpPhotos.value[lightboxIndex.value] : null));
 
-function openLightbox(i) { lightboxIndex.value = i }
-function closeLightbox() { lightboxIndex.value = null }
+function openLightbox(i) {
+    lightboxIndex.value = i;
+}
+function closeLightbox() {
+    lightboxIndex.value = null;
+}
 function nextPhoto() {
-  if (lightboxIndex.value === null) return
-  lightboxIndex.value = (lightboxIndex.value + 1) % fstpPhotos.value.length
+    if (lightboxIndex.value === null) return;
+    lightboxIndex.value = (lightboxIndex.value + 1) % fstpPhotos.value.length;
 }
 function prevPhoto() {
-  if (lightboxIndex.value === null) return
-  lightboxIndex.value = (lightboxIndex.value - 1 + fstpPhotos.value.length) % fstpPhotos.value.length
+    if (lightboxIndex.value === null) return;
+    lightboxIndex.value = (lightboxIndex.value - 1 + fstpPhotos.value.length) % fstpPhotos.value.length;
 }
 function onLightboxKeydown(e) {
-  if (lightboxIndex.value === null) return
-  if (e.key === 'Escape')    closeLightbox()
-  if (e.key === 'ArrowRight') nextPhoto()
-  if (e.key === 'ArrowLeft')  prevPhoto()
+    if (lightboxIndex.value === null) return;
+    if (e.key === 'Escape') closeLightbox();
+    if (e.key === 'ArrowRight') nextPhoto();
+    if (e.key === 'ArrowLeft') prevPhoto();
 }
 
 /**
@@ -203,387 +195,646 @@ function onLightboxKeydown(e) {
  * organization's initials so the layout never breaks.
  */
 const sponsorMeta = [
-  {
-    name: 'Japan International Cooperation Agency',
-    initials: 'JICA',
-    key: 'sponsor_logo_jica',
-    fallback: '/storage/sponsors/jica.png',
-    url: 'https://www.jica.go.jp/english/overseas/philippine/activities/assistance_schemes/training_and_scholarship_programs/index.html',
-  },
-  {
-    name: 'Korea International Cooperation Agency',
-    initials: 'KOICA',
-    key: 'sponsor_logo_koica',
-    fallback: '/storage/sponsors/koica.png',
-    url: 'http://www.koica.go.kr/sites/koica_en/index.do',
-  },
-  {
-    name: 'Malaysian Technical Cooperation Programme',
-    initials: 'MTCP',
-    key: 'sponsor_logo_mtcp',
-    fallback: '/storage/sponsors/mtcp.png',
-    url: 'https://mtcp.kln.gov.my/courses2/list2',
-  },
-  {
-    name: 'Singapore Cooperation Programme',
-    initials: 'SCP',
-    key: 'sponsor_logo_scp',
-    fallback: '/storage/sponsors/scp.png',
-    url: 'https://scp.gov.sg/starthome/our-course',
-  },
-  {
-    name: 'Thailand International Cooperation Agency',
-    initials: 'TICA',
-    key: 'sponsor_logo_tica',
-    fallback: '/storage/sponsors/tica.png',
-    url: null,
-  },
-  {
-    name: 'Indian Technical and Economic Cooperation',
-    initials: 'ITEC',
-    key: 'sponsor_logo_itec',
-    fallback: '/storage/sponsors/itec.png',
-    url: 'https://itecgoi.in/index',
-  },
-]
+    {
+        name: 'Japan International Cooperation Agency',
+        initials: 'JICA',
+        key: 'sponsor_logo_jica',
+        fallback: '/storage/sponsors/jica.png',
+        url: 'https://www.jica.go.jp/english/overseas/philippine/activities/assistance_schemes/training_and_scholarship_programs/index.html',
+    },
+    {
+        name: 'Korea International Cooperation Agency',
+        initials: 'KOICA',
+        key: 'sponsor_logo_koica',
+        fallback: '/storage/sponsors/koica.png',
+        url: 'http://www.koica.go.kr/sites/koica_en/index.do',
+    },
+    {
+        name: 'Malaysian Technical Cooperation Programme',
+        initials: 'MTCP',
+        key: 'sponsor_logo_mtcp',
+        fallback: '/storage/sponsors/mtcp.png',
+        url: 'https://mtcp.kln.gov.my/courses2/list2',
+    },
+    {
+        name: 'Singapore Cooperation Programme',
+        initials: 'SCP',
+        key: 'sponsor_logo_scp',
+        fallback: '/storage/sponsors/scp.png',
+        url: 'https://scp.gov.sg/starthome/our-course',
+    },
+    {
+        name: 'Thailand International Cooperation Agency',
+        initials: 'TICA',
+        key: 'sponsor_logo_tica',
+        fallback: '/storage/sponsors/tica.png',
+        url: null,
+    },
+    {
+        name: 'Indian Technical and Economic Cooperation',
+        initials: 'ITEC',
+        key: 'sponsor_logo_itec',
+        fallback: '/storage/sponsors/itec.png',
+        url: 'https://itecgoi.in/index',
+    },
+];
 
-const sponsors = computed(() => sponsorMeta.map(s => ({
-  name: s.name,
-  initials: s.initials,
-  logo: props.images[s.key] ?? s.fallback,
-  url: s.url,
-})))
+const sponsors = computed(() =>
+    sponsorMeta.map((s) => ({
+        name: s.name,
+        initials: s.initials,
+        logo: props.images[s.key] ?? s.fallback,
+        url: s.url,
+    })),
+);
 
 function handleLogoError(e) {
-  e.target.style.display = 'none'
-  e.target.nextElementSibling?.classList.remove('sponsor-card__fallback--hidden')
+    e.target.style.display = 'none';
+    e.target.nextElementSibling?.classList.remove('sponsor-card__fallback--hidden');
 }
 </script>
 
 <style scoped>
 .fstp {
-  padding: 5.5rem 2rem;
-  background: #0f1c48;
-  position: relative;
-  overflow: hidden;
+    padding: 5.5rem 2rem;
+    background: #0f1c48;
+    position: relative;
+    overflow: hidden;
 }
 .fstp::before {
-  content: '';
-  position: absolute;
-  top: -120px; right: -120px;
-  width: 420px; height: 420px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(29,63,196,0.35) 0%, rgba(29,63,196,0) 70%);
-  pointer-events: none;
+    content: '';
+    position: absolute;
+    top: -120px;
+    right: -120px;
+    width: 420px;
+    height: 420px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(29, 63, 196, 0.35) 0%, rgba(29, 63, 196, 0) 70%);
+    pointer-events: none;
 }
 
-.fstp__inner { max-width: 1100px; margin: 0 auto; position: relative; }
+.fstp__inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    position: relative;
+}
 
 /* Header + Media */
 .fstp__top {
-  display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 3.5rem;
-  align-items: center; margin-bottom: 4.5rem;
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 3.5rem;
+    align-items: center;
+    margin-bottom: 4.5rem;
 }
-.fstp__header { max-width: 560px; }
+.fstp__header {
+    max-width: 560px;
+}
 
 .fstp__media {
-  position: relative;
-  height: 380px;
-  width: 100%;
+    position: relative;
+    height: 380px;
+    width: 100%;
 }
 .snap {
-  position: absolute;
-  background: #fff;
-  border-radius: 6px;
-  padding: 0.4rem 0.4rem 1.4rem;
-  box-shadow: 0 14px 34px rgba(0,0,0,0.35);
-  opacity: 0;
-  cursor: zoom-in;
-  transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease;
+    position: absolute;
+    background: #fff;
+    border-radius: 6px;
+    padding: 0.4rem 0.4rem 1.4rem;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    cursor: zoom-in;
+    transition:
+        opacity 0.6s ease,
+        transform 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 0.35s ease;
 }
 .snap img {
-  display: block; width: 100%; height: 100%;
-  object-fit: cover; border-radius: 2px;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 2px;
 }
-.snap:hover { z-index: 10; box-shadow: 0 20px 44px rgba(0,0,0,0.45); }
+.snap:hover {
+    z-index: 10;
+    box-shadow: 0 20px 44px rgba(0, 0, 0, 0.45);
+}
 
 .snap__zoom {
-  position: absolute;
-  top: 0.9rem; right: 0.9rem;
-  width: 28px; height: 28px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.85rem;
-  background: rgba(15,28,72,0.75);
-  border-radius: 50%;
-  opacity: 0;
-  transform: scale(0.8);
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  pointer-events: none;
+    position: absolute;
+    top: 0.9rem;
+    right: 0.9rem;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    background: rgba(15, 28, 72, 0.75);
+    border-radius: 50%;
+    opacity: 0;
+    transform: scale(0.8);
+    transition:
+        opacity 0.2s ease,
+        transform 0.2s ease;
+    pointer-events: none;
 }
-.snap:hover .snap__zoom { opacity: 1; transform: scale(1); }
+.snap:hover .snap__zoom {
+    opacity: 1;
+    transform: scale(1);
+}
 
 .snap--1 {
-  width: 47%; aspect-ratio: 4/5;
-  top: 0; left: 4%;
-  transform: rotate(-6deg) translateY(40px) scale(0.9);
-  transition-delay: 0s;
+    width: 47%;
+    aspect-ratio: 4/5;
+    top: 0;
+    left: 4%;
+    transform: rotate(-6deg) translateY(40px) scale(0.9);
+    transition-delay: 0s;
 }
-.snap--1.snap--visible { transform: rotate(-6deg); opacity: 1; }
-.snap--1.snap--visible:hover { transform: rotate(-6deg) translateY(-6px) scale(1.03); }
+.snap--1.snap--visible {
+    transform: rotate(-6deg);
+    opacity: 1;
+}
+.snap--1.snap--visible:hover {
+    transform: rotate(-6deg) translateY(-6px) scale(1.03);
+}
 
 .snap--2 {
-  width: 40%; aspect-ratio: 1/1;
-  top: 6%; right: 0;
-  transform: rotate(5deg) translateY(40px) scale(0.9);
-  transition-delay: 0.12s;
+    width: 40%;
+    aspect-ratio: 1/1;
+    top: 6%;
+    right: 0;
+    transform: rotate(5deg) translateY(40px) scale(0.9);
+    transition-delay: 0.12s;
 }
-.snap--2.snap--visible { transform: rotate(5deg); opacity: 1; }
-.snap--2.snap--visible:hover { transform: rotate(5deg) translateY(-6px) scale(1.03); }
+.snap--2.snap--visible {
+    transform: rotate(5deg);
+    opacity: 1;
+}
+.snap--2.snap--visible:hover {
+    transform: rotate(5deg) translateY(-6px) scale(1.03);
+}
 
 .snap--3 {
-  width: 38%; aspect-ratio: 1/1;
-  bottom: 2%; left: 0;
-  transform: rotate(4deg) translateY(40px) scale(0.9);
-  transition-delay: 0.24s;
+    width: 38%;
+    aspect-ratio: 1/1;
+    bottom: 2%;
+    left: 0;
+    transform: rotate(4deg) translateY(40px) scale(0.9);
+    transition-delay: 0.24s;
 }
-.snap--3.snap--visible { transform: rotate(4deg); opacity: 1; }
-.snap--3.snap--visible:hover { transform: rotate(4deg) translateY(-6px) scale(1.03); }
+.snap--3.snap--visible {
+    transform: rotate(4deg);
+    opacity: 1;
+}
+.snap--3.snap--visible:hover {
+    transform: rotate(4deg) translateY(-6px) scale(1.03);
+}
 
 .snap--4 {
-  width: 44%; aspect-ratio: 4/5;
-  bottom: -6%; right: 8%;
-  transform: rotate(-4deg) translateY(40px) scale(0.9);
-  transition-delay: 0.36s;
+    width: 44%;
+    aspect-ratio: 4/5;
+    bottom: -6%;
+    right: 8%;
+    transform: rotate(-4deg) translateY(40px) scale(0.9);
+    transition-delay: 0.36s;
 }
-.snap--4.snap--visible { transform: rotate(-4deg); opacity: 1; }
-.snap--4.snap--visible:hover { transform: rotate(-4deg) translateY(-6px) scale(1.03); }
+.snap--4.snap--visible {
+    transform: rotate(-4deg);
+    opacity: 1;
+}
+.snap--4.snap--visible:hover {
+    transform: rotate(-4deg) translateY(-6px) scale(1.03);
+}
 
 .fstp__media-tag {
-  position: absolute;
-  bottom: -2.25rem; left: 4%;
-  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em;
-  color: rgba(255,255,255,0.4); text-transform: uppercase;
-  opacity: 0; transition: opacity 0.6s ease 0.55s;
+    position: absolute;
+    bottom: -2.25rem;
+    left: 4%;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+    opacity: 0;
+    transition: opacity 0.6s ease 0.55s;
 }
-.fstp__media-tag--visible { opacity: 1; }
+.fstp__media-tag--visible {
+    opacity: 1;
+}
 .eyebrow {
-  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.15em;
-  color: #f5d76e; text-transform: uppercase; display: block; margin-bottom: 0.9rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: #f5d76e;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 0.9rem;
 }
 .fstp__title {
-  font-size: clamp(1.7rem, 3.4vw, 2.6rem);
-  font-weight: 800; color: #fff; line-height: 1.2; margin-bottom: 1.1rem;
+    font-size: clamp(1.7rem, 3.4vw, 2.6rem);
+    font-weight: 800;
+    color: #fff;
+    line-height: 1.2;
+    margin-bottom: 1.1rem;
 }
-.fstp__sub { color: rgba(255,255,255,0.68); line-height: 1.7; margin-bottom: 1.5rem; }
+.fstp__sub {
+    color: rgba(255, 255, 255, 0.68);
+    line-height: 1.7;
+    margin-bottom: 1.5rem;
+}
 
 .eo-chip {
-  display: inline-flex; align-items: center; gap: 0.65rem;
-  background: rgba(245, 184, 0, 0.1);
-  border: 1px solid rgba(245, 184, 0, 0.35);
-  border-radius: 12px;
-  padding: 0.75rem 1.1rem;
-  text-decoration: none;
-  font-size: 0.82rem;
-  color: rgba(255,255,255,0.85);
-  line-height: 1.5;
-  transition: background 0.2s, border-color 0.2s;
-  max-width: 100%;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    background: rgba(245, 184, 0, 0.1);
+    border: 1px solid rgba(245, 184, 0, 0.35);
+    border-radius: 12px;
+    padding: 0.75rem 1.1rem;
+    text-decoration: none;
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.5;
+    transition:
+        background 0.2s,
+        border-color 0.2s;
+    max-width: 100%;
 }
-.eo-chip:hover { background: rgba(245, 184, 0, 0.18); border-color: #f5b800; }
-.eo-chip strong { color: #f5d76e; }
+.eo-chip:hover {
+    background: rgba(245, 184, 0, 0.18);
+    border-color: #f5b800;
+}
+.eo-chip strong {
+    color: #f5d76e;
+}
 .eo-chip__icon {
-  flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%;
-  background: rgba(245, 184, 0, 0.18); color: #f5d76e;
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 800; font-size: 0.85rem;
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(245, 184, 0, 0.18);
+    color: #f5d76e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.85rem;
 }
-.eo-chip__arrow { flex-shrink: 0; color: #f5d76e; font-weight: 700; }
+.eo-chip__arrow {
+    flex-shrink: 0;
+    color: #f5d76e;
+    font-weight: 700;
+}
 
 /* Process */
-.fstp__process { margin-bottom: 4rem; }
+.fstp__process {
+    margin-bottom: 4rem;
+}
 .fstp__process-label {
-  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em;
-  color: rgba(255,255,255,0.45); text-transform: uppercase; margin-bottom: 1.5rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: rgba(255, 255, 255, 0.45);
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
 }
 
 .fstp__avail-text {
-  font-size: 1rem; color: rgba(255,255,255,0.78); line-height: 1.8;
-  max-width: 720px; border-left: 3px solid #f5b800; padding-left: 1.5rem;
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.78);
+    line-height: 1.8;
+    max-width: 720px;
+    border-left: 3px solid #f5b800;
+    padding-left: 1.5rem;
 }
 
 .fstp__contact {
-  display: inline-flex; align-items: center; gap: 0.6rem;
-  margin-top: 1.5rem;
-  text-decoration: none;
-  font-size: 0.85rem;
-  color: rgba(255,255,255,0.7);
-  transition: color 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 1.5rem;
+    text-decoration: none;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+    transition: color 0.2s;
 }
-.fstp__contact:hover { color: #fff; }
-.fstp__contact strong { color: #f5d76e; font-weight: 700; }
+.fstp__contact:hover {
+    color: #fff;
+}
+.fstp__contact strong {
+    color: #f5d76e;
+    font-weight: 700;
+}
 .fstp__contact-icon {
-  flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
-  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.85rem; color: rgba(255,255,255,0.6);
-  transition: background 0.2s, border-color 0.2s, color 0.2s;
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+    transition:
+        background 0.2s,
+        border-color 0.2s,
+        color 0.2s;
 }
 .fstp__contact:hover .fstp__contact-icon {
-  background: rgba(245, 184, 0, 0.15); border-color: rgba(245, 184, 0, 0.4); color: #f5d76e;
+    background: rgba(245, 184, 0, 0.15);
+    border-color: rgba(245, 184, 0, 0.4);
+    color: #f5d76e;
 }
 
 /* Sponsors */
 .fstp__sponsors {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 22px;
-  padding: 2.5rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 22px;
+    padding: 2.5rem;
 }
 .fstp__sponsors-header {
-  display: flex; justify-content: space-between; align-items: flex-end;
-  gap: 2rem; flex-wrap: wrap; margin-bottom: 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 2rem;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
 }
-.fstp__sponsors-title { font-size: 1.2rem; font-weight: 700; color: #fff; margin-top: 0.3rem; }
-.fstp__sponsors-note { font-size: 0.82rem; color: rgba(255,255,255,0.55); max-width: 360px; line-height: 1.6; }
+.fstp__sponsors-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #fff;
+    margin-top: 0.3rem;
+}
+.fstp__sponsors-note {
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.55);
+    max-width: 360px;
+    line-height: 1.6;
+}
 
 .fstp__sponsors-grid {
-  display: grid; grid-template-columns: repeat(6, 1fr); gap: 1rem;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 1rem;
 }
 
 .sponsor-card {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 14px;
-  padding: 1.25rem 0.75rem;
-  text-align: center;
-  text-decoration: none;
-  cursor: default;
-  transition: transform 0.2s, background 0.2s, border-color 0.2s;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    padding: 1.25rem 0.75rem;
+    text-align: center;
+    text-decoration: none;
+    cursor: default;
+    transition:
+        transform 0.2s,
+        background 0.2s,
+        border-color 0.2s;
 }
-a.sponsor-card { cursor: pointer; }
+a.sponsor-card {
+    cursor: pointer;
+}
 .sponsor-card:hover {
-  transform: translateY(-3px);
-  background: rgba(255,255,255,0.08);
-  border-color: rgba(245, 184, 0, 0.4);
+    transform: translateY(-3px);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(245, 184, 0, 0.4);
 }
 .sponsor-card__mark {
-  width: 64px; height: 64px; margin: 0 auto 0.75rem;
-  border-radius: 14px;
-  background: rgba(255,255,255,0.9);
-  display: flex; align-items: center; justify-content: center;
-  padding: 0;
-  overflow: hidden;
-  position: relative;
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 0.75rem;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    overflow: hidden;
+    position: relative;
 }
 .sponsor-card__logo {
-  width: 100%; height: 100%; object-fit: contain;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
 .sponsor-card__fallback {
-  position: absolute; inset: 0;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #1d3fc4, #0CA678);
-  color: #fff; font-weight: 800; font-size: 0.62rem;
-  display: flex; align-items: center; justify-content: center;
-  text-align: center; padding: 0.2rem;
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #1d3fc4, #0ca678);
+    color: #fff;
+    font-weight: 800;
+    font-size: 0.62rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0.2rem;
 }
-.sponsor-card__fallback--hidden { display: none; }
-.sponsor-card__name { font-size: 0.7rem; color: rgba(255,255,255,0.7); line-height: 1.4; }
+.sponsor-card__fallback--hidden {
+    display: none;
+}
+.sponsor-card__name {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.4;
+}
 
 @media (max-width: 1024px) {
-  .fstp__top { grid-template-columns: 1fr; gap: 3rem; }
-  .fstp__header { max-width: none; }
-  .fstp__media { max-width: 420px; margin: 0 auto; height: 320px; }
-  .fstp__sponsors-grid { grid-template-columns: repeat(3, 1fr); }
+    .fstp__top {
+        grid-template-columns: 1fr;
+        gap: 3rem;
+    }
+    .fstp__header {
+        max-width: none;
+    }
+    .fstp__media {
+        max-width: 420px;
+        margin: 0 auto;
+        height: 320px;
+    }
+    .fstp__sponsors-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
 }
 @media (max-width: 480px) {
-  .fstp__media { height: 280px; }
+    .fstp__media {
+        height: 280px;
+    }
 }
 @media (max-width: 640px) {
-  .fstp__sponsors-grid { grid-template-columns: repeat(2, 1fr); }
-  .fstp__sponsors { padding: 1.75rem; }
+    .fstp__sponsors-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .fstp__sponsors {
+        padding: 1.75rem;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .snap { transition: none; opacity: 1; }
-  .snap--1 { transform: rotate(-6deg); }
-  .snap--2 { transform: rotate(5deg); }
-  .snap--3 { transform: rotate(4deg); }
-  .snap--4 { transform: rotate(-4deg); }
-  .fstp__media-tag { transition: none; opacity: 1; }
+    .snap {
+        transition: none;
+        opacity: 1;
+    }
+    .snap--1 {
+        transform: rotate(-6deg);
+    }
+    .snap--2 {
+        transform: rotate(5deg);
+    }
+    .snap--3 {
+        transform: rotate(4deg);
+    }
+    .snap--4 {
+        transform: rotate(-4deg);
+    }
+    .fstp__media-tag {
+        transition: none;
+        opacity: 1;
+    }
 }
 
 /* Lightbox */
 .lightbox {
-  position: fixed; inset: 0; z-index: 1000;
-  display: flex; align-items: center; justify-content: center;
-  gap: 1rem;
-  padding: 2rem;
-  background: rgba(8, 14, 38, 0.92);
-  backdrop-filter: blur(4px);
-  animation: lightboxFade 0.2s ease;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 2rem;
+    background: rgba(8, 14, 38, 0.92);
+    backdrop-filter: blur(4px);
+    animation: lightboxFade 0.2s ease;
 }
-@keyframes lightboxFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lightboxFade {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
 
 .lightbox__figure {
-  max-width: min(90vw, 900px);
-  max-height: 85vh;
-  display: flex; flex-direction: column; align-items: center;
-  gap: 0.75rem;
-  margin: 0;
+    max-width: min(90vw, 900px);
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0;
 }
 .lightbox__img {
-  max-width: 100%; max-height: 75vh;
-  object-fit: contain;
-  border-radius: 10px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-  animation: lightboxZoom 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    max-width: 100%;
+    max-height: 75vh;
+    object-fit: contain;
+    border-radius: 10px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    animation: lightboxZoom 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
-@keyframes lightboxZoom { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
+@keyframes lightboxZoom {
+    from {
+        opacity: 0;
+        transform: scale(0.94);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
 
 .lightbox__caption {
-  display: flex; align-items: center; gap: 0.75rem;
-  color: rgba(255,255,255,0.75);
-  font-size: 0.82rem;
-  text-align: center;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.82rem;
+    text-align: center;
 }
 .lightbox__count {
-  flex-shrink: 0;
-  font-weight: 700;
-  color: #f5d76e;
-  padding: 0.15rem 0.6rem;
-  border-radius: 20px;
-  background: rgba(245, 184, 0, 0.12);
+    flex-shrink: 0;
+    font-weight: 700;
+    color: #f5d76e;
+    padding: 0.15rem 0.6rem;
+    border-radius: 20px;
+    background: rgba(245, 184, 0, 0.12);
 }
 
 .lightbox__close {
-  position: absolute; top: 1.5rem; right: 1.5rem;
-  width: 40px; height: 40px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.1rem; color: #fff;
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.2);
-  border-radius: 50%;
-  cursor: pointer;
-  transition: background 0.2s, border-color 0.2s, transform 0.2s;
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    cursor: pointer;
+    transition:
+        background 0.2s,
+        border-color 0.2s,
+        transform 0.2s;
 }
-.lightbox__close:hover { background: rgba(255,255,255,0.2); border-color: #fff; transform: scale(1.05); }
+.lightbox__close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: #fff;
+    transform: scale(1.05);
+}
 
 .lightbox__nav {
-  flex-shrink: 0;
-  width: 48px; height: 48px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.8rem; line-height: 1; color: #fff;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.18);
-  border-radius: 50%;
-  cursor: pointer;
-  transition: background 0.2s, border-color 0.2s, transform 0.2s;
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    line-height: 1;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 50%;
+    cursor: pointer;
+    transition:
+        background 0.2s,
+        border-color 0.2s,
+        transform 0.2s;
 }
-.lightbox__nav:hover { background: rgba(245, 184, 0, 0.18); border-color: #f5b800; transform: scale(1.08); }
+.lightbox__nav:hover {
+    background: rgba(245, 184, 0, 0.18);
+    border-color: #f5b800;
+    transform: scale(1.08);
+}
 
 @media (max-width: 640px) {
-  .lightbox { padding: 1rem; gap: 0.5rem; }
-  .lightbox__nav { width: 38px; height: 38px; font-size: 1.4rem; }
-  .lightbox__close { top: 1rem; right: 1rem; width: 34px; height: 34px; }
+    .lightbox {
+        padding: 1rem;
+        gap: 0.5rem;
+    }
+    .lightbox__nav {
+        width: 38px;
+        height: 38px;
+        font-size: 1.4rem;
+    }
+    .lightbox__close {
+        top: 1rem;
+        right: 1rem;
+        width: 34px;
+        height: 34px;
+    }
 }
 </style>

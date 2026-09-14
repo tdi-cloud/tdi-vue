@@ -2,8 +2,8 @@
 import UserInfo from '@/components/UserInfo.vue';
 import { DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import type { User } from '@/types';
-import { router, Link } from '@inertiajs/vue3';
-import { LogOut, Settings, House } from 'lucide-vue-next';
+import { Link, router } from '@inertiajs/vue3';
+import { House, LogOut, Settings } from 'lucide-vue-next';
 
 interface Props {
     user: User;

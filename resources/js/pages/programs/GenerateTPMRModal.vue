@@ -11,11 +11,11 @@
  * helpers (Ziggy). Siguraduhing naka-register ang mga routes (see routes_snippet.php).
  */
 import { Button } from '@/components/ui/button';
-import { X, Search, ChevronRight, FileText, SlidersHorizontal, UserCheck, Stamp } from 'lucide-vue-next';
-import { computed, reactive, ref, watch } from 'vue';
 import axios from 'axios';
+import { ChevronRight, FileText, Search, SlidersHorizontal, Stamp, UserCheck, X } from 'lucide-vue-next';
+import { computed, reactive, ref, watch } from 'vue';
 
-const props = defineProps<{
+defineProps<{
     modelValue: boolean;
 }>();
 
@@ -49,10 +49,7 @@ const regions = [
     'NIR',
 ];
 
-const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
-];
+const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 const form = reactive({
     region: 'CO',
@@ -90,7 +87,7 @@ const fetchEmployees = async (q: string) => {
     try {
         const { data } = await axios.get(route('employees.search'), { params: { q } });
         employeeResults.value = data;
-    } catch (e) {
+    } catch {
         employeeResults.value = [];
     } finally {
         searching.value = false;
@@ -104,10 +101,7 @@ const initials = (emp: any) => {
 };
 
 const fullName = (emp: any) => {
-    return [emp.FIRSTNAME, emp.MI, emp.LASTNAME]
-        .filter(Boolean)
-        .join(' ')
-        .toUpperCase();
+    return [emp.FIRSTNAME, emp.MI, emp.LASTNAME].filter(Boolean).join(' ').toUpperCase();
 };
 
 const positionLabel = (emp: any) => {
@@ -163,15 +157,15 @@ const generate = () => {
 
 <template>
     <div v-if="modelValue" class="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-        <div class="w-full max-w-lg lg:max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl bg-card shadow-2xl">
+        <div class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-card shadow-2xl lg:max-w-4xl">
             <!-- Header -->
-            <div class="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600">
+            <div class="flex items-center justify-between bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 px-6 py-5">
                 <div class="flex items-center gap-3">
-                    <div class="h-9 w-9 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/15">
                         <FileText class="h-4.5 w-4.5 text-white" />
                     </div>
                     <div>
-                        <h2 class="text-lg font-bold text-white leading-tight">Generate TPMR</h2>
+                        <h2 class="text-lg font-bold leading-tight text-white">Generate TPMR</h2>
                         <p class="text-xs text-white/70">Training Program Monitoring Report</p>
                     </div>
                 </div>
@@ -181,27 +175,27 @@ const generate = () => {
             </div>
 
             <!-- Body -->
-            <div class="px-6 py-5 flex flex-col gap-5">
+            <div class="flex flex-col gap-5 px-6 py-5">
                 <!-- Region / Filter / Month / Year -->
-                <div class="flex items-center gap-1.5 -mb-1">
-                    <div class="h-6 w-6 rounded-md bg-teal-100 dark:bg-teal-950/50 flex items-center justify-center shrink-0">
+                <div class="-mb-1 flex items-center gap-1.5">
+                    <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-teal-100 dark:bg-teal-950/50">
                         <SlidersHorizontal class="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
                     </div>
                     <span class="text-xs font-bold uppercase tracking-wide text-teal-700 dark:text-teal-400">Report Filters</span>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <!-- Region -->
                     <div>
-                        <label class="block text-sm font-bold mb-1">Region</label>
-                        <select v-model="form.region" class="w-full rounded-md border px-3 py-2 text-sm bg-background">
+                        <label class="mb-1 block text-sm font-bold">Region</label>
+                        <select v-model="form.region" class="w-full rounded-md border bg-background px-3 py-2 text-sm">
                             <option v-for="r in regions" :key="r" :value="r">{{ r }}</option>
                         </select>
                     </div>
 
                     <!-- Filter -->
                     <div>
-                        <label class="block text-sm font-bold mb-1">Filter</label>
-                        <select v-model="form.filter" class="w-full rounded-md border px-3 py-2 text-sm bg-background">
+                        <label class="mb-1 block text-sm font-bold">Filter</label>
+                        <select v-model="form.filter" class="w-full rounded-md border bg-background px-3 py-2 text-sm">
                             <option value="all">All</option>
                             <option value="monthly">Monthly</option>
                             <option value="annual">Annual</option>
@@ -210,92 +204,118 @@ const generate = () => {
 
                     <!-- Month (monthly only) -->
                     <div v-if="form.filter === 'monthly'">
-                        <label class="block text-sm font-bold mb-1">Month</label>
-                        <select v-model.number="form.month" class="w-full rounded-md border px-3 py-2 text-sm bg-background">
+                        <label class="mb-1 block text-sm font-bold">Month</label>
+                        <select v-model.number="form.month" class="w-full rounded-md border bg-background px-3 py-2 text-sm">
                             <option v-for="(m, i) in months" :key="m" :value="i + 1">{{ m }}</option>
                         </select>
                     </div>
 
                     <!-- Year (monthly + annual) -->
                     <div v-if="form.filter !== 'all'">
-                        <label class="block text-sm font-bold mb-1">Year</label>
-                        <input
-                            v-model.number="form.year"
-                            type="number"
-                            class="w-full rounded-md border px-3 py-2 text-sm bg-background"
-                        />
+                        <label class="mb-1 block text-sm font-bold">Year</label>
+                        <input v-model.number="form.year" type="number" class="w-full rounded-md border bg-background px-3 py-2 text-sm" />
                     </div>
                 </div>
 
                 <hr class="border-t" />
 
                 <!-- Prepared by / Noted by -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
                     <!-- Prepared by -->
                     <div class="lg:border-r lg:pr-6">
-                        <div class="flex items-center justify-between mb-2">
+                        <div class="mb-2 flex items-center justify-between">
                             <span class="flex items-center gap-1.5">
-                                <span class="h-6 w-6 rounded-md bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center shrink-0">
+                                <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-100 dark:bg-blue-950/50">
                                     <UserCheck class="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                                 </span>
                                 <span class="text-sm font-bold tracking-wide text-blue-700 dark:text-blue-400">PREPARED BY</span>
                             </span>
-                            <Button variant="outline" size="sm" class="h-7 text-xs border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800/40 dark:text-blue-400 dark:hover:bg-blue-950/30" @click="openEmployeeSearch('prepared')">
-                                <Search class="h-3 w-3 mr-1" /> Select Employee
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                class="h-7 border-blue-200 text-xs text-blue-700 hover:bg-blue-50 dark:border-blue-800/40 dark:text-blue-400 dark:hover:bg-blue-950/30"
+                                @click="openEmployeeSearch('prepared')"
+                            >
+                                <Search class="mr-1 h-3 w-3" /> Select Employee
                             </Button>
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-xs text-muted-foreground mb-1">Name</label>
-                                <input v-model="form.prepared.name" placeholder="Full name" class="w-full rounded-md border px-3 py-2 text-sm bg-muted/30" />
+                                <label class="mb-1 block text-xs text-muted-foreground">Name</label>
+                                <input
+                                    v-model="form.prepared.name"
+                                    placeholder="Full name"
+                                    class="w-full rounded-md border bg-muted/30 px-3 py-2 text-sm"
+                                />
                             </div>
                             <div>
-                                <label class="block text-xs text-muted-foreground mb-1">Position</label>
-                                <input v-model="form.prepared.position" placeholder="Position/title" class="w-full rounded-md border px-3 py-2 text-sm bg-muted/30" />
+                                <label class="mb-1 block text-xs text-muted-foreground">Position</label>
+                                <input
+                                    v-model="form.prepared.position"
+                                    placeholder="Position/title"
+                                    class="w-full rounded-md border bg-muted/30 px-3 py-2 text-sm"
+                                />
                             </div>
                         </div>
                         <div class="mt-2">
-                            <label class="block text-xs text-muted-foreground mb-1">Date</label>
-                            <input v-model="form.prepared.date" type="date" class="w-full rounded-md border px-3 py-2 text-sm bg-muted/30" />
+                            <label class="mb-1 block text-xs text-muted-foreground">Date</label>
+                            <input v-model="form.prepared.date" type="date" class="w-full rounded-md border bg-muted/30 px-3 py-2 text-sm" />
                         </div>
                     </div>
 
                     <!-- Noted by -->
                     <div>
-                        <div class="flex items-center justify-between mb-2">
+                        <div class="mb-2 flex items-center justify-between">
                             <span class="flex items-center gap-1.5">
-                                <span class="h-6 w-6 rounded-md bg-violet-100 dark:bg-violet-950/50 flex items-center justify-center shrink-0">
+                                <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-violet-100 dark:bg-violet-950/50">
                                     <Stamp class="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
                                 </span>
                                 <span class="text-sm font-bold tracking-wide text-violet-700 dark:text-violet-400">NOTED BY</span>
                             </span>
-                            <Button variant="outline" size="sm" class="h-7 text-xs border-violet-200 text-violet-700 hover:bg-violet-50 dark:border-violet-800/40 dark:text-violet-400 dark:hover:bg-violet-950/30" @click="openEmployeeSearch('noted')">
-                                <Search class="h-3 w-3 mr-1" /> Select Employee
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                class="h-7 border-violet-200 text-xs text-violet-700 hover:bg-violet-50 dark:border-violet-800/40 dark:text-violet-400 dark:hover:bg-violet-950/30"
+                                @click="openEmployeeSearch('noted')"
+                            >
+                                <Search class="mr-1 h-3 w-3" /> Select Employee
                             </Button>
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-xs text-muted-foreground mb-1">Name</label>
-                                <input v-model="form.noted.name" placeholder="Full name" class="w-full rounded-md border px-3 py-2 text-sm bg-muted/30" />
+                                <label class="mb-1 block text-xs text-muted-foreground">Name</label>
+                                <input
+                                    v-model="form.noted.name"
+                                    placeholder="Full name"
+                                    class="w-full rounded-md border bg-muted/30 px-3 py-2 text-sm"
+                                />
                             </div>
                             <div>
-                                <label class="block text-xs text-muted-foreground mb-1">Position</label>
-                                <input v-model="form.noted.position" placeholder="Position/title" class="w-full rounded-md border px-3 py-2 text-sm bg-muted/30" />
+                                <label class="mb-1 block text-xs text-muted-foreground">Position</label>
+                                <input
+                                    v-model="form.noted.position"
+                                    placeholder="Position/title"
+                                    class="w-full rounded-md border bg-muted/30 px-3 py-2 text-sm"
+                                />
                             </div>
                         </div>
                         <div class="mt-2">
-                            <label class="block text-xs text-muted-foreground mb-1">Date</label>
-                            <input v-model="form.noted.date" type="date" class="w-full rounded-md border px-3 py-2 text-sm bg-muted/30" />
+                            <label class="mb-1 block text-xs text-muted-foreground">Date</label>
+                            <input v-model="form.noted.date" type="date" class="w-full rounded-md border bg-muted/30 px-3 py-2 text-sm" />
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Footer -->
-            <div class="flex items-center justify-end gap-3 px-6 py-4 border-t">
+            <div class="flex items-center justify-end gap-3 border-t px-6 py-4">
                 <Button variant="ghost" @click="close">Cancel</Button>
-                <Button :disabled="generating" @click="generate" class="bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white">
-                    <FileText class="h-4 w-4 mr-2" />
+                <Button
+                    :disabled="generating"
+                    @click="generate"
+                    class="bg-gradient-to-r from-blue-600 to-violet-600 text-white hover:from-blue-500 hover:to-violet-500"
+                >
+                    <FileText class="mr-2 h-4 w-4" />
                     Generate TPMR PDF
                 </Button>
             </div>
@@ -303,23 +323,23 @@ const generate = () => {
 
         <!-- Employee Search Sub-modal -->
         <div v-if="employeeSearchTarget" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div class="w-full max-w-sm max-h-[80vh] flex flex-col rounded-2xl bg-card shadow-2xl">
-                <div class="flex items-center justify-between px-5 py-4 border-b">
+            <div class="flex max-h-[80vh] w-full max-w-sm flex-col rounded-2xl bg-card shadow-2xl">
+                <div class="flex items-center justify-between border-b px-5 py-4">
                     <h3 class="text-base font-bold">Select Employee</h3>
                     <button class="text-muted-foreground hover:text-foreground" @click="employeeSearchTarget = null">
                         <X class="h-5 w-5" />
                     </button>
                 </div>
-                <div class="px-5 py-3 border-b">
+                <div class="border-b px-5 py-3">
                     <input
                         v-model="employeeQuery"
                         type="text"
                         placeholder="Search employees..."
-                        class="w-full rounded-md border px-3 py-2 text-sm bg-background outline-none focus:ring-2"
+                        class="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2"
                         :class="searchAccent.ring"
                     />
                 </div>
-                <div class="overflow-y-auto flex-1 divide-y">
+                <div class="flex-1 divide-y overflow-y-auto">
                     <div v-if="searching" class="px-5 py-6 text-center text-sm text-muted-foreground">Searching...</div>
                     <div v-else-if="employeeResults.length === 0" class="px-5 py-6 text-center text-sm text-muted-foreground">
                         No employees found.
@@ -327,22 +347,20 @@ const generate = () => {
                     <button
                         v-for="emp in employeeResults"
                         :key="emp.EMPCODE"
-                        class="w-full flex items-center gap-3 px-5 py-3 hover:bg-muted/50 text-left"
+                        class="flex w-full items-center gap-3 px-5 py-3 text-left hover:bg-muted/50"
                         @click="selectEmployee(emp)"
                     >
-                        <span class="h-9 w-9 shrink-0 rounded-full flex items-center justify-center text-xs font-bold" :class="searchAccent.avatar">
+                        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold" :class="searchAccent.avatar">
                             {{ initials(emp) }}
                         </span>
-                        <span class="flex-1 min-w-0">
-                            <span class="block text-sm font-bold truncate">{{ fullName(emp) }}</span>
-                            <span class="block text-xs text-muted-foreground truncate">{{ positionLabel(emp) }}</span>
+                        <span class="min-w-0 flex-1">
+                            <span class="block truncate text-sm font-bold">{{ fullName(emp) }}</span>
+                            <span class="block truncate text-xs text-muted-foreground">{{ positionLabel(emp) }}</span>
                         </span>
-                        <ChevronRight class="h-4 w-4 text-muted-foreground/50 shrink-0" />
+                        <ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground/50" />
                     </button>
                 </div>
-                <div class="px-5 py-2 border-t text-center text-[11px] text-muted-foreground">
-                    Data loaded from employees
-                </div>
+                <div class="border-t px-5 py-2 text-center text-[11px] text-muted-foreground">Data loaded from employees</div>
             </div>
         </div>
     </div>

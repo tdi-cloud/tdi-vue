@@ -1,22 +1,39 @@
 <script setup lang="ts">
-import AppLayout from '@/layouts/AppLayout.vue';
-import { type BreadcrumbItem } from '@/types';
-import { Head, useForm } from '@inertiajs/vue3';
+import MultiSelectFilter from '@/components/MultiSelectFilter.vue';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import {
-    Plus, LoaderCircle, BadgePlus, Save, Search, CircleHelp, Info, FileText,
-    Heading, AlignLeft, MonitorSmartphone, Users, FolderTree, Layers3,
-    Building2, UserCog, PhilippinePeso, Wallet, Globe, Sparkles,
-} from 'lucide-vue-next';
-import { ref, watch, onMounted, onUnmounted, nextTick, computed } from 'vue';
-import ProgramList from '@/pages/programs/ProgramList.vue';
-import MultiSelectFilter from '@/components/MultiSelectFilter.vue';
+import { Textarea } from '@/components/ui/textarea';
+import AppLayout from '@/layouts/AppLayout.vue';
 import GenerateTPMRModal from '@/pages/programs/GenerateTPMRModal.vue';
+import ProgramList from '@/pages/programs/ProgramList.vue';
+import { type BreadcrumbItem } from '@/types';
+import { Head, useForm } from '@inertiajs/vue3';
+import {
+    AlignLeft,
+    BadgePlus,
+    Building2,
+    CircleHelp,
+    FileText,
+    FolderTree,
+    Globe,
+    Heading,
+    Info,
+    Layers3,
+    LoaderCircle,
+    MonitorSmartphone,
+    PhilippinePeso,
+    Plus,
+    Save,
+    Search,
+    Sparkles,
+    UserCog,
+    Users,
+    Wallet,
+} from 'lucide-vue-next';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -115,15 +132,18 @@ const form = useForm({
     origin: '',
 });
 
-watch(() => form.initiated, (val) => {
-    if (val === 'TDI') {
-        form.provider = 'TESDA Development Institute (TDI)';
-    } else if (val === 'NTTA') {
-        form.provider = 'National TVET Trainors Academy (NTTA)';
-    } else {
-        form.provider = '';
-    }
-});
+watch(
+    () => form.initiated,
+    (val) => {
+        if (val === 'TDI') {
+            form.provider = 'TESDA Development Institute (TDI)';
+        } else if (val === 'NTTA') {
+            form.provider = 'National TVET Trainors Academy (NTTA)';
+        } else {
+            form.provider = '';
+        }
+    },
+);
 
 const openConfirmation = () => {
     showConfirm.value = true;
@@ -173,15 +193,11 @@ const CATEGORY_OPTIONS = [
 ];
 
 const availableCategoryOptions = computed(() =>
-    isRegionRestricted.value
-        ? CATEGORY_OPTIONS.filter((o) => o.value === 'Regional')
-        : CATEGORY_OPTIONS,
+    isRegionRestricted.value ? CATEGORY_OPTIONS.filter((o) => o.value === 'Regional') : CATEGORY_OPTIONS,
 );
 
 const availableInitiatedOptions = computed(() =>
-    isRegionRestricted.value
-        ? INITIATED_OPTIONS.filter((o) => ['NTTA', 'Other Training Provider'].includes(o.value))
-        : INITIATED_OPTIONS,
+    isRegionRestricted.value ? INITIATED_OPTIONS.filter((o) => ['NTTA', 'Other Training Provider'].includes(o.value)) : INITIATED_OPTIONS,
 );
 
 // ✅ Lahat ng unique na "YYYY-MM" sa lahat ng programs, pinagsama-sama at pinaghanda
@@ -218,50 +234,34 @@ const monthLabel = (ym: string) => {
 </script>
 
 <template>
-    <Head title="Programs"/>
+    <Head title="Programs" />
 
-    <AppLayout >
-
-     
-        <div
-            ref="pageRef"
-            :style="{ height: pageHeight }"
-            class="flex flex-col gap-4 p-4 w-full max-w-full overflow-hidden"
-        >
-
-            <div class="shrink-0 flex flex-wrap w-full items-center justify-between">
+    <AppLayout :breadcrumbs="breadcrumbs">
+        <div ref="pageRef" :style="{ height: pageHeight }" class="flex w-full max-w-full flex-col gap-4 overflow-hidden p-4">
+            <div class="flex w-full shrink-0 flex-wrap items-center justify-between">
                 <div class="">
                     <h1 class="text-lg font-extrabold leading-5">Training Programs</h1>
                     <p class="text-sm font-semibold text-slate-400">Manage all training activities and schedules</p>
                 </div>
 
                 <div class="flex gap-4">
-                    <Button variant="outline" @click="showTPMR = true">
-                        <FileText /> Generate TPMR
-                    </Button>
+                    <Button variant="outline" @click="showTPMR = true"> <FileText /> Generate TPMR </Button>
 
-                    <Button @click="openConfirmation" class="bg-blue-600 font-extrabold rounded-lg hover:bg-blue-500 dark:text-white self-end">
+                    <Button @click="openConfirmation" class="self-end rounded-lg bg-blue-600 font-extrabold hover:bg-blue-500 dark:text-white">
                         <Plus /> Create Program
                     </Button>
 
                     <GenerateTPMRModal v-model="showTPMR" />
                 </div>
-
-
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-6 items-end gap-2">
-
+            <div class="grid grid-cols-1 items-end gap-2 md:grid-cols-6">
                 <!-- Search (spans 2 columns) -->
                 <div class="grid gap-1 md:col-span-2">
                     <Label class="text-[11px] font-semibold text-slate-400">Search</Label>
                     <div class="relative">
-                        <Search class="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                        <Input
-                            v-model="search"
-                            class="text-xs h-8 w-full pl-7 outline-none shadow-md"
-                            placeholder="Search programs..."
-                        />
+                        <Search class="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                        <Input v-model="search" class="h-8 w-full pl-7 text-xs shadow-md outline-none" placeholder="Search programs..." />
                     </div>
                 </div>
 
@@ -269,17 +269,12 @@ const monthLabel = (ym: string) => {
                 <div class="grid gap-1">
                     <Label class="text-[11px] font-semibold text-slate-400">Office Initiated</Label>
                     <Select v-model="filterInitiated">
-                        <SelectTrigger class="text-xs h-8 w-full  shadow-md">
+                        <SelectTrigger class="h-8 w-full text-xs shadow-md">
                             <SelectValue placeholder="All offices" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem class="text-xs" value="all">All offices</SelectItem>
-                            <SelectItem
-                                v-for="opt in INITIATED_OPTIONS"
-                                :key="opt.value"
-                                :value="opt.value"
-                                class="text-xs"
-                            >
+                            <SelectItem v-for="opt in INITIATED_OPTIONS" :key="opt.value" :value="opt.value" class="text-xs">
                                 {{ opt.value }}
                             </SelectItem>
                         </SelectContent>
@@ -290,17 +285,12 @@ const monthLabel = (ym: string) => {
                 <div class="grid gap-1">
                     <Label class="text-[11px] font-semibold text-slate-400">Batch Status</Label>
                     <Select v-model="filterBatchStatus">
-                        <SelectTrigger class="text-xs h-8 w-full  shadow-md">
+                        <SelectTrigger class="h-8 w-full text-xs shadow-md">
                             <SelectValue placeholder="All statuses" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem class="text-xs" value="all">All statuses</SelectItem>
-                            <SelectItem
-                                v-for="st in BATCH_STATUS_OPTIONS"
-                                :key="st"
-                                :value="st"
-                                class="text-xs"
-                            >
+                            <SelectItem v-for="st in BATCH_STATUS_OPTIONS" :key="st" :value="st" class="text-xs">
                                 {{ st }}
                             </SelectItem>
                         </SelectContent>
@@ -311,17 +301,12 @@ const monthLabel = (ym: string) => {
                 <div class="grid gap-1">
                     <Label class="text-[11px] font-semibold text-slate-400">Month</Label>
                     <Select v-model="filterMonth">
-                        <SelectTrigger class="text-xs h-8 w-full shadow-md">
+                        <SelectTrigger class="h-8 w-full text-xs shadow-md">
                             <SelectValue placeholder="All months" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem class="text-xs" value="all">All months</SelectItem>
-                            <SelectItem
-                                v-for="m in availableMonths"
-                                :key="m"
-                                :value="m"
-                                class="text-xs"
-                            >
+                            <SelectItem v-for="m in availableMonths" :key="m" :value="m" class="text-xs">
                                 {{ monthLabel(m) }}
                             </SelectItem>
                         </SelectContent>
@@ -331,25 +316,14 @@ const monthLabel = (ym: string) => {
                 <!-- Provider filter (multi-select, searchable) -->
                 <div class="grid gap-1">
                     <Label class="text-[11px] font-semibold text-slate-400">Provider</Label>
-                    <MultiSelectFilter
-                        v-model="filterProvider"
-                        :options="availableProviders"
-                        label="Provider"
-                        placeholder="All providers"
-                    />
+                    <MultiSelectFilter v-model="filterProvider" :options="availableProviders" label="Provider" placeholder="All providers" />
                 </div>
 
                 <!-- Category filter (multi-select, searchable) -->
                 <div class="grid gap-1">
                     <Label class="text-[11px] font-semibold text-slate-400">Category</Label>
-                    <MultiSelectFilter
-                        v-model="filterCategory"
-                        :options="availableCategories"
-                        label="Category"
-                        placeholder="All categories"
-                    />
+                    <MultiSelectFilter v-model="filterCategory" :options="availableCategories" label="Category" placeholder="All categories" />
                 </div>
-
             </div>
 
             <!-- Program List: fills the rest; only its inner list scrolls -->
@@ -368,13 +342,9 @@ const monthLabel = (ym: string) => {
                 <DialogContent class="max-w-md !rounded-2xl">
                     <DialogHeader>
                         <DialogTitle>
-                            <span class="flex gap-2 items-center">
-                                <CircleHelp class="h-5 w-5 text-blue-600" /> Confirmation
-                            </span>
+                            <span class="flex items-center gap-2"> <CircleHelp class="h-5 w-5 text-blue-600" /> Confirmation </span>
                         </DialogTitle>
-                        <DialogDescription class="text-sm pt-2">
-                            Does the program you want to add already have a TESDA Order?
-                        </DialogDescription>
+                        <DialogDescription class="pt-2 text-sm"> Does the program you want to add already have a TESDA Order? </DialogDescription>
                     </DialogHeader>
                     <div class="flex justify-end gap-2 pt-2">
                         <Button variant="outline" size="sm" @click="handleConfirmNo">No</Button>
@@ -388,11 +358,9 @@ const monthLabel = (ym: string) => {
                 <DialogContent class="max-w-md !rounded-2xl">
                     <DialogHeader>
                         <DialogTitle>
-                            <span class="flex gap-2 items-center">
-                                <Info class="h-5 w-5 text-blue-600" /> Information
-                            </span>
+                            <span class="flex items-center gap-2"> <Info class="h-5 w-5 text-blue-600" /> Information </span>
                         </DialogTitle>
-                        <DialogDescription class="text-sm pt-2 space-y-2">
+                        <DialogDescription class="space-y-2 pt-2 text-sm">
                             <span class="block">
                                 Programs with TESDA Orders are managed by the Central Office; therefore, you do not need to add this program.
                             </span>
@@ -409,212 +377,248 @@ const monthLabel = (ym: string) => {
             </Dialog>
 
             <!-- Create Program Modal -->
-<Dialog :open="showModal" @update:open="showModal = $event">
-    <DialogContent class="max-w-2xl flex flex-col max-h-[92vh] overflow-hidden border-0 p-0 !rounded-2xl shadow-2xl">
+            <Dialog :open="showModal" @update:open="showModal = $event">
+                <DialogContent class="flex max-h-[92vh] max-w-2xl flex-col overflow-hidden !rounded-2xl border-0 p-0 shadow-2xl">
+                    <!-- Gradient header band with illustration -->
+                    <DialogHeader
+                        class="relative shrink-0 overflow-hidden bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-500 px-6 pb-6 pt-6 text-left"
+                    >
+                        <!-- dotted texture -->
+                        <div
+                            class="pointer-events-none absolute inset-0 opacity-20"
+                            style="background-image: radial-gradient(circle at 20% 20%, white 1px, transparent 1px); background-size: 18px 18px"
+                        ></div>
+                        <!-- floating glow circles -->
+                        <div class="pointer-events-none absolute -right-6 -top-8 h-28 w-28 rounded-full bg-white/10 blur-2xl"></div>
+                        <div class="pointer-events-none absolute bottom-2 right-16 h-16 w-16 rounded-full bg-white/10 blur-xl"></div>
 
-        <!-- Gradient header band with illustration -->
-        <DialogHeader class="relative shrink-0 overflow-hidden bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-500 px-6 pb-6 pt-6 text-left">
-            <!-- dotted texture -->
-            <div class="pointer-events-none absolute inset-0 opacity-20"
-                 style="background-image: radial-gradient(circle at 20% 20%, white 1px, transparent 1px); background-size: 18px 18px;"></div>
-            <!-- floating glow circles -->
-            <div class="pointer-events-none absolute -right-6 -top-8 h-28 w-28 rounded-full bg-white/10 blur-2xl"></div>
-            <div class="pointer-events-none absolute right-16 bottom-2 h-16 w-16 rounded-full bg-white/10 blur-xl"></div>
-
-            <div class="relative z-10 flex items-center gap-4">
-                <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/30 backdrop-blur">
-                    <BadgePlus class="h-6 w-6 text-white" />
-                </div>
-                <div class="min-w-0">
-                    <DialogTitle class="flex items-center gap-2 text-lg font-bold text-white">
-                        Create New Program
-                        <Sparkles class="h-4 w-4 text-blue-100" />
-                    </DialogTitle>
-                    <DialogDescription class="text-xs text-blue-100">
-                        Fill in the details below to launch a new training program.
-                    </DialogDescription>
-                </div>
-            </div>
-        </DialogHeader>
-
-        <!-- Scrollable Form -->
-        <div class="overflow-y-auto flex-1 px-6">
-            <form id="program-form" @submit.prevent="submit" class="space-y-5 py-4">
-
-                <!-- SECTION: Program Details -->
-                <div class="space-y-3">
-                    <p class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-blue-600">
-                        <Heading class="h-3.5 w-3.5" /> Program Details
-                    </p>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <!-- Title -->
-                        <div class="col-span-2 grid gap-1">
-                            <Label class="flex items-center gap-1.5 text-xs"><Heading class="h-3.5 w-3.5 text-slate-400" /> Title <span class="text-red-500">*</span></Label>
-                            <Input class="text-xs h-8" v-model="form.title" placeholder="Program title" />
-                            <p class="text-xs text-red-500">{{ form.errors.title }}</p>
-                        </div>
-
-                        <!-- Description -->
-                        <div class="col-span-2 grid gap-1">
-                            <Label class="flex items-center gap-1.5 text-xs"><AlignLeft class="h-3.5 w-3.5 text-slate-400" /> Description</Label>
-                            <Textarea class="text-xs min-h-[90px] resize-y" v-model="form.description" placeholder="Enter program description..." />
-                            <p class="text-xs text-red-500">{{ form.errors.description }}</p>
-                        </div>
-
-                        <!-- Modality -->
-                        <div class="grid gap-1">
-                            <Label class="flex items-center gap-1.5 text-xs"><MonitorSmartphone class="h-3.5 w-3.5 text-slate-400" /> Modality <span class="text-red-500">*</span></Label>
-                            <Select v-model="form.modality">
-                                <SelectTrigger class="text-xs h-8"><SelectValue placeholder="Select modality" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem class="text-xs" value="In-person">In-person</SelectItem>
-                                    <SelectItem class="text-xs" value="Online/Virtual">Online/Virtual</SelectItem>
-                                    <SelectItem class="text-xs" value="Hybrid">Hybrid</SelectItem>
-                                    <SelectItem class="text-xs" value="Self-Paced">Self-Paced</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <p class="text-xs text-red-500">{{ form.errors.modality }}</p>
-                        </div>
-
-                        <!-- Pax -->
-                        <div class="grid gap-1">
-                            <Label class="flex items-center gap-1.5 text-xs"><Users class="h-3.5 w-3.5 text-slate-400" /> Target Pax <span class="text-red-500">*</span></Label>
-                            <Input class="text-xs h-8" v-model="form.pax" placeholder="Number of participants" />
-                            <p class="text-xs text-red-500">{{ form.errors.pax }}</p>
-                        </div>
-
-                        <!-- Category -->
-                        <div class="grid gap-1">
-                            <Label class="flex items-center gap-1.5 text-xs"><FolderTree class="h-3.5 w-3.5 text-slate-400" /> Category <span class="text-red-500">*</span></Label>
-                            <Select v-model="form.category">
-                                <SelectTrigger class="text-xs h-8"><SelectValue placeholder="Select category" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem v-for="o in availableCategoryOptions" :key="o.value" class="text-xs" :value="o.value">{{ o.label }}</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <p v-if="isRegionRestricted" class="text-[11px] text-gray-400">
-                                Limited to "Regional" for your region.
-                            </p>
-                            <p class="text-xs text-red-500">{{ form.errors.category }}</p>
-                        </div>
-
-                        <!-- Program Type -->
-                        <div class="grid gap-1">
-                            <Label class="flex items-center gap-1.5 text-xs"><Layers3 class="h-3.5 w-3.5 text-slate-400" /> Program Type <span class="text-red-500">*</span></Label>
-                            <Select v-model="form.type">
-                                <SelectTrigger class="text-xs h-8"><SelectValue placeholder="Select type" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem class="text-xs" value="ADMIN">ADMIN</SelectItem>
-                                    <SelectItem class="text-xs" value="TECHNICAL">TECHNICAL</SelectItem>
-                                    <SelectItem class="text-xs" value="SUPERVISORY/MANAGERIAL">SUPERVISORY/MANAGERIAL</SelectItem>
-                                    <SelectItem class="text-xs" value="TEAM-BUILDING">TEAM-BUILDING</SelectItem>
-                                    <SelectItem class="text-xs" value="OTHER">OTHER</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <p class="text-xs text-red-500">{{ form.errors.type }}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- SECTION: Office & Provider -->
-                <div class="space-y-3 border-t pt-4">
-                    <p class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-blue-600">
-                        <Building2 class="h-3.5 w-3.5" /> Office &amp; Provider
-                    </p>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <!-- Office Initiated -->
-                        <div class="grid gap-1">
-                            <Label class="flex items-center gap-1.5 text-xs"><Building2 class="h-3.5 w-3.5 text-slate-400" /> Office Initiated <span class="text-red-500">*</span></Label>
-                            <Select v-model="form.initiated">
-                                <SelectTrigger class="text-xs h-8"><SelectValue placeholder="Select office" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem v-for="o in availableInitiatedOptions" :key="o.value" class="text-xs" :value="o.value">{{ o.label }}</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <p v-if="isRegionRestricted" class="text-[11px] text-gray-400">
-                                Limited to NTTA / Other Training Provider for your region.
-                            </p>
-                            <p class="text-xs text-red-500">{{ form.errors.initiated }}</p>
-                        </div>
-
-                        <!-- Provider -->
-                        <div class="grid gap-1">
-                            <Label class="flex items-center gap-1.5 text-xs"><UserCog class="h-3.5 w-3.5 text-slate-400" /> Provider</Label>
-                            <Input class="text-xs h-8" v-model="form.provider" placeholder="Training provider" />
-                            <p class="text-xs text-red-500">{{ form.errors.provider }}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- SECTION: Funding & Origin -->
-                <div class="space-y-3 border-t pt-4">
-                    <p class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-blue-600">
-                        <Wallet class="h-3.5 w-3.5" /> Funding &amp; Origin
-                    </p>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <!-- Cost -->
-                        <div class="grid gap-1">
-                            <Label class="flex items-center gap-1.5 text-xs"><PhilippinePeso class="h-3.5 w-3.5 text-slate-400" /> Cost <span class="text-red-500">*</span></Label>
-                            <div class="relative">
-                                <PhilippinePeso class="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                                <Input class="text-xs h-8 pl-7" v-model="form.cost" placeholder="e.g. 5000" />
+                        <div class="relative z-10 flex items-center gap-4">
+                            <div
+                                class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/30 backdrop-blur"
+                            >
+                                <BadgePlus class="h-6 w-6 text-white" />
                             </div>
-                            <p class="text-xs text-red-500">{{ form.errors.cost }}</p>
+                            <div class="min-w-0">
+                                <DialogTitle class="flex items-center gap-2 text-lg font-bold text-white">
+                                    Create New Program
+                                    <Sparkles class="h-4 w-4 text-blue-100" />
+                                </DialogTitle>
+                                <DialogDescription class="text-xs text-blue-100">
+                                    Fill in the details below to launch a new training program.
+                                </DialogDescription>
+                            </div>
                         </div>
+                    </DialogHeader>
 
-                        <!-- Fund Source -->
-                        <div class="grid gap-1">
-                            <Label class="flex items-center gap-1.5 text-xs"><Wallet class="h-3.5 w-3.5 text-slate-400" /> Fund Source <span class="text-red-500">*</span></Label>
-                            <Select v-model="form.fund">
-                                <SelectTrigger class="text-xs h-8"><SelectValue placeholder="Select fund source" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem class="text-xs" value="Central Office - SDP">Central Office - SDP</SelectItem>
-                                    <SelectItem class="text-xs" value="Regional Office - SDP">Regional Office - SDP</SelectItem>
-                                    <SelectItem class="text-xs" value="Other Office">Other Office</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <p class="text-xs text-red-500">{{ form.errors.fund }}</p>
-                        </div>
+                    <!-- Scrollable Form -->
+                    <div class="flex-1 overflow-y-auto px-6">
+                        <form id="program-form" @submit.prevent="submit" class="space-y-5 py-4">
+                            <!-- SECTION: Program Details -->
+                            <div class="space-y-3">
+                                <p class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-blue-600">
+                                    <Heading class="h-3.5 w-3.5" /> Program Details
+                                </p>
 
-                        <!-- Origin -->
-                        <div class="col-span-2 grid gap-1">
-                            <Label class="flex items-center gap-1.5 text-xs"><Globe class="h-3.5 w-3.5 text-slate-400" /> Origin <span class="text-red-500">*</span></Label>
-                            <Select v-model="form.origin">
-                                <SelectTrigger class="text-xs h-8"><SelectValue placeholder="Select origin" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem class="text-xs" value="Local">Local</SelectItem>
-                                    <SelectItem class="text-xs" value="Foreign">Foreign</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <p class="text-xs text-red-500">{{ form.errors.origin }}</p>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <!-- Title -->
+                                    <div class="col-span-2 grid gap-1">
+                                        <Label class="flex items-center gap-1.5 text-xs"
+                                            ><Heading class="h-3.5 w-3.5 text-slate-400" /> Title <span class="text-red-500">*</span></Label
+                                        >
+                                        <Input class="h-8 text-xs" v-model="form.title" placeholder="Program title" />
+                                        <p class="text-xs text-red-500">{{ form.errors.title }}</p>
+                                    </div>
+
+                                    <!-- Description -->
+                                    <div class="col-span-2 grid gap-1">
+                                        <Label class="flex items-center gap-1.5 text-xs"
+                                            ><AlignLeft class="h-3.5 w-3.5 text-slate-400" /> Description</Label
+                                        >
+                                        <Textarea
+                                            class="min-h-[90px] resize-y text-xs"
+                                            v-model="form.description"
+                                            placeholder="Enter program description..."
+                                        />
+                                        <p class="text-xs text-red-500">{{ form.errors.description }}</p>
+                                    </div>
+
+                                    <!-- Modality -->
+                                    <div class="grid gap-1">
+                                        <Label class="flex items-center gap-1.5 text-xs"
+                                            ><MonitorSmartphone class="h-3.5 w-3.5 text-slate-400" /> Modality
+                                            <span class="text-red-500">*</span></Label
+                                        >
+                                        <Select v-model="form.modality">
+                                            <SelectTrigger class="h-8 text-xs"><SelectValue placeholder="Select modality" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem class="text-xs" value="In-person">In-person</SelectItem>
+                                                <SelectItem class="text-xs" value="Online/Virtual">Online/Virtual</SelectItem>
+                                                <SelectItem class="text-xs" value="Hybrid">Hybrid</SelectItem>
+                                                <SelectItem class="text-xs" value="Self-Paced">Self-Paced</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <p class="text-xs text-red-500">{{ form.errors.modality }}</p>
+                                    </div>
+
+                                    <!-- Pax -->
+                                    <div class="grid gap-1">
+                                        <Label class="flex items-center gap-1.5 text-xs"
+                                            ><Users class="h-3.5 w-3.5 text-slate-400" /> Target Pax <span class="text-red-500">*</span></Label
+                                        >
+                                        <Input class="h-8 text-xs" v-model="form.pax" placeholder="Number of participants" />
+                                        <p class="text-xs text-red-500">{{ form.errors.pax }}</p>
+                                    </div>
+
+                                    <!-- Category -->
+                                    <div class="grid gap-1">
+                                        <Label class="flex items-center gap-1.5 text-xs"
+                                            ><FolderTree class="h-3.5 w-3.5 text-slate-400" /> Category <span class="text-red-500">*</span></Label
+                                        >
+                                        <Select v-model="form.category">
+                                            <SelectTrigger class="h-8 text-xs"><SelectValue placeholder="Select category" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem v-for="o in availableCategoryOptions" :key="o.value" class="text-xs" :value="o.value">{{
+                                                    o.label
+                                                }}</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <p v-if="isRegionRestricted" class="text-[11px] text-gray-400">Limited to "Regional" for your region.</p>
+                                        <p class="text-xs text-red-500">{{ form.errors.category }}</p>
+                                    </div>
+
+                                    <!-- Program Type -->
+                                    <div class="grid gap-1">
+                                        <Label class="flex items-center gap-1.5 text-xs"
+                                            ><Layers3 class="h-3.5 w-3.5 text-slate-400" /> Program Type <span class="text-red-500">*</span></Label
+                                        >
+                                        <Select v-model="form.type">
+                                            <SelectTrigger class="h-8 text-xs"><SelectValue placeholder="Select type" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem class="text-xs" value="ADMIN">ADMIN</SelectItem>
+                                                <SelectItem class="text-xs" value="TECHNICAL">TECHNICAL</SelectItem>
+                                                <SelectItem class="text-xs" value="SUPERVISORY/MANAGERIAL">SUPERVISORY/MANAGERIAL</SelectItem>
+                                                <SelectItem class="text-xs" value="TEAM-BUILDING">TEAM-BUILDING</SelectItem>
+                                                <SelectItem class="text-xs" value="OTHER">OTHER</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <p class="text-xs text-red-500">{{ form.errors.type }}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- SECTION: Office & Provider -->
+                            <div class="space-y-3 border-t pt-4">
+                                <p class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-blue-600">
+                                    <Building2 class="h-3.5 w-3.5" /> Office &amp; Provider
+                                </p>
+
+                                <div class="grid grid-cols-2 gap-4">
+                                    <!-- Office Initiated -->
+                                    <div class="grid gap-1">
+                                        <Label class="flex items-center gap-1.5 text-xs"
+                                            ><Building2 class="h-3.5 w-3.5 text-slate-400" /> Office Initiated
+                                            <span class="text-red-500">*</span></Label
+                                        >
+                                        <Select v-model="form.initiated">
+                                            <SelectTrigger class="h-8 text-xs"><SelectValue placeholder="Select office" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem v-for="o in availableInitiatedOptions" :key="o.value" class="text-xs" :value="o.value">{{
+                                                    o.label
+                                                }}</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <p v-if="isRegionRestricted" class="text-[11px] text-gray-400">
+                                            Limited to NTTA / Other Training Provider for your region.
+                                        </p>
+                                        <p class="text-xs text-red-500">{{ form.errors.initiated }}</p>
+                                    </div>
+
+                                    <!-- Provider -->
+                                    <div class="grid gap-1">
+                                        <Label class="flex items-center gap-1.5 text-xs"
+                                            ><UserCog class="h-3.5 w-3.5 text-slate-400" /> Provider</Label
+                                        >
+                                        <Input class="h-8 text-xs" v-model="form.provider" placeholder="Training provider" />
+                                        <p class="text-xs text-red-500">{{ form.errors.provider }}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- SECTION: Funding & Origin -->
+                            <div class="space-y-3 border-t pt-4">
+                                <p class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-blue-600">
+                                    <Wallet class="h-3.5 w-3.5" /> Funding &amp; Origin
+                                </p>
+
+                                <div class="grid grid-cols-2 gap-4">
+                                    <!-- Cost -->
+                                    <div class="grid gap-1">
+                                        <Label class="flex items-center gap-1.5 text-xs"
+                                            ><PhilippinePeso class="h-3.5 w-3.5 text-slate-400" /> Cost <span class="text-red-500">*</span></Label
+                                        >
+                                        <div class="relative">
+                                            <PhilippinePeso class="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                                            <Input class="h-8 pl-7 text-xs" v-model="form.cost" placeholder="e.g. 5000" />
+                                        </div>
+                                        <p class="text-xs text-red-500">{{ form.errors.cost }}</p>
+                                    </div>
+
+                                    <!-- Fund Source -->
+                                    <div class="grid gap-1">
+                                        <Label class="flex items-center gap-1.5 text-xs"
+                                            ><Wallet class="h-3.5 w-3.5 text-slate-400" /> Fund Source <span class="text-red-500">*</span></Label
+                                        >
+                                        <Select v-model="form.fund">
+                                            <SelectTrigger class="h-8 text-xs"><SelectValue placeholder="Select fund source" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem class="text-xs" value="Central Office - SDP">Central Office - SDP</SelectItem>
+                                                <SelectItem class="text-xs" value="Regional Office - SDP">Regional Office - SDP</SelectItem>
+                                                <SelectItem class="text-xs" value="Other Office">Other Office</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <p class="text-xs text-red-500">{{ form.errors.fund }}</p>
+                                    </div>
+
+                                    <!-- Origin -->
+                                    <div class="col-span-2 grid gap-1">
+                                        <Label class="flex items-center gap-1.5 text-xs"
+                                            ><Globe class="h-3.5 w-3.5 text-slate-400" /> Origin <span class="text-red-500">*</span></Label
+                                        >
+                                        <Select v-model="form.origin">
+                                            <SelectTrigger class="h-8 text-xs"><SelectValue placeholder="Select origin" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem class="text-xs" value="Local">Local</SelectItem>
+                                                <SelectItem class="text-xs" value="Foreign">Foreign</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <p class="text-xs text-red-500">{{ form.errors.origin }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Fixed Footer -->
+                    <div class="flex shrink-0 items-center justify-between gap-2 border-t bg-muted/30 px-6 py-3">
+                        <p class="flex items-center gap-1 text-[11px] text-muted-foreground">
+                            <Info class="h-3 w-3" /> Fields marked <span class="text-red-500">*</span> are required.
+                        </p>
+                        <div class="flex gap-2">
+                            <Button type="button" variant="outline" size="sm" @click="showModal = false">Cancel</Button>
+                            <Button
+                                type="submit"
+                                class="bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md shadow-blue-500/25 hover:from-blue-700 hover:to-blue-600"
+                                form="program-form"
+                                size="sm"
+                                :disabled="form.processing"
+                            >
+                                <LoaderCircle v-if="form.processing" class="mr-1 h-3 w-3 animate-spin" />
+                                <Save class="h-3.5 w-3.5" /> Save Program
+                            </Button>
                         </div>
                     </div>
-                </div>
-
-            </form>
+                </DialogContent>
+            </Dialog>
         </div>
-
-        <!-- Fixed Footer -->
-        <div class="shrink-0 flex items-center justify-between gap-2 border-t bg-muted/30 px-6 py-3">
-            <p class="flex items-center gap-1 text-[11px] text-muted-foreground">
-                <Info class="h-3 w-3" /> Fields marked <span class="text-red-500">*</span> are required.
-            </p>
-            <div class="flex gap-2">
-                <Button type="button" variant="outline" size="sm" @click="showModal = false">Cancel</Button>
-                <Button type="submit" class="bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md shadow-blue-500/25 hover:from-blue-700 hover:to-blue-600" form="program-form" size="sm" :disabled="form.processing">
-                    <LoaderCircle v-if="form.processing" class="h-3 w-3 animate-spin mr-1" />
-                    <Save class="h-3.5 w-3.5" /> Save Program
-                </Button>
-            </div>
-        </div>
-
-    </DialogContent>
-</Dialog>
-
-        </div>
-
     </AppLayout>
 </template>

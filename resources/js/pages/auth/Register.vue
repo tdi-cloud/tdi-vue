@@ -2,15 +2,15 @@
 import InputError from '@/components/InputError.vue';
 import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import AuthBase from '@/layouts/AuthLayout.vue';
 import { updateTheme } from '@/composables/useAppearance';
-import { Head, useForm, router } from '@inertiajs/vue3';
-import { LoaderCircle, ShieldCheck, User, Hash, Building2, MailCheck, Eye, EyeOff } from 'lucide-vue-next';
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import AuthBase from '@/layouts/AuthLayout.vue';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import axios from 'axios';
+import { Building2, Eye, EyeOff, Hash, LoaderCircle, MailCheck, ShieldCheck, User } from 'lucide-vue-next';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 
 // ── Force light mode on the register page ───────────────────────────────────
 onMounted(() => {
@@ -54,12 +54,10 @@ const verify = async () => {
     } catch (err: any) {
         if (err.response?.data?.errors) {
             const raw = err.response.data.errors;
-            verifyErrors.value = Object.fromEntries(
-                Object.entries(raw).map(([key, val]) => [
-                    key,
-                    Array.isArray(val) ? val[0] : val,
-                ])
-            ) as Record<string, string>;
+            verifyErrors.value = Object.fromEntries(Object.entries(raw).map(([key, val]) => [key, Array.isArray(val) ? val[0] : val])) as Record<
+                string,
+                string
+            >;
         }
     } finally {
         isVerifying.value = false;
@@ -102,7 +100,6 @@ const initials = (name: string) =>
 
         <form @submit.prevent="verify" class="flex flex-col gap-6">
             <div class="grid gap-6">
-
                 <div class="grid gap-2">
                     <Label for="name">Name</Label>
                     <Input id="name" type="text" required autofocus tabindex="1" autocomplete="name" v-model="form.name" placeholder="Full name" />
@@ -196,22 +193,26 @@ const initials = (name: string) =>
             <DialogContent class="max-w-sm overflow-hidden rounded-2xl border-0 p-0 shadow-2xl">
                 <!-- Gradient header band -->
                 <div class="relative bg-gradient-to-br from-blue-600 to-blue-500 px-6 pb-8 pt-6 text-white">
-                    <div class="pointer-events-none absolute inset-0 opacity-20"
-                         style="background-image: radial-gradient(circle at 20% 20%, white 1px, transparent 1px); background-size: 18px 18px;"></div>
+                    <div
+                        class="pointer-events-none absolute inset-0 opacity-20"
+                        style="background-image: radial-gradient(circle at 20% 20%, white 1px, transparent 1px); background-size: 18px 18px"
+                    ></div>
 
                     <DialogHeader class="relative z-10 space-y-1 text-center">
-                        <div class="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/30 backdrop-blur">
+                        <div
+                            class="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/30 backdrop-blur"
+                        >
                             <ShieldCheck class="h-6 w-6" />
                         </div>
                         <DialogTitle class="text-lg font-semibold">Confirm Your Identity</DialogTitle>
-                        <DialogDescription class="text-xs text-blue-100">
-                            Please verify that this is you before proceeding.
-                        </DialogDescription>
+                        <DialogDescription class="text-xs text-blue-100"> Please verify that this is you before proceeding. </DialogDescription>
                     </DialogHeader>
 
                     <!-- Avatar that overlaps the band -->
-                    <div v-if="employeeInfo"
-                         class="absolute -bottom-7 left-1/2 z-20 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full border-4 border-background bg-gradient-to-br from-blue-500 to-blue-600 text-base font-bold text-white shadow-lg">
+                    <div
+                        v-if="employeeInfo"
+                        class="absolute -bottom-7 left-1/2 z-20 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full border-4 border-background bg-gradient-to-br from-blue-500 to-blue-600 text-base font-bold text-white shadow-lg"
+                    >
                         {{ initials(employeeInfo.fullname) || 'U' }}
                     </div>
                 </div>
@@ -247,7 +248,9 @@ const initials = (name: string) =>
                         </div>
                     </div>
 
-                    <div class="flex items-center justify-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-center text-xs text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
+                    <div
+                        class="flex items-center justify-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-center text-xs text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
+                    >
                         <MailCheck class="h-4 w-4 shrink-0" />
                         <span>Confirm to receive a one-time code on your email.</span>
                     </div>
@@ -269,6 +272,5 @@ const initials = (name: string) =>
                 </div>
             </DialogContent>
         </Dialog>
-
     </AuthBase>
 </template>

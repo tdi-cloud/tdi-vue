@@ -11,11 +11,11 @@ return new class extends Migration
         Schema::create('foreign_nominees', function (Blueprint $table) {
             $table->id();
             $table->foreignId('foreign_program_id')
-                  ->constrained('foreign_programs')
-                  ->cascadeOnDelete();
+                ->constrained('foreign_programs')
+                ->cascadeOnDelete();
             $table->foreignId('foreign_sponsor_config_id')
-                  ->constrained('foreign_sponsor_configs')
-                  ->cascadeOnDelete();
+                ->constrained('foreign_sponsor_configs')
+                ->cascadeOnDelete();
             $table->string('firstname');
             $table->string('middle_name')->nullable();
             $table->string('surname');

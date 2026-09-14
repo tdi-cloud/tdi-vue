@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { router } from '@inertiajs/vue3';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Users, LoaderCircle, CheckCircle2, XCircle, RotateCcw } from 'lucide-vue-next';
-import { ref, computed, watch } from 'vue';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { router } from '@inertiajs/vue3';
+import { CheckCircle2, LoaderCircle, RotateCcw, Users, XCircle } from 'lucide-vue-next';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps<{
     open: boolean;
@@ -40,12 +40,15 @@ const successItems = computed(() => bulkResult.value?.results.filter((r) => r.st
 const failedItems = computed(() => bulkResult.value?.results.filter((r) => r.status === 'failed') ?? []);
 
 /* Reset tuwing magbubukas ng modal */
-watch(() => props.open, (isOpen) => {
-    if (isOpen) {
-        empcodesText.value = '';
-        bulkResult.value = null;
-    }
-});
+watch(
+    () => props.open,
+    (isOpen) => {
+        if (isOpen) {
+            empcodesText.value = '';
+            bulkResult.value = null;
+        }
+    },
+);
 
 const submit = () => {
     if (!empcodesText.value.trim() || !props.batch) return;
@@ -68,7 +71,7 @@ const submit = () => {
             onFinish: () => {
                 processing.value = false;
             },
-        }
+        },
     );
 };
 
@@ -85,10 +88,9 @@ const close = () => {
 <template>
     <Dialog :open="open" @update:open="emit('update:open', $event)">
         <DialogContent class="max-w-lg !rounded-2xl">
-
             <DialogHeader>
                 <DialogTitle>
-                    <span class="flex gap-2 items-center text-xl font-extrabold">
+                    <span class="flex items-center gap-2 text-xl font-extrabold">
                         <Users class="h-6 w-6 text-blue-600" /> Bulk Add Participants
                     </span>
                 </DialogTitle>
@@ -104,12 +106,10 @@ const close = () => {
                 <Textarea
                     v-model="empcodesText"
                     rows="6"
-                    class="text-sm border-blue-400 focus-visible:ring-blue-400"
+                    class="border-blue-400 text-sm focus-visible:ring-blue-400"
                     placeholder="Paste Employee IDs Here... i.e. 2026-1234"
                 />
-                <p class="text-xs text-muted-foreground">
-                    Separate codes by newline · comma · semicolon · or space
-                </p>
+                <p class="text-xs text-muted-foreground">Separate codes by newline · comma · semicolon · or space</p>
 
                 <div class="flex justify-end gap-2 pt-2">
                     <Button variant="outline" size="sm" @click="close">Cancel</Button>
@@ -119,7 +119,7 @@ const close = () => {
                         :disabled="!empcodesText.trim() || processing"
                         @click="submit"
                     >
-                        <LoaderCircle v-if="processing" class="h-3.5 w-3.5 animate-spin mr-1" />
+                        <LoaderCircle v-if="processing" class="mr-1 h-3.5 w-3.5 animate-spin" />
                         Submit
                     </Button>
                 </div>
@@ -127,59 +127,46 @@ const close = () => {
 
             <!-- ============ RESULTS ============ -->
             <div v-else class="flex flex-col gap-3">
-
                 <div class="flex items-center gap-2">
-                    <Badge class="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-0 font-bold">
-                        <CheckCircle2 class="h-3.5 w-3.5 mr-1" /> {{ bulkResult?.success ?? 0 }} added
+                    <Badge class="border-0 bg-emerald-100 font-bold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                        <CheckCircle2 class="mr-1 h-3.5 w-3.5" /> {{ bulkResult?.success ?? 0 }} added
                     </Badge>
-                    <Badge v-if="(bulkResult?.failed ?? 0) > 0" class="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 border-0 font-bold">
-                        <XCircle class="h-3.5 w-3.5 mr-1" /> {{ bulkResult?.failed ?? 0 }} failed
+                    <Badge
+                        v-if="(bulkResult?.failed ?? 0) > 0"
+                        class="border-0 bg-red-100 font-bold text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                    >
+                        <XCircle class="mr-1 h-3.5 w-3.5" /> {{ bulkResult?.failed ?? 0 }} failed
                     </Badge>
                 </div>
 
-                <div class="max-h-72 overflow-y-auto rounded-xl border divide-y">
-
-                    <div
-                        v-for="item in successItems"
-                        :key="`s-${item.empcode}`"
-                        class="flex items-center justify-between px-3 py-2"
-                    >
+                <div class="max-h-72 divide-y overflow-y-auto rounded-xl border">
+                    <div v-for="item in successItems" :key="`s-${item.empcode}`" class="flex items-center justify-between px-3 py-2">
                         <div class="min-w-0">
-                            <p class="text-xs font-bold leading-4 truncate">{{ item.name ?? item.empcode }}</p>
+                            <p class="truncate text-xs font-bold leading-4">{{ item.name ?? item.empcode }}</p>
                             <p class="text-[11px] text-muted-foreground">{{ item.empcode }}</p>
                         </div>
-                        <Badge class="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-0 text-[10px] font-bold">
-                            <CheckCircle2 class="h-3 w-3 mr-1" /> Added
+                        <Badge class="border-0 bg-emerald-100 text-[10px] font-bold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                            <CheckCircle2 class="mr-1 h-3 w-3" /> Added
                         </Badge>
                     </div>
 
-                    <div
-                        v-for="item in failedItems"
-                        :key="`f-${item.empcode}`"
-                        class="flex items-center justify-between px-3 py-2"
-                    >
+                    <div v-for="item in failedItems" :key="`f-${item.empcode}`" class="flex items-center justify-between px-3 py-2">
                         <div class="min-w-0">
-                            <p class="text-xs font-bold leading-4 truncate">{{ item.name ?? item.empcode }}</p>
+                            <p class="truncate text-xs font-bold leading-4">{{ item.name ?? item.empcode }}</p>
                             <p class="text-[11px] text-muted-foreground">{{ item.empcode }}</p>
                             <p class="text-[11px] text-red-500">{{ item.reason }}</p>
                         </div>
-                        <Badge class="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 border-0 text-[10px] font-bold shrink-0 ml-2">
-                            <XCircle class="h-3 w-3 mr-1" /> Failed
+                        <Badge class="ml-2 shrink-0 border-0 bg-red-100 text-[10px] font-bold text-red-700 dark:bg-red-900/40 dark:text-red-300">
+                            <XCircle class="mr-1 h-3 w-3" /> Failed
                         </Badge>
                     </div>
-
                 </div>
 
                 <div class="flex justify-end gap-2 pt-1">
-                    <Button variant="outline" size="sm" @click="reset">
-                        <RotateCcw class="h-3.5 w-3.5 mr-1" /> Add More
-                    </Button>
-                    <Button class="bg-blue-600 hover:bg-blue-700 dark:text-white" size="sm" @click="close">
-                        Done
-                    </Button>
+                    <Button variant="outline" size="sm" @click="reset"> <RotateCcw class="mr-1 h-3.5 w-3.5" /> Add More </Button>
+                    <Button class="bg-blue-600 hover:bg-blue-700 dark:text-white" size="sm" @click="close"> Done </Button>
                 </div>
             </div>
-
         </DialogContent>
     </Dialog>
 </template>

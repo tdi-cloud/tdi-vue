@@ -4,7 +4,8 @@
 
 body,
 html {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans:
+        'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
 @layer base {
@@ -78,11 +79,7 @@ html {
         --sidebar-border: 0 0% 15.9%;
         --sidebar-ring: 217.2 91.2% 59.8%;
     }
-
-    
 }
-
-
 
 @layer base {
     * {
@@ -96,11 +93,11 @@ html {
     [hidden] {
         display: none !important;
     }
-    
+
     input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
     textarea,
     select {
-        @apply bg-background text-foreground border-border placeholder:text-muted-foreground;
+        @apply border-border bg-background text-foreground placeholder:text-muted-foreground;
     }
 
     input[type='date']::-webkit-calendar-picker-indicator {
@@ -108,6 +105,6 @@ html {
     }
 
     html {
-    scroll-behavior: smooth;
+        scroll-behavior: smooth;
     }
 }

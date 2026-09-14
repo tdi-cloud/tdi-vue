@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head } from '@inertiajs/vue3';
-import { onMounted, onBeforeUnmount, ref } from 'vue';
 import axios from 'axios';
+import { Map, MousePointer2, RotateCcw, Search, Users, X } from 'lucide-vue-next';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import {
-    Map, X, Search, Users, RotateCcw, MousePointer2,
-} from 'lucide-vue-next';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 
 interface RegionCount {
     region: string;
@@ -49,8 +47,8 @@ interface RegionsData {
  * halip na isang buong region shape.
  */
 const PIN_MARKERS: Record<string, { label: string; lng: number; lat: number }> = {
-    CO:  { label: 'Central Office (Taguig)', lng: 121.0509, lat: 14.5176 },
-    NIR: { label: 'Negros Island Region',    lng: 122.9689, lat: 10.6407 },
+    CO: { label: 'Central Office (Taguig)', lng: 121.0509, lat: 14.5176 },
+    NIR: { label: 'Negros Island Region', lng: 122.9689, lat: 10.6407 },
 };
 
 const SCALE = 9; // units per degree
@@ -149,10 +147,7 @@ function makeTerrainTexture(): THREE.Texture {
  * (parang totoong lupa/gubat, hindi flat na solid color).
  */
 function terrainNoise(x: number, y: number): number {
-    const n =
-        Math.sin(x * 0.15) * Math.cos(y * 0.13) * 0.5 +
-        Math.sin(x * 0.37 + y * 0.29) * 0.3 +
-        Math.sin((x + y) * 0.07) * 0.2;
+    const n = Math.sin(x * 0.15) * Math.cos(y * 0.13) * 0.5 + Math.sin(x * 0.37 + y * 0.29) * 0.3 + Math.sin((x + y) * 0.07) * 0.2;
     return (n + 1) / 2;
 }
 
@@ -291,10 +286,7 @@ function makeProjector(bounds: RegionsData['bounds']) {
     const centerLat = (bounds.minLat + bounds.maxLat) / 2;
     const cosLat = Math.cos((centerLat * Math.PI) / 180);
 
-    return (lng: number, lat: number): [number, number] => [
-        (lng - centerLng) * cosLat * SCALE,
-        (centerLat - lat) * SCALE,
-    ];
+    return (lng: number, lat: number): [number, number] => [(lng - centerLng) * cosLat * SCALE, (centerLat - lat) * SCALE];
 }
 
 /**
@@ -342,7 +334,12 @@ function extrudeShapes(shapes: THREE.Shape[], depth: number, color: THREE.Color)
  * maliliit na isla. Kaya hiwalay ang extrusion: buong height (data-driven)
  * lang para sa malalaking lupain, maliit/fixed na height para sa islet.
  */
-function buildRegionMesh(polygons: Polygon[], project: (lng: number, lat: number) => [number, number], color: THREE.Color, height: number): THREE.Mesh[] {
+function buildRegionMesh(
+    polygons: Polygon[],
+    project: (lng: number, lat: number) => [number, number],
+    color: THREE.Color,
+    height: number,
+): THREE.Mesh[] {
     const mainShapes: THREE.Shape[] = [];
     const isletShapes: THREE.Shape[] = [];
 
@@ -462,7 +459,7 @@ async function buildScene(container: HTMLDivElement) {
     controls.minDistance = 10;
     controls.maxDistance = 200;
     controls.maxPolarAngle = Math.PI / 2.05;
-    controls.target.set(0, 0, 0);
+    controls.target.copy(DEFAULT_CAMERA_TARGET);
     controls.update();
 
     // Lighting — flat/even na map-style lighting (mataas ang ambient/fill,
@@ -486,10 +483,7 @@ async function buildScene(container: HTMLDivElement) {
     // sumasakop sa halos buong background na nakikita — kung PBR-lit
     // material ito, lalabas itong gray kahit puti ang base color nito
     // (hindi sapat ang liwanag para umabot sa "puro puti").
-    const ocean = new THREE.Mesh(
-        new THREE.PlaneGeometry(400, 400),
-        new THREE.MeshBasicMaterial({ color: 0xffffff })
-    );
+    const ocean = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshBasicMaterial({ color: 0xffffff }));
     ocean.rotation.x = -Math.PI / 2;
     ocean.position.set(0, -0.3, 0);
     scene.add(ocean);
@@ -502,9 +496,7 @@ async function buildScene(container: HTMLDivElement) {
     // counts.
     const rankableCodes = [...regionsData.regions.map((r) => r.code), ...Object.keys(PIN_MARKERS)];
     const rankByCode: Record<string, number> = Object.fromEntries(
-        [...rankableCodes]
-            .sort((a, b) => (countsByRegion[b] ?? 0) - (countsByRegion[a] ?? 0))
-            .map((code, i) => [code, i + 1])
+        [...rankableCodes].sort((a, b) => (countsByRegion[b] ?? 0) - (countsByRegion[a] ?? 0)).map((code, i) => [code, i + 1]),
     );
 
     let colorIndex = 0;
@@ -642,10 +634,7 @@ function animate() {
 
 function getPointerNDC(event: PointerEvent): THREE.Vector2 {
     const rect = renderer!.domElement.getBoundingClientRect();
-    return new THREE.Vector2(
-        ((event.clientX - rect.left) / rect.width) * 2 - 1,
-        -((event.clientY - rect.top) / rect.height) * 2 + 1
-    );
+    return new THREE.Vector2(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
 }
 
 function handlePointerMove(event: PointerEvent) {
@@ -734,7 +723,7 @@ function resetCamera() {
         sprite.visible = true;
     });
     clearFocusOutline();
-    flyCameraTo(new THREE.Vector3(35, 60, 90), new THREE.Vector3(0, 0, 0), 1000);
+    flyCameraTo(new THREE.Vector3(35, 60, 90), DEFAULT_CAMERA_TARGET, 1000);
 }
 
 function handleResize() {
@@ -776,37 +765,41 @@ onBeforeUnmount(() => {
 
     <AppLayout>
         <div class="relative flex flex-1 flex-col overflow-hidden">
-            <div ref="canvasWrap" class="absolute inset-0 bg-white cursor-grab" />
+            <div ref="canvasWrap" class="absolute inset-0 cursor-grab bg-white" />
 
             <div v-if="loading" class="absolute inset-0 z-10 flex items-center justify-center bg-white">
                 <p class="text-sm text-muted-foreground">Loading 3D map...</p>
             </div>
 
             <!-- Header + Total Employees (HUD overlay sa loob ng canvas) -->
-            <div class="absolute top-3 left-3 right-3 z-10 flex flex-wrap items-start justify-between gap-3">
-                <div class="flex items-center gap-3 rounded-2xl border bg-white/90 dark:bg-background/90 backdrop-blur px-4 py-3 shadow-sm">
-                    <div class="h-11 w-11 rounded-2xl bg-gradient-to-br from-teal-600 to-blue-600 flex items-center justify-center shadow-sm shrink-0">
+            <div class="absolute left-3 right-3 top-3 z-10 flex flex-wrap items-start justify-between gap-3">
+                <div class="flex items-center gap-3 rounded-2xl border bg-white/90 px-4 py-3 shadow-sm backdrop-blur dark:bg-background/90">
+                    <div
+                        class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-600 to-blue-600 shadow-sm"
+                    >
                         <Map class="h-5.5 w-5.5 text-white" />
                     </div>
                     <div>
                         <h1 class="text-xl font-extrabold leading-tight">Employees Map</h1>
-                        <p class="text-xs text-muted-foreground mt-0.5 max-w-xs">
+                        <p class="mt-0.5 max-w-xs text-xs text-muted-foreground">
                             3D distribution of employees across the Philippines. Click a region to see who's there.
                         </p>
                     </div>
                 </div>
 
-                <div class="rounded-xl border bg-white/90 dark:bg-background/90 backdrop-blur px-4 py-2.5 flex items-center gap-2.5 shadow-sm">
+                <div class="flex items-center gap-2.5 rounded-xl border bg-white/90 px-4 py-2.5 shadow-sm backdrop-blur dark:bg-background/90">
                     <Users class="h-4 w-4 text-teal-600" />
                     <div>
-                        <p class="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Total Employees</p>
+                        <p class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Total Employees</p>
                         <p class="text-lg font-extrabold leading-none">{{ totalEmployees }}</p>
                     </div>
                 </div>
             </div>
 
             <!-- Controls hint -->
-            <div class="absolute bottom-3 left-3 z-10 rounded-lg bg-black/60 backdrop-blur px-3 py-2 text-[11px] text-white flex items-center gap-1.5">
+            <div
+                class="absolute bottom-3 left-3 z-10 flex items-center gap-1.5 rounded-lg bg-black/60 px-3 py-2 text-[11px] text-white backdrop-blur"
+            >
                 <MousePointer2 class="h-3 w-3" />
                 Drag to rotate · Scroll to zoom · Right-drag to pan · Click a region to view employees
             </div>
@@ -814,7 +807,7 @@ onBeforeUnmount(() => {
             <!-- Reset camera -->
             <button
                 type="button"
-                class="absolute bottom-3 right-3 z-10 inline-flex items-center gap-1.5 text-xs font-semibold bg-white/90 dark:bg-background/90 backdrop-blur px-3 py-1.5 rounded-lg shadow-sm border hover:bg-white dark:hover:bg-background transition-colors"
+                class="absolute bottom-3 right-3 z-10 inline-flex items-center gap-1.5 rounded-lg border bg-white/90 px-3 py-1.5 text-xs font-semibold shadow-sm backdrop-blur transition-colors hover:bg-white dark:bg-background/90 dark:hover:bg-background"
                 @click="resetCamera"
             >
                 <RotateCcw class="h-3.5 w-3.5" /> Reset View
@@ -823,7 +816,7 @@ onBeforeUnmount(() => {
             <!-- Hover tooltip -->
             <div
                 v-if="hoveredRegion"
-                class="fixed z-50 pointer-events-none rounded-lg bg-black/80 text-white text-xs px-3 py-2 shadow-lg"
+                class="pointer-events-none fixed z-50 rounded-lg bg-black/80 px-3 py-2 text-xs text-white shadow-lg"
                 :style="{ left: `calc(${tooltipStyle.left} + 14px)`, top: `calc(${tooltipStyle.top} + 14px)` }"
             >
                 <p class="font-bold">{{ hoveredRegion.label }}</p>
@@ -833,41 +826,35 @@ onBeforeUnmount(() => {
 
         <!-- ===== Region Employees Side Panel ===== -->
         <Transition name="slide">
-            <div v-if="showPanel" class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-background border-l shadow-2xl flex flex-col">
-                <div class="sticky top-0 bg-gradient-to-r from-teal-600 to-blue-600 text-white px-5 py-4 flex items-center gap-3">
-                    <div class="flex-1 min-w-0">
-                        <h2 class="font-bold text-sm truncate">{{ panelRegion?.label }}</h2>
+            <div v-if="showPanel" class="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l bg-background shadow-2xl">
+                <div class="sticky top-0 flex items-center gap-3 bg-gradient-to-r from-teal-600 to-blue-600 px-5 py-4 text-white">
+                    <div class="min-w-0 flex-1">
+                        <h2 class="truncate text-sm font-bold">{{ panelRegion?.label }}</h2>
                         <p class="text-xs text-white/75">{{ panelRegion?.total }} employee(s)</p>
                     </div>
-                    <button class="text-white/80 hover:text-white transition-colors" @click="closePanel">
+                    <button class="text-white/80 transition-colors hover:text-white" @click="closePanel">
                         <X class="h-5 w-5" />
                     </button>
                 </div>
 
-                <div v-if="panelOfficeBreakdown.length" class="p-4 border-b bg-muted/30">
-                    <p class="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-2">
-                        Breakdown per Office
-                    </p>
-                    <div class="flex flex-col gap-1.5 max-h-40 overflow-y-auto pr-1">
-                        <div
-                            v-for="item in panelOfficeBreakdown"
-                            :key="item.office"
-                            class="flex items-center justify-between gap-2 text-xs"
-                        >
+                <div v-if="panelOfficeBreakdown.length" class="border-b bg-muted/30 p-4">
+                    <p class="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Breakdown per Office</p>
+                    <div class="flex max-h-40 flex-col gap-1.5 overflow-y-auto pr-1">
+                        <div v-for="item in panelOfficeBreakdown" :key="item.office" class="flex items-center justify-between gap-2 text-xs">
                             <span class="truncate">{{ item.office }}</span>
-                            <span class="font-bold text-teal-600 shrink-0">{{ item.total }}</span>
+                            <span class="shrink-0 font-bold text-teal-600">{{ item.total }}</span>
                         </div>
                     </div>
                 </div>
 
-                <div class="p-4 border-b flex flex-col gap-2">
+                <div class="flex flex-col gap-2 border-b p-4">
                     <div class="relative">
-                        <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <input
                             v-model="panelSearch"
                             type="text"
                             placeholder="Search name or empcode..."
-                            class="w-full border rounded-xl pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-background shadow-sm"
+                            class="w-full rounded-xl border bg-background py-2 pl-9 pr-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
                             @input="onPanelSearchInput"
                         />
                     </div>
@@ -875,7 +862,7 @@ onBeforeUnmount(() => {
                     <select
                         v-if="panelOfficeBreakdown.length"
                         v-model="panelOffice"
-                        class="w-full border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-sm"
+                        class="w-full rounded-xl border bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
                         @change="onPanelOfficeChange"
                     >
                         <option value="all">All Offices</option>
@@ -886,11 +873,11 @@ onBeforeUnmount(() => {
                 </div>
 
                 <div class="flex-1 overflow-y-auto p-4">
-                    <p v-if="panelLoading" class="text-xs text-muted-foreground text-center py-8">Loading...</p>
+                    <p v-if="panelLoading" class="py-8 text-center text-xs text-muted-foreground">Loading...</p>
 
                     <div v-else-if="panelEmployees?.data?.length" class="flex flex-col gap-2">
                         <div v-for="emp in panelEmployees.data" :key="emp.id" class="rounded-xl border px-3 py-2.5">
-                            <p class="font-bold text-sm leading-tight">{{ emp.name?.toUpperCase() }}</p>
+                            <p class="text-sm font-bold leading-tight">{{ emp.name?.toUpperCase() }}</p>
                             <p class="text-xs text-muted-foreground">{{ emp.POSITION }}</p>
                             <p class="text-xs text-muted-foreground">{{ emp['OFFICE/DIVISION'] }}</p>
                         </div>
@@ -899,18 +886,16 @@ onBeforeUnmount(() => {
                         <div v-if="panelEmployees.last_page > 1" class="flex items-center justify-between pt-2 text-xs">
                             <button
                                 type="button"
-                                class="px-2 py-1 rounded border disabled:opacity-40"
+                                class="rounded border px-2 py-1 disabled:opacity-40"
                                 :disabled="panelEmployees.current_page <= 1"
                                 @click="fetchRegionEmployees(panelEmployees.current_page - 1)"
                             >
                                 Previous
                             </button>
-                            <span class="text-muted-foreground">
-                                Page {{ panelEmployees.current_page }} of {{ panelEmployees.last_page }}
-                            </span>
+                            <span class="text-muted-foreground"> Page {{ panelEmployees.current_page }} of {{ panelEmployees.last_page }} </span>
                             <button
                                 type="button"
-                                class="px-2 py-1 rounded border disabled:opacity-40"
+                                class="rounded border px-2 py-1 disabled:opacity-40"
                                 :disabled="panelEmployees.current_page >= panelEmployees.last_page"
                                 @click="fetchRegionEmployees(panelEmployees.current_page + 1)"
                             >
@@ -919,7 +904,7 @@ onBeforeUnmount(() => {
                         </div>
                     </div>
 
-                    <p v-else class="text-xs text-muted-foreground text-center py-8">No employees found.</p>
+                    <p v-else class="py-8 text-center text-xs text-muted-foreground">No employees found.</p>
                 </div>
             </div>
         </Transition>
@@ -929,7 +914,11 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .slide-enter-active,
-.slide-leave-active { transition: transform 0.25s ease; }
+.slide-leave-active {
+    transition: transform 0.25s ease;
+}
 .slide-enter-from,
-.slide-leave-to { transform: translateX(100%); }
+.slide-leave-to {
+    transform: translateX(100%);
+}
 </style>

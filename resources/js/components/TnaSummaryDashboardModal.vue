@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import axios from 'axios';
-import { X, Gauge, Users2, TrendingUp } from 'lucide-vue-next';
+import { Gauge, TrendingUp, Users2, X } from 'lucide-vue-next';
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import VueApexCharts from 'vue3-apexcharts';
 
 const props = defineProps<{
@@ -22,7 +22,9 @@ const donutOptions = ref<any>({
     chart: {
         type: 'donut',
         animations: {
-            enabled: true, easing: 'easeinout', speed: 600,
+            enabled: true,
+            easing: 'easeinout',
+            speed: 600,
             animateGradually: { enabled: true, delay: 120 },
             dynamicAnimation: { enabled: true, speed: 350 },
         },
@@ -51,9 +53,12 @@ const donutSeries = ref<number[]>([]);
 
 const barOptions = ref<any>({
     chart: {
-        type: 'bar', toolbar: { show: false },
+        type: 'bar',
+        toolbar: { show: false },
         animations: {
-            enabled: true, easing: 'easeinout', speed: 600,
+            enabled: true,
+            easing: 'easeinout',
+            speed: 600,
             animateGradually: { enabled: true, delay: 120 },
             dynamicAnimation: { enabled: true, speed: 350 },
         },
@@ -110,7 +115,10 @@ watch(() => props.filters, fetchDashboard, { deep: true });
 
 onMounted(fetchDashboard);
 onBeforeUnmount(() => {
-    if (activeController) { activeController.abort(); activeController = null; }
+    if (activeController) {
+        activeController.abort();
+        activeController = null;
+    }
 });
 </script>
 
@@ -118,29 +126,32 @@ onBeforeUnmount(() => {
     <Transition name="backdrop" appear>
         <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="emit('close')">
             <Transition name="pop" appear>
-                <div class="bg-background rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-
+                <div class="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-background shadow-2xl">
                     <!-- Header -->
-                    <div class="sticky top-0 z-10 bg-gradient-to-r from-indigo-600 via-violet-600 to-blue-600 border-b px-6 py-4 rounded-t-2xl flex items-center gap-3 text-white">
-                        <div class="flex items-center justify-center h-9 w-9 rounded-xl bg-white/20 backdrop-blur shadow">
+                    <div
+                        class="sticky top-0 z-10 flex items-center gap-3 rounded-t-2xl border-b bg-gradient-to-r from-indigo-600 via-violet-600 to-blue-600 px-6 py-4 text-white"
+                    >
+                        <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 shadow backdrop-blur">
                             <Gauge class="h-4 w-4 text-white" />
                         </div>
                         <div>
                             <h2 class="text-base font-bold leading-none">TNA Results Dashboard</h2>
-                            <p class="text-xs text-white/75 mt-0.5">Org-wide competency &amp; training-need overview</p>
+                            <p class="mt-0.5 text-xs text-white/75">Org-wide competency &amp; training-need overview</p>
                         </div>
-                        <button class="ml-auto text-white/80 hover:text-white transition-colors" @click="emit('close')">
+                        <button class="ml-auto text-white/80 transition-colors hover:text-white" @click="emit('close')">
                             <X class="h-5 w-5" />
                         </button>
                     </div>
 
-                    <div class="p-6 flex flex-col gap-6">
-
-                        <p v-if="errorMsg" class="text-xs text-red-600 text-center">{{ errorMsg }}</p>
+                    <div class="flex flex-col gap-6 p-6">
+                        <p v-if="errorMsg" class="text-center text-xs text-red-600">{{ errorMsg }}</p>
 
                         <!-- Stat tile -->
-                        <div class="anim-in rounded-xl border bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-950/40 dark:to-indigo-900/20 p-4 flex items-center gap-3" style="animation-delay:0ms">
-                            <div class="h-10 w-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-sm">
+                        <div
+                            class="anim-in flex items-center gap-3 rounded-xl border bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 dark:from-indigo-950/40 dark:to-indigo-900/20"
+                            style="animation-delay: 0ms"
+                        >
+                            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 shadow-sm">
                                 <Users2 class="h-5 w-5 text-white" />
                             </div>
                             <div>
@@ -150,22 +161,22 @@ onBeforeUnmount(() => {
                         </div>
 
                         <!-- Charts -->
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div class="anim-in rounded-xl border p-4" style="animation-delay:80ms">
-                                <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5">
+                        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                            <div class="anim-in rounded-xl border p-4" style="animation-delay: 80ms">
+                                <p class="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                                     <span class="h-2 w-2 rounded-full bg-red-500"></span> Competency Band Distribution
                                 </p>
                                 <VueApexCharts type="donut" height="300" :options="donutOptions" :series="donutSeries" />
                             </div>
-                            <div class="anim-in rounded-xl border p-4" style="animation-delay:160ms">
-                                <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5">
+                            <div class="anim-in rounded-xl border p-4" style="animation-delay: 160ms">
+                                <p class="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                                     <TrendingUp class="h-3.5 w-3.5 text-indigo-500" /> Top 5 Training Priorities (Org-wide)
                                 </p>
                                 <VueApexCharts type="bar" height="300" :options="barOptions" :series="[{ name: 'Employees', data: barSeries }]" />
                             </div>
                         </div>
 
-                        <p v-if="loading" class="text-xs text-muted-foreground text-center">Loading...</p>
+                        <p v-if="loading" class="text-center text-xs text-muted-foreground">Loading...</p>
                     </div>
                 </div>
             </Transition>
@@ -175,19 +186,43 @@ onBeforeUnmount(() => {
 
 <style scoped>
 @keyframes fadeSlideIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to   { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 .anim-in {
     opacity: 0;
     animation: fadeSlideIn 0.45s ease-out forwards;
 }
 .backdrop-enter-active,
-.backdrop-leave-active { transition: opacity 0.2s ease; }
+.backdrop-leave-active {
+    transition: opacity 0.2s ease;
+}
 .backdrop-enter-from,
-.backdrop-leave-to     { opacity: 0; }
-.pop-enter-active { transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
-.pop-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
-.pop-enter-from   { opacity: 0; transform: scale(0.94) translateY(8px); }
-.pop-leave-to     { opacity: 0; transform: scale(0.97); }
+.backdrop-leave-to {
+    opacity: 0;
+}
+.pop-enter-active {
+    transition:
+        opacity 0.25s ease,
+        transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.pop-leave-active {
+    transition:
+        opacity 0.15s ease,
+        transform 0.15s ease;
+}
+.pop-enter-from {
+    opacity: 0;
+    transform: scale(0.94) translateY(8px);
+}
+.pop-leave-to {
+    opacity: 0;
+    transform: scale(0.97);
+}
 </style>

@@ -1,73 +1,69 @@
 <script setup lang="ts">
-import { useForm, router } from '@inertiajs/vue3';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuTrigger,
-    DropdownMenuSeparator,
     DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useConfirm } from '@/composables/useConfirm';
+import AttendanceModal from '@/pages/programs/AttendanceModal.vue';
+import BatchParticipants from '@/pages/programs/BatchParticipants.vue';
+import DeclarationModal from '@/pages/programs/DeclarationModal.vue';
+import ParticipantSearch from '@/pages/programs/ParticipantSearch.vue';
+import { router, useForm } from '@inertiajs/vue3';
 import {
-    Plus,
-    LoaderCircle,
-    Save,
-    Layers,
     CalendarDays,
+    ChevronDown,
+    ClipboardCheck,
+    ClipboardList,
     Clock,
-    MapPin,
-    Users,
-    Pencil,
-    Trash2,
     Eye,
     FileBadge2,
-    ChevronDown,
+    Layers,
+    LoaderCircle,
+    MapPin,
+    Pencil,
+    Plus,
+    Save,
     ScrollText,
-    ClipboardList,
+    Trash2,
     UserCog,
-    ClipboardCheck,
+    Users,
 } from 'lucide-vue-next';
-import { ref, computed, watch } from 'vue';
-import BatchParticipants from '@/pages/programs/BatchParticipants.vue';
-import ParticipantSearch from '@/pages/programs/ParticipantSearch.vue';
-import DeclarationModal from '@/pages/programs/DeclarationModal.vue';
-import AttendanceModal from '@/pages/programs/AttendanceModal.vue';
-import { useConfirm } from '@/composables/useConfirm';
+import { computed, ref, watch } from 'vue';
 
 const { confirmDialog } = useConfirm();
 
 // ─── Declaration ─────────────────────────────────────────────────────────────
 
-const showDeclaration  = ref(false);
+const showDeclaration = ref(false);
 const declaringBatchId = ref<number | null>(null);
 
-const declaringBatch = computed(() =>
-    props.batches.find((b) => b.id === declaringBatchId.value) ?? null
-);
+const declaringBatch = computed(() => props.batches.find((b) => b.id === declaringBatchId.value) ?? null);
 
 const openDeclaration = (batch: any) => {
     declaringBatchId.value = batch.id;
-    showDeclaration.value  = true;
+    showDeclaration.value = true;
 };
 
 // ─── Attendance ───────────────────────────────────────────────────────────────
 
-const showAttendance    = ref(false);
+const showAttendance = ref(false);
 const attendanceBatchId = ref<number | null>(null);
 
-const attendanceBatch = computed(() =>
-    props.batches.find((b) => b.id === attendanceBatchId.value) ?? null
-);
+const attendanceBatch = computed(() => props.batches.find((b) => b.id === attendanceBatchId.value) ?? null);
 
 const openAttendance = (batch: any) => {
     attendanceBatchId.value = batch.id;
-    showAttendance.value    = true;
+    showAttendance.value = true;
 };
 
 // ─── Props ───────────────────────────────────────────────────────────────────
@@ -79,20 +75,18 @@ const props = defineProps<{
 
 // ─── Batch modal ─────────────────────────────────────────────────────────────
 
-const showModal    = ref(false);
+const showModal = ref(false);
 const editingBatch = ref<any | null>(null);
 
 // ─── View participants ────────────────────────────────────────────────────────
 
 const showParticipants = ref(false);
-const viewingBatchId   = ref<number | null>(null);
+const viewingBatchId = ref<number | null>(null);
 
-const viewingBatch = computed(() =>
-    props.batches.find((b) => b.id === viewingBatchId.value) ?? null
-);
+const viewingBatch = computed(() => props.batches.find((b) => b.id === viewingBatchId.value) ?? null);
 
 const openParticipants = (batch: any) => {
-    viewingBatchId.value   = batch.id;
+    viewingBatchId.value = batch.id;
     showParticipants.value = true;
 };
 
@@ -106,24 +100,24 @@ const openEvaluation = (batch: any) => {
 
 const form = useForm({
     program_code: props.program?.program_code ?? '',
-    batch:        '',
-    status:       'Upcoming',
-    modality:     props.program?.modality ?? '',
-    venue:        '',
-    date_start:   '',
-    date_end:     '',
-    time_start:   '08:00',
-    time_end:     '17:00',
-    days:         '',
-    hours:        '',
+    batch: '',
+    status: 'Upcoming',
+    modality: props.program?.modality ?? '',
+    venue: '',
+    date_start: '',
+    date_end: '',
+    time_start: '08:00',
+    time_end: '17:00',
+    days: '',
+    hours: '',
 });
 
 const computeDays = () => {
     if (form.date_start && form.date_end) {
         const start = new Date(form.date_start);
-        const end   = new Date(form.date_end);
-        const diff  = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-        form.days   = diff > 0 ? String(diff) : '';
+        const end = new Date(form.date_end);
+        const diff = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        form.days = diff > 0 ? String(diff) : '';
     }
 };
 
@@ -147,26 +141,26 @@ const openCreate = () => {
     form.reset();
     form.clearErrors();
     form.program_code = props.program?.program_code ?? '';
-    form.modality     = props.program?.modality ?? '';
-    form.batch        = `Batch ${props.batches.length + 1}`;
-    showModal.value   = true;
+    form.modality = props.program?.modality ?? '';
+    form.batch = `Batch ${props.batches.length + 1}`;
+    showModal.value = true;
 };
 
 const openEdit = (batch: any) => {
     editingBatch.value = batch;
     form.clearErrors();
-    form.program_code  = batch.program_code;
-    form.batch         = batch.batch;
-    form.status        = batch.status;
-    form.modality      = batch.modality;
-    form.venue         = batch.venue ?? '';
-    form.date_start    = batch.date_start;
-    form.date_end      = batch.date_end;
-    form.time_start    = batch.time_start;
-    form.time_end      = batch.time_end;
-    form.days          = batch.days;
-    form.hours         = batch.hours;
-    showModal.value    = true;
+    form.program_code = batch.program_code;
+    form.batch = batch.batch;
+    form.status = batch.status;
+    form.modality = batch.modality;
+    form.venue = batch.venue ?? '';
+    form.date_start = batch.date_start;
+    form.date_end = batch.date_end;
+    form.time_start = batch.time_start;
+    form.time_end = batch.time_end;
+    form.days = batch.days;
+    form.hours = batch.hours;
+    showModal.value = true;
 };
 
 const submit = () => {
@@ -174,7 +168,7 @@ const submit = () => {
         form.put(route('batches.update', editingBatch.value.id), {
             preserveScroll: true,
             onSuccess: () => {
-                showModal.value    = false;
+                showModal.value = false;
                 editingBatch.value = null;
                 form.reset();
             },
@@ -199,13 +193,19 @@ const destroy = async (batch: any) => {
 
 const statusColor = (status: string) => {
     switch (status) {
-        case 'Upcoming':    return 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300';
+        case 'Upcoming':
+            return 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300';
         case 'Active':
-        case 'Ongoing':     return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
-        case 'Completed':   return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300';
-        case 'Cancelled':   return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300';
-        case 'Rescheduled': return 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300';
-        default:            return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
+        case 'Ongoing':
+            return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
+        case 'Completed':
+            return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300';
+        case 'Cancelled':
+            return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300';
+        case 'Rescheduled':
+            return 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300';
+        default:
+            return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
     }
 };
 
@@ -262,39 +262,30 @@ const formatDate = (d: string) => {
 const formatTime = (t: string) => {
     if (!t) return '';
     const [h, m] = t.split(':').map(Number);
-    const ampm   = h >= 12 ? 'PM' : 'AM';
-    const hr     = h % 12 === 0 ? 12 : h % 12;
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hr = h % 12 === 0 ? 12 : h % 12;
     return `${hr}:${String(m).padStart(2, '0')} ${ampm}`;
 };
 </script>
 
 <template>
-    <div class="flex flex-col gap-3 mt-5">
-
+    <div class="mt-5 flex flex-col gap-3">
         <!-- Header -->
         <div class="flex flex-wrap items-center justify-between">
             <div>
-                <h2 class="text-sm font-extrabold flex items-center gap-1.5">
-                    <Layers class="h-4 w-4 text-blue-600" /> Batches
-                </h2>
-                <p class="text-xs font-semibold text-slate-400">
-                    {{ batches.length }} batch(es) under {{ program?.program_code }}
-                </p>
+                <h2 class="flex items-center gap-1.5 text-sm font-extrabold"><Layers class="h-4 w-4 text-blue-600" /> Batches</h2>
+                <p class="text-xs font-semibold text-slate-400">{{ batches.length }} batch(es) under {{ program?.program_code }}</p>
             </div>
-            <Button size="sm" @click="openCreate" class="bg-blue-600 font-extrabold rounded-lg hover:bg-blue-500 dark:text-white">
+            <Button size="sm" @click="openCreate" class="rounded-lg bg-blue-600 font-extrabold hover:bg-blue-500 dark:text-white">
                 <Plus class="h-4 w-4" /> Add Batch
             </Button>
         </div>
 
         <!-- Participant finder -->
-        <ParticipantSearch
-            v-if="batches.length"
-            :batches="batches"
-            @locate="openParticipants"
-        />
+        <ParticipantSearch v-if="batches.length" :batches="batches" @locate="openParticipants" />
 
         <!-- Empty state -->
-        <div v-if="!batches.length" class="flex flex-col items-center justify-center rounded-2xl border border-dashed py-14 px-6 text-center gap-3">
+        <div v-if="!batches.length" class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed px-6 py-14 text-center">
             <svg viewBox="0 0 200 160" class="h-36 w-auto" xmlns="http://www.w3.org/2000/svg">
                 <ellipse cx="100" cy="142" rx="70" ry="8" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
                 <rect x="45" y="30" width="110" height="95" rx="10" fill="currentColor" class="text-blue-100 dark:text-blue-900/40" />
@@ -310,7 +301,9 @@ const formatTime = (t: string) => {
                 <path d="M94 103 v3 l2 2" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" class="text-amber-500" />
             </svg>
             <p class="text-sm font-bold text-slate-500">No batches yet</p>
-            <p class="text-xs text-slate-400 max-w-xs">Add a batch to start scheduling sessions, enrolling participants, and tracking requirements for this program.</p>
+            <p class="max-w-xs text-xs text-slate-400">
+                Add a batch to start scheduling sessions, enrolling participants, and tracking requirements for this program.
+            </p>
         </div>
 
         <!-- Batch cards -->
@@ -318,12 +311,12 @@ const formatTime = (t: string) => {
             <div
                 v-for="batch in batches"
                 :key="batch.id"
-                class="rounded-xl border border-l-4 bg-gradient-to-br to-background bg-card p-4 shadow-sm transition hover:shadow-md hover:-translate-y-0.5"
+                class="rounded-xl border border-l-4 bg-card bg-gradient-to-br to-background p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                 :class="[cardAccent(batch.status).border, cardAccent(batch.status).wash]"
             >
                 <div class="flex items-start justify-between">
                     <div class="flex items-center gap-2.5">
-                        <div class="h-8 w-8 rounded-lg flex items-center justify-center shrink-0" :class="cardAccent(batch.status).icon">
+                        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" :class="cardAccent(batch.status).icon">
                             <Layers class="h-4 w-4" />
                         </div>
                         <div>
@@ -331,7 +324,7 @@ const formatTime = (t: string) => {
                             <p class="text-[11px] font-semibold text-slate-400">{{ batch.modality }}</p>
                         </div>
                     </div>
-                    <Badge :class="statusColor(batch.status)" class="text-[10px] font-bold border-0">
+                    <Badge :class="statusColor(batch.status)" class="border-0 text-[10px] font-bold">
                         {{ batch.status }}
                     </Badge>
                 </div>
@@ -362,16 +355,15 @@ const formatTime = (t: string) => {
                 </div>
 
                 <!-- Action buttons -->
-                <div class="mt-3 flex justify-end items-center gap-1 border-t pt-2 px-2">
-
+                <div class="mt-3 flex items-center justify-end gap-1 border-t px-2 pt-2">
                     <!-- View Participants -->
                     <Button
                         variant="ghost"
                         size="sm"
-                        class="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                        class="h-7 px-2 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-950/30"
                         @click="openParticipants(batch)"
                     >
-                        <Eye class="h-3 w-3 mr-1" /> View Participants
+                        <Eye class="mr-1 h-3 w-3" /> View Participants
                     </Button>
 
                     <!-- Generate dropdown -->
@@ -380,123 +372,82 @@ const formatTime = (t: string) => {
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                class="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                                class="h-7 px-2 text-xs text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/30"
                             >
-                                <FileBadge2 class="h-3 w-3 mr-1" />
+                                <FileBadge2 class="mr-1 h-3 w-3" />
                                 Generate
-                                <ChevronDown class="h-3 w-3 ml-1" />
+                                <ChevronDown class="ml-1 h-3 w-3" />
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" class="w-44">
-                            <DropdownMenuLabel class="text-[10px] uppercase tracking-wide text-muted-foreground">
-                                Generate PDF
-                            </DropdownMenuLabel>
+                            <DropdownMenuLabel class="text-[10px] uppercase tracking-wide text-muted-foreground"> Generate PDF </DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                                class="text-xs cursor-pointer gap-2"
-                                @click="openDeclaration(batch)"
-                            >
+                            <DropdownMenuItem class="cursor-pointer gap-2 text-xs" @click="openDeclaration(batch)">
                                 <ScrollText class="h-3.5 w-3.5 text-emerald-600" />
                                 Declaration
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                                class="text-xs cursor-pointer gap-2"
-                                @click="openAttendance(batch)"
-                            >
+                            <DropdownMenuItem class="cursor-pointer gap-2 text-xs" @click="openAttendance(batch)">
                                 <ClipboardList class="h-3.5 w-3.5 text-violet-600" />
                                 Attendance
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                                class="text-xs cursor-pointer gap-2"
-                                @click="openEvaluation(batch)"
-                            >
+                            <DropdownMenuItem class="cursor-pointer gap-2 text-xs" @click="openEvaluation(batch)">
                                 <ClipboardCheck class="h-3.5 w-3.5 text-rose-600" />
                                 Evaluation
-                                <span
-                                    v-if="!batch.evaluation_form"
-                                    class="ml-auto h-1.5 w-1.5 rounded-full bg-amber-500"
-                                    title="Not set up yet"
-                                />
+                                <span v-if="!batch.evaluation_form" class="ml-auto h-1.5 w-1.5 rounded-full bg-amber-500" title="Not set up yet" />
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
 
                     <!-- Edit -->
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        class="h-7 px-2 text-xs hover:bg-muted"
-                        @click="openEdit(batch)"
-                    >
-                        <Pencil class="h-3 w-3 mr-1" /> Edit
+                    <Button variant="ghost" size="sm" class="h-7 px-2 text-xs hover:bg-muted" @click="openEdit(batch)">
+                        <Pencil class="mr-1 h-3 w-3" /> Edit
                     </Button>
 
                     <!-- Delete -->
                     <Button
                         variant="ghost"
                         size="sm"
-                        class="h-7 px-2 text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                        class="h-7 px-2 text-xs text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
                         @click="destroy(batch)"
                     >
-                        <Trash2 class="h-3 w-3 mr-1" /> Delete
+                        <Trash2 class="mr-1 h-3 w-3" /> Delete
                     </Button>
-
                 </div>
             </div>
         </div>
 
         <!-- Modals -->
-        <BatchParticipants
-            :open="showParticipants"
-            :batch="viewingBatch"
-            :program="program"
-            @update:open="showParticipants = $event"
-        />
+        <BatchParticipants :open="showParticipants" :batch="viewingBatch" :program="program" @update:open="showParticipants = $event" />
 
-        <DeclarationModal
-            :open="showDeclaration"
-            :batch="declaringBatch"
-            @update:open="showDeclaration = $event"
-        />
+        <DeclarationModal :open="showDeclaration" :batch="declaringBatch" @update:open="showDeclaration = $event" />
 
-        <AttendanceModal
-            :open="showAttendance"
-            :batch="attendanceBatch"
-            :program="program"
-            @update:open="showAttendance = $event"
-        />
+        <AttendanceModal :open="showAttendance" :batch="attendanceBatch" :program="program" @update:open="showAttendance = $event" />
 
         <!-- Add/Edit Batch Modal -->
         <Dialog :open="showModal" @update:open="showModal = $event">
-            <DialogContent class="max-w-xl flex flex-col max-h-[90vh] overflow-hidden !rounded-2xl">
-
+            <DialogContent class="flex max-h-[90vh] max-w-xl flex-col overflow-hidden !rounded-2xl">
                 <DialogHeader class="shrink-0">
                     <DialogTitle>
-                        <span class="flex gap-2 items-center">
-                            <Layers /> {{ editingBatch ? 'Edit Batch' : 'Add New Batch' }}
-                        </span>
+                        <span class="flex items-center gap-2"> <Layers /> {{ editingBatch ? 'Edit Batch' : 'Add New Batch' }} </span>
                     </DialogTitle>
                     <DialogDescription class="text-xs text-muted-foreground">
-                        {{ editingBatch
-                            ? 'Update the schedule details of this batch.'
-                            : `Schedule a new batch for ${program?.program_code}.` }}
+                        {{ editingBatch ? 'Update the schedule details of this batch.' : `Schedule a new batch for ${program?.program_code}.` }}
                     </DialogDescription>
                 </DialogHeader>
 
-                <div class="overflow-y-auto flex-1 px-1">
+                <div class="flex-1 overflow-y-auto px-1">
                     <form id="batch-form" @submit.prevent="submit" class="grid grid-cols-2 gap-4 py-2">
-
                         <div class="grid gap-1">
                             <Label class="text-xs">Batch Name <span class="text-red-500">*</span></Label>
-                            <Input class="text-xs h-8" v-model="form.batch" placeholder="e.g. Batch 1" />
+                            <Input class="h-8 text-xs" v-model="form.batch" placeholder="e.g. Batch 1" />
                             <p class="text-xs text-red-500">{{ form.errors.batch }}</p>
                         </div>
 
                         <div class="grid gap-1">
                             <Label class="text-xs">Status <span class="text-red-500">*</span></Label>
                             <Select v-model="form.status">
-                                <SelectTrigger class="text-xs h-8">
+                                <SelectTrigger class="h-8 text-xs">
                                     <SelectValue placeholder="Select status" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -512,7 +463,7 @@ const formatTime = (t: string) => {
                         <div class="grid gap-1">
                             <Label class="text-xs">Modality <span class="text-red-500">*</span></Label>
                             <Select v-model="form.modality">
-                                <SelectTrigger class="text-xs h-8">
+                                <SelectTrigger class="h-8 text-xs">
                                     <SelectValue placeholder="Select modality" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -527,59 +478,56 @@ const formatTime = (t: string) => {
 
                         <div class="grid gap-1">
                             <Label class="text-xs">Venue</Label>
-                            <Input class="text-xs h-8" v-model="form.venue" placeholder="e.g. TDI Training Hall / Zoom" />
+                            <Input class="h-8 text-xs" v-model="form.venue" placeholder="e.g. TDI Training Hall / Zoom" />
                             <p class="text-xs text-red-500">{{ form.errors.venue }}</p>
                         </div>
 
                         <div class="grid gap-1">
                             <Label class="text-xs">Date Start <span class="text-red-500">*</span></Label>
-                            <Input type="date" class="text-xs h-8" v-model="form.date_start" />
+                            <Input type="date" class="h-8 text-xs" v-model="form.date_start" />
                             <p class="text-xs text-red-500">{{ form.errors.date_start }}</p>
                         </div>
 
                         <div class="grid gap-1">
                             <Label class="text-xs">Date End <span class="text-red-500">*</span></Label>
-                            <Input type="date" class="text-xs h-8" v-model="form.date_end" />
+                            <Input type="date" class="h-8 text-xs" v-model="form.date_end" />
                             <p class="text-xs text-red-500">{{ form.errors.date_end }}</p>
                         </div>
 
                         <div class="grid gap-1">
                             <Label class="text-xs">Time Start <span class="text-red-500">*</span></Label>
-                            <Input type="time" class="text-xs h-8" v-model="form.time_start" />
+                            <Input type="time" class="h-8 text-xs" v-model="form.time_start" />
                             <p class="text-xs text-red-500">{{ form.errors.time_start }}</p>
                         </div>
 
                         <div class="grid gap-1">
                             <Label class="text-xs">Time End <span class="text-red-500">*</span></Label>
-                            <Input type="time" class="text-xs h-8" v-model="form.time_end" />
+                            <Input type="time" class="h-8 text-xs" v-model="form.time_end" />
                             <p class="text-xs text-red-500">{{ form.errors.time_end }}</p>
                         </div>
 
                         <div class="grid gap-1">
                             <Label class="text-xs">No. of Days <span class="text-red-500">*</span></Label>
-                            <Input class="text-xs h-8" v-model="form.days" placeholder="Auto-computed" />
+                            <Input class="h-8 text-xs" v-model="form.days" placeholder="Auto-computed" />
                             <p class="text-xs text-red-500">{{ form.errors.days }}</p>
                         </div>
 
                         <div class="grid gap-1">
                             <Label class="text-xs">Total Hours <span class="text-red-500">*</span></Label>
-                            <Input class="text-xs h-8" v-model="form.hours" placeholder="Auto-computed" />
+                            <Input class="h-8 text-xs" v-model="form.hours" placeholder="Auto-computed" />
                             <p class="text-xs text-red-500">{{ form.errors.hours }}</p>
                         </div>
-
                     </form>
                 </div>
 
-                <div class="shrink-0 flex justify-end gap-2 pt-3 border-t mt-2">
+                <div class="mt-2 flex shrink-0 justify-end gap-2 border-t pt-3">
                     <Button type="button" variant="outline" size="sm" @click="showModal = false">Cancel</Button>
                     <Button type="submit" class="bg-blue-600 hover:bg-blue-700" form="batch-form" size="sm" :disabled="form.processing">
-                        <LoaderCircle v-if="form.processing" class="h-3 w-3 animate-spin mr-1" />
+                        <LoaderCircle v-if="form.processing" class="mr-1 h-3 w-3 animate-spin" />
                         <Save /> {{ editingBatch ? 'Update Batch' : 'Save Batch' }}
                     </Button>
                 </div>
-
             </DialogContent>
         </Dialog>
-
     </div>
 </template>

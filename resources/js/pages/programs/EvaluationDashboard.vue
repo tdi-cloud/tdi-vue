@@ -1,10 +1,26 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
-import axios from 'axios';
-import { router } from '@inertiajs/vue3';
-import VueApexCharts from 'vue3-apexcharts';
-import { BarChart3, Users2, Star, MessageSquareText, Loader2, ChevronLeft, ChevronRight, Inbox, Sparkles, Settings2, ClipboardCheck, X, UserRound, Clock, Trash2 } from 'lucide-vue-next';
 import { useConfirm } from '@/composables/useConfirm';
+import { router } from '@inertiajs/vue3';
+import axios from 'axios';
+import {
+    BarChart3,
+    ChevronLeft,
+    ChevronRight,
+    ClipboardCheck,
+    Clock,
+    Inbox,
+    Loader2,
+    MessageSquareText,
+    Settings2,
+    Sparkles,
+    Star,
+    Trash2,
+    UserRound,
+    Users2,
+    X,
+} from 'lucide-vue-next';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import VueApexCharts from 'vue3-apexcharts';
 
 const { confirmDialog } = useConfirm();
 
@@ -29,11 +45,17 @@ const generatingBatchId = ref<number | null>(null);
 
 function generateDefault(batch: Batch) {
     generatingBatchId.value = batch.id;
-    router.post(route('batches.evaluation-form.store', batch.id), { mode: 'default' }, {
-        preserveScroll: true,
-        preserveState: true,
-        onFinish: () => { generatingBatchId.value = null; },
-    });
+    router.post(
+        route('batches.evaluation-form.store', batch.id),
+        { mode: 'default' },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onFinish: () => {
+                generatingBatchId.value = null;
+            },
+        },
+    );
 }
 
 function manageBatch(batch: Batch) {
@@ -102,7 +124,9 @@ const batchDonutOptions = computed(() => ({
     colors: ['#3b82f6', '#8b5cf6', '#06b6d4', '#ef4444', '#10b981', '#f59e0b', '#9ca3af'],
     stroke: { width: 3, colors: ['#ffffff'] },
     dataLabels: { enabled: true, formatter: (val: number) => val.toFixed(0) + '%' },
-    plotOptions: { pie: { donut: { size: '65%', labels: { show: true, total: { show: true, label: 'Total', fontSize: '12px', fontWeight: 700 } } } } },
+    plotOptions: {
+        pie: { donut: { size: '65%', labels: { show: true, total: { show: true, label: 'Total', fontSize: '12px', fontWeight: 700 } } } },
+    },
 }));
 const batchDonutSeries = computed(() => responsesPerBatch.value.map((r) => r.total));
 
@@ -155,7 +179,10 @@ const commentsPage = ref<any>(null);
 let commentsController: AbortController | null = null;
 
 async function fetchComments(page = 1) {
-    if (!selectedFormId.value) { commentsPage.value = null; return; }
+    if (!selectedFormId.value) {
+        commentsPage.value = null;
+        return;
+    }
     if (commentsController) commentsController.abort();
     const controller = new AbortController();
     commentsController = controller;
@@ -274,7 +301,9 @@ async function deleteResponse(response: any) {
             fetchDashboard();
             fetchComments(1);
         },
-        onFinish: () => { deletingResponseId.value = null; },
+        onFinish: () => {
+            deletingResponseId.value = null;
+        },
     });
 }
 
@@ -295,21 +324,18 @@ onBeforeUnmount(() => {
 
 <template>
     <div class="flex flex-col gap-5">
-
         <!-- Batches: generate or manage evaluation forms without leaving this modal -->
-        <div class="rounded-2xl border overflow-hidden">
-            <div class="px-5 py-3 border-b bg-muted/40 flex items-center gap-1.5">
+        <div class="overflow-hidden rounded-2xl border">
+            <div class="flex items-center gap-1.5 border-b bg-muted/40 px-5 py-3">
                 <ClipboardCheck class="h-4 w-4 text-rose-600" />
                 <p class="text-sm font-bold">Batches</p>
             </div>
-            <div v-if="!program.batches?.length" class="px-5 py-6 text-xs text-muted-foreground text-center">
-                This program has no batches yet.
-            </div>
+            <div v-if="!program.batches?.length" class="px-5 py-6 text-center text-xs text-muted-foreground">This program has no batches yet.</div>
             <div v-else class="flex flex-col divide-y">
                 <div v-for="batch in program.batches" :key="batch.id" class="flex items-center justify-between gap-3 px-5 py-3">
                     <div class="min-w-0">
-                        <p class="text-sm font-bold truncate">{{ batch.batch }}</p>
-                        <p class="text-xs mt-0.5" :class="batch.evaluation_form ? 'text-emerald-600' : 'text-amber-600'">
+                        <p class="truncate text-sm font-bold">{{ batch.batch }}</p>
+                        <p class="mt-0.5 text-xs" :class="batch.evaluation_form ? 'text-emerald-600' : 'text-amber-600'">
                             {{ batch.evaluation_form ? 'Evaluation set up' : 'Not set up yet' }}
                         </p>
                     </div>
@@ -318,7 +344,7 @@ onBeforeUnmount(() => {
                             v-if="!batch.evaluation_form"
                             type="button"
                             :disabled="generatingBatchId === batch.id"
-                            class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white disabled:opacity-60 transition-colors"
+                            class="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-rose-700 disabled:opacity-60"
                             @click="generateDefault(batch)"
                         >
                             <Loader2 v-if="generatingBatchId === batch.id" class="h-3.5 w-3.5 animate-spin" />
@@ -328,7 +354,7 @@ onBeforeUnmount(() => {
                         <button
                             v-else
                             type="button"
-                            class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border hover:bg-muted transition-colors"
+                            class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors hover:bg-muted"
                             @click="manageBatch(batch)"
                         >
                             <Settings2 class="h-3.5 w-3.5" /> Manage
@@ -341,24 +367,32 @@ onBeforeUnmount(() => {
         <!-- Filter -->
         <div class="flex items-center gap-2">
             <label class="text-xs font-semibold text-muted-foreground">Batch</label>
-            <select v-model="filterBatchId" class="border rounded-lg px-2 py-1.5 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-rose-400">
+            <select
+                v-model="filterBatchId"
+                class="rounded-lg border bg-background px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-rose-400"
+            >
                 <option value="all">All Batches</option>
                 <option v-for="b in batchesWithForms" :key="b.id" :value="String(b.id)">{{ b.batch }}</option>
             </select>
         </div>
 
-        <div v-if="!batchesWithForms.length" class="rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground flex flex-col items-center gap-2">
+        <div
+            v-if="!batchesWithForms.length"
+            class="flex flex-col items-center gap-2 rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground"
+        >
             <Inbox class="h-6 w-6 text-muted-foreground" />
             No evaluation forms have been set up for any batch in this program yet. Use "Generate" above to create one.
         </div>
 
         <template v-else>
-            <p v-if="errorMsg" class="text-xs text-red-600 text-center">{{ errorMsg }}</p>
+            <p v-if="errorMsg" class="text-center text-xs text-red-600">{{ errorMsg }}</p>
 
             <!-- Stat tiles -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="rounded-2xl border bg-gradient-to-br from-rose-50 to-white dark:from-rose-950/30 dark:to-background p-4 flex items-center gap-3">
-                    <div class="h-10 w-10 rounded-xl bg-rose-600 flex items-center justify-center shadow-sm shrink-0">
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div
+                    class="flex items-center gap-3 rounded-2xl border bg-gradient-to-br from-rose-50 to-white p-4 dark:from-rose-950/30 dark:to-background"
+                >
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-600 shadow-sm">
                         <Users2 class="h-5 w-5 text-white" />
                     </div>
                     <div>
@@ -366,8 +400,10 @@ onBeforeUnmount(() => {
                         <p class="text-2xl font-bold">{{ totalResponses }}</p>
                     </div>
                 </div>
-                <div class="rounded-2xl border bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/30 dark:to-background p-4 flex items-center gap-3">
-                    <div class="h-10 w-10 rounded-xl bg-amber-500 flex items-center justify-center shadow-sm shrink-0">
+                <div
+                    class="flex items-center gap-3 rounded-2xl border bg-gradient-to-br from-amber-50 to-white p-4 dark:from-amber-950/30 dark:to-background"
+                >
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 shadow-sm">
                         <Star class="h-5 w-5 text-white" />
                     </div>
                     <div>
@@ -375,8 +411,10 @@ onBeforeUnmount(() => {
                         <p class="text-2xl font-bold">{{ avgOverallRating }} <span class="text-sm font-normal text-muted-foreground">/ 10</span></p>
                     </div>
                 </div>
-                <div class="rounded-2xl border bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/30 dark:to-background p-4 flex items-center gap-3">
-                    <div class="h-10 w-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-sm shrink-0">
+                <div
+                    class="flex items-center gap-3 rounded-2xl border bg-gradient-to-br from-indigo-50 to-white p-4 dark:from-indigo-950/30 dark:to-background"
+                >
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 shadow-sm">
                         <BarChart3 class="h-5 w-5 text-white" />
                     </div>
                     <div>
@@ -387,37 +425,58 @@ onBeforeUnmount(() => {
             </div>
 
             <!-- Charts -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <div class="rounded-xl border p-4">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Average Rating per Section</p>
+                    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Average Rating per Section</p>
                     <VueApexCharts v-if="avgBySection.length" type="bar" height="240" :options="sectionBarOptions" :series="sectionBarSeries" />
-                    <p v-else class="text-xs text-muted-foreground text-center py-10">No rating data yet.</p>
+                    <p v-else class="py-10 text-center text-xs text-muted-foreground">No rating data yet.</p>
                 </div>
                 <div class="rounded-xl border p-4">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Average Rating per Facilitator</p>
-                    <VueApexCharts v-if="avgByFacilitator.length" type="bar" height="240" :options="facilitatorBarOptions" :series="facilitatorBarSeries" />
-                    <p v-else class="text-xs text-muted-foreground text-center py-10">No facilitator ratings yet.</p>
+                    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Average Rating per Facilitator</p>
+                    <VueApexCharts
+                        v-if="avgByFacilitator.length"
+                        type="bar"
+                        height="240"
+                        :options="facilitatorBarOptions"
+                        :series="facilitatorBarSeries"
+                    />
+                    <p v-else class="py-10 text-center text-xs text-muted-foreground">No facilitator ratings yet.</p>
                 </div>
                 <div class="rounded-xl border p-4">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Overall Rating Distribution (1–10)</p>
-                    <VueApexCharts v-if="overallDistribution.length" type="bar" height="240" :options="distributionBarOptions" :series="distributionBarSeries" />
-                    <p v-else class="text-xs text-muted-foreground text-center py-10">No overall ratings yet.</p>
+                    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Overall Rating Distribution (1–10)</p>
+                    <VueApexCharts
+                        v-if="overallDistribution.length"
+                        type="bar"
+                        height="240"
+                        :options="distributionBarOptions"
+                        :series="distributionBarSeries"
+                    />
+                    <p v-else class="py-10 text-center text-xs text-muted-foreground">No overall ratings yet.</p>
                 </div>
                 <div class="rounded-xl border p-4">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center justify-between gap-1.5">
+                    <p class="mb-2 flex items-center justify-between gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                         <span>Responses per Batch</span>
-                        <span v-if="responsesPerBatch.length" class="normal-case font-normal text-[10px] text-muted-foreground/70">Click a slice to see who submitted</span>
+                        <span v-if="responsesPerBatch.length" class="text-[10px] font-normal normal-case text-muted-foreground/70"
+                            >Click a slice to see who submitted</span
+                        >
                     </p>
-                    <VueApexCharts v-if="responsesPerBatch.length" type="donut" height="240" :options="batchDonutOptions" :series="batchDonutSeries" class="cursor-pointer" />
-                    <p v-else class="text-xs text-muted-foreground text-center py-10">No responses yet.</p>
+                    <VueApexCharts
+                        v-if="responsesPerBatch.length"
+                        type="donut"
+                        height="240"
+                        :options="batchDonutOptions"
+                        :series="batchDonutSeries"
+                        class="cursor-pointer"
+                    />
+                    <p v-else class="py-10 text-center text-xs text-muted-foreground">No responses yet.</p>
                 </div>
             </div>
 
-            <p v-if="loading" class="text-xs text-muted-foreground text-center">Loading...</p>
+            <p v-if="loading" class="text-center text-xs text-muted-foreground">Loading...</p>
 
             <!-- Comments (grouped per question — respondents stay anonymous) -->
-            <div class="rounded-2xl border overflow-hidden">
-                <div class="px-5 py-3 border-b bg-muted/40 flex items-center gap-1.5">
+            <div class="overflow-hidden rounded-2xl border">
+                <div class="flex items-center gap-1.5 border-b bg-muted/40 px-5 py-3">
                     <MessageSquareText class="h-4 w-4 text-rose-600" />
                     <p class="text-sm font-bold">Written Comments</p>
                 </div>
@@ -426,29 +485,40 @@ onBeforeUnmount(() => {
                     Select a specific batch above to read written comments.
                 </div>
 
-                <div v-else class="flex flex-col divide-y max-h-[420px] overflow-y-auto">
-                    <div v-if="commentsLoading" class="flex items-center justify-center gap-2 text-xs text-muted-foreground py-8">
+                <div v-else class="flex max-h-[420px] flex-col divide-y overflow-y-auto">
+                    <div v-if="commentsLoading" class="flex items-center justify-center gap-2 py-8 text-xs text-muted-foreground">
                         <Loader2 class="h-4 w-4 animate-spin" /> Loading...
                     </div>
 
                     <template v-else-if="groupedComments.length">
                         <div v-for="group in groupedComments" :key="group.key" class="px-5 py-3">
                             <p class="text-xs font-bold text-gray-700 dark:text-gray-300">
-                                {{ group.label }}<span v-if="group.facilitatorName" class="font-normal text-muted-foreground"> — {{ group.facilitatorName }}</span>
+                                {{ group.label
+                                }}<span v-if="group.facilitatorName" class="font-normal text-muted-foreground"> — {{ group.facilitatorName }}</span>
                             </p>
                             <div class="mt-1.5 flex flex-col gap-1.5">
-                                <p v-for="(comment, idx) in group.comments" :key="idx" class="text-xs bg-muted/50 rounded-lg px-2.5 py-1.5">
+                                <p v-for="(comment, idx) in group.comments" :key="idx" class="rounded-lg bg-muted/50 px-2.5 py-1.5 text-xs">
                                     {{ comment }}
                                 </p>
                             </div>
                         </div>
 
                         <div v-if="commentsPage.last_page > 1" class="flex items-center justify-between px-5 py-2.5 text-xs">
-                            <button type="button" class="flex items-center gap-1 px-2 py-1 rounded border disabled:opacity-40" :disabled="commentsPage.current_page <= 1" @click="fetchComments(commentsPage.current_page - 1)">
+                            <button
+                                type="button"
+                                class="flex items-center gap-1 rounded border px-2 py-1 disabled:opacity-40"
+                                :disabled="commentsPage.current_page <= 1"
+                                @click="fetchComments(commentsPage.current_page - 1)"
+                            >
                                 <ChevronLeft class="h-3 w-3" /> Previous
                             </button>
                             <span class="text-muted-foreground">Page {{ commentsPage.current_page }} of {{ commentsPage.last_page }}</span>
-                            <button type="button" class="flex items-center gap-1 px-2 py-1 rounded border disabled:opacity-40" :disabled="commentsPage.current_page >= commentsPage.last_page" @click="fetchComments(commentsPage.current_page + 1)">
+                            <button
+                                type="button"
+                                class="flex items-center gap-1 rounded border px-2 py-1 disabled:opacity-40"
+                                :disabled="commentsPage.current_page >= commentsPage.last_page"
+                                @click="fetchComments(commentsPage.current_page + 1)"
+                            >
                                 Next <ChevronRight class="h-3 w-3" />
                             </button>
                         </div>
@@ -462,49 +532,52 @@ onBeforeUnmount(() => {
 
     <!-- Live view: who has submitted for a batch (opened from the donut chart) -->
     <Transition name="backdrop" appear>
-        <div
-            v-if="showBatchPanel"
-            class="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4"
-            @click.self="closeBatchPanel"
-        >
+        <div v-if="showBatchPanel" class="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4" @click.self="closeBatchPanel">
             <Transition name="pop" appear>
-                <div class="bg-background rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto flex flex-col">
-                    <div class="sticky top-0 z-10 bg-gradient-to-r from-rose-700 via-red-700 to-orange-600 text-white px-5 py-4 rounded-t-2xl flex items-center gap-3">
-                        <div class="h-8 w-8 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center shrink-0">
+                <div class="flex max-h-[80vh] w-full max-w-md flex-col overflow-y-auto rounded-2xl bg-background shadow-2xl">
+                    <div
+                        class="sticky top-0 z-10 flex items-center gap-3 rounded-t-2xl bg-gradient-to-r from-rose-700 via-red-700 to-orange-600 px-5 py-4 text-white"
+                    >
+                        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/20 backdrop-blur">
                             <UserRound class="h-4 w-4 text-white" />
                         </div>
-                        <div class="flex-1 min-w-0">
-                            <h2 class="font-bold text-sm truncate">{{ batchPanelTitle }}</h2>
+                        <div class="min-w-0 flex-1">
+                            <h2 class="truncate text-sm font-bold">{{ batchPanelTitle }}</h2>
                             <p class="text-xs text-white/75">{{ batchPanelData?.total ?? 0 }} response(s)</p>
                         </div>
-                        <button type="button" class="text-white/80 hover:text-white transition-colors" @click="closeBatchPanel">
+                        <button type="button" class="text-white/80 transition-colors hover:text-white" @click="closeBatchPanel">
                             <X class="h-5 w-5" />
                         </button>
                     </div>
 
                     <div class="p-4">
-                        <div v-if="batchPanelLoading" class="flex items-center justify-center gap-2 text-xs text-muted-foreground py-8">
+                        <div v-if="batchPanelLoading" class="flex items-center justify-center gap-2 py-8 text-xs text-muted-foreground">
                             <Loader2 class="h-4 w-4 animate-spin" /> Loading...
                         </div>
 
                         <div v-else-if="batchPanelData && batchPanelData.data.length" class="flex flex-col gap-2">
                             <div v-for="response in batchPanelData.data" :key="response.id" class="rounded-xl border px-3 py-2.5">
                                 <div class="flex items-start gap-2.5">
-                                    <div class="h-7 w-7 rounded-full bg-rose-100 dark:bg-rose-950/50 flex items-center justify-center shrink-0 mt-0.5">
+                                    <div
+                                        class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-950/50"
+                                    >
                                         <UserRound class="h-4 w-4 text-rose-600" />
                                     </div>
                                     <div class="min-w-0 flex-1">
-                                        <p class="font-bold text-sm leading-tight truncate">{{ response.respondent_name }}</p>
-                                        <p class="text-xs text-muted-foreground flex items-center gap-1">
+                                        <p class="truncate text-sm font-bold leading-tight">{{ response.respondent_name }}</p>
+                                        <p class="flex items-center gap-1 text-xs text-muted-foreground">
                                             <Clock class="h-3 w-3 shrink-0" /> {{ new Date(response.created_at).toLocaleString() }}
                                         </p>
                                     </div>
-                                    <span v-if="isRecent(response.created_at)" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 shrink-0">
+                                    <span
+                                        v-if="isRecent(response.created_at)"
+                                        class="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                                    >
                                         New
                                     </span>
                                     <button
                                         type="button"
-                                        class="shrink-0 h-7 w-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-40"
+                                        class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-40 dark:hover:bg-red-950/30"
                                         title="Delete this response"
                                         :disabled="deletingResponseId === response.id"
                                         @click="deleteResponse(response)"
@@ -516,17 +589,27 @@ onBeforeUnmount(() => {
                             </div>
 
                             <div v-if="batchPanelData.last_page > 1" class="flex items-center justify-between pt-2 text-xs">
-                                <button type="button" class="flex items-center gap-1 px-2 py-1 rounded border disabled:opacity-40" :disabled="batchPanelData.current_page <= 1" @click="fetchBatchResponses(batchPanelData.current_page - 1)">
+                                <button
+                                    type="button"
+                                    class="flex items-center gap-1 rounded border px-2 py-1 disabled:opacity-40"
+                                    :disabled="batchPanelData.current_page <= 1"
+                                    @click="fetchBatchResponses(batchPanelData.current_page - 1)"
+                                >
                                     <ChevronLeft class="h-3 w-3" /> Previous
                                 </button>
                                 <span class="text-muted-foreground">Page {{ batchPanelData.current_page }} of {{ batchPanelData.last_page }}</span>
-                                <button type="button" class="flex items-center gap-1 px-2 py-1 rounded border disabled:opacity-40" :disabled="batchPanelData.current_page >= batchPanelData.last_page" @click="fetchBatchResponses(batchPanelData.current_page + 1)">
+                                <button
+                                    type="button"
+                                    class="flex items-center gap-1 rounded border px-2 py-1 disabled:opacity-40"
+                                    :disabled="batchPanelData.current_page >= batchPanelData.last_page"
+                                    @click="fetchBatchResponses(batchPanelData.current_page + 1)"
+                                >
                                     Next <ChevronRight class="h-3 w-3" />
                                 </button>
                             </div>
                         </div>
 
-                        <p v-else class="text-xs text-muted-foreground text-center py-8">No responses yet for this batch.</p>
+                        <p v-else class="py-8 text-center text-xs text-muted-foreground">No responses yet for this batch.</p>
                     </div>
                 </div>
             </Transition>
@@ -536,11 +619,29 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .backdrop-enter-active,
-.backdrop-leave-active { transition: opacity 0.2s ease; }
+.backdrop-leave-active {
+    transition: opacity 0.2s ease;
+}
 .backdrop-enter-from,
-.backdrop-leave-to     { opacity: 0; }
-.pop-enter-active { transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
-.pop-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
-.pop-enter-from   { opacity: 0; transform: scale(0.94) translateY(8px); }
-.pop-leave-to     { opacity: 0; transform: scale(0.97); }
+.backdrop-leave-to {
+    opacity: 0;
+}
+.pop-enter-active {
+    transition:
+        opacity 0.25s ease,
+        transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.pop-leave-active {
+    transition:
+        opacity 0.15s ease,
+        transform 0.15s ease;
+}
+.pop-enter-from {
+    opacity: 0;
+    transform: scale(0.94) translateY(8px);
+}
+.pop-leave-to {
+    opacity: 0;
+    transform: scale(0.97);
+}
 </style>

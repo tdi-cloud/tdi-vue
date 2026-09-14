@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import AuthBase from '@/layouts/AuthLayout.vue';
 import { updateTheme } from '@/composables/useAppearance';
+import AuthBase from '@/layouts/AuthLayout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
-import { LoaderCircle, Mail, Lock, Eye, EyeOff } from 'lucide-vue-next';
+import { Eye, EyeOff, LoaderCircle, Lock, Mail } from 'lucide-vue-next';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 
 defineProps<{
@@ -72,7 +72,9 @@ const submit = () => {
                 <div class="grid gap-2">
                     <div class="flex items-center justify-between">
                         <Label for="password">Password</Label>
-                        <TextLink v-if="canResetPassword" :href="route('password.request')" class="text-sm text-blue-800" tabindex="5"> Forgot password? </TextLink>
+                        <TextLink v-if="canResetPassword" :href="route('password.request')" class="text-sm text-blue-800" tabindex="5">
+                            Forgot password?
+                        </TextLink>
                     </div>
                     <div class="relative">
                         <Lock class="pointer-events-none absolute inset-y-0 left-0 my-auto ml-3.5 h-4 w-4 text-blue-900/50" />
@@ -101,13 +103,23 @@ const submit = () => {
                 </div>
 
                 <div class="flex items-center justify-between" tabindex="3">
-                    <Label for="remember" class="flex items-center space-x-3 ">
-                        <Checkbox id="remember" class="border-blue-800 data-[state=checked]:bg-blue-800 data-[state=checked]:border-blue-800 data-[state=checked]:text-white" v-model:checked="form.remember" tabindex="4" />
+                    <Label for="remember" class="flex items-center space-x-3">
+                        <Checkbox
+                            id="remember"
+                            class="border-blue-800 data-[state=checked]:border-blue-800 data-[state=checked]:bg-blue-800 data-[state=checked]:text-white"
+                            v-model:checked="form.remember"
+                            tabindex="4"
+                        />
                         <span>Remember me</span>
                     </Label>
                 </div>
 
-                <Button type="submit" class="mt-2 h-11 w-full rounded-xl bg-gradient-to-b from-blue-700 to-blue-900 font-extrabold shadow-md shadow-blue-900/20 transition hover:brightness-110" tabindex="4" :disabled="form.processing">
+                <Button
+                    type="submit"
+                    class="mt-2 h-11 w-full rounded-xl bg-gradient-to-b from-blue-700 to-blue-900 font-extrabold shadow-md shadow-blue-900/20 transition hover:brightness-110"
+                    tabindex="4"
+                    :disabled="form.processing"
+                >
                     <LoaderCircle v-if="form.processing" class="h-4 w-4 animate-spin" />
                     Log in
                 </Button>

@@ -34,13 +34,13 @@ class ForeignParticipantController extends Controller
     private function validateParticipant(Request $request): array
     {
         return $request->validate([
-            'name'       => 'required|string|max:255',
-            'sex'        => 'required|in:male,female,other',
-            'position'   => 'required|string|max:255',
-            'agency'     => 'required|string|max:255',
+            'name' => 'required|string|max:255',
+            'sex' => 'required|in:male,female,other',
+            'position' => 'required|string|max:255',
+            'agency' => 'required|string|max:255',
             'contact_no' => 'nullable|string|max:50',
-            'email'      => 'nullable|email|max:255',
-            'status'     => 'required|in:endorsed,waiting_result,not_endorsed,accepted,regret,cancelled',
+            'email' => 'nullable|email|max:255',
+            'status' => 'required|in:endorsed,waiting_result,not_endorsed,accepted,regret,cancelled',
         ]);
     }
 }

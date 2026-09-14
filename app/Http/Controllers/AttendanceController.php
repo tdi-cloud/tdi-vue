@@ -4,10 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Batch;
 use App\Models\Employee;
-use App\Models\Participant;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use Barryvdh\DomPDF\Facade\Pdf;
 
 class AttendanceController extends Controller
 {
@@ -22,9 +21,9 @@ class AttendanceController extends Controller
         $employees = Employee::query()
             ->when($q, function ($query) use ($q) {
                 $query->where(function ($w) use ($q) {
-                    $w->where('LASTNAME',  'LIKE', "%{$q}%")
-                      ->orWhere('FIRSTNAME', 'LIKE', "%{$q}%")
-                      ->orWhere('EMPCODE',   'LIKE', "%{$q}%");
+                    $w->where('LASTNAME', 'LIKE', "%{$q}%")
+                        ->orWhere('FIRSTNAME', 'LIKE', "%{$q}%")
+                        ->orWhere('EMPCODE', 'LIKE', "%{$q}%");
                 });
             })
             ->where('PLANTILLA STATUS', '!=', 'JOB ORDER')
@@ -34,10 +33,10 @@ class AttendanceController extends Controller
 
         return response()->json(
             $employees->map(fn ($e) => [
-                'empcode'        => $e->EMPCODE,
-                'name'           => $e->name,
-                'position'       => $e->POSITION,
-                'office_division'=> $e->{'OFFICE/DIVISION'},
+                'empcode' => $e->EMPCODE,
+                'name' => $e->name,
+                'position' => $e->POSITION,
+                'office_division' => $e->{'OFFICE/DIVISION'},
             ])->values()
         );
     }
@@ -49,14 +48,14 @@ class AttendanceController extends Controller
     public function generate(Request $request)
     {
         $request->validate([
-            'batch_id'          => 'required|exists:batches,id',
-            'date'              => 'required|date',
-            'prepared_name'     => 'required|string',
+            'batch_id' => 'required|exists:batches,id',
+            'date' => 'required|date',
+            'prepared_name' => 'required|string',
             'prepared_position' => 'required|string',
-            'prepared_office'   => 'required|string',
-            'noted_name'        => 'required|string',
-            'noted_position'    => 'required|string',
-            'noted_office'      => 'required|string',
+            'prepared_office' => 'required|string',
+            'noted_name' => 'required|string',
+            'noted_position' => 'required|string',
+            'noted_office' => 'required|string',
         ]);
 
         $batch = Batch::with([
@@ -77,16 +76,17 @@ class AttendanceController extends Controller
         $participants = $batch->participants->map(function ($p, $index) {
             $emp = $p->employee;
             if ($emp) {
-                $mi   = trim($emp->MI ?? '');
-                $name = trim($emp->FIRSTNAME . ($mi ? ' ' . $mi : '') . ' ' . $emp->LASTNAME);
+                $mi = trim($emp->MI ?? '');
+                $name = trim($emp->FIRSTNAME.($mi ? ' '.$mi : '').' '.$emp->LASTNAME);
             } else {
                 $name = $p->empcode;
             }
+
             return [
-                'no'       => $index + 1,
-                'name'     => strtoupper($name),
+                'no' => $index + 1,
+                'name' => strtoupper($name),
                 'position' => $emp?->POSITION ?? '',
-                'office'   => $emp?->{'OFFICE/DIVISION'} ?? '',
+                'office' => $emp?->{'OFFICE/DIVISION'} ?? '',
             ];
         })->values()->toArray();
 
@@ -114,26 +114,26 @@ class AttendanceController extends Controller
         }
 
         $data = [
-            'programTitle'      => $programTitle,
-            'date'              => $date,
-            'venue'             => $venue,
-            'participants'      => $participants,
-            'prepared_name'     => strtoupper($request->prepared_name),
+            'programTitle' => $programTitle,
+            'date' => $date,
+            'venue' => $venue,
+            'participants' => $participants,
+            'prepared_name' => strtoupper($request->prepared_name),
             'prepared_position' => $request->prepared_position,
-            'prepared_office'   => $request->prepared_office,
-            'noted_name'        => strtoupper($request->noted_name),
-            'noted_position'    => $request->noted_position,
-            'noted_office'      => $request->noted_office,
+            'prepared_office' => $request->prepared_office,
+            'noted_name' => strtoupper($request->noted_name),
+            'noted_position' => $request->noted_position,
+            'noted_office' => $request->noted_office,
         ];
 
-        $filename = 'Attendance_' . str_replace(' ', '_', $date) . '_' . str_replace(' ', '_', $programTitle) . '.pdf';
+        $filename = 'Attendance_'.str_replace(' ', '_', $date).'_'.str_replace(' ', '_', $programTitle).'.pdf';
 
         $pdf = Pdf::loadView('pdf.attendance', $data)
             ->setPaper('a4', 'landscape')
             ->setOption('defaultFont', 'Arial')
             ->setOption('isHtml5ParserEnabled', true)
             ->setOption('isRemoteEnabled', false)
-            ->setOption('title', 'Attendance - ' . $date . ' | ' . $programTitle);
+            ->setOption('title', 'Attendance - '.$date.' | '.$programTitle);
 
         return $pdf->stream($filename);
     }

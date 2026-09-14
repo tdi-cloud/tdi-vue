@@ -15,8 +15,8 @@ class TesdaOrder extends Model
 
     protected $casts = [
         'include_participants' => 'boolean',
-        'include_batch_data'   => 'boolean',
-        'date_issued'          => 'date',
+        'include_batch_data' => 'boolean',
+        'date_issued' => 'date',
     ];
 
     public function program()

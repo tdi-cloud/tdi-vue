@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('origin')->nullable();
             $table->string('document_number');
             $table->date('date_issued')->nullable();
-            $table->string('link', 2048)->nullable(); 
+            $table->string('link', 2048)->nullable();
             $table->timestamps();
         });
     }

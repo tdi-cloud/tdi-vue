@@ -1,15 +1,10 @@
 <script setup lang="ts">
-import AppLayout from '@/layouts/AppLayout.vue';
 import EmployeeProgressModal from '@/components/EmployeeProgressModal.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
-import { ref, computed, watch } from 'vue';
-import {
-    Search, Users, ChevronLeft, ChevronRight,
-    X, CheckCircle2,
-    Building2, MapPin, Hash,
-    SlidersHorizontal,
-} from 'lucide-vue-next';
+import { Building2, CheckCircle2, Hash, MapPin, Search, SlidersHorizontal, Users, X } from 'lucide-vue-next';
+import { computed, ref, watch } from 'vue';
 
 interface Employee {
     id: number;
@@ -65,41 +60,44 @@ const props = defineProps<{
 }>();
 
 // Filters
-const search    = ref(props.filters.search ?? '');
-const region    = ref(props.filters.region ?? 'all');
-const office    = ref(props.filters.office ?? 'all');
+const search = ref(props.filters.search ?? '');
+const region = ref(props.filters.region ?? 'all');
+const office = ref(props.filters.office ?? 'all');
 const plantilla = ref(props.filters.plantilla ?? 'all');
-const perPage   = ref(props.filters.per_page ?? '10');
+const perPage = ref(props.filters.per_page ?? '10');
 
 // Kapag nagbago ang region, i-reset ang office selection dahil magbabago rin ang mga choices nito.
 watch(region, () => {
     office.value = 'all';
 });
 
-const hasActiveFilters = computed(() =>
-    search.value !== '' || region.value !== 'all' || office.value !== 'all' ||
-    plantilla.value !== 'all' || perPage.value !== '10'
+const hasActiveFilters = computed(
+    () => search.value !== '' || region.value !== 'all' || office.value !== 'all' || plantilla.value !== 'all' || perPage.value !== '10',
 );
 
 const clearFilters = () => {
-    search.value    = '';
-    region.value    = 'all';
-    office.value    = 'all';
+    search.value = '';
+    region.value = 'all';
+    office.value = 'all';
     plantilla.value = 'all';
-    perPage.value   = '10';
+    perPage.value = '10';
 };
 
 let debounce: ReturnType<typeof setTimeout>;
 watch([search, region, office, plantilla, perPage], () => {
     clearTimeout(debounce);
     debounce = setTimeout(() => {
-        router.get(route('employees.index'), {
-            search:    search.value || undefined,
-            region:    region.value !== 'all' ? region.value : undefined,
-            office:    office.value !== 'all' ? office.value : undefined,
-            plantilla: plantilla.value !== 'all' ? plantilla.value : undefined,
-            per_page:  perPage.value !== '10' ? perPage.value : undefined,
-        }, { preserveScroll: true, preserveState: true, replace: true });
+        router.get(
+            route('employees.index'),
+            {
+                search: search.value || undefined,
+                region: region.value !== 'all' ? region.value : undefined,
+                office: office.value !== 'all' ? office.value : undefined,
+                plantilla: plantilla.value !== 'all' ? plantilla.value : undefined,
+                per_page: perPage.value !== '10' ? perPage.value : undefined,
+            },
+            { preserveScroll: true, preserveState: true, replace: true },
+        );
     }, 350);
 });
 
@@ -115,31 +113,12 @@ const closeModal = () => {
 };
 
 // Helpers
-const initials = (emp: Employee) => {
-    return ((emp.FIRSTNAME?.[0] ?? '') + (emp.LASTNAME?.[0] ?? ''))?.toUpperCase();
-};
-
-const fullName = (emp: Employee) => {
-    return [emp.FIRSTNAME, emp.MI ? emp.MI + '.' : '', emp.LASTNAME]
-        .filter(Boolean).join(' ')?.toUpperCase();
-};
-
 const plantillaColor = (status: string) => {
     const s = status?.toUpperCase();
     if (s === 'PERMANENT') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
     if (s === 'JOB ORDER') return 'bg-amber-100 text-amber-700 border-amber-200';
-    if (s === 'CTI')       return 'bg-blue-100 text-blue-700 border-blue-200';
+    if (s === 'CTI') return 'bg-blue-100 text-blue-700 border-blue-200';
     return 'bg-gray-100 text-gray-600 border-gray-200';
-};
-
-const avatarColor = (emp: Employee) => {
-    const colors = [
-        'bg-violet-500', 'bg-blue-500', 'bg-emerald-500',
-        'bg-rose-500', 'bg-amber-500', 'bg-indigo-500',
-        'bg-teal-500', 'bg-pink-500',
-    ];
-    const idx = (emp.EMPCODE?.charCodeAt(0) ?? 0) % colors?.length;
-    return colors[idx];
 };
 
 const progressPercent = (num: number, denom: number) => (denom > 0 ? Math.min(100, Math.round((num / denom) * 100)) : 0);
@@ -152,67 +131,70 @@ const formatHours = (hours: number) => (Number.isInteger(hours) ? hours : Number
 
     <AppLayout>
         <div class="flex flex-1 flex-col gap-5 p-4 md:p-6">
-
             <!-- Header -->
             <div>
                 <h1 class="text-2xl font-extrabold">Employee Progress</h1>
-                <p class="text-sm text-muted-foreground mt-0.5">Track individual employee training progress and achievements</p>
+                <p class="mt-0.5 text-sm text-muted-foreground">Track individual employee training progress and achievements</p>
             </div>
 
             <!-- Search + Filters -->
             <div class="flex flex-col gap-3">
                 <div class="flex items-center gap-2">
-                    <div class="relative flex-1 max-w-sm">
-                        <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <div class="relative max-w-sm flex-1">
+                        <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <input
                             v-model="search"
                             type="text"
                             placeholder="Search by Name, Office, or Empcode..."
-                            class="w-full border rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background shadow-sm"
+                            class="w-full rounded-lg border bg-background py-2 pl-9 pr-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
-                    <div class="flex items-center gap-1.5 text-xs text-muted-foreground px-2 py-1.5 rounded-lg border bg-muted/30">
+                    <div class="flex items-center gap-1.5 rounded-lg border bg-muted/30 px-2 py-1.5 text-xs text-muted-foreground">
                         <SlidersHorizontal class="h-3.5 w-3.5" />
                         <span>Filters</span>
                     </div>
-                    <button v-if="hasActiveFilters" class="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1.5" @click="clearFilters">
+                    <button
+                        v-if="hasActiveFilters"
+                        class="flex items-center gap-1 px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                        @click="clearFilters"
+                    >
                         <X class="h-3.5 w-3.5" /> Clear all
                     </button>
                 </div>
 
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 p-3 rounded-xl border bg-muted/30">
+                <div class="grid grid-cols-2 gap-2 rounded-xl border bg-muted/30 p-3 md:grid-cols-4">
                     <div class="flex flex-col gap-1">
-                        <label class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                        <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                             <MapPin class="h-3 w-3" /> Region
                         </label>
-                        <select v-model="region" class="border rounded-lg px-2 py-1.5 text-xs bg-background shadow-sm">
+                        <select v-model="region" class="rounded-lg border bg-background px-2 py-1.5 text-xs shadow-sm">
                             <option value="all">All</option>
                             <option v-for="r in regions" :key="r" :value="r">{{ r }}</option>
                         </select>
                     </div>
                     <div class="flex flex-col gap-1">
-                        <label class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                        <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                             <Building2 class="h-3 w-3" /> Office
                         </label>
-                        <select v-model="office" class="border rounded-lg px-2 py-1.5 text-xs bg-background shadow-sm">
+                        <select v-model="office" class="rounded-lg border bg-background px-2 py-1.5 text-xs shadow-sm">
                             <option value="all">All</option>
                             <option v-for="o in offices" :key="o" :value="o">{{ o }}</option>
                         </select>
                     </div>
                     <div class="flex flex-col gap-1">
-                        <label class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                        <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                             <CheckCircle2 class="h-3 w-3" /> Plantilla Status
                         </label>
-                        <select v-model="plantilla" class="border rounded-lg px-2 py-1.5 text-xs bg-background shadow-sm">
+                        <select v-model="plantilla" class="rounded-lg border bg-background px-2 py-1.5 text-xs shadow-sm">
                             <option value="all">All</option>
                             <option v-for="p in plantillaStatuses" :key="p" :value="p">{{ p?.toUpperCase() }}</option>
                         </select>
                     </div>
                     <div class="flex flex-col gap-1">
-                        <label class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                        <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                             <Hash class="h-3 w-3" /> Show per page
                         </label>
-                        <select v-model="perPage" class="border rounded-lg px-2 py-1.5 text-xs bg-background shadow-sm">
+                        <select v-model="perPage" class="rounded-lg border bg-background px-2 py-1.5 text-xs shadow-sm">
                             <option value="10">10</option>
                             <option value="25">25</option>
                             <option value="50">50</option>
@@ -223,92 +205,127 @@ const formatHours = (hours: number) => (Number.isInteger(hours) ? hours : Number
             </div>
 
             <!-- Table -->
-            <div class="rounded-2xl border overflow-hidden shadow-sm bg-background">
+            <div class="overflow-hidden rounded-2xl border bg-background shadow-sm">
                 <table class="w-full text-sm">
                     <thead>
-                        <tr class="bg-gradient-to-r from-blue-50 via-indigo-50 to-violet-50 dark:from-blue-950/40 dark:via-indigo-950/40 dark:to-violet-950/40 border-b-2 border-indigo-200 dark:border-indigo-900">
-                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Empcode</th>
-                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Employee</th>
-                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Plantilla</th>
-                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Program Progress</th>
-                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Hours Progress</th>
-                            <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Submission Progress</th>
-                            <th class="text-right font-bold px-4 py-3 text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Action</th>
+                        <tr
+                            class="border-b-2 border-indigo-200 bg-gradient-to-r from-blue-50 via-indigo-50 to-violet-50 dark:border-indigo-900 dark:from-blue-950/40 dark:via-indigo-950/40 dark:to-violet-950/40"
+                        >
+                            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">
+                                Empcode
+                            </th>
+                            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">
+                                Employee
+                            </th>
+                            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">
+                                Plantilla
+                            </th>
+                            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">
+                                Program Progress
+                            </th>
+                            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">
+                                Hours Progress
+                            </th>
+                            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">
+                                Submission Progress
+                            </th>
+                            <th class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">
+                                Action
+                            </th>
                         </tr>
                     </thead>
                     <TransitionGroup tag="tbody" class="divide-y" appear>
                         <tr
                             v-for="(emp, index) in employees.data"
                             :key="emp.id"
-                            class="hover:bg-muted/30 transition-colors"
+                            class="transition-colors hover:bg-muted/30"
                             :style="{ animationDelay: `${index * 60}ms` }"
                         >
-                            <td class="px-4 py-3 text-muted-foreground font-mono text-xs">{{ emp.EMPCODE }}</td>
+                            <td class="px-4 py-3 font-mono text-xs text-muted-foreground">{{ emp.EMPCODE }}</td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-3">
                                     <Avatar class="h-9 w-9 shrink-0 overflow-hidden rounded-full" :class="emp.avatar_color">
                                         <AvatarImage v-if="emp.avatar" :src="emp.avatar" :alt="emp.name" />
-                                        <AvatarFallback class="flex h-full w-full items-center justify-center rounded-full bg-transparent text-xs font-bold text-white">
+                                        <AvatarFallback
+                                            class="flex h-full w-full items-center justify-center rounded-full bg-transparent text-xs font-bold text-white"
+                                        >
                                             {{ emp.initials }}
                                         </AvatarFallback>
                                     </Avatar>
                                     <div>
-                                        <p class="font-bold text-sm leading-tight">{{ emp.name?.toUpperCase() }}</p>
+                                        <p class="text-sm font-bold leading-tight">{{ emp.name?.toUpperCase() }}</p>
                                         <p class="text-xs text-muted-foreground">{{ emp['OFFICE/DIVISION'] }}</p>
                                     </div>
                                 </div>
                             </td>
                             <td class="px-4 py-3">
-                                <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border" :class="plantillaColor(emp['PLANTILLA STATUS'])">
+                                <span
+                                    class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold"
+                                    :class="plantillaColor(emp['PLANTILLA STATUS'])"
+                                >
                                     {{ emp['PLANTILLA STATUS'] }}
                                 </span>
                             </td>
-                            <td class="px-4 py-3 min-w-[140px]">
-                                <div class="flex items-center justify-between text-xs mb-1">
+                            <td class="min-w-[140px] px-4 py-3">
+                                <div class="mb-1 flex items-center justify-between text-xs">
                                     <span class="font-semibold">
                                         {{ emp.progress_stats.completed_programs }}/{{ emp.progress_stats.total_programs }}
                                     </span>
-                                    <span class="text-muted-foreground">{{ progressPercent(emp.progress_stats.completed_programs, emp.progress_stats.total_programs) }}%</span>
+                                    <span class="text-muted-foreground"
+                                        >{{ progressPercent(emp.progress_stats.completed_programs, emp.progress_stats.total_programs) }}%</span
+                                    >
                                 </div>
-                                <div class="h-1.5 rounded-full bg-muted overflow-hidden">
+                                <div class="h-1.5 overflow-hidden rounded-full bg-muted">
                                     <div
                                         class="h-full rounded-full bg-emerald-500 transition-all"
-                                        :style="{ width: progressPercent(emp.progress_stats.completed_programs, emp.progress_stats.total_programs) + '%' }"
+                                        :style="{
+                                            width: progressPercent(emp.progress_stats.completed_programs, emp.progress_stats.total_programs) + '%',
+                                        }"
                                     />
                                 </div>
                             </td>
-                            <td class="px-4 py-3 min-w-[140px]">
-                                <div class="flex items-center justify-between text-xs mb-1">
+                            <td class="min-w-[140px] px-4 py-3">
+                                <div class="mb-1 flex items-center justify-between text-xs">
                                     <span class="font-semibold">
                                         {{ formatHours(emp.progress_stats.hours_completed) }}/{{ formatHours(emp.progress_stats.total_hours) }} hrs
                                     </span>
-                                    <span class="text-muted-foreground">{{ progressPercent(emp.progress_stats.hours_completed, emp.progress_stats.total_hours) }}%</span>
+                                    <span class="text-muted-foreground"
+                                        >{{ progressPercent(emp.progress_stats.hours_completed, emp.progress_stats.total_hours) }}%</span
+                                    >
                                 </div>
-                                <div class="h-1.5 rounded-full bg-muted overflow-hidden">
+                                <div class="h-1.5 overflow-hidden rounded-full bg-muted">
                                     <div
                                         class="h-full rounded-full bg-blue-500 transition-all"
                                         :style="{ width: progressPercent(emp.progress_stats.hours_completed, emp.progress_stats.total_hours) + '%' }"
                                     />
                                 </div>
                             </td>
-                            <td class="px-4 py-3 min-w-[140px]">
-                                <div class="flex items-center justify-between text-xs mb-1">
+                            <td class="min-w-[140px] px-4 py-3">
+                                <div class="mb-1 flex items-center justify-between text-xs">
                                     <span class="font-semibold">
                                         {{ emp.submission_stats.approved_submissions }}/{{ emp.submission_stats.total_requirements }}
                                     </span>
-                                    <span class="text-muted-foreground">{{ progressPercent(emp.submission_stats.approved_submissions, emp.submission_stats.total_requirements) }}%</span>
+                                    <span class="text-muted-foreground"
+                                        >{{
+                                            progressPercent(emp.submission_stats.approved_submissions, emp.submission_stats.total_requirements)
+                                        }}%</span
+                                    >
                                 </div>
-                                <div class="h-1.5 rounded-full bg-muted overflow-hidden">
+                                <div class="h-1.5 overflow-hidden rounded-full bg-muted">
                                     <div
                                         class="h-full rounded-full bg-violet-500 transition-all"
-                                        :style="{ width: progressPercent(emp.submission_stats.approved_submissions, emp.submission_stats.total_requirements) + '%' }"
+                                        :style="{
+                                            width:
+                                                progressPercent(emp.submission_stats.approved_submissions, emp.submission_stats.total_requirements) +
+                                                '%',
+                                        }"
                                     />
                                 </div>
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <button
                                     @click="openDetails(emp)"
-                                    class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border hover:bg-muted/50 transition-colors"
+                                    class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-muted/50"
                                 >
                                     <Users class="h-3.5 w-3.5" /> View Details
                                 </button>
@@ -317,7 +334,7 @@ const formatHours = (hours: number) => (Number.isInteger(hours) ? hours : Number
 
                         <tr v-if="employees.data?.length === 0" key="empty-state">
                             <td colspan="7" class="px-4 py-16 text-center text-muted-foreground">
-                                <Users class="h-10 w-10 mx-auto mb-2 opacity-30" />
+                                <Users class="mx-auto mb-2 h-10 w-10 opacity-30" />
                                 <p class="text-sm font-semibold">No employees found.</p>
                             </td>
                         </tr>
@@ -327,31 +344,28 @@ const formatHours = (hours: number) => (Number.isInteger(hours) ? hours : Number
 
             <!-- Pagination -->
             <div class="flex items-center justify-between text-sm">
-                <p class="text-xs text-muted-foreground">
-                    Showing {{ employees.from ?? 0 }}–{{ employees.to ?? 0 }} of {{ employees.total }}
-                </p>
+                <p class="text-xs text-muted-foreground">Showing {{ employees.from ?? 0 }}–{{ employees.to ?? 0 }} of {{ employees.total }}</p>
                 <div class="flex items-center gap-1">
                     <template v-for="link in employees.links" :key="link.label">
-                        
-                        <a v-if="link.url"
+                        <a
+                            v-if="link.url"
                             :href="link.url"
-                            class="inline-flex items-center justify-center h-8 w-8 rounded-lg border text-xs transition-colors"
-                            :class="link.active ? 'bg-blue-600 text-white border-blue-600' : 'hover:bg-muted text-muted-foreground'"
+                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border text-xs transition-colors"
+                            :class="link.active ? 'border-blue-600 bg-blue-600 text-white' : 'text-muted-foreground hover:bg-muted'"
                             v-html="link.label.includes('Previous') ? '&lsaquo;' : link.label.includes('Next') ? '&rsaquo;' : link.label"
                         />
-                        <span v-else
-                            class="inline-flex items-center justify-center h-8 w-8 rounded-lg text-xs text-muted-foreground opacity-40"
+                        <span
+                            v-else
+                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-xs text-muted-foreground opacity-40"
                             v-html="link.label.includes('Previous') ? '&lsaquo;' : link.label.includes('Next') ? '&rsaquo;' : link.label"
                         />
                     </template>
                 </div>
             </div>
-
         </div>
 
         <!-- ===== Employee Progress Modal ===== -->
         <EmployeeProgressModal :empcode="selectedEmpcode" @close="closeModal" />
-
     </AppLayout>
 </template>
 

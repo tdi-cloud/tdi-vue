@@ -1,47 +1,46 @@
 <script setup lang="ts">
-import AppLayout from '@/layouts/AppLayout.vue';
-import { type BreadcrumbItem } from '@/types';
-import { Head, router } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { 
-    ArrowLeft, 
-    Trash2, 
-    Info, 
-    Users, 
-    FileText, 
-    Pencil, 
-    Lightbulb, 
-    Plus, 
-    X, 
-    FilePenLine, 
-    ScrollText, 
-    Settings2, 
-    Presentation, 
-    House, 
-    Play, 
-    Handshake, 
-    Coins,
-    HandCoins,
-    Flag,
-    Megaphone ,
-    Award,
-    FileSignature,
-    ClipboardCheck
-} from 'lucide-vue-next';
-import { Link } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useConfirm } from '@/composables/useConfirm';
+import AppLayout from '@/layouts/AppLayout.vue';
 import BatchList from '@/pages/programs/BatchList.vue';
+import CertificatesPanel from '@/pages/programs/CertificatesPanel.vue';
 import CompetencyModal from '@/pages/programs/CompetencyModal.vue';
+import CoverPagePanel from '@/pages/programs/CoverPagePanel.vue';
+import EvaluationDashboard from '@/pages/programs/EvaluationDashboard.vue';
 import RequirementList from '@/pages/programs/RequirementList.vue';
+import ResourceSpeakers from '@/pages/programs/ResourceSpeakers.vue';
 import SubmissionList from '@/pages/programs/SubmissionList.vue';
 import SupportingDocuments from '@/pages/programs/SupportingDocuments.vue';
-import ResourceSpeakers from '@/pages/programs/ResourceSpeakers.vue';
-import CoverPagePanel from '@/pages/programs/CoverPagePanel.vue';
-import CertificatesPanel from '@/pages/programs/CertificatesPanel.vue';
 import TesdaOrderPanel from '@/pages/programs/TesdaOrderPanel.vue';
-import EvaluationDashboard from '@/pages/programs/EvaluationDashboard.vue';
-import { useConfirm } from '@/composables/useConfirm';
+import { type BreadcrumbItem } from '@/types';
+import { Head, Link, router } from '@inertiajs/vue3';
+import {
+    ArrowLeft,
+    Award,
+    ClipboardCheck,
+    Coins,
+    FilePenLine,
+    FileSignature,
+    FileText,
+    Flag,
+    HandCoins,
+    Handshake,
+    House,
+    Info,
+    Lightbulb,
+    Megaphone,
+    Pencil,
+    Play,
+    Plus,
+    Presentation,
+    ScrollText,
+    Settings2,
+    Trash2,
+    Users,
+    X,
+} from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 
 const { confirmDialog } = useConfirm();
 
@@ -166,18 +165,14 @@ const DOMAIN_COLORS: Record<string, string> = {
 // Grouped per domain para sa sidebar display
 const groupedCompetencies = computed(() => {
     const list = props.program.competencies ?? [];
-    return DOMAIN_ORDER
-        .map((domain) => ({
-            domain,
-            items: list.filter((c) => c.domain === domain),
-        }))
-        .filter((g) => g.items.length > 0);
+    return DOMAIN_ORDER.map((domain) => ({
+        domain,
+        items: list.filter((c) => c.domain === domain),
+    })).filter((g) => g.items.length > 0);
 });
 
 // Names ng naka-add na, para hindi na lumabas sa choices ng modal
-const existingCompetencyNames = computed(() =>
-    (props.program.competencies ?? []).map((c) => c.competency),
-);
+const existingCompetencyNames = computed(() => (props.program.competencies ?? []).map((c) => c.competency));
 
 const removeCompetency = async (competency: Competency) => {
     if (await confirmDialog('Remove this competency from the program?', { confirmText: 'Remove' })) {
@@ -193,7 +188,6 @@ const removeCompetency = async (competency: Competency) => {
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex flex-1 flex-col gap-4">
-
             <!-- Header -->
             <div class="flex items-start justify-between gap-4 border-b px-6 pb-4 pt-6">
                 <div class="flex items-center gap-3">
@@ -202,191 +196,173 @@ const removeCompetency = async (competency: Competency) => {
                     </Button>
                     <div>
                         <!-- <p class="text-xs text-slate-400 font-semibold">{{ program.program_code }}</p> -->
-                        <h1 class="text-xl font-extrabold dark:text-cyan-400 leading-tight text-sky-900">{{ program.title }}</h1>
+                        <h1 class="text-xl font-extrabold leading-tight text-sky-900 dark:text-cyan-400">{{ program.title }}</h1>
                     </div>
                 </div>
                 <!-- Header buttons -->
                 <div class="flex items-center gap-2">
                     <Link :href="route('programs.edit', program.id)">
-                        <Button variant="outline" size="sm">
-                            <Pencil class="h-4 w-4 mr-1" /> Edit
-                        </Button>
+                        <Button variant="outline" size="sm"> <Pencil class="mr-1 h-4 w-4" /> Edit </Button>
                     </Link>
-                    <Button variant="destructive" size="sm" @click="deleteProgram">
-                        <Trash2 class="h-4 w-4 mr-1" /> Delete
-                    </Button>
+                    <Button variant="destructive" size="sm" @click="deleteProgram"> <Trash2 class="mr-1 h-4 w-4" /> Delete </Button>
                 </div>
             </div>
 
             <!-- Tabs -->
-            <Tabs default-value="details" class="flex flex-col flex-1">
-
+            <Tabs default-value="details" class="flex flex-1 flex-col">
                 <div class="border-b px-6">
-                    <TabsList class="bg-transparent p-0 h-auto gap-0 rounded-none">
-                        
+                    <TabsList class="h-auto gap-0 rounded-none bg-transparent p-0">
                         <TabsTrigger
                             value="details"
-                            class="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-1 text-sm font-medium"
+                            class="rounded-none border-b-2 border-transparent px-4 pb-3 pt-1 text-sm font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
                         >
-                        <span class="flex items-center gap-1"><Info class="h-4 w-4" /> Details</span>
-
+                            <span class="flex items-center gap-1"><Info class="h-4 w-4" /> Details</span>
                         </TabsTrigger>
                         <TabsTrigger
                             value="participants"
-                            class="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-1 text-sm font-medium"
+                            class="rounded-none border-b-2 border-transparent px-4 pb-3 pt-1 text-sm font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
                         >
                             <span class="flex items-center gap-1"><Users class="h-4 w-4" /> Participants</span>
                         </TabsTrigger>
                         <TabsTrigger
                             value="submissions"
-                            class="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-1 text-sm font-medium"
+                            class="rounded-none border-b-2 border-transparent px-4 pb-3 pt-1 text-sm font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
                         >
                             <span class="flex items-center gap-1"><FileText class="h-4 w-4" /> Submissions</span>
                         </TabsTrigger>
 
                         <TabsTrigger
                             value="Supporting"
-                            class="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-1 text-sm font-medium"
+                            class="rounded-none border-b-2 border-transparent px-4 pb-3 pt-1 text-sm font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
                         >
                             <span class="flex items-center gap-1"><ScrollText class="h-4 w-4" /> Supporting Docs</span>
                         </TabsTrigger>
 
                         <TabsTrigger
                             value="requirements"
-                            class="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-1 text-sm font-medium"
+                            class="rounded-none border-b-2 border-transparent px-4 pb-3 pt-1 text-sm font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
                         >
                             <span class="flex items-center gap-1"><FilePenLine class="h-4 w-4" /> Requirements</span>
                         </TabsTrigger>
 
                         <TabsTrigger
                             value="certificates"
-                            class="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-1 text-sm font-medium"
+                            class="rounded-none border-b-2 border-transparent px-4 pb-3 pt-1 text-sm font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
                         >
-                            <span class="flex items-center gap-1">
-                                <Award class="h-4 w-4" /> Certificates
-                            </span>
+                            <span class="flex items-center gap-1"> <Award class="h-4 w-4" /> Certificates </span>
                         </TabsTrigger>
-
-                        
 
                         <TabsTrigger
                             value="tesda-order"
-                            class="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-1 text-sm font-medium"
+                            class="rounded-none border-b-2 border-transparent px-4 pb-3 pt-1 text-sm font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
                         >
                             <span class="flex items-center gap-1"><FileSignature class="h-4 w-4" /> TESDA Order</span>
                         </TabsTrigger>
 
-                        
-
                         <TabsTrigger
                             value="resource"
-                            class="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-1 text-sm font-medium"
+                            class="rounded-none border-b-2 border-transparent px-4 pb-3 pt-1 text-sm font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
                         >
                             <span class="flex items-center gap-1"><Megaphone class="h-4 w-4" /> Resource Speaker</span>
                         </TabsTrigger>
-
                     </TabsList>
                 </div>
 
                 <!-- Details Tab -->
-                <TabsContent value="details" class="flex flex-col gap-4 px-6 py-4 mt-0">
-
+                <TabsContent value="details" class="mt-0 flex flex-col gap-4 px-6 py-4">
                     <!-- HINATI: details sa kaliwa, competencies sa kanan -->
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
-
+                    <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
                         <!-- LEFT: Program Details (2/3 ng lapad) -->
-                        <div class="lg:col-span-2 flex flex-col gap-4">
+                        <div class="flex flex-col gap-4 lg:col-span-2">
                             <div class="flex items-center justify-between">
                                 <h1 class="font-bold">Program Details</h1>
                                 <Button
                                     size="sm"
-                                    class="h-7 text-xs bg-rose-600 hover:bg-rose-700 text-white"
+                                    class="h-7 bg-rose-600 text-xs text-white hover:bg-rose-700"
                                     @click="showEvaluationDashboard = true"
                                 >
-                                    <ClipboardCheck class="h-3.5 w-3.5 mr-1" /> Evaluation Results
+                                    <ClipboardCheck class="mr-1 h-3.5 w-3.5" /> Evaluation Results
                                 </Button>
                             </div>
 
-                            <CoverPagePanel
-                                :program-id="program.id"
-                                :cover-page="program.cover_page"
-                            />
+                            <CoverPagePanel :program-id="program.id" :cover-page="program.cover_page" />
 
                             <!-- Description -->
                             <div class="rounded-2xl border p-4 shadow-sm">
-                                <p class="text-xs font-semibold text-muted-foreground mb-1">Description</p>
+                                <p class="mb-1 text-xs font-semibold text-muted-foreground">Description</p>
                                 <p class="text-sm leading-relaxed">{{ program.description || 'No description provided.' }}</p>
                             </div>
 
-                            
-
                             <!-- Details Grid -->
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div class="rounded-2xl border p-4 flex flex-col gap-1">
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                                <div class="flex flex-col gap-1 rounded-2xl border p-4">
                                     <p class="text-xs text-muted-foreground">Modality</p>
-                                    <p class="text-sm font-bold flex items-center gap-2"><Presentation class="w-4 text-blue-500"/> {{ program.modality }}</p>
+                                    <p class="flex items-center gap-2 text-sm font-bold">
+                                        <Presentation class="w-4 text-blue-500" /> {{ program.modality }}
+                                    </p>
                                 </div>
-                                <div class="rounded-2xl border p-4 flex flex-col gap-1">
+                                <div class="flex flex-col gap-1 rounded-2xl border p-4">
                                     <p class="text-xs text-muted-foreground">Category</p>
-                                    <p class="text-sm font-bold flex items-center gap-2"><House class="w-4 text-indigo-500" />{{ program.category }}</p>
+                                    <p class="flex items-center gap-2 text-sm font-bold">
+                                        <House class="w-4 text-indigo-500" />{{ program.category }}
+                                    </p>
                                 </div>
-                                <div class="rounded-2xl border p-4 flex flex-col gap-1">
+                                <div class="flex flex-col gap-1 rounded-2xl border p-4">
                                     <p class="text-xs text-muted-foreground">Program Type</p>
-                                    <p class="text-sm font-bold flex items-center gap-2"><Settings2 class="w-5" /> {{ program.type }}</p>
+                                    <p class="flex items-center gap-2 text-sm font-bold"><Settings2 class="w-5" /> {{ program.type }}</p>
                                 </div>
-                                <div class="rounded-2xl border p-4 flex flex-col gap-1">
-                                    <p class="text-xs text-muted-foreground"> Target Pax</p>
-                                    <p class="text-sm font-bold flex items-center gap-2"><Users class="w-5 text-purple-500"/> {{ program.pax }}</p>
+                                <div class="flex flex-col gap-1 rounded-2xl border p-4">
+                                    <p class="text-xs text-muted-foreground">Target Pax</p>
+                                    <p class="flex items-center gap-2 text-sm font-bold"><Users class="w-5 text-purple-500" /> {{ program.pax }}</p>
                                 </div>
-                                <div class="rounded-2xl border p-4 flex flex-col gap-1">
+                                <div class="flex flex-col gap-1 rounded-2xl border p-4">
                                     <p class="text-xs text-muted-foreground">Cost</p>
-                                    <p class="text-sm font-bold flex items-center gap-2"><Coins class="w-5 text-yellow-500" />{{ Number(program.cost).toLocaleString() }}</p>
+                                    <p class="flex items-center gap-2 text-sm font-bold">
+                                        <Coins class="w-5 text-yellow-500" />{{ Number(program.cost).toLocaleString() }}
+                                    </p>
                                 </div>
-                                <div class="rounded-2xl border p-4 flex flex-col gap-1">
+                                <div class="flex flex-col gap-1 rounded-2xl border p-4">
                                     <p class="text-xs text-muted-foreground">Fund Source</p>
-                                    <p class="text-sm font-bold flex items-center gap-2"><HandCoins class="w-5 text-green-500" />{{ program.fund }}</p>
+                                    <p class="flex items-center gap-2 text-sm font-bold">
+                                        <HandCoins class="w-5 text-green-500" />{{ program.fund }}
+                                    </p>
                                 </div>
-                                <div class="rounded-2xl border p-4 flex flex-col gap-1">
+                                <div class="flex flex-col gap-1 rounded-2xl border p-4">
                                     <p class="text-xs text-muted-foreground">Office Initiated</p>
-                                    <p class="text-sm font-bold flex items-center gap-2"><Play class="w-5 text-orange-500" /> {{ program.initiated }}</p>
+                                    <p class="flex items-center gap-2 text-sm font-bold">
+                                        <Play class="w-5 text-orange-500" /> {{ program.initiated }}
+                                    </p>
                                 </div>
-                                <div class="rounded-2xl border p-4 flex flex-col gap-1">
+                                <div class="flex flex-col gap-1 rounded-2xl border p-4">
                                     <p class="text-xs text-muted-foreground">Provider</p>
-                                    <p class="text-sm font-bold flex items-center gap-2"><Handshake class="w-8 text-blue-500" />{{ program.provider || '—' }}</p>
+                                    <p class="flex items-center gap-2 text-sm font-bold">
+                                        <Handshake class="w-8 text-blue-500" />{{ program.provider || '—' }}
+                                    </p>
                                 </div>
-                                <div class="rounded-2xl border p-4 flex flex-col gap-1">
+                                <div class="flex flex-col gap-1 rounded-2xl border p-4">
                                     <p class="text-xs text-muted-foreground">Origin</p>
-                                    <p class="text-sm font-bold flex items-center gap-2"><Flag class="w-5 text-emerald-500" />{{ program.origin }}</p>
+                                    <p class="flex items-center gap-2 text-sm font-bold"><Flag class="w-5 text-emerald-500" />{{ program.origin }}</p>
                                 </div>
                             </div>
                         </div>
 
                         <!-- RIGHT: Competencies sidebar (1/3 ng lapad) -->
-                        <div class="rounded-2xl border p-4 shadow-sm flex flex-col gap-3">
+                        <div class="flex flex-col gap-3 rounded-2xl border p-4 shadow-sm">
                             <div class="flex items-center justify-between">
-                                <p class="text-sm font-bold flex items-center gap-1.5">
-                                    <Lightbulb class="h-4 w-4 text-yellow-500" /> Competencies
-                                </p>
+                                <p class="flex items-center gap-1.5 text-sm font-bold"><Lightbulb class="h-4 w-4 text-yellow-500" /> Competencies</p>
                                 <Button
                                     size="sm"
-                                    class="h-7 text-xs bg-blue-600 hover:bg-blue-700 dark:text-white"
+                                    class="h-7 bg-blue-600 text-xs hover:bg-blue-700 dark:text-white"
                                     @click="showCompetencyModal = true"
                                 >
-                                    <Plus class="h-3.5 w-3.5 mr-0.5" /> Add Competency
+                                    <Plus class="mr-0.5 h-3.5 w-3.5" /> Add Competency
                                 </Button>
                             </div>
 
                             <!-- Grouped list -->
                             <template v-if="groupedCompetencies.length">
-                                <div
-                                    v-for="group in groupedCompetencies"
-                                    :key="group.domain"
-                                    class="flex flex-col gap-1.5"
-                                >
-                                    <p
-                                        class="text-[11px] font-extrabold uppercase tracking-wide"
-                                        :class="DOMAIN_COLORS[group.domain]"
-                                    >
+                                <div v-for="group in groupedCompetencies" :key="group.domain" class="flex flex-col gap-1.5">
+                                    <p class="text-[11px] font-extrabold uppercase tracking-wide" :class="DOMAIN_COLORS[group.domain]">
                                         {{ group.domain }}
                                     </p>
                                     <div
@@ -397,7 +373,7 @@ const removeCompetency = async (competency: Competency) => {
                                         <p class="text-xs leading-snug">{{ c.competency }}</p>
                                         <button
                                             type="button"
-                                            class="shrink-0 mt-0.5 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all"
+                                            class="mt-0.5 shrink-0 text-muted-foreground opacity-0 transition-all hover:text-red-500 group-hover:opacity-100"
                                             @click="removeCompetency(c)"
                                         >
                                             <X class="h-3.5 w-3.5" />
@@ -407,15 +383,11 @@ const removeCompetency = async (competency: Competency) => {
                             </template>
 
                             <!-- Empty state -->
-                            <div
-                                v-else
-                                class="flex flex-col items-center justify-center py-10 text-center text-muted-foreground"
-                            >
+                            <div v-else class="flex flex-col items-center justify-center py-10 text-center text-muted-foreground">
                                 <p class="text-xs font-semibold">No competencies yet.</p>
-                                <p class="text-[11px] mt-1">Click "Add Competency" to attach competencies to this program.</p>
+                                <p class="mt-1 text-[11px]">Click "Add Competency" to attach competencies to this program.</p>
                             </div>
                         </div>
-
                     </div>
 
                     <!-- Competency picker modal -->
@@ -425,48 +397,43 @@ const removeCompetency = async (competency: Competency) => {
                         :existing="existingCompetencyNames"
                         @update:open="showCompetencyModal = $event"
                     />
-
                 </TabsContent>
 
                 <!-- Participants Tab -->
-                <TabsContent value="participants" class="flex flex-col gap-4 px-6  mt-0">
-
+                <TabsContent value="participants" class="mt-0 flex flex-col gap-4 px-6">
                     <!-- BATCH SECTION: list ng batches + Add Batch modal -->
                     <BatchList :program="program" :batches="program.batches ?? []" />
-
                 </TabsContent>
 
                 <!-- Submissions Tab -->
-                <TabsContent value="submissions" class="flex flex-col gap-4 px-6 py-4 mt-0">
+                <TabsContent value="submissions" class="mt-0 flex flex-col gap-4 px-6 py-4">
                     <SubmissionList :program="program" :submissions="submissions" />
                 </TabsContent>
 
                 <!-- Certificates Tab -->
-                <TabsContent value="certificates" class="flex flex-col gap-4 px-6 py-4 mt-0">
+                <TabsContent value="certificates" class="mt-0 flex flex-col gap-4 px-6 py-4">
                     <CertificatesPanel :program="program" />
                 </TabsContent>
-                                
+
                 <!-- Requirements Tab -->
-                <TabsContent value="requirements" class="flex flex-col gap-4 px-6 py-4 mt-0">
+                <TabsContent value="requirements" class="mt-0 flex flex-col gap-4 px-6 py-4">
                     <RequirementList :program="program" />
                 </TabsContent>
 
                 <!-- Supporting Documents Tab -->
-                <TabsContent value="Supporting" class="flex flex-col gap-4 px-6 py-4 mt-0">
+                <TabsContent value="Supporting" class="mt-0 flex flex-col gap-4 px-6 py-4">
                     <SupportingDocuments :program="program" />
                 </TabsContent>
 
                 <!-- Resource Speakers Tab -->
-                <TabsContent value="resource" class="flex flex-col gap-4 px-6 py-4 mt-0">
+                <TabsContent value="resource" class="mt-0 flex flex-col gap-4 px-6 py-4">
                     <ResourceSpeakers :program="program" />
                 </TabsContent>
 
-                <TabsContent value="tesda-order" class="flex flex-col gap-4 px-6 py-4 mt-0">
+                <TabsContent value="tesda-order" class="mt-0 flex flex-col gap-4 px-6 py-4">
                     <TesdaOrderPanel :program="program" />
                 </TabsContent>
-
             </Tabs>
-
         </div>
 
         <!-- Evaluation Results modal -->
@@ -476,16 +443,18 @@ const removeCompetency = async (competency: Competency) => {
                 class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
                 @click.self="showEvaluationDashboard = false"
             >
-                <div class="bg-background rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
-                    <div class="sticky top-0 z-10 bg-gradient-to-r from-rose-700 via-red-700 to-orange-600 border-b px-6 py-4 rounded-t-2xl flex items-center gap-3 text-white">
-                        <div class="flex items-center justify-center h-9 w-9 rounded-xl bg-white/20 backdrop-blur shadow">
+                <div class="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-2xl bg-background shadow-2xl">
+                    <div
+                        class="sticky top-0 z-10 flex items-center gap-3 rounded-t-2xl border-b bg-gradient-to-r from-rose-700 via-red-700 to-orange-600 px-6 py-4 text-white"
+                    >
+                        <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 shadow backdrop-blur">
                             <ClipboardCheck class="h-4 w-4 text-white" />
                         </div>
                         <div>
                             <h2 class="text-base font-bold leading-none">Evaluation Results</h2>
-                            <p class="text-xs text-white/75 mt-0.5">Aggregated feedback for {{ program.title }}</p>
+                            <p class="mt-0.5 text-xs text-white/75">Aggregated feedback for {{ program.title }}</p>
                         </div>
-                        <button class="ml-auto text-white/80 hover:text-white transition-colors" @click="showEvaluationDashboard = false">
+                        <button class="ml-auto text-white/80 transition-colors hover:text-white" @click="showEvaluationDashboard = false">
                             <X class="h-5 w-5" />
                         </button>
                     </div>
@@ -500,7 +469,11 @@ const removeCompetency = async (competency: Competency) => {
 
 <style scoped>
 .backdrop-enter-active,
-.backdrop-leave-active { transition: opacity 0.2s ease; }
+.backdrop-leave-active {
+    transition: opacity 0.2s ease;
+}
 .backdrop-enter-from,
-.backdrop-leave-to     { opacity: 0; }
+.backdrop-leave-to {
+    opacity: 0;
+}
 </style>

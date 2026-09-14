@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import { Lock } from 'lucide-vue-next';
+import { onMounted } from 'vue';
 
 interface EvaluationFormData {
     title: string;
@@ -11,7 +11,7 @@ interface EvaluationFormData {
     };
 }
 
-const props = defineProps<{ form: EvaluationFormData }>();
+defineProps<{ form: EvaluationFormData }>();
 
 onMounted(() => {
     document.documentElement.classList.remove('dark');
@@ -21,23 +21,22 @@ onMounted(() => {
 <template>
     <Head :title="form.title" />
 
-    <div class="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-12 [color-scheme:light]">
-        <div class="max-w-md w-full space-y-4">
-
-            <div class="rounded-2xl overflow-hidden shadow-md">
+    <div class="flex min-h-screen items-center justify-center bg-gray-100 px-4 py-12 [color-scheme:light]">
+        <div class="w-full max-w-md space-y-4">
+            <div class="overflow-hidden rounded-2xl shadow-md">
                 <div class="bg-gradient-to-br from-rose-700 via-red-700 to-orange-600 px-6 py-5">
-                    <p class="text-rose-200 text-xs font-semibold uppercase tracking-widest mb-1">Program Evaluation</p>
-                    <h1 class="text-white text-xl font-extrabold">{{ form.batch.program.title }}</h1>
-                    <p class="text-white/80 text-xs mt-0.5">{{ form.batch.batch }}</p>
+                    <p class="mb-1 text-xs font-semibold uppercase tracking-widest text-rose-200">Program Evaluation</p>
+                    <h1 class="text-xl font-extrabold text-white">{{ form.batch.program.title }}</h1>
+                    <p class="mt-0.5 text-xs text-white/80">{{ form.batch.batch }}</p>
                 </div>
-                <div class="bg-white border-t-4 border-rose-500 px-6 py-8 text-center">
+                <div class="border-t-4 border-rose-500 bg-white px-6 py-8 text-center">
                     <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
                         <Lock class="h-7 w-7 text-gray-500" />
                     </div>
-                    <h2 class="text-xl font-extrabold text-gray-800 mb-2">Evaluation Closed</h2>
-                    <p class="text-sm text-gray-500 leading-relaxed">
-                        This evaluation form for <strong class="text-gray-700">{{ form.batch.program.title }}</strong> is no longer
-                        accepting responses. If you believe this is a mistake, please get in touch with the program organizer.
+                    <h2 class="mb-2 text-xl font-extrabold text-gray-800">Evaluation Closed</h2>
+                    <p class="text-sm leading-relaxed text-gray-500">
+                        This evaluation form for <strong class="text-gray-700">{{ form.batch.program.title }}</strong> is no longer accepting
+                        responses. If you believe this is a mistake, please get in touch with the program organizer.
                     </p>
                 </div>
             </div>

@@ -1,28 +1,28 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ref, watch, computed } from 'vue';
 import {
-    FileStack,
-    Search,
-    FileText,
-    CalendarDays,
-    Building2,
-    Link2,
-    ExternalLink,
     BookOpen,
-    Hash,
-    Layers,
-    RotateCcw,
-    Filter,
-    Inbox,
+    Building2,
+    CalendarDays,
     ChevronLeft,
     ChevronRight,
+    ExternalLink,
+    FileStack,
+    FileText,
+    Filter,
+    Hash,
+    Inbox,
+    Layers,
+    Link2,
+    RotateCcw,
+    Search,
     Sparkles,
 } from 'lucide-vue-next';
+import { computed, ref, watch } from 'vue';
 
 /* ===================== TYPES ===================== */
 
@@ -77,9 +77,7 @@ const props = defineProps<{
     };
 }>();
 
-const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Supporting Documents', href: '/supporting-documents' },
-];
+const breadcrumbs: BreadcrumbItem[] = [{ title: 'Supporting Documents', href: '/supporting-documents' }];
 
 /* ===================== FILTERS ===================== */
 
@@ -89,9 +87,7 @@ const documentSeries = ref(String(props.filters.document_series ?? ''));
 const origin = ref(props.filters.origin ?? '');
 
 // May naka-apply bang filter? Para sa "Reset" button at active badge.
-const hasActiveFilters = computed(
-    () => !!(search.value || documentType.value || documentSeries.value || origin.value),
-);
+const hasActiveFilters = computed(() => !!(search.value || documentType.value || documentSeries.value || origin.value));
 
 const applyFilters = () => {
     router.get(
@@ -158,20 +154,17 @@ const formatDate = (date: string | null) => {
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex flex-1 flex-col gap-4 px-6 py-6">
-
             <!-- ===================== HEADER ===================== -->
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div class="flex items-center gap-3">
-                    <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-md shadow-orange-500/20">
+                    <div
+                        class="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-md shadow-orange-500/20"
+                    >
                         <FileStack class="h-6 w-6 text-white" />
                     </div>
                     <div>
-                        <h1 class="text-xl font-extrabold leading-tight text-sky-900 dark:text-yellow-500">
-                            Supporting Documents
-                        </h1>
-                        <p class="text-xs text-muted-foreground">
-                            Registry of all recorded supporting documents across programs · view only
-                        </p>
+                        <h1 class="text-xl font-extrabold leading-tight text-sky-900 dark:text-yellow-500">Supporting Documents</h1>
+                        <p class="text-xs text-muted-foreground">Registry of all recorded supporting documents across programs · view only</p>
                     </div>
                 </div>
 
@@ -232,17 +225,13 @@ const formatDate = (date: string | null) => {
                 <!-- Search -->
                 <div class="relative min-w-[220px] flex-1">
                     <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                        v-model="search"
-                        placeholder="Search doc no., subject, program code, origin…"
-                        class="pl-9"
-                    />
+                    <Input v-model="search" placeholder="Search doc no., subject, program code, origin…" class="pl-9" />
                 </div>
 
                 <!-- Type filter -->
                 <select
                     v-model="documentType"
-                    class="h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs focus:outline-none focus:ring-2 focus:ring-ring"
+                    class="shadow-xs h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                     <option value="">All Types</option>
                     <option v-for="t in documentTypes" :key="t" :value="t">{{ t }}</option>
@@ -251,7 +240,7 @@ const formatDate = (date: string | null) => {
                 <!-- Series year filter -->
                 <select
                     v-model="documentSeries"
-                    class="h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs focus:outline-none focus:ring-2 focus:ring-ring"
+                    class="shadow-xs h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                     <option value="">All Years</option>
                     <option v-for="y in seriesYears" :key="y" :value="String(y)">{{ y }}</option>
@@ -260,19 +249,13 @@ const formatDate = (date: string | null) => {
                 <!-- Origin filter -->
                 <select
                     v-model="origin"
-                    class="h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs focus:outline-none focus:ring-2 focus:ring-ring"
+                    class="shadow-xs h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                     <option value="">All Origins</option>
                     <option v-for="o in origins" :key="o" :value="o">{{ o }}</option>
                 </select>
 
-                <Button
-                    v-if="hasActiveFilters"
-                    variant="ghost"
-                    size="sm"
-                    class="text-muted-foreground"
-                    @click="resetFilters"
-                >
+                <Button v-if="hasActiveFilters" variant="ghost" size="sm" class="text-muted-foreground" @click="resetFilters">
                     <RotateCcw class="mr-1 h-4 w-4" /> Reset
                 </Button>
             </div>
@@ -305,11 +288,7 @@ const formatDate = (date: string | null) => {
                         </thead>
 
                         <tbody>
-                            <tr
-                                v-for="doc in documents.data"
-                                :key="doc.id"
-                                class="border-b transition-colors last:border-b-0 hover:bg-muted/40"
-                            >
+                            <tr v-for="doc in documents.data" :key="doc.id" class="border-b transition-colors last:border-b-0 hover:bg-muted/40">
                                 <!-- Document number -->
                                 <td class="px-4 py-3 font-bold text-sky-900 dark:text-yellow-500">
                                     {{ doc.document_number }}
@@ -332,7 +311,9 @@ const formatDate = (date: string | null) => {
 
                                 <!-- Series year -->
                                 <td class="px-4 py-3">
-                                    <span class="inline-flex items-center rounded-md bg-slate-500/10 px-2 py-0.5 text-xs font-bold text-slate-600 dark:text-slate-300">
+                                    <span
+                                        class="inline-flex items-center rounded-md bg-slate-500/10 px-2 py-0.5 text-xs font-bold text-slate-600 dark:text-slate-300"
+                                    >
                                         {{ doc.document_series }}
                                     </span>
                                 </td>
@@ -341,7 +322,7 @@ const formatDate = (date: string | null) => {
                                 <td class="px-4 py-3 text-muted-foreground">{{ doc.origin || '—' }}</td>
 
                                 <!-- Date issued -->
-                                <td class="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                                <td class="whitespace-nowrap px-4 py-3 text-muted-foreground">
                                     {{ formatDate(doc.date_issued) }}
                                 </td>
 
@@ -353,7 +334,9 @@ const formatDate = (date: string | null) => {
                                         class="group flex flex-col"
                                         :title="doc.program.title"
                                     >
-                                        <span class="flex items-center gap-1 text-xs font-bold text-blue-600 group-hover:underline dark:text-blue-400">
+                                        <span
+                                            class="flex items-center gap-1 text-xs font-bold text-blue-600 group-hover:underline dark:text-blue-400"
+                                        >
                                             <BookOpen class="h-3.5 w-3.5 shrink-0" />
                                             {{ doc.program.program_code ?? doc.program_code ?? '—' }}
                                         </span>
@@ -387,17 +370,13 @@ const formatDate = (date: string | null) => {
                                         <Inbox class="h-8 w-8" />
                                         <p class="text-sm font-semibold">No supporting documents found.</p>
                                         <p class="text-xs">
-                                            {{ hasActiveFilters
-                                                ? 'Try adjusting the search or clearing the filters.'
-                                                : 'Documents added inside a program will appear here.' }}
+                                            {{
+                                                hasActiveFilters
+                                                    ? 'Try adjusting the search or clearing the filters.'
+                                                    : 'Documents added inside a program will appear here.'
+                                            }}
                                         </p>
-                                        <Button
-                                            v-if="hasActiveFilters"
-                                            variant="outline"
-                                            size="sm"
-                                            class="mt-1"
-                                            @click="resetFilters"
-                                        >
+                                        <Button v-if="hasActiveFilters" variant="outline" size="sm" class="mt-1" @click="resetFilters">
                                             <RotateCcw class="mr-1 h-4 w-4" /> Clear filters
                                         </Button>
                                     </div>
@@ -408,13 +387,10 @@ const formatDate = (date: string | null) => {
                 </div>
 
                 <!-- ===================== PAGINATION ===================== -->
-                <div
-                    v-if="documents.total > 0"
-                    class="flex flex-wrap items-center justify-between gap-3 border-t bg-muted/30 px-4 py-3"
-                >
+                <div v-if="documents.total > 0" class="flex flex-wrap items-center justify-between gap-3 border-t bg-muted/30 px-4 py-3">
                     <p class="text-xs text-muted-foreground">
-                        Showing <span class="font-semibold">{{ documents.from }}</span>–<span class="font-semibold">{{ documents.to }}</span>
-                        of <span class="font-semibold">{{ documents.total }}</span> documents
+                        Showing <span class="font-semibold">{{ documents.from }}</span
+                        >–<span class="font-semibold">{{ documents.to }}</span> of <span class="font-semibold">{{ documents.total }}</span> documents
                     </p>
 
                     <div class="flex items-center gap-1">
@@ -425,9 +401,7 @@ const formatDate = (date: string | null) => {
                                 preserve-scroll
                                 preserve-state
                                 class="flex h-8 min-w-8 items-center justify-center rounded-lg border px-2 text-xs font-semibold transition-colors"
-                                :class="link.active
-                                    ? 'border-blue-600 bg-blue-600 text-white'
-                                    : 'hover:bg-muted'"
+                                :class="link.active ? 'border-blue-600 bg-blue-600 text-white' : 'hover:bg-muted'"
                             >
                                 <ChevronLeft v-if="i === 0" class="h-3.5 w-3.5" />
                                 <ChevronRight v-else-if="i === documents.links.length - 1" class="h-3.5 w-3.5" />
@@ -437,7 +411,6 @@ const formatDate = (date: string | null) => {
                     </div>
                 </div>
             </div>
-
         </div>
     </AppLayout>
 </template>

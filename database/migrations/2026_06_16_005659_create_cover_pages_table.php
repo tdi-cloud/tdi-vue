@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('cover_pages', function (Blueprint $table) {
             $table->id();
             $table->foreignId('program_id')->constrained()->cascadeOnDelete();
-            $table->string('image'); 
+            $table->string('image');
             $table->timestamps();
         });
     }

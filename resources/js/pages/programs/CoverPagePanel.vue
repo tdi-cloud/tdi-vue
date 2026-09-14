@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { router, useForm } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
-import { ImagePlus, Trash2, Upload, Loader2, Maximize2, X } from 'lucide-vue-next';
 import { useConfirm } from '@/composables/useConfirm';
+import { router, useForm } from '@inertiajs/vue3';
+import { ImagePlus, Loader2, Maximize2, Trash2, Upload, X } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 
 const { confirmDialog } = useConfirm();
 
@@ -87,37 +87,27 @@ const removeCover = async () => {
 </script>
 
 <template>
-    <div class="rounded-2xl border shadow-sm overflow-hidden">
+    <div class="overflow-hidden rounded-2xl border shadow-sm">
         <!-- May image -->
-        <div v-if="displayImage" class="relative group">
-            <img
-                :src="displayImage"
-                alt="Program cover"
-                class="w-full h-48 md:h-56 object-cover cursor-zoom-in"
-                @click="showLightbox = true"
-            />
+        <div v-if="displayImage" class="group relative">
+            <img :src="displayImage" alt="Program cover" class="h-48 w-full cursor-zoom-in object-cover md:h-56" @click="showLightbox = true" />
 
             <!-- Loading overlay -->
-            <div
-                v-if="uploading"
-                class="absolute inset-0 bg-black/50 flex items-center justify-center"
-            >
-                <Loader2 class="h-6 w-6 text-white animate-spin" />
+            <div v-if="uploading" class="absolute inset-0 flex items-center justify-center bg-black/50">
+                <Loader2 class="h-6 w-6 animate-spin text-white" />
             </div>
 
             <!-- Hint na pwedeng i-click para lumaki (hover) -->
-            <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                <span class="flex items-center gap-1.5 rounded-full bg-black/50 backdrop-blur px-3 py-1.5 text-xs font-semibold text-white">
+            <div class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
+                <span class="flex items-center gap-1.5 rounded-full bg-black/50 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur">
                     <Maximize2 class="h-3.5 w-3.5" /> View larger
                 </span>
             </div>
 
             <!-- Action buttons (hover) -->
-            <div
-                class="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity"
-            >
+            <div class="absolute right-3 top-3 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                 <Button size="sm" variant="secondary" @click="triggerFileSelect" :disabled="uploading">
-                    <Upload class="h-3.5 w-3.5 mr-1" /> Change
+                    <Upload class="mr-1 h-3.5 w-3.5" /> Change
                 </Button>
                 <Button size="sm" variant="destructive" @click="removeCover" :disabled="uploading">
                     <Trash2 class="h-3.5 w-3.5" />
@@ -131,7 +121,7 @@ const removeCover = async () => {
             type="button"
             @click="triggerFileSelect"
             :disabled="uploading"
-            class="w-full h-48 md:h-56 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-muted-foreground/30 bg-muted/30 hover:bg-muted/50 transition-colors text-muted-foreground"
+            class="flex h-48 w-full flex-col items-center justify-center gap-2 border-2 border-dashed border-muted-foreground/30 bg-muted/30 text-muted-foreground transition-colors hover:bg-muted/50 md:h-56"
         >
             <Loader2 v-if="uploading" class="h-8 w-8 animate-spin" />
             <template v-else>
@@ -142,13 +132,7 @@ const removeCover = async () => {
         </button>
 
         <!-- Hidden file input -->
-        <input
-            ref="fileInput"
-            type="file"
-            accept="image/jpeg,image/jpg,image/png,image/webp"
-            class="hidden"
-            @change="handleFileChange"
-        />
+        <input ref="fileInput" type="file" accept="image/jpeg,image/jpg,image/png,image/webp" class="hidden" @change="handleFileChange" />
 
         <!-- ===== Cover Page Lightbox ===== -->
         <Teleport to="body">

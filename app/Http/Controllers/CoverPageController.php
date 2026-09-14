@@ -13,7 +13,7 @@ class CoverPageController extends Controller
     {
         $request->validate([
             'program_id' => 'required|exists:programs,id',
-            'image'      => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'image' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
         $cover = CoverPage::where('program_id', $request->program_id)->first();
