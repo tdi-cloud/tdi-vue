@@ -5,6 +5,7 @@ import {
     X, CheckCircle2, Clock, Award, FileText,
     Building2, MapPin, Hash, Star, AlertCircle,
     ExternalLink, Download, BookOpen, Search,
+    ChevronLeft, ChevronRight,
 } from 'lucide-vue-next';
 import axios from 'axios';
 
@@ -87,6 +88,8 @@ const progress     = ref<EmployeeProgress | null>(null);
 const activeReqs   = ref<EnrolledProgram | null>(null);
 const programSearch = ref('');
 const programYear   = ref('all');
+const programPage   = ref(1);
+const programsPerPage = 5;
 
 // Mula sa date_start ng bawat enrolled program — para sa Year filter dropdown.
 const availableProgramYears = computed(() => {
@@ -112,6 +115,21 @@ const filteredPrograms = computed(() => {
     });
 });
 
+const totalProgramPages = computed(() =>
+    Math.max(1, Math.ceil(filteredPrograms.value.length / programsPerPage)),
+);
+
+const paginatedPrograms = computed(() => {
+    const start = (programPage.value - 1) * programsPerPage;
+    return filteredPrograms.value.slice(start, start + programsPerPage);
+});
+
+// Bumalik sa page 1 tuwing nagbabago ang search/year filter, para hindi
+// ma-stuck ang user sa isang page na wala nang laman.
+watch([programSearch, programYear], () => {
+    programPage.value = 1;
+});
+
 watch(
     () => props.empcode,
     async (code) => {
@@ -119,6 +137,7 @@ watch(
         activeReqs.value = null;
         programSearch.value = '';
         programYear.value = 'all';
+        programPage.value = 1;
         if (!code) return;
 
         loading.value = true;
@@ -361,7 +380,7 @@ const submissionStatusColor = (status?: string) => {
 
                             <div v-else class="flex flex-col gap-2">
                                 <div
-                                    v-for="prog in filteredPrograms"
+                                    v-for="prog in paginatedPrograms"
                                     :key="prog.participant_id"
                                     class="rounded-xl border p-4 hover:border-blue-300 transition-colors cursor-pointer"
                                     @click="activeReqs = activeReqs?.participant_id === prog.participant_id ? null : prog"
@@ -479,6 +498,33 @@ const submissionStatusColor = (status?: string) => {
                                             </div>
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+
+                            <!-- Pagination -->
+                            <div v-if="filteredPrograms.length > programsPerPage" class="flex items-center justify-between mt-4 pt-3 border-t text-xs">
+                                <p class="text-muted-foreground">
+                                    Showing {{ (programPage - 1) * programsPerPage + 1 }}–{{ Math.min(programPage * programsPerPage, filteredPrograms.length) }}
+                                    of {{ filteredPrograms.length }}
+                                </p>
+                                <div class="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        :disabled="programPage <= 1"
+                                        class="inline-flex items-center gap-1 px-2 py-1 rounded-lg border font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-muted transition-colors"
+                                        @click="programPage--"
+                                    >
+                                        <ChevronLeft class="h-3.5 w-3.5" /> Prev
+                                    </button>
+                                    <span class="font-semibold">Page {{ programPage }} of {{ totalProgramPages }}</span>
+                                    <button
+                                        type="button"
+                                        :disabled="programPage >= totalProgramPages"
+                                        class="inline-flex items-center gap-1 px-2 py-1 rounded-lg border font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-muted transition-colors"
+                                        @click="programPage++"
+                                    >
+                                        Next <ChevronRight class="h-3.5 w-3.5" />
+                                    </button>
                                 </div>
                             </div>
                         </div>

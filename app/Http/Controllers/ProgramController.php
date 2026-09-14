@@ -20,7 +20,8 @@ class ProgramController extends Controller
      */
     public const CATEGORIES = [
         'Benchmarking', 'Capability Building', 'Executive-Office', 'Foreign-Bilateral',
-        'Foreign-FSTP', 'Local-In-House', 'Local-Public', 'Other-Foreign', 'Regional', 'Team-Building',
+        'Foreign-FSTP', 'General Assembly', 'Local-In-House', 'Local-Public', 'Other-Foreign',
+        'Regional', 'Team-Building',
     ];
 
     /**

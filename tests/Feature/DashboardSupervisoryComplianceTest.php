@@ -48,13 +48,13 @@ function supCompTestEmployee(string $empcode, string $lastname, string $region =
     ]);
 }
 
-function supCompTestBatch(int $hours): Batch
+function supCompTestBatch(int $hours, string $category = 'Regional'): Batch
 {
     $program = Program::create([
         'title' => 'Supervisory Compliance Test Program',
         'modality' => 'Onsite',
         'pax' => '20',
-        'category' => 'Regional',
+        'category' => $category,
         'type' => 'SUPERVISORY/MANAGERIAL',
         'initiated' => 'NTTA',
         'cost' => '0',
@@ -105,22 +105,91 @@ test('supervisory compliance endpoint reports correct global and per-region numb
     $response->assertOk();
     expect($response->json('completed'))->toBe(2);
     expect($response->json('in_progress'))->toBe(1);
+    // +1 admin (CO) na hindi pa nag-attend ng kahit anong SUPERVISORY/
+    // MANAGERIAL na batch — dapat mabilang bilang "not started", hindi
+    // ma-miss (total 4 - completed 2 - in_progress 1 = 1).
+    expect($response->json('total'))->toBe(4);
+    expect($response->json('not_started'))->toBe(1);
 
     $regions = $response->json('regions');
     $completed = $response->json('regions_completed');
     $inProgress = $response->json('regions_in_progress');
+    $notStarted = $response->json('regions_not_started');
 
+    $coIndex = array_search('CO', $regions);
     $ncrIndex = array_search('NCR', $regions);
     $r5Index = array_search('R5', $regions);
     $caragaIndex = array_search('CARAGA', $regions);
 
     expect($completed[$ncrIndex])->toBe(1);
     expect($inProgress[$ncrIndex])->toBe(1);
+    expect($notStarted[$ncrIndex])->toBe(0);
     expect($completed[$r5Index])->toBe(1);
     expect($inProgress[$r5Index])->toBe(0);
-    // Rehiyon na walang data — dapat 0/0, hindi crash/undefined.
+    expect($notStarted[$coIndex])->toBe(1); // ang admin
+    // Rehiyon na walang data — dapat 0/0/0, hindi crash/undefined.
     expect($completed[$caragaIndex])->toBe(0);
     expect($inProgress[$caragaIndex])->toBe(0);
+    expect($notStarted[$caragaIndex])->toBe(0);
+});
+
+test('supervisory compliance list endpoint returns employees who have not started any supervisory training', function () {
+    $admin = supCompTestAdmin('EMP-SC-ADM-NS');
+    $completedBatch = supCompTestBatch(40);
+
+    $completedEmployee = supCompTestEmployee('EMP-SC-NS-DONE', 'Santos');
+    Participant::create([
+        'sort_order' => 1, 'batch_id' => $completedBatch->id, 'empcode' => $completedEmployee->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 40, 'added_by' => 'system',
+    ]);
+
+    $neverAttended = supCompTestEmployee('EMP-SC-NS-NONE', 'Reyes');
+    // Walang Participant record — hindi pa siya kailanman nag-attend.
+
+    $response = $this->actingAs($admin)->getJson(route('dashboard.supervisory-compliance.list', [
+        'type' => 'not_started', 'region' => 'ALL', 'office' => 'ALL', 'office_filter' => 'ALL', 'sg_min' => 19,
+    ]));
+
+    $response->assertOk();
+    $empcodes = collect($response->json('employees'))->pluck('EMPCODE');
+
+    // Kasama ang admin (CO) at yung hindi nag-attend — pareho silang wala
+    // pang SUPERVISORY/MANAGERIAL na training.
+    expect($empcodes)->toContain('EMP-SC-NS-NONE')
+        ->and($empcodes)->toContain('EMP-SC-ADM-NS')
+        ->and($empcodes)->not->toContain('EMP-SC-NS-DONE');
+
+    $notStartedRow = collect($response->json('employees'))->firstWhere('EMPCODE', 'EMP-SC-NS-NONE');
+    expect((float) $notStartedRow['total_hours'])->toBe(0.0);
+});
+
+test('supervisory compliance endpoint excludes General Assembly programs from the completed count', function () {
+    $admin = supCompTestAdmin('EMP-SC-ADM-GA');
+
+    $regularBatch = supCompTestBatch(40, 'Regional');
+    $gaBatch = supCompTestBatch(40, 'General Assembly');
+
+    $completedViaRegular = supCompTestEmployee('EMP-SC-GA-01', 'Santos');
+    Participant::create([
+        'sort_order' => 1, 'batch_id' => $regularBatch->id, 'empcode' => $completedViaRegular->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 40, 'added_by' => 'system',
+    ]);
+
+    $onlyAttendedGeneralAssembly = supCompTestEmployee('EMP-SC-GA-02', 'Reyes');
+    Participant::create([
+        'sort_order' => 1, 'batch_id' => $gaBatch->id, 'empcode' => $onlyAttendedGeneralAssembly->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 40, 'added_by' => 'system',
+    ]);
+
+    $response = $this->actingAs($admin)->getJson(route('dashboard.supervisory-compliance', [
+        'region' => 'ALL', 'office' => 'ALL', 'office_filter' => 'ALL', 'sg_min' => 19,
+    ]));
+
+    $response->assertOk();
+    // 1 lang ang "completed" — ang isa ay General Assembly lang ang
+    // na-attend-an (40 hrs), hindi ito binibilang na learning intervention
+    // kahit SUPERVISORY/MANAGERIAL ang type ng program.
+    expect($response->json('completed'))->toBe(1);
 });
 
 test('non-admin users cannot access the supervisory compliance endpoint', function () {

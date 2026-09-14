@@ -164,6 +164,7 @@ const CATEGORY_OPTIONS = [
     { value: 'Executive-Office', label: 'Executive-Office' },
     { value: 'Foreign-Bilateral', label: 'Foreign-Bilateral' },
     { value: 'Foreign-FSTP', label: 'Foreign-FSTP' },
+    { value: 'General Assembly', label: 'General Assembly' },
     { value: 'Local-In-House', label: 'Local-In-House' },
     { value: 'Local-Public', label: 'Local-Public' },
     { value: 'Other-Foreign', label: 'Other Foreign Program' },

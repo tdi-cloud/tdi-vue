@@ -48,13 +48,13 @@ function trainingCompTestEmployee(string $empcode, string $lastname, string $reg
     ]);
 }
 
-function trainingCompTestBatch(int $hours = 16): Batch
+function trainingCompTestBatch(int $hours = 16, string $category = 'Regional'): Batch
 {
     $program = Program::create([
         'title' => 'Training Compliance Test Program',
         'modality' => 'Onsite',
         'pax' => '20',
-        'category' => 'Regional',
+        'category' => $category,
         'type' => 'TECHNICAL',
         'initiated' => 'NTTA',
         'cost' => '0',
@@ -118,6 +118,36 @@ test('training compliance endpoint reports correct global and per-region numbers
     // Rehiyon na walang data — dapat 0/0, hindi crash/undefined.
     expect($trained[$caragaIndex])->toBe(0);
     expect($notTrained[$caragaIndex])->toBe(0);
+});
+
+test('training compliance endpoint excludes General Assembly programs from the trained count', function () {
+    $admin = trainingCompTestAdmin('EMP-TC-ADM-GA');
+
+    $regularBatch = trainingCompTestBatch(16, 'Regional');
+    $gaBatch = trainingCompTestBatch(16, 'General Assembly');
+
+    $trainedViaRegular = trainingCompTestEmployee('EMP-TC-GA-01', 'Santos');
+    Participant::create([
+        'sort_order' => 1, 'batch_id' => $regularBatch->id, 'empcode' => $trainedViaRegular->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+    ]);
+
+    $onlyAttendedGeneralAssembly = trainingCompTestEmployee('EMP-TC-GA-02', 'Reyes');
+    Participant::create([
+        'sort_order' => 1, 'batch_id' => $gaBatch->id, 'empcode' => $onlyAttendedGeneralAssembly->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+    ]);
+
+    $response = $this->actingAs($admin)->getJson(route('dashboard.training-compliance', [
+        'region' => 'ALL', 'office' => 'ALL', 'office_filter' => 'ALL', 'sg_min' => 1,
+    ]));
+
+    $response->assertOk();
+    // +1 admin (CO) na hindi trained. Sa 2 test employees, 1 lang ang
+    // "trained" — ang isa ay General Assembly lang ang na-attend-an, hindi
+    // ito binibilang na learning intervention.
+    expect($response->json('total'))->toBe(3);
+    expect($response->json('trained'))->toBe(1);
 });
 
 test('training compliance endpoint zeroes out other regions when a single region filter is applied', function () {

@@ -137,7 +137,7 @@ class ParticipantController extends Controller
      *
      * Rules:
      *  - Pending  → hours = 0; buburahin ang memo kung meron
-     *  - Complete → required ang hours; hindi pwedeng lumampas sa batch hours;
+     *  - Complete → required ang hours (kahit ilang value, walang max cap);
      *               buburahin ang memo kung meron
      *  - Absent   → required ang justification memo (file); hours = 0
      *
@@ -164,9 +164,6 @@ class ParticipantController extends Controller
             'justification.required' => 'Please upload the justification memo for the absence.',
         ]);
 
-        $batch = $participant->batch;
-        $maxHours = (float) ($batch->hours ?? 0);
-
         switch ($request->attendance) {
 
             case 'Pending':
@@ -179,12 +176,6 @@ class ParticipantController extends Controller
 
             case 'Complete':
                 $hours = (float) $request->hours;
-
-                if ($maxHours > 0 && $hours > $maxHours) {
-                    return back()->withErrors([
-                        'hours' => "Completed hours cannot exceed the batch total of {$maxHours} hour(s).",
-                    ]);
-                }
 
                 $this->deleteJustification($participant); // ✅ linisin ang memo
                 $participant->update([
@@ -224,14 +215,7 @@ class ParticipantController extends Controller
         ]);
 
         $batch = $participant->batch;
-        $maxHours = (float) ($batch->hours ?? 0);
         $hours = (float) $request->hours;
-
-        if ($maxHours > 0 && $hours > $maxHours) {
-            return back()->withErrors([
-                'hours' => "Completed hours cannot exceed the batch total of {$maxHours} hour(s).",
-            ]);
-        }
 
         Participant::where('batch_id', $batch->id)
             ->where('attendance', '!=', 'Absent')

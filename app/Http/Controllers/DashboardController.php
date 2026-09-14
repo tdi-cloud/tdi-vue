@@ -218,10 +218,12 @@ class DashboardController extends Controller
             DB::table('employees')
                 ->where('employees.SG', '>=', $sgMin)
                 ->join('participants', 'employees.EMPCODE', '=', 'participants.empcode')
-                ->join('batches', 'participants.batch_id', '=', 'batches.id'),
+                ->join('batches', 'participants.batch_id', '=', 'batches.id')
+                ->join('programs', 'batches.program_code', '=', 'programs.program_code'),
             $region, $statuses, $officeFilter, $office, 'employees.'
         )
             ->where('participants.attendance', '!=', 'Absent')
+            ->where('programs.category', '!=', 'General Assembly')
             ->whereRaw('CAST(batches.hours AS DECIMAL(10,2)) >= 8');
 
         $trainedEmployees = $trainedQuery->distinct()->count('employees.EMPCODE');
@@ -244,10 +246,12 @@ class DashboardController extends Controller
             DB::table('employees')
                 ->join('participants', 'employees.EMPCODE', '=', 'participants.empcode')
                 ->join('batches', 'participants.batch_id', '=', 'batches.id')
+                ->join('programs', 'batches.program_code', '=', 'programs.program_code')
                 ->where('employees.SG', '>=', $sgMin),
             null, $statuses, $officeFilter, $office, 'employees.'
         )
             ->where('participants.attendance', '!=', 'Absent')
+            ->where('programs.category', '!=', 'General Assembly')
             ->whereRaw('CAST(batches.hours AS DECIMAL(10,2)) >= 8')
             ->select('employees.REGION as region')
             ->selectRaw('COUNT(DISTINCT employees.EMPCODE) as trained')
@@ -305,8 +309,10 @@ class DashboardController extends Controller
             $q->select(DB::raw(1))
                 ->from('participants')
                 ->join('batches', 'participants.batch_id', '=', 'batches.id')
+                ->join('programs', 'batches.program_code', '=', 'programs.program_code')
                 ->whereColumn('participants.empcode', 'employees.EMPCODE')
                 ->where('participants.attendance', '!=', 'Absent')
+                ->where('programs.category', '!=', 'General Assembly')
                 ->whereRaw('CAST(batches.hours AS DECIMAL(10,2)) >= 8');
         };
 
@@ -350,6 +356,7 @@ class DashboardController extends Controller
             ->join('batches', 'participants.batch_id', '=', 'batches.id')
             ->join('programs', 'batches.program_code', '=', 'programs.program_code')
             ->where('programs.type', 'SUPERVISORY/MANAGERIAL')
+            ->where('programs.category', '!=', 'General Assembly')
             ->where('participants.attendance', '!=', 'Absent')
             ->select(
                 'participants.empcode',
@@ -377,12 +384,25 @@ class DashboardController extends Controller
             ->where('emp_hours.total_hours', '>', 0)
             ->distinct()->count('employees.EMPCODE');
 
+        // "Not Started" — mga empleyadong tugma sa filters pero wala pang
+        // kahit isang oras ng SUPERVISORY/MANAGERIAL na training (kaya wala
+        // silang row sa hoursSubquery, hindi lang "less than 40 hrs").
+        $notStarted = $totalEmployees - $completed - $inProgress;
+
         $completedPct = $totalEmployees > 0 ? round(($completed / $totalEmployees) * 100, 2) : 0;
         $inProgressPct = $totalEmployees > 0 ? round(($inProgress / $totalEmployees) * 100, 2) : 0;
+        $notStartedPct = $totalEmployees > 0 ? round(($notStarted / $totalEmployees) * 100, 2) : 0;
 
-        // Isang GROUP BY na query lang (sa halip na 2 query * 18 region =
-        // 36 hiwalay na query) — ito ang pinaka-malaking dahilan kung bakit
+        // 2 GROUP BY na query lang (sa halip na 3 query * 18 region = 54
+        // hiwalay na query) — ito ang pinaka-malaking dahilan kung bakit
         // mabagal mag-load ang Supervisory/Managerial na card sa Dashboard.
+        $totalByRegion = $this->applyEmployeeFilters(
+            DB::table('employees')->where('SG', '>=', $sgMin), null, $statuses, $officeFilter, $office
+        )
+            ->select('REGION as region', DB::raw('COUNT(*) as total'))
+            ->groupBy('REGION')
+            ->pluck('total', 'region');
+
         $regionRows = $this->applyEmployeeFilters(
             DB::table('employees')->where('SG', '>=', $sgMin),
             null, $statuses, $officeFilter, $office
@@ -397,26 +417,35 @@ class DashboardController extends Controller
 
         $regionsCompleted = [];
         $regionsInProgress = [];
+        $regionsNotStarted = [];
 
         foreach ($allRegions as $reg) {
             if ($region && $region !== 'ALL' && $reg !== $region) {
                 $regionsCompleted[] = 0;
                 $regionsInProgress[] = 0;
+                $regionsNotStarted[] = 0;
 
                 continue;
             }
 
+            $regTotal = (int) ($totalByRegion[$reg] ?? 0);
             $row = $regionRows->get($reg);
-            $regionsCompleted[] = (int) ($row->completed ?? 0);
-            $regionsInProgress[] = (int) ($row->in_progress ?? 0);
+            $regCompleted = (int) ($row->completed ?? 0);
+            $regInProgress = (int) ($row->in_progress ?? 0);
+
+            $regionsCompleted[] = $regCompleted;
+            $regionsInProgress[] = $regInProgress;
+            $regionsNotStarted[] = $regTotal - $regCompleted - $regInProgress;
         }
 
         return response()->json([
             'total' => $totalEmployees,
             'completed' => $completed,
             'in_progress' => $inProgress,
+            'not_started' => $notStarted,
             'completed_pct' => $completedPct,
             'in_progress_pct' => $inProgressPct,
+            'not_started_pct' => $notStartedPct,
             'sg_min' => $sgMin,
             'region' => $region,
             'office' => $office,
@@ -425,6 +454,7 @@ class DashboardController extends Controller
             'regions' => $allRegions,
             'regions_completed' => $regionsCompleted,
             'regions_in_progress' => $regionsInProgress,
+            'regions_not_started' => $regionsNotStarted,
         ]);
     }
 
@@ -441,6 +471,7 @@ class DashboardController extends Controller
             ->join('batches', 'participants.batch_id', '=', 'batches.id')
             ->join('programs', 'batches.program_code', '=', 'programs.program_code')
             ->where('programs.type', 'SUPERVISORY/MANAGERIAL')
+            ->where('programs.category', '!=', 'General Assembly')
             ->where('participants.attendance', '!=', 'Absent')
             ->select(
                 'participants.empcode',
@@ -448,17 +479,28 @@ class DashboardController extends Controller
             )
             ->groupBy('participants.empcode');
 
-        $query = $this->applyEmployeeFilters(
+        $baseEmployees = $this->applyEmployeeFilters(
             DB::table('employees')->where('SG', '>=', $sgMin),
             $region, $statuses, $officeFilter, $office
-        )
-            ->joinSub($hoursSubquery, 'emp_hours', fn ($j) => $j->on('employees.EMPCODE', '=', 'emp_hours.empcode'));
+        );
 
-        if ($type === 'completed') {
-            $query->where('emp_hours.total_hours', '>=', 40);
+        if ($type === 'not_started') {
+            // Walang row sa hoursSubquery — kaya LEFT join at hanapin ang
+            // mga walang match (hindi lang "less than 40 hrs", kundi
+            // talagang wala pang na-attend-an na SUPERVISORY/MANAGERIAL).
+            $query = $baseEmployees
+                ->leftJoinSub($hoursSubquery, 'emp_hours', fn ($j) => $j->on('employees.EMPCODE', '=', 'emp_hours.empcode'))
+                ->whereNull('emp_hours.total_hours');
         } else {
-            $query->where('emp_hours.total_hours', '<', 40)
-                ->where('emp_hours.total_hours', '>', 0);
+            $query = $baseEmployees
+                ->joinSub($hoursSubquery, 'emp_hours', fn ($j) => $j->on('employees.EMPCODE', '=', 'emp_hours.empcode'));
+
+            if ($type === 'completed') {
+                $query->where('emp_hours.total_hours', '>=', 40);
+            } else {
+                $query->where('emp_hours.total_hours', '<', 40)
+                    ->where('emp_hours.total_hours', '>', 0);
+            }
         }
 
         $employees = $query
@@ -467,7 +509,7 @@ class DashboardController extends Controller
                 'employees.POSITION', 'employees.OFFICE/DIVISION as office_division',
                 'employees.OFFICE', 'employees.REGION', 'employees.SG',
                 'employees.PLANTILLA STATUS as plantilla_status',
-                'emp_hours.total_hours',
+                DB::raw('COALESCE(emp_hours.total_hours, 0) as total_hours'),
             )
             ->orderBy('employees.LASTNAME')->orderBy('employees.FIRSTNAME')
             ->get();

@@ -129,10 +129,6 @@ const submitAttendance = () => {
             attErrors.value.hours = 'Please enter the completed hours.';
             return;
         }
-        if (batchHours.value > 0 && h > batchHours.value) {
-            attErrors.value.hours = `Cannot exceed the batch total of ${batchHours.value} hour(s).`;
-            return;
-        }
     }
 
     if (attStatus.value === 'Absent' && !attFile.value && !attendanceTarget.value.justification) {
@@ -193,14 +189,19 @@ const openSubmissions = (p: any) => {
 };
 
 const normalizeStatus = (status: string | null | undefined): 'Pending' | 'Approved' | 'Rejected' => {
-    const s = (status ?? '').toLowerCase();
-    if (s === 'approved') return 'Approved';
+    // Walang existing submission pa (bagong entry) — "Approved" na ang default
+    // sa halip na "Pending", para hindi na kailangang palitan pa manu-mano
+    // kada bagong submission.
+    if (!status) return 'Approved';
+
+    const s = status.toLowerCase();
     if (s === 'rejected') return 'Rejected';
-    return 'Pending';
+    if (s === 'pending') return 'Pending';
+    return 'Approved';
 };
 
 const editingRow = ref<number | null>(null);
-const subStatus = ref<'Pending' | 'Approved' | 'Rejected'>('Pending');
+const subStatus = ref<'Pending' | 'Approved' | 'Rejected'>('Approved');
 const subRemarks = ref('');
 const subFile = ref<File | null>(null);
 const subProcessing = ref(false);
@@ -530,10 +531,6 @@ const applyToAll = async () => {
     const h = Number(attHours.value);
     if (!attHours.value || isNaN(h) || h <= 0) {
         attErrors.value.hours = 'Please enter the completed hours.';
-        return;
-    }
-    if (batchHours.value > 0 && h > batchHours.value) {
-        attErrors.value.hours = `Cannot exceed the batch total of ${batchHours.value} hour(s).`;
         return;
     }
 
@@ -995,9 +992,8 @@ const submissionSummary = computed(() => {
                         <div v-if="attStatus === 'Complete'" class="grid gap-1">
                             <Label class="text-xs">
                                 Completed Hours <span class="text-red-500">*</span>
-                                <span class="text-muted-foreground font-normal">(max: {{ batchHours }} hr/s)</span>
                             </Label>
-                            <Input type="number" step="0.5" min="0.5" :max="batchHours || undefined"
+                            <Input type="number" step="0.5" min="0.5"
                                 class="text-xs h-8" v-model="attHours" placeholder="e.g. 16" />
                             <p class="text-xs text-red-500">{{ attErrors.hours }}</p>
                         </div>

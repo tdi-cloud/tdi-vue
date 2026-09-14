@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
-    BriefcaseBusiness, CircleCheckBig, Timer, Users, LoaderCircle, Search, Download,
+    BriefcaseBusiness, CircleCheckBig, Timer, CircleDashed, Users, LoaderCircle, Search, Download,
 } from 'lucide-vue-next';
 import EmployeeProgressModal from '@/components/EmployeeProgressModal.vue';
 
@@ -30,25 +30,29 @@ interface SupervisoryStats {
     total: number;
     completed: number;
     in_progress: number;
+    not_started: number;
     completed_pct: number;
     in_progress_pct: number;
+    not_started_pct: number;
     sg_min: number;
 }
 
 const loading = ref(false);
 
 const stats = ref<SupervisoryStats>({
-    total: 0, completed: 0, in_progress: 0,
-    completed_pct: 0, in_progress_pct: 0, sg_min: 19,
+    total: 0, completed: 0, in_progress: 0, not_started: 0,
+    completed_pct: 0, in_progress_pct: 0, not_started_pct: 0, sg_min: 19,
 });
 
 /* ===================== COUNT-UP ANIMATION ===================== */
 
-const animatedCompleted     = ref(0);
-const animatedInProgress    = ref(0);
-const animatedTotal         = ref(0);
-const animatedPercent       = ref(0);
-const animatedInProgressPct = ref(0);
+const animatedCompleted      = ref(0);
+const animatedInProgress     = ref(0);
+const animatedNotStarted     = ref(0);
+const animatedTotal          = ref(0);
+const animatedPercent        = ref(0);
+const animatedInProgressPct  = ref(0);
+const animatedNotStartedPct  = ref(0);
 
 const animateNumber = (targetRef: { value: number }, to: number, duration = 1000) => {
     const from  = targetRef.value;
@@ -78,9 +82,11 @@ const fetchStats = async () => {
         const pct = Math.round(data.completed_pct);
         animateNumber(animatedCompleted,     data.completed);
         animateNumber(animatedInProgress,    data.in_progress);
+        animateNumber(animatedNotStarted,    data.not_started);
         animateNumber(animatedTotal,         data.total);
         animateNumber(animatedPercent,       pct);
         animateNumber(animatedInProgressPct, Math.round(data.in_progress_pct));
+        animateNumber(animatedNotStartedPct, Math.round(data.not_started_pct));
     } catch (e) {
         console.error('Failed to load supervisory compliance stats:', e);
     } finally {
@@ -108,14 +114,14 @@ interface EmployeeRow {
 }
 
 const showListModal = ref(false);
-const listType      = ref<'completed' | 'in_progress'>('completed');
+const listType      = ref<'completed' | 'in_progress' | 'not_started'>('completed');
 const listLoading   = ref(false);
 const listSearch    = ref('');
 const employees     = ref<EmployeeRow[]>([]);
 
 const selectedEmpcode = ref<string | null>(null);
 
-const openList = async (type: 'completed' | 'in_progress') => {
+const openList = async (type: 'completed' | 'in_progress' | 'not_started') => {
     listType.value      = type;
     listSearch.value    = '';
     employees.value     = [];
@@ -174,11 +180,12 @@ const downloadCsv = () => {
     URL.revokeObjectURL(url);
 };
 
-/* ===================== APEXCHART — dual radial bar ===================== */
+/* ===================== APEXCHART — triple radial bar ===================== */
 
 const series = computed(() => [
     Math.round(stats.value.completed_pct),
     Math.round(stats.value.in_progress_pct),
+    Math.round(stats.value.not_started_pct),
 ]);
 
 const chartOptions = computed(() => ({
@@ -188,12 +195,12 @@ const chartOptions = computed(() => ({
         animations: { enabled: true, speed: 1000, dynamicAnimation: { enabled: true, speed: 1000 } },
         sparkline: { enabled: true },
     },
-    colors: ['#34d399', '#38bdf8'],
+    colors: ['#34d399', '#38bdf8', '#cbd5e1'],
     stroke: { lineCap: 'round' },
     plotOptions: {
         radialBar: {
             startAngle: 0, endAngle: 360,
-            hollow: { size: '45%' },
+            hollow: { size: '35%' },
             track: { background: 'rgba(125, 211, 252, 0.18)', strokeWidth: '100%', margin: 4 },
             dataLabels: { name: { show: false }, value: { show: false } },
         },
@@ -247,17 +254,35 @@ const chartOptions = computed(() => ({
                             <Timer class="h-4 w-4" /> In Progress
                         </p>
                     </button>
+
+                    <button
+                        type="button"
+                        class="group text-left rounded-xl px-2 py-1 -mx-2 -my-1 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer"
+                        @click="openList('not_started')"
+                    >
+                        <span class="block text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 rounded-full px-2 py-0.5 w-fit mb-1 opacity-0 group-hover:opacity-100 transition-opacity">view</span>
+                        <p class="text-3xl font-extrabold text-slate-400 leading-none tabular-nums">
+                            {{ animatedNotStarted.toLocaleString() }}
+                            <span class="text-lg font-bold text-slate-300">· {{ animatedNotStartedPct }}%</span>
+                        </p>
+                        <p class="flex items-center gap-1.5 text-sm font-bold text-slate-500 mt-1">
+                            <CircleDashed class="h-4 w-4" /> Not Started
+                        </p>
+                    </button>
                 </div>
 
                 <!-- CENTER: chart -->
                 <div class="relative">
                     <VueApexCharts type="radialBar" width="230" height="230" :options="chartOptions" :series="series" />
                     <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                        <p class="text-2xl font-extrabold text-emerald-500 leading-none tabular-nums">{{ animatedPercent }}%</p>
-                        <p class="text-[10px] font-semibold text-slate-400 mt-0.5">Completed</p>
-                        <div class="mt-1.5 h-px w-8 bg-slate-200 dark:bg-slate-700"></div>
-                        <p class="text-lg font-extrabold text-sky-400 leading-none tabular-nums mt-1.5">{{ animatedInProgressPct }}%</p>
-                        <p class="text-[10px] font-semibold text-slate-400 mt-0.5">In Progress</p>
+                        <p class="text-xl font-extrabold text-emerald-500 leading-none tabular-nums">{{ animatedPercent }}%</p>
+                        <p class="text-[9px] font-semibold text-slate-400 mt-0.5">Completed</p>
+                        <div class="mt-1 h-px w-8 bg-slate-200 dark:bg-slate-700"></div>
+                        <p class="text-base font-extrabold text-sky-400 leading-none tabular-nums mt-1">{{ animatedInProgressPct }}%</p>
+                        <p class="text-[9px] font-semibold text-slate-400 mt-0.5">In Progress</p>
+                        <div class="mt-1 h-px w-8 bg-slate-200 dark:bg-slate-700"></div>
+                        <p class="text-base font-extrabold text-slate-400 leading-none tabular-nums mt-1">{{ animatedNotStartedPct }}%</p>
+                        <p class="text-[9px] font-semibold text-slate-400 mt-0.5">Not Started</p>
                     </div>
                 </div>
 
@@ -294,6 +319,9 @@ const chartOptions = computed(() => ({
                 <span class="flex items-center gap-1.5 text-xs font-bold text-sky-400">
                     <span class="h-2.5 w-2.5 rounded-full bg-sky-300"></span> In Progress (< 40 hrs)
                 </span>
+                <span class="flex items-center gap-1.5 text-xs font-bold text-slate-400">
+                    <span class="h-2.5 w-2.5 rounded-full bg-slate-300"></span> Not Started (0 hrs)
+                </span>
             </div>
         </div>
 
@@ -302,8 +330,14 @@ const chartOptions = computed(() => ({
             <DialogContent class="!max-w-4xl flex flex-col max-h-[85vh] overflow-hidden !rounded-2xl gap-3">
                 <DialogHeader class="shrink-0">
                     <DialogTitle class="text-lg font-extrabold">
-                        <span :class="listType === 'completed' ? 'text-emerald-500' : 'text-sky-500'">
-                            {{ listType === 'completed' ? 'Completed (≥ 40 hrs)' : 'In Progress' }}
+                        <span
+                            :class="{
+                                'text-emerald-500': listType === 'completed',
+                                'text-sky-500': listType === 'in_progress',
+                                'text-slate-400': listType === 'not_started',
+                            }"
+                        >
+                            {{ { completed: 'Completed (≥ 40 hrs)', in_progress: 'In Progress', not_started: 'Not Started' }[listType] }}
                         </span>
                         — Supervisory / Managerial Training
                     </DialogTitle>
@@ -355,7 +389,7 @@ const chartOptions = computed(() => ({
                                     </span>
                                 </td>
                                 <td class="px-3 py-2.5 text-right font-extrabold tabular-nums"
-                                    :class="emp.total_hours >= 40 ? 'text-emerald-500' : 'text-sky-500'">
+                                    :class="emp.total_hours >= 40 ? 'text-emerald-500' : emp.total_hours > 0 ? 'text-sky-500' : 'text-slate-400'">
                                     {{ emp.total_hours }}<span class="text-[10px] font-normal text-muted-foreground"> hrs</span>
                                 </td>
                             </tr>

@@ -6,10 +6,11 @@ import {
     Plus, Earth, Calendar, Users, Building2, Search, X,
     ChevronLeft, ChevronRight, Globe, MapPin, Clock, Banknote,
     Tag, FileText, CalendarDays, Building, Hash, AlignLeft,
-    CheckCircle2, SlidersHorizontal, Trash2, Eye, Pencil,BarChart3, Settings, UserRound
+    CheckCircle2, SlidersHorizontal, Trash2, Eye, Pencil,BarChart3, Settings, UserRound, History
 } from 'lucide-vue-next';
 import { ref, computed, watch } from 'vue';
 import ForeignProgramsDashboardModal from '@/components/ForeignProgramsDashboardModal.vue';
+import NominationHistoryModal from '@/components/NominationHistoryModal.vue';
 import OrganizingSponsorModal from '@/components/OrganizingSponsorModal.vue';
 import SponsorConfigModal from '@/components/SponsorConfigModal.vue';
 import EditProgramModal from '@/pages/ForeignPrograms/EditProgramModal.vue';
@@ -17,6 +18,7 @@ import { useConfirm } from '@/composables/useConfirm';
 
 const { confirmDialog } = useConfirm();
 const showDashboard = ref(false);
+const showNominationHistory = ref(false);
 const showFormSettingsDropdown = ref(false);
 function handleClickOutside(event: MouseEvent) {
     showFormSettingsDropdown.value = false;
@@ -280,6 +282,7 @@ function onConfigSaved() {
 <template>
     <Head title="Foreign Programs" />
     <ForeignProgramsDashboardModal v-if="showDashboard" @close="showDashboard = false" />
+    <NominationHistoryModal v-if="showNominationHistory" @close="showNominationHistory = false" />
     <OrganizingSponsorModal
         v-if="showSponsorModal"
         @close="showSponsorModal = false"
@@ -318,6 +321,9 @@ function onConfigSaved() {
 
                     <Button variant="outline" class="border-indigo-200 text-indigo-700 hover:bg-indigo-50 shadow-sm" @click="showDashboard = true">
                     <BarChart3 class="h-4 w-4 mr-1" /> Dashboard
+                    </Button>
+                    <Button variant="outline" class="border-violet-200 text-violet-700 hover:bg-violet-50 shadow-sm" @click="showNominationHistory = true">
+                    <History class="h-4 w-4 mr-1" /> Nomination History
                     </Button>
                     <div class="relative">
                         <Button

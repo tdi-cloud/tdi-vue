@@ -197,6 +197,10 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
         ->name('foreign-programs.by-sponsor')
         ->middleware('auth');
 
+    // NOMINATION HISTORY — lahat ng nagpasa sa public nomination form, latest to oldest
+    Route::get('/foreign-programs/nomination-history', [ForeignProgramController::class, 'nominationHistory'])
+        ->name('foreign-programs.nomination-history');
+
     Route::get('/foreign-programs', [ForeignProgramController::class, 'index'])->name('foreign-programs.index');
     Route::get('/foreign-programs/{foreignProgram}', [ForeignProgramController::class, 'show'])->name('foreign-programs.show');
     Route::post('/foreign-programs', [ForeignProgramController::class, 'store'])->name('foreign-programs.store');

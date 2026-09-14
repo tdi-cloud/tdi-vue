@@ -291,6 +291,75 @@ class ForeignProgramController extends Controller
         return response()->json($nominees);
     }
 
+    // Lahat ng nagpasa sa public nomination form (lahat ng programs), pinaka-bago
+    // muna — kasama kung ilan sa mga requirements nila ang naisumite na.
+    public function nominationHistory(Request $request)
+    {
+        $query = ForeignNominee::query()
+            ->with([
+                'program:id,program_title,organizing_sponsor',
+                'sponsorConfig.requirements',
+                'submissions.requirement',
+            ]);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('firstname', 'like', "%{$search}%")
+                    ->orWhere('surname', 'like', "%{$search}%")
+                    ->orWhere('agency', 'like', "%{$search}%")
+                    ->orWhere('position', 'like', "%{$search}%")
+                    ->orWhereHas('program', fn ($p) => $p->where('program_title', 'like', "%{$search}%"));
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('organizing_sponsor')) {
+            $sponsor = $request->organizing_sponsor;
+            $query->whereHas('program', fn ($q) => $q->where('organizing_sponsor', $sponsor));
+        }
+
+        $nominees = $query
+            ->orderByDesc('created_at')
+            ->paginate(15)
+            ->withQueryString()
+            ->through(fn (ForeignNominee $n) => [
+                'id' => $n->id,
+                'name' => trim("{$n->firstname} {$n->middle_name} {$n->surname}"),
+                'sex' => $n->sex,
+                'position' => $n->position,
+                'agency' => $n->agency,
+                'email' => $n->email,
+                'status' => $n->status,
+                'status_label' => $n->status_label,
+                'program_id' => $n->foreign_program_id,
+                'program_title' => $n->program?->program_title,
+                'organizing_sponsor' => $n->program?->organizing_sponsor,
+                'submitted_at' => $n->created_at,
+                'requirements_total' => $n->sponsorConfig?->requirements->count() ?? 0,
+                'requirements_submitted' => $n->submissions->count(),
+                'submissions' => $n->submissions->map(fn ($s) => [
+                    'id' => $s->id,
+                    'question' => $s->requirement?->question,
+                    'file_path' => $s->file_path,
+                ])->values(),
+            ]);
+
+        $sponsors = ForeignProgram::whereNotNull('organizing_sponsor')
+            ->where('organizing_sponsor', '!=', '')
+            ->distinct()
+            ->orderBy('organizing_sponsor')
+            ->pluck('organizing_sponsor');
+
+        return response()->json([
+            'nominees' => $nominees,
+            'sponsorOptions' => $sponsors,
+        ]);
+    }
+
     public function byOrganizingSponsor(Request $request)
     {
         $sponsor = trim($request->query('sponsor'));
