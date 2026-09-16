@@ -37,7 +37,12 @@ class UserManagementController extends Controller
             ->leftJoinSub($sessionActivity, 'session_activity', function ($join) {
                 $join->on('users.id', '=', 'session_activity.user_id');
             })
-            ->select('users.*', 'session_activity.last_activity as session_last_activity');
+            ->leftJoin('employees', 'employees.EMPCODE', '=', 'users.empcode')
+            ->select(
+                'users.*',
+                'session_activity.last_activity as session_last_activity',
+                DB::raw('employees.`OFFICE/DIVISION` as office_division')
+            );
 
         if ($request->filled('search')) {
             $search = $request->string('search');

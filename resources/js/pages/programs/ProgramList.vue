@@ -36,6 +36,10 @@ const props = defineProps<{
     filterCategory: string[];
 }>();
 
+const emit = defineEmits<{
+    (e: 'update:filteredCount', count: number): void;
+}>();
+
 const filtered = computed(() => {
     const q = props.search.toLowerCase().trim();
 
@@ -76,6 +80,8 @@ const filtered = computed(() => {
         return true;
     });
 });
+
+watch(filtered, (val) => emit('update:filteredCount', val.length), { immediate: true });
 
 const viewProgram = (id: number) => {
     router.visit(route('programs.show', id));

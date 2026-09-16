@@ -4,7 +4,7 @@ import { useConfirm } from '@/composables/useConfirm';
 import { useInitials } from '@/composables/useInitials';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
-import { ChevronLeft, ChevronRight, Crown, Hash, Mail, Pencil, Search, ShieldCheck, SlidersHorizontal, X } from 'lucide-vue-next';
+import { Building2, ChevronLeft, ChevronRight, Crown, Hash, Mail, Pencil, Search, ShieldCheck, SlidersHorizontal, X } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 interface UserRow {
@@ -12,6 +12,7 @@ interface UserRow {
     name: string;
     email: string;
     empcode: string | null;
+    office_division: string | null;
     access: string;
     avatar: string | null;
     last_active_at: string | null;
@@ -296,6 +297,9 @@ async function removeAvatar() {
                         >
                             <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-rose-700 dark:text-rose-300">Empcode</th>
                             <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-rose-700 dark:text-rose-300">User</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-rose-700 dark:text-rose-300">
+                                Office/Division
+                            </th>
                             <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-rose-700 dark:text-rose-300">Status</th>
                             <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-rose-700 dark:text-rose-300">
                                 Current Access
@@ -326,6 +330,12 @@ async function removeAvatar() {
                                         </p>
                                     </div>
                                 </div>
+                            </td>
+                            <td class="px-4 py-3 text-xs text-muted-foreground">
+                                <span v-if="u.office_division" class="flex items-center gap-1.5">
+                                    <Building2 class="h-3 w-3 shrink-0" /> {{ u.office_division }}
+                                </span>
+                                <span v-else>—</span>
                             </td>
                             <td class="px-4 py-3">
                                 <span

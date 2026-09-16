@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/AppLayout.vue';
 import GenerateTPMRModal from '@/pages/programs/GenerateTPMRModal.vue';
@@ -28,10 +29,12 @@ import {
     Plus,
     Save,
     Search,
+    SlidersHorizontal,
     Sparkles,
     UserCog,
     Users,
     Wallet,
+    X,
 } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 
@@ -79,6 +82,7 @@ const filterCategory = ref<string[]>([]);
 const showModal = ref(false);
 const showConfirm = ref(false);
 const showInfo = ref(false);
+const showFilters = ref(false);
 
 /*
  * Measure exactly how much vertical space this page has.
@@ -231,6 +235,85 @@ const monthLabel = (ym: string) => {
     const date = new Date(Number(year), Number(month) - 1, 1);
     return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 };
+
+/* ===================== ACTIVE FILTER CHIPS ===================== */
+
+// Bilang ng resulta pagkatapos i-filter — galing sa ProgramList (doon
+// mismo kinukuwenta ang "filtered", dito lang ito idi-display).
+const filteredCount = ref(props.programs.length);
+
+interface FilterChip {
+    key: string;
+    label: string;
+    remove: () => void;
+}
+
+// Kapag mahigit ito ang naka-select sa isang multi-select filter (hal.
+// Provider), i-collapse na lang ang lahat ng values sa isang "N selected"
+// na chip sa halip na isa-isahing ipakita — para hindi mapuno ng chips ang
+// buong page kapag 60+ ang naka-select.
+const CHIP_COLLAPSE_THRESHOLD = 3;
+
+const multiSelectChips = (values: string[], label: string, setter: (next: string[]) => void): FilterChip[] => {
+    if (values.length === 0) return [];
+
+    if (values.length > CHIP_COLLAPSE_THRESHOLD) {
+        return [
+            {
+                key: `${label}-summary`,
+                label: `${label}: ${values.length} selected`,
+                remove: () => setter([]),
+            },
+        ];
+    }
+
+    return values.map((value) => ({
+        key: `${label}-${value}`,
+        label: `${label}: ${value}`,
+        remove: () => setter(values.filter((v) => v !== value)),
+    }));
+};
+
+const activeFilterChips = computed<FilterChip[]>(() => {
+    const chips: FilterChip[] = [];
+
+    if (filterInitiated.value !== 'all') {
+        chips.push({ key: 'initiated', label: `Office: ${filterInitiated.value}`, remove: () => (filterInitiated.value = 'all') });
+    }
+    if (filterBatchStatus.value !== 'all') {
+        chips.push({ key: 'batchStatus', label: `Status: ${filterBatchStatus.value}`, remove: () => (filterBatchStatus.value = 'all') });
+    }
+    if (filterMonth.value !== 'all') {
+        chips.push({ key: 'month', label: `Month: ${monthLabel(filterMonth.value)}`, remove: () => (filterMonth.value = 'all') });
+    }
+    chips.push(...multiSelectChips(filterProvider.value, 'Provider', (next) => (filterProvider.value = next)));
+    chips.push(...multiSelectChips(filterCategory.value, 'Category', (next) => (filterCategory.value = next)));
+
+    return chips;
+});
+
+// Totoong bilang ng active na filter VALUES (hindi ng chips — pwedeng mas
+// kaunti ang chips dahil sa pag-collapse) — ito ang ipinapakita sa badge
+// ng Filters button, para tumpak pa rin ito kahit naka-collapse ang chips.
+const activeSelectionsCount = computed(
+    () =>
+        (filterInitiated.value !== 'all' ? 1 : 0) +
+        (filterBatchStatus.value !== 'all' ? 1 : 0) +
+        (filterMonth.value !== 'all' ? 1 : 0) +
+        filterProvider.value.length +
+        filterCategory.value.length,
+);
+
+const hasActiveFilters = computed(() => activeSelectionsCount.value > 0 || search.value.trim() !== '');
+
+const clearAllFilters = () => {
+    search.value = '';
+    filterInitiated.value = 'all';
+    filterBatchStatus.value = 'all';
+    filterMonth.value = 'all';
+    filterProvider.value = [];
+    filterCategory.value = [];
+};
 </script>
 
 <template>
@@ -255,79 +338,173 @@ const monthLabel = (ym: string) => {
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 items-end gap-2 md:grid-cols-6">
-                <!-- Search (spans 2 columns) -->
-                <div class="grid gap-1 md:col-span-2">
-                    <Label class="text-[11px] font-semibold text-slate-400">Search</Label>
-                    <div class="relative">
-                        <Search class="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                        <Input v-model="search" class="h-8 w-full pl-7 text-xs shadow-md outline-none" placeholder="Search programs..." />
+            <!-- Search + Filters toolbar -->
+            <div class="flex shrink-0 flex-col gap-2.5">
+                <div
+                    class="flex flex-wrap items-center gap-3 rounded-xl border border-sidebar-border/70 bg-card px-4 py-3 shadow-sm dark:border-sidebar-border"
+                >
+                    <!-- Search -->
+                    <div class="relative min-w-[220px] flex-1">
+                        <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            v-model="search"
+                            class="h-9 w-full pl-9 pr-8 text-sm shadow-none"
+                            placeholder="Search programs by title, program code, provider..."
+                        />
+                        <button
+                            v-if="search"
+                            type="button"
+                            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                            aria-label="Clear search"
+                            @click="search = ''"
+                        >
+                            <X class="h-4 w-4" />
+                        </button>
                     </div>
+
+                    <!-- Filters (Sheet) -->
+                    <Sheet v-model:open="showFilters">
+                        <SheetTrigger as-child>
+                            <Button variant="outline" class="h-9 shrink-0 gap-1.5 text-sm font-semibold">
+                                <SlidersHorizontal class="h-4 w-4" /> Filters
+                                <span
+                                    v-if="activeSelectionsCount"
+                                    class="ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-600 px-1 text-[11px] font-bold text-white"
+                                >
+                                    {{ activeSelectionsCount }}
+                                </span>
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent side="right" class="flex w-full flex-col gap-0 p-0 sm:max-w-sm">
+                            <SheetHeader class="border-b px-5 py-4 text-left">
+                                <SheetTitle class="flex items-center gap-2 text-base font-bold">
+                                    <SlidersHorizontal class="h-4 w-4" /> Filters
+                                </SheetTitle>
+                            </SheetHeader>
+
+                            <div class="flex-1 space-y-5 overflow-y-auto px-5 py-5">
+                                <!-- Office Initiated filter -->
+                                <div class="grid gap-1.5">
+                                    <Label class="text-xs font-semibold text-slate-500">Office Initiated</Label>
+                                    <Select v-model="filterInitiated">
+                                        <SelectTrigger class="h-9 w-full text-xs">
+                                            <SelectValue placeholder="All offices" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem class="text-xs" value="all">All offices</SelectItem>
+                                            <SelectItem v-for="opt in INITIATED_OPTIONS" :key="opt.value" :value="opt.value" class="text-xs">
+                                                {{ opt.value }}
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <!-- Batch Status filter -->
+                                <div class="grid gap-1.5">
+                                    <Label class="text-xs font-semibold text-slate-500">Batch Status</Label>
+                                    <Select v-model="filterBatchStatus">
+                                        <SelectTrigger class="h-9 w-full text-xs">
+                                            <SelectValue placeholder="All statuses" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem class="text-xs" value="all">All statuses</SelectItem>
+                                            <SelectItem v-for="st in BATCH_STATUS_OPTIONS" :key="st" :value="st" class="text-xs">
+                                                {{ st }}
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <!-- Month filter -->
+                                <div class="grid gap-1.5">
+                                    <Label class="text-xs font-semibold text-slate-500">Month</Label>
+                                    <Select v-model="filterMonth">
+                                        <SelectTrigger class="h-9 w-full text-xs">
+                                            <SelectValue placeholder="All months" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem class="text-xs" value="all">All months</SelectItem>
+                                            <SelectItem v-for="m in availableMonths" :key="m" :value="m" class="text-xs">
+                                                {{ monthLabel(m) }}
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <!-- Provider filter (multi-select, searchable) -->
+                                <div class="grid gap-1.5">
+                                    <Label class="text-xs font-semibold text-slate-500">Provider</Label>
+                                    <MultiSelectFilter
+                                        v-model="filterProvider"
+                                        :options="availableProviders"
+                                        label="Provider"
+                                        placeholder="All providers"
+                                    />
+                                </div>
+
+                                <!-- Category filter (multi-select, searchable) -->
+                                <div class="grid gap-1.5">
+                                    <Label class="text-xs font-semibold text-slate-500">Category</Label>
+                                    <MultiSelectFilter
+                                        v-model="filterCategory"
+                                        :options="availableCategories"
+                                        label="Category"
+                                        placeholder="All categories"
+                                    />
+                                </div>
+                            </div>
+
+                            <div class="flex shrink-0 items-center justify-between border-t px-5 py-3">
+                                <button
+                                    type="button"
+                                    class="text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                                    :disabled="!hasActiveFilters"
+                                    @click="clearAllFilters"
+                                >
+                                    Clear all filters
+                                </button>
+                                <Button size="sm" class="bg-blue-600 hover:bg-blue-700 dark:text-white" @click="showFilters = false">Done</Button>
+                            </div>
+                        </SheetContent>
+                    </Sheet>
                 </div>
 
-                <!-- Office Initiated filter -->
-                <div class="grid gap-1">
-                    <Label class="text-[11px] font-semibold text-slate-400">Office Initiated</Label>
-                    <Select v-model="filterInitiated">
-                        <SelectTrigger class="h-8 w-full text-xs shadow-md">
-                            <SelectValue placeholder="All offices" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem class="text-xs" value="all">All offices</SelectItem>
-                            <SelectItem v-for="opt in INITIATED_OPTIONS" :key="opt.value" :value="opt.value" class="text-xs">
-                                {{ opt.value }}
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
+                <!-- Active filter chips -->
+                <div v-if="activeFilterChips.length" class="flex flex-wrap items-center gap-2">
+                    <span
+                        v-for="chip in activeFilterChips"
+                        :key="chip.key"
+                        class="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300"
+                    >
+                        {{ chip.label }}
+                        <button
+                            type="button"
+                            class="transition-colors hover:text-blue-900 dark:hover:text-blue-100"
+                            :aria-label="`Remove ${chip.label} filter`"
+                            @click="chip.remove()"
+                        >
+                            <X class="h-3 w-3" />
+                        </button>
+                    </span>
+                    <button
+                        type="button"
+                        class="text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground hover:underline"
+                        @click="clearAllFilters"
+                    >
+                        Clear all
+                    </button>
                 </div>
 
-                <!-- Batch Status filter -->
-                <div class="grid gap-1">
-                    <Label class="text-[11px] font-semibold text-slate-400">Batch Status</Label>
-                    <Select v-model="filterBatchStatus">
-                        <SelectTrigger class="h-8 w-full text-xs shadow-md">
-                            <SelectValue placeholder="All statuses" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem class="text-xs" value="all">All statuses</SelectItem>
-                            <SelectItem v-for="st in BATCH_STATUS_OPTIONS" :key="st" :value="st" class="text-xs">
-                                {{ st }}
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                <!-- Month filter -->
-                <div class="grid gap-1">
-                    <Label class="text-[11px] font-semibold text-slate-400">Month</Label>
-                    <Select v-model="filterMonth">
-                        <SelectTrigger class="h-8 w-full text-xs shadow-md">
-                            <SelectValue placeholder="All months" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem class="text-xs" value="all">All months</SelectItem>
-                            <SelectItem v-for="m in availableMonths" :key="m" :value="m" class="text-xs">
-                                {{ monthLabel(m) }}
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                <!-- Provider filter (multi-select, searchable) -->
-                <div class="grid gap-1">
-                    <Label class="text-[11px] font-semibold text-slate-400">Provider</Label>
-                    <MultiSelectFilter v-model="filterProvider" :options="availableProviders" label="Provider" placeholder="All providers" />
-                </div>
-
-                <!-- Category filter (multi-select, searchable) -->
-                <div class="grid gap-1">
-                    <Label class="text-[11px] font-semibold text-slate-400">Category</Label>
-                    <MultiSelectFilter v-model="filterCategory" :options="availableCategories" label="Category" placeholder="All categories" />
-                </div>
+                <!-- Result summary -->
+                <p class="text-xs font-semibold text-muted-foreground">
+                    <template v-if="hasActiveFilters">Showing {{ filteredCount }} of {{ programs.length }} programs</template>
+                    <template v-else>{{ programs.length }} program{{ programs.length === 1 ? '' : 's' }}</template>
+                </p>
             </div>
 
             <!-- Program List: fills the rest; only its inner list scrolls -->
             <ProgramList
+                @update:filtered-count="filteredCount = $event"
                 :programs="programs"
                 :search="search"
                 :filter-initiated="filterInitiated"

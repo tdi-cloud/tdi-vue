@@ -16,9 +16,9 @@
         <EnrolledProgramsSection :programs="enrolledPrograms" />
         <ImagePanels :images="siteImages" />
         <AboutSection :image="siteImages.about_photo" />
+        <PathwaySection />
         <ProgramsSection />
         <ForeignScholarshipSection :images="siteImages" />
-        <PathwaySection />
         <ResourcesSection />
         <CtaBanner />
         <TheFooter />
