@@ -33,7 +33,10 @@ const stats = computed(() => [
 </script>
 
 <template>
-    <div class="rounded-2xl bg-gradient-to-br from-blue-800 via-blue-700 to-sky-600 px-6 py-5 text-white shadow-md">
+    <div class="relative isolate overflow-hidden rounded-2xl bg-gradient-to-br from-blue-800 via-blue-700 to-sky-600 px-6 py-5 text-white shadow-md">
+        <!-- Decorative background texture — purely visual, sits behind existing content via negative z-index -->
+        <div class="tdi-texture-institutional pointer-events-none absolute inset-0 z-[-1] opacity-[0.07]" aria-hidden="true"></div>
+
         <p class="text-lg font-bold">
             {{ greeting }}<template v-if="firstName">, {{ firstName }}</template> 👋
         </p>
@@ -52,3 +55,16 @@ const stats = computed(() => [
         </div>
     </div>
 </template>
+
+<style scoped>
+/* TDI Institutional Micro-Texture — the exact same fine grid + radial-fade
+   technique used in the homepage "Digital Resources" section, tinted white for
+   the banner's blue gradient. The least visible texture in the system. */
+.tdi-texture-institutional {
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.6) 1px, transparent 1px);
+    background-size: 32px 32px;
+    -webkit-mask-image: radial-gradient(ellipse at center, black 0%, transparent 72%);
+    mask-image: radial-gradient(ellipse at center, black 0%, transparent 72%);
+}
+</style>

@@ -2,10 +2,10 @@
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import axios from 'axios';
-import { Map, MousePointer2, RotateCcw, Search, Users, X } from 'lucide-vue-next';
+import { Building2, ChevronDown, Info, Map, MapPin, RotateCcw, Search, Users, X } from 'lucide-vue-next';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 interface RegionCount {
     region: string;
@@ -69,24 +69,43 @@ const DEFAULT_CAMERA_TARGET = new THREE.Vector3(0, 0, 0);
 const maxCount = Math.max(1, ...props.regionCounts.map((r) => r.total));
 
 /**
- * Kategoryang (categorical) na palette — bawat rehiyon ay may sariling
- * kulay (parang mga karaniwang "region map" na larawan), sa halip na
- * data-driven na heat-color. Na-validate ang 4 na kulay na ito gamit ang
- * dataviz palette validator (all-pairs CVD/contrast checks, light mode) —
- * ligtas itong paikot-ikutin sa mga rehiyon dahil may sariling text label
- * (region code + bilang) naman ang bawat isa sa mapa mismo.
+ * Coordinated, data-driven na institutional palette — 3-stop na blue →
+ * cyan/teal → restrained emerald na scale batay mismo sa `ratio` (parehong
+ * value na ginagamit na rin sa extrusion height), sa halip na hiwalay/
+ * cycling na kulay kada rehiyon. Iisang magkakaugnay na "cool" hue journey
+ * lang (hindi random/rainbow), papadilim/papasaturate habang tumataas ang
+ * bilang ng empleyado — mas kaunti ang "visual noise" at mas informative pa
+ * (kulay = bilang, hindi arbitrary). Naka-expose bilang plain hex strings
+ * (hindi lang THREE.Color) para magamit din ito sa legend sa template.
  */
-const REGION_PALETTE = ['#ec4899', '#06b6d4', '#8b5cf6', '#f59e0b'].map((hex) => new THREE.Color(hex));
-const PASTEL_MIX = 0.4; // gaano ka-lapit sa puti — mas mataas = mas pastel/light
+const SCALE_LOW_HEX = '#bfdbfe';
+const SCALE_MID_HEX = '#22d3ee';
+const SCALE_HIGH_HEX = '#047857';
+const SCALE_LOW = new THREE.Color(SCALE_LOW_HEX);
+const SCALE_MID = new THREE.Color(SCALE_MID_HEX);
+const SCALE_HIGH = new THREE.Color(SCALE_HIGH_HEX);
 
-/** Ibinabalik ang pastel (light, washed-out papuntang puti) na bersyon ng slot sa REGION_PALETTE. */
-const categoricalColor = (index: number): THREE.Color =>
-    new THREE.Color().copy(REGION_PALETTE[index % REGION_PALETTE.length]).lerp(new THREE.Color(0xffffff), PASTEL_MIX);
+/** Restrained gold — para lang sa Central Office marker (natatangi/"seat of power", hiwalay sa regular data scale). */
+const CO_MARKER_HEX = '#e67700';
+
+/** Gold accent — selected-region outline at emissive contrast boost. */
+const SELECTED_HEX = '#f0b429';
+
+/** Banayad na institutional blue-gray na scene/ocean background — pareho ng ginagamit na light section background sa ibang parte ng app. */
+const SCENE_BACKGROUND_HEX = '#eef2fb';
+
+/** Ibinabalik ang blue→cyan→emerald na kulay batay sa `ratio` (0..1, bilang ng empleyado / pinakamataas). */
+const dataColor = (ratio: number): THREE.Color => {
+    const r = Math.min(1, Math.max(0, ratio));
+    const color = new THREE.Color();
+    return r < 0.5 ? color.copy(SCALE_LOW).lerp(SCALE_MID, r / 0.5) : color.copy(SCALE_MID).lerp(SCALE_HIGH, (r - 0.5) / 0.5);
+};
 
 const canvasWrap = ref<HTMLDivElement | null>(null);
 const loading = ref(true);
 const hoveredRegion = ref<{ region: string; label: string; total: number } | null>(null);
 const tooltipStyle = ref({ left: '0px', top: '0px' });
+const showLegend = ref(true);
 
 const showPanel = ref(false);
 const panelLoading = ref(false);
@@ -95,6 +114,21 @@ const panelSearch = ref('');
 const panelOffice = ref('all');
 const panelEmployees = ref<any>(null);
 const panelOfficeBreakdown = ref<{ office: string; total: number }[]>([]);
+
+// Lightweight na summary — derived mula sa datos na fetched na (office
+// breakdown), walang karagdagang API call.
+const officeCount = computed(() => panelOfficeBreakdown.value.length);
+const largestOffice = computed(() =>
+    panelOfficeBreakdown.value.length ? panelOfficeBreakdown.value.reduce((max, o) => (o.total > max.total ? o : max)) : null,
+);
+const maxOfficeTotal = computed(() => Math.max(1, ...panelOfficeBreakdown.value.map((o) => o.total)));
+
+/** Initials mula sa employee name — para sa lightweight na avatar circle, walang profile image. */
+function initialsOf(name: string | null | undefined): string {
+    if (!name) return '?';
+    const parts = name.trim().split(/\s+/);
+    return ((parts[0]?.[0] ?? '') + (parts[parts.length - 1]?.[0] ?? '')).toUpperCase() || '?';
+}
 
 let renderer: THREE.WebGLRenderer | null = null;
 let scene: THREE.Scene | null = null;
@@ -105,6 +139,7 @@ let animationId: number | null = null;
 let terrainTexture: THREE.Texture | null = null;
 const blockMeshes: THREE.Mesh[] = [];
 let hoveredMesh: THREE.Mesh | null = null;
+let selectedMesh: THREE.Mesh | null = null;
 let regionsDataRef: RegionsData | null = null;
 let projectRef: ((lng: number, lat: number) => [number, number]) | null = null;
 let focusOutline: THREE.Object3D | null = null;
@@ -153,14 +188,11 @@ function terrainNoise(x: number, y: number): number {
 
 /**
  * Nagbibigay ng per-vertex na kulay sa isang region geometry: ang itaas
- * (top face) ay dominant na sa (pastel) na kategoryang kulay ng rehiyon
- * (may kaunting noise variation pa rin para hindi flat/patag ang
+ * (top face) ay dominant na sa data-driven na blue-scale na kulay ng
+ * rehiyon (may kaunting noise variation pa rin para hindi flat/patag ang
  * peke-terrain look), at ang mga tagiliran (cliff/side) ay mas madilim na
- * bersyon ng parehong kulay — para malinaw na "may sariling kulay ang
- * bawat rehiyon" (tulad ng karaniwang region map), habang may kaunti pa
- * ring 3D relief na texture. Ang `dataColor` na dumarating dito ay
- * pastel na ('categoricalColor()' na ang nagpapagaan/nag-lelerp papuntang
- * puti), kaya dito ay shading/relief na lang ang idinadagdag.
+ * bersyon ng parehong kulay — banayad na 3D relief, hindi hiwalay na
+ * kategoryang kulay kada rehiyon.
  */
 function colorizeRegionGeometry(geometry: THREE.BufferGeometry, dataColor: THREE.Color) {
     geometry.computeVertexNormals();
@@ -207,65 +239,107 @@ const RANK_BADGE_COLORS: Record<number, string> = {
     3: '#d97706', // tanso
 };
 
+/** Rounded-rect helper para sa canvas-drawn na label chip (walang built-in `roundRect` sa lahat ng environment). */
+function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+}
+
 /**
- * Minimalist, walang background na label — parang "Call of Duty" na map
- * callout (bold all-caps na text na may black outline, manipis na
- * underline, walang card/pill na background). May karagdagang ranking badge
- * (top-right corner) na nagpapakita ng puwesto ng region kumpara sa iba
- * batay sa bilang ng empleyado.
+ * Hinahati ang pattern na "Region III (Central Luzon)" → primary "Region
+ * III" + secondary "Central Luzon". Kung walang parenthetical part sa
+ * datos (hal. ilang PIN_MARKERS label), isang linya na lang ang label
+ * (null ang secondary) — hindi ito nag-iimbento ng bagong text.
  */
-function makeLabelSprite(text: string, sub: string, rank: number): THREE.Sprite {
+function splitRegionName(fullName: string): { primary: string; secondary: string | null } {
+    const match = fullName.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+    return match ? { primary: match[1].trim(), secondary: match[2].trim() } : { primary: fullName, secondary: null };
+}
+
+/** Pina-shrink ang font size (hanggang sa `minPx`) hanggang bumagay ang `text` sa loob ng `maxWidth`. */
+function fitFont(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, startPx: number, minPx: number): number {
+    let size = startPx;
+    ctx.font = `bold ${size}px Arial`;
+    while (size > minPx && ctx.measureText(text).width > maxWidth) {
+        size -= 2;
+        ctx.font = `bold ${size}px Arial`;
+    }
+    return size;
+}
+
+/**
+ * Institutional na label chip — malinis na puting "card" (parang mapa-pin
+ * ng isang professional analytics dashboard) sa halip na bold/black-outline
+ * na "tactical map" na callout. Dalawang linya (primary + secondary na
+ * pangalan ng region) kapag available, tapos ang bilang ng empleyado. May
+ * maliit na ranking badge (top-right corner) na nagpapakita ng puwesto ng
+ * region batay sa bilang ng empleyado.
+ */
+function makeLabelSprite(primary: string, secondary: string | null, sub: string, rank: number): THREE.Sprite {
     const canvas = document.createElement('canvas');
-    canvas.width = 480;
-    canvas.height = 150;
+    canvas.width = 520;
+    canvas.height = secondary ? 190 : 160;
     const ctx = canvas.getContext('2d')!;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.textAlign = 'center';
 
-    const title = text.toUpperCase();
-    ctx.font = 'bold 64px Arial';
-    ctx.lineWidth = 9;
-    ctx.strokeStyle = 'rgba(0,0,0,0.85)';
-    ctx.strokeText(title, canvas.width / 2, 64);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(title, canvas.width / 2, 64);
-
-    // Manipis na underline (tactical map marker style)
-    ctx.strokeStyle = 'rgba(0,0,0,0.85)';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(canvas.width / 2 - 70, 82);
-    ctx.lineTo(canvas.width / 2 + 70, 82);
-    ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+    // Card background — puti, manipis na border, banayad na drop shadow.
+    const chipX = 30;
+    const chipY = 20;
+    const chipW = canvas.width - 60;
+    const chipH = canvas.height - 40;
+    const innerWidth = chipW - 36;
+    ctx.save();
+    ctx.shadowColor = 'rgba(15, 28, 72, 0.28)';
+    ctx.shadowBlur = 14;
+    ctx.shadowOffsetY = 4;
+    ctx.fillStyle = 'rgba(255,255,255,0.96)';
+    drawRoundedRect(ctx, chipX, chipY, chipW, chipH, 22);
+    ctx.fill();
+    ctx.restore();
     ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(canvas.width / 2 - 70, 82);
-    ctx.lineTo(canvas.width / 2 + 70, 82);
+    ctx.strokeStyle = 'rgba(29, 63, 196, 0.25)';
+    drawRoundedRect(ctx, chipX, chipY, chipW, chipH, 22);
     ctx.stroke();
 
-    const subText = `${sub} PERSONNEL`;
-    ctx.font = 'bold 30px Arial';
-    ctx.lineWidth = 6;
-    ctx.strokeStyle = 'rgba(0,0,0,0.85)';
-    ctx.strokeText(subText, canvas.width / 2, 122);
-    ctx.fillStyle = '#e5e7eb';
-    ctx.fillText(subText, canvas.width / 2, 122);
+    let cursorY = chipY + 44;
+
+    const title = primary.toUpperCase();
+    fitFont(ctx, title, innerWidth, 38, 20);
+    ctx.fillStyle = '#1a2744';
+    ctx.fillText(title, canvas.width / 2, cursorY);
+
+    if (secondary) {
+        cursorY += 30;
+        fitFont(ctx, secondary, innerWidth, 22, 13);
+        ctx.fillStyle = '#5b6b8c';
+        ctx.fillText(secondary, canvas.width / 2, cursorY);
+    }
+
+    cursorY += 34;
+    ctx.font = 'bold 22px Arial';
+    ctx.fillStyle = '#0d6f6f';
+    ctx.fillText(`${sub} EMPLOYEES`, canvas.width / 2, cursorY);
 
     // Ranking badge (top-right corner) — #1/#2/#3 ay may medal color, ang iba ay neutral gray.
-    const badgeX = canvas.width - 38;
-    const badgeY = 34;
+    const badgeX = chipX + chipW - 8;
+    const badgeY = chipY + 4;
     ctx.beginPath();
-    ctx.arc(badgeX, badgeY, 28, 0, Math.PI * 2);
-    ctx.fillStyle = RANK_BADGE_COLORS[rank] ?? '#64748b';
+    ctx.arc(badgeX, badgeY, 22, 0, Math.PI * 2);
+    ctx.fillStyle = RANK_BADGE_COLORS[rank] ?? '#cbd5e1';
     ctx.fill();
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
     ctx.stroke();
 
     ctx.textBaseline = 'middle';
-    ctx.font = 'bold 24px Arial';
-    ctx.fillStyle = '#111827';
+    ctx.font = 'bold 18px Arial';
+    ctx.fillStyle = '#1a2744';
     ctx.fillText(`#${rank}`, badgeX, badgeY + 1);
     ctx.textBaseline = 'alphabetic';
 
@@ -273,7 +347,7 @@ function makeLabelSprite(text: string, sub: string, rank: number): THREE.Sprite 
     texture.minFilter = THREE.LinearFilter;
     const material = new THREE.SpriteMaterial({ map: texture, depthTest: false, transparent: true });
     const sprite = new THREE.Sprite(material);
-    sprite.scale.set(8, 2.5, 1);
+    sprite.scale.set(secondary ? 8.6 : 8, secondary ? 3.15 : 2.5, 1);
     return sprite;
 }
 
@@ -384,7 +458,7 @@ function buildPinMarker(x: number, z: number, color: THREE.Color, height: number
 function buildRegionOutline(regionCode: string, topY: number): THREE.Object3D | null {
     if (!projectRef) return null;
     const OUTLINE_Y_OFFSET = 0.05;
-    const material = new THREE.LineBasicMaterial({ color: 0xffd400, depthTest: false });
+    const material = new THREE.LineBasicMaterial({ color: SELECTED_HEX, depthTest: false });
 
     const region = regionsDataRef?.regions.find((r) => r.code === regionCode);
     if (region) {
@@ -439,7 +513,10 @@ async function buildScene(container: HTMLDivElement) {
     terrainTexture = makeTerrainTexture();
 
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xffffff);
+    // Banayad na institutional blue-gray (hindi stark white) — pareho ng
+    // kulay ng ibang light section sa app, para "coordinated" pakiramdam
+    // ang buong analytics module, hindi flat/generic na puti.
+    scene.background = new THREE.Color(SCENE_BACKGROUND_HEX);
 
     const width = container.clientWidth;
     const height = container.clientHeight;
@@ -477,13 +554,12 @@ async function buildScene(container: HTMLDivElement) {
     sun.shadow.camera.bottom = -120;
     scene.add(sun);
 
-    // Ocean — pinagawang "unlit" na plain white (MeshBasicMaterial, hindi
-    // apektado ng scene lighting) sa halip na MeshStandardMaterial. Dahil
-    // paakyat/patagilid ang anggulo ng camera, ang ocean plane na ito ang
-    // sumasakop sa halos buong background na nakikita — kung PBR-lit
-    // material ito, lalabas itong gray kahit puti ang base color nito
-    // (hindi sapat ang liwanag para umabot sa "puro puti").
-    const ocean = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    // Ocean — pinagawang "unlit" (MeshBasicMaterial, hindi apektado ng scene
+    // lighting) sa halip na MeshStandardMaterial. Dahil paakyat/patagilid
+    // ang anggulo ng camera, ang ocean plane na ito ang sumasakop sa halos
+    // buong background na nakikita — kaya ito rin ang tugma sa parehong
+    // banayad na institutional blue-gray tint ng `scene.background`.
+    const ocean = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshBasicMaterial({ color: SCENE_BACKGROUND_HEX }));
     ocean.rotation.x = -Math.PI / 2;
     ocean.position.set(0, -0.3, 0);
     scene.add(ocean);
@@ -499,12 +575,11 @@ async function buildScene(container: HTMLDivElement) {
         [...rankableCodes].sort((a, b) => (countsByRegion[b] ?? 0) - (countsByRegion[a] ?? 0)).map((code, i) => [code, i + 1]),
     );
 
-    let colorIndex = 0;
     for (const region of regionsData.regions) {
         const total = countsByRegion[region.code] ?? 0;
         const ratio = total / maxCount;
         const regionHeight = MIN_HEIGHT + ratio * (MAX_HEIGHT - MIN_HEIGHT);
-        const color = categoricalColor(colorIndex++);
+        const color = dataColor(ratio);
 
         const meshes = buildRegionMesh(region.polygons, project, color, regionHeight);
         meshes.forEach((mesh) => {
@@ -514,7 +589,8 @@ async function buildScene(container: HTMLDivElement) {
         });
 
         const [cx, cz] = project(region.centroid[0], region.centroid[1]);
-        const sprite = makeLabelSprite(region.code, String(total), rankByCode[region.code]);
+        const { primary, secondary } = splitRegionName(region.name);
+        const sprite = makeLabelSprite(primary, secondary, String(total), rankByCode[region.code]);
         sprite.position.set(cx, regionHeight + 1.5, cz);
         scene.add(sprite);
         labelSprites[region.code] = sprite;
@@ -527,7 +603,10 @@ async function buildScene(container: HTMLDivElement) {
     // parang tumataas na tore/spike sa mapa.
     for (const [code, pin] of Object.entries(PIN_MARKERS)) {
         const total = countsByRegion[code] ?? 0;
-        const color = categoricalColor(colorIndex++);
+        // CO (Central Office/"seat of power") ay may natatanging restrained
+        // gold marker — hiwalay sa regular data scale; NIR gamit pa rin ang
+        // normal na scale, kaya coherent pa rin ang buong visualization.
+        const color = code === 'CO' ? new THREE.Color(CO_MARKER_HEX) : dataColor(total / maxCount);
 
         const [x, z] = project(pin.lng, pin.lat);
         const mesh = buildPinMarker(x, z, color, PIN_MARKER_HEIGHT);
@@ -535,7 +614,8 @@ async function buildScene(container: HTMLDivElement) {
         scene.add(mesh);
         blockMeshes.push(mesh);
 
-        const sprite = makeLabelSprite(code, String(total), rankByCode[code]);
+        const { primary, secondary } = splitRegionName(pin.label);
+        const sprite = makeLabelSprite(primary, secondary, String(total), rankByCode[code]);
         sprite.position.set(x, PIN_MARKER_HEIGHT + 1.5, z);
         scene.add(sprite);
         labelSprites[code] = sprite;
@@ -637,6 +717,27 @@ function getPointerNDC(event: PointerEvent): THREE.Vector2 {
     return new THREE.Vector2(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
 }
 
+// Subtle na "contrast boost" glow para sa currently-SELECTED na region (hindi
+// hover) — hiwalay ito sa gold OUTLINE (na siyang pangunahing "selected"
+// indicator); ito ay banayad lang na pag-liwanag ng mismong fill kada mesh.
+const SELECTED_EMISSIVE_HEX = 0x1e293b;
+
+/** Ibinabalik ang tamang "resting" (di-naka-hover) na emissive kulay ng isang mesh — may glow pa rin kung ito ang currently-selected na region. */
+function restingEmissiveHex(mesh: THREE.Mesh): number {
+    return mesh === selectedMesh ? SELECTED_EMISSIVE_HEX : 0x000000;
+}
+
+/** Itinatakda (o kinakalimutan, kung `null`) ang currently-selected na region mesh, kasama ang subtle emissive glow nito. */
+function setSelectedMesh(mesh: THREE.Mesh | null) {
+    if (selectedMesh && selectedMesh !== mesh && selectedMesh !== hoveredMesh) {
+        (selectedMesh.material as THREE.MeshStandardMaterial).emissive.setHex(0x000000);
+    }
+    selectedMesh = mesh;
+    if (mesh && mesh !== hoveredMesh) {
+        (mesh.material as THREE.MeshStandardMaterial).emissive.setHex(SELECTED_EMISSIVE_HEX);
+    }
+}
+
 function handlePointerMove(event: PointerEvent) {
     if (!raycaster || !camera) return;
     raycaster.setFromCamera(getPointerNDC(event), camera);
@@ -645,7 +746,7 @@ function handlePointerMove(event: PointerEvent) {
     if (hits.length) {
         const mesh = hits[0].object as THREE.Mesh;
         if (hoveredMesh !== mesh) {
-            if (hoveredMesh) (hoveredMesh.material as THREE.MeshStandardMaterial).emissive.setHex(0x000000);
+            if (hoveredMesh) (hoveredMesh.material as THREE.MeshStandardMaterial).emissive.setHex(restingEmissiveHex(hoveredMesh));
             hoveredMesh = mesh;
             (mesh.material as THREE.MeshStandardMaterial).emissive.setHex(0x333333);
         }
@@ -654,7 +755,7 @@ function handlePointerMove(event: PointerEvent) {
         renderer!.domElement.style.cursor = 'pointer';
     } else {
         if (hoveredMesh) {
-            (hoveredMesh.material as THREE.MeshStandardMaterial).emissive.setHex(0x000000);
+            (hoveredMesh.material as THREE.MeshStandardMaterial).emissive.setHex(restingEmissiveHex(hoveredMesh));
             hoveredMesh = null;
         }
         hoveredRegion.value = null;
@@ -692,7 +793,7 @@ async function fetchRegionEmployees(page = 1) {
 let searchDebounce: ReturnType<typeof setTimeout>;
 function onPanelSearchInput() {
     clearTimeout(searchDebounce);
-    searchDebounce = setTimeout(() => fetchRegionEmployees(1), 350);
+    searchDebounce = setTimeout(() => fetchRegionEmployees(1), 300);
 }
 
 function onPanelOfficeChange() {
@@ -708,6 +809,7 @@ function handleClick(event: PointerEvent) {
         const { region, label, total } = mesh.userData as { region: string; label: string; total: number };
         openRegionPanel(region, label, total);
         focusOnMesh(mesh);
+        setSelectedMesh(mesh);
     }
 }
 
@@ -723,6 +825,7 @@ function resetCamera() {
         sprite.visible = true;
     });
     clearFocusOutline();
+    setSelectedMesh(null);
     flyCameraTo(new THREE.Vector3(35, 60, 90), DEFAULT_CAMERA_TARGET, 1000);
 }
 
@@ -752,6 +855,22 @@ onBeforeUnmount(() => {
         canvasWrap.value.removeEventListener('pointermove', handlePointerMove);
         canvasWrap.value.removeEventListener('click', handleClick);
     }
+
+    // Buong cleanup ng GPU resources (geometries/materials/textures) — isang
+    // beses lang ito tumatakbo sa unmount, hindi per-frame/per-interaction,
+    // kaya walang epekto sa runtime performance ng map habang ginagamit ito.
+    clearFocusOutline();
+    blockMeshes.forEach((mesh) => {
+        mesh.geometry.dispose();
+        (mesh.material as THREE.Material).dispose();
+    });
+    blockMeshes.length = 0;
+    Object.values(labelSprites).forEach((sprite) => {
+        sprite.material.map?.dispose();
+        sprite.material.dispose();
+    });
+    terrainTexture?.dispose();
+
     controls?.dispose();
     renderer?.dispose();
     if (renderer && canvasWrap.value?.contains(renderer.domElement)) {
@@ -765,49 +884,97 @@ onBeforeUnmount(() => {
 
     <AppLayout>
         <div class="relative flex flex-1 flex-col overflow-hidden">
-            <div ref="canvasWrap" class="absolute inset-0 cursor-grab bg-white" />
+            <div ref="canvasWrap" class="absolute inset-0 cursor-grab bg-blue-50" />
 
-            <div v-if="loading" class="absolute inset-0 z-10 flex items-center justify-center bg-white">
-                <p class="text-sm text-muted-foreground">Loading 3D map...</p>
+            <div v-if="loading" class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-blue-50 dark:bg-background">
+                <div class="map-spinner" aria-hidden="true"></div>
+                <div class="text-center">
+                    <p class="text-sm font-bold text-foreground">Preparing Employee Map</p>
+                    <p class="mt-0.5 text-xs text-muted-foreground">Loading regional employee data...</p>
+                </div>
             </div>
 
-            <!-- Header + Total Employees (HUD overlay sa loob ng canvas) -->
+            <!-- Header + summary metrics (HUD overlay sa loob ng canvas) -->
             <div class="absolute left-3 right-3 top-3 z-10 flex flex-wrap items-start justify-between gap-3">
                 <div class="flex items-center gap-3 rounded-2xl border bg-white/90 px-4 py-3 shadow-sm backdrop-blur dark:bg-background/90">
                     <div
-                        class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-600 to-blue-600 shadow-sm"
+                        class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-700 to-blue-900 shadow-sm"
                     >
-                        <Map class="h-5.5 w-5.5 text-white" />
+                        <Map class="h-5 w-5 text-white" />
                     </div>
                     <div>
-                        <h1 class="text-xl font-extrabold leading-tight">Employees Map</h1>
+                        <p class="text-[10px] font-bold uppercase tracking-widest text-blue-700 dark:text-blue-400">
+                            Institutional Personnel Analytics
+                        </p>
+                        <h1 class="text-base font-extrabold leading-tight text-foreground">Employees Map</h1>
                         <p class="mt-0.5 max-w-xs text-xs text-muted-foreground">
-                            3D distribution of employees across the Philippines. Click a region to see who's there.
+                            Explore the distribution of TESDA personnel across regions and offices.
                         </p>
                     </div>
                 </div>
 
-                <div class="flex items-center gap-2.5 rounded-xl border bg-white/90 px-4 py-2.5 shadow-sm backdrop-blur dark:bg-background/90">
-                    <Users class="h-4 w-4 text-teal-600" />
-                    <div>
-                        <p class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Total Employees</p>
-                        <p class="text-lg font-extrabold leading-none">{{ totalEmployees }}</p>
+                <!-- Compact summary — Total Employees + Regions lang, parehong galing sa existing props (walang bagong API call). -->
+                <div class="flex items-stretch overflow-hidden rounded-xl border bg-white/90 shadow-sm backdrop-blur dark:bg-background/90">
+                    <div class="w-1 shrink-0 bg-amber-500" aria-hidden="true"></div>
+                    <div class="flex items-center divide-x">
+                        <div class="flex items-center gap-2 py-2.5 pl-3 pr-4">
+                            <Users class="h-4 w-4 text-blue-700 dark:text-blue-400" />
+                            <div>
+                                <p class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Total Employees</p>
+                                <p class="text-lg font-extrabold leading-none">{{ totalEmployees }}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 py-2.5 pl-4 pr-4">
+                            <MapPin class="h-4 w-4 text-blue-700 dark:text-blue-400" />
+                            <div>
+                                <p class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Regions</p>
+                                <p class="text-lg font-extrabold leading-none">{{ regionCounts.length }}</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Controls hint -->
+            <!-- Legend / controls (compact, collapsible) -->
             <div
-                class="absolute bottom-3 left-3 z-10 flex items-center gap-1.5 rounded-lg bg-black/60 px-3 py-2 text-[11px] text-white backdrop-blur"
+                class="absolute bottom-3 left-3 z-10 w-64 max-w-[75vw] overflow-hidden rounded-xl border bg-white/95 shadow-sm backdrop-blur dark:bg-background/95"
             >
-                <MousePointer2 class="h-3 w-3" />
-                Drag to rotate · Scroll to zoom · Right-drag to pan · Click a region to view employees
+                <button
+                    type="button"
+                    class="flex w-full items-center justify-between gap-2 px-3 py-2 text-left"
+                    :aria-expanded="showLegend"
+                    aria-controls="map-legend-body"
+                    @click="showLegend = !showLegend"
+                >
+                    <span class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-blue-700 dark:text-blue-400">
+                        <Info class="h-3.5 w-3.5" /> Employee Distribution
+                    </span>
+                    <ChevronDown class="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform" :class="{ '-rotate-180': !showLegend }" />
+                </button>
+
+                <div v-if="showLegend" id="map-legend-body" class="space-y-2 border-t px-3 py-2.5 text-[11px] text-muted-foreground">
+                    <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span class="flex items-center gap-1"><span class="legend-dot" :style="{ background: SCALE_LOW_HEX }"></span> Low</span>
+                        <span class="flex items-center gap-1"><span class="legend-dot" :style="{ background: SCALE_MID_HEX }"></span> Medium</span>
+                        <span class="flex items-center gap-1"><span class="legend-dot" :style="{ background: SCALE_HIGH_HEX }"></span> High</span>
+                        <span class="flex items-center gap-1"
+                            ><span class="legend-dot" :style="{ background: SELECTED_HEX }"></span> Selected Region</span
+                        >
+                    </div>
+                    <p>Higher region elevation represents a higher number of employees.</p>
+                    <p>
+                        <strong class="text-foreground">Hover</strong> — Preview &nbsp;·&nbsp; <strong class="text-foreground">Click</strong> — View
+                        employees
+                    </p>
+                    <p><strong class="text-foreground">Drag</strong> — Rotate &nbsp;·&nbsp; <strong class="text-foreground">Scroll</strong> — Zoom</p>
+                </div>
             </div>
 
             <!-- Reset camera -->
             <button
                 type="button"
-                class="absolute bottom-3 right-3 z-10 inline-flex items-center gap-1.5 rounded-lg border bg-white/90 px-3 py-1.5 text-xs font-semibold shadow-sm backdrop-blur transition-colors hover:bg-white dark:bg-background/90 dark:hover:bg-background"
+                aria-label="Reset map view"
+                class="absolute bottom-3 right-3 z-10 inline-flex items-center gap-1.5 rounded-lg border bg-white/90 px-3 py-1.5 text-xs font-semibold shadow-sm backdrop-blur transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:bg-background/90 dark:hover:bg-background"
                 @click="resetCamera"
             >
                 <RotateCcw class="h-3.5 w-3.5" /> Reset View
@@ -820,29 +987,57 @@ onBeforeUnmount(() => {
                 :style="{ left: `calc(${tooltipStyle.left} + 14px)`, top: `calc(${tooltipStyle.top} + 14px)` }"
             >
                 <p class="font-bold">{{ hoveredRegion.label }}</p>
-                <p class="text-white/80">{{ hoveredRegion.total }} employee(s)</p>
+                <p class="text-white/80">{{ hoveredRegion.total }} employees</p>
             </div>
         </div>
 
         <!-- ===== Region Employees Side Panel ===== -->
         <Transition name="slide">
             <div v-if="showPanel" class="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l bg-background shadow-2xl">
-                <div class="sticky top-0 flex items-center gap-3 bg-gradient-to-r from-teal-600 to-blue-600 px-5 py-4 text-white">
+                <div class="sticky top-0 flex items-center gap-3 bg-gradient-to-r from-blue-700 to-blue-900 px-5 py-4 text-white">
                     <div class="min-w-0 flex-1">
+                        <p class="text-[10px] font-bold uppercase tracking-widest text-blue-200">Region Profile</p>
                         <h2 class="truncate text-sm font-bold">{{ panelRegion?.label }}</h2>
-                        <p class="text-xs text-white/75">{{ panelRegion?.total }} employee(s)</p>
+                        <p class="text-xs text-white/75">{{ panelRegion?.total }} employees</p>
                     </div>
-                    <button class="text-white/80 transition-colors hover:text-white" @click="closePanel">
+                    <button class="text-white/80 transition-colors hover:text-white" aria-label="Close panel" @click="closePanel">
                         <X class="h-5 w-5" />
                     </button>
                 </div>
 
-                <div v-if="panelOfficeBreakdown.length" class="border-b bg-muted/30 p-4">
-                    <p class="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Breakdown per Office</p>
-                    <div class="flex max-h-40 flex-col gap-1.5 overflow-y-auto pr-1">
-                        <div v-for="item in panelOfficeBreakdown" :key="item.office" class="flex items-center justify-between gap-2 text-xs">
-                            <span class="truncate">{{ item.office }}</span>
-                            <span class="shrink-0 font-bold text-teal-600">{{ item.total }}</span>
+                <!-- Regional summary — derived from data already fetched, walang karagdagang API call -->
+                <div v-if="officeCount" class="grid grid-cols-3 gap-2 border-b bg-muted/20 px-4 py-3 text-center">
+                    <div>
+                        <p class="text-sm font-extrabold leading-none">{{ panelRegion?.total }}</p>
+                        <p class="mt-1 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Employees</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-extrabold leading-none">{{ officeCount }}</p>
+                        <p class="mt-1 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Offices</p>
+                    </div>
+                    <div class="min-w-0">
+                        <p class="truncate text-sm font-extrabold leading-none" :title="largestOffice?.office">{{ largestOffice?.office }}</p>
+                        <p class="mt-1 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Largest Office</p>
+                    </div>
+                </div>
+
+                <!-- Office Distribution — lightweight CSS bars, walang chart library -->
+                <div v-if="panelOfficeBreakdown.length" class="border-b p-4">
+                    <p class="mb-2.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                        <Building2 class="h-3 w-3" /> Office Distribution
+                    </p>
+                    <div class="flex max-h-40 flex-col gap-2 overflow-y-auto pr-1">
+                        <div v-for="item in panelOfficeBreakdown" :key="item.office" class="text-xs">
+                            <div class="mb-1 flex items-center justify-between gap-2">
+                                <span class="truncate">{{ item.office }}</span>
+                                <span class="shrink-0 font-bold text-blue-700 dark:text-blue-400">{{ item.total }}</span>
+                            </div>
+                            <div class="h-1.5 overflow-hidden rounded-full bg-muted">
+                                <div
+                                    class="h-full rounded-full bg-blue-700 dark:bg-blue-500"
+                                    :style="{ width: `${(item.total / maxOfficeTotal) * 100}%` }"
+                                ></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -853,8 +1048,9 @@ onBeforeUnmount(() => {
                         <input
                             v-model="panelSearch"
                             type="text"
-                            placeholder="Search name or empcode..."
-                            class="w-full rounded-xl border bg-background py-2 pl-9 pr-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                            placeholder="Search name or employee code..."
+                            aria-label="Search employees by name or employee code"
+                            class="w-full rounded-xl border bg-background py-2 pl-9 pr-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
                             @input="onPanelSearchInput"
                         />
                     </div>
@@ -862,7 +1058,8 @@ onBeforeUnmount(() => {
                     <select
                         v-if="panelOfficeBreakdown.length"
                         v-model="panelOffice"
-                        class="w-full rounded-xl border bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        aria-label="Filter by office or division"
+                        class="w-full rounded-xl border bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
                         @change="onPanelOfficeChange"
                     >
                         <option value="all">All Offices</option>
@@ -876,10 +1073,22 @@ onBeforeUnmount(() => {
                     <p v-if="panelLoading" class="py-8 text-center text-xs text-muted-foreground">Loading...</p>
 
                     <div v-else-if="panelEmployees?.data?.length" class="flex flex-col gap-2">
-                        <div v-for="emp in panelEmployees.data" :key="emp.id" class="rounded-xl border px-3 py-2.5">
-                            <p class="text-sm font-bold leading-tight">{{ emp.name?.toUpperCase() }}</p>
-                            <p class="text-xs text-muted-foreground">{{ emp.POSITION }}</p>
-                            <p class="text-xs text-muted-foreground">{{ emp['OFFICE/DIVISION'] }}</p>
+                        <div
+                            v-for="emp in panelEmployees.data"
+                            :key="emp.id"
+                            class="flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors hover:bg-muted/40"
+                        >
+                            <div
+                                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"
+                                aria-hidden="true"
+                            >
+                                {{ initialsOf(emp.name) }}
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-sm font-bold leading-tight">{{ emp.name?.toUpperCase() }}</p>
+                                <p v-if="emp.POSITION" class="truncate text-xs text-muted-foreground">{{ emp.POSITION }}</p>
+                                <p class="truncate text-xs text-muted-foreground">{{ emp['OFFICE/DIVISION'] }}</p>
+                            </div>
                         </div>
 
                         <!-- Pagination -->
@@ -904,7 +1113,10 @@ onBeforeUnmount(() => {
                         </div>
                     </div>
 
-                    <p v-else class="py-8 text-center text-xs text-muted-foreground">No employees found.</p>
+                    <div v-else class="flex flex-col items-center gap-1 py-10 text-center">
+                        <p class="text-sm font-semibold text-foreground">No employees found</p>
+                        <p class="text-xs text-muted-foreground">Try adjusting your search or office filter.</p>
+                    </div>
                 </div>
             </div>
         </Transition>
@@ -920,5 +1132,37 @@ onBeforeUnmount(() => {
 .slide-enter-from,
 .slide-leave-to {
     transform: translateX(100%);
+}
+
+.map-spinner {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 3px solid rgba(29, 63, 196, 0.15);
+    border-top-color: #1d4ed8;
+    animation: map-spin 0.8s linear infinite;
+}
+
+.legend-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+@keyframes map-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .slide-enter-active,
+    .slide-leave-active {
+        transition: none;
+    }
+    .map-spinner {
+        animation-duration: 2s;
+    }
 }
 </style>

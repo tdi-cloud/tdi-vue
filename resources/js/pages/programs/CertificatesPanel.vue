@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { useConfirm } from '@/composables/useConfirm';
 import { router } from '@inertiajs/vue3';
 import {
+    AlertTriangle,
     Award,
     CheckCircle2,
     ChevronLeft,
@@ -11,6 +12,7 @@ import {
     Clock,
     Eye,
     FileCheck,
+    FileUp,
     Filter,
     Plus,
     Search,
@@ -291,6 +293,176 @@ async function deleteCert(cert: Certificate) {
     if (!(await confirmDialog(`Delete this ${cert.type} certificate? This cannot be undone.`))) return;
     router.delete(route('certificates.destroy', cert.id), { preserveScroll: true });
 }
+
+// ─── Bulk Upload ─────────────────────────────────────────────────────────────
+
+interface BulkFileRow {
+    file: File;
+    participantId: number | '';
+}
+
+const bulkModalOpen = ref(false);
+const bulkBatchId = ref<number | ''>('');
+const bulkType = ref<string>('Completion');
+const bulkStatus = ref<string>('Issued');
+const bulkIssuedDate = ref('');
+const bulkIssuedBy = ref('');
+const bulkFiles = ref<BulkFileRow[]>([]);
+const bulkProcessing = ref(false);
+const bulkDragOver = ref(false);
+
+// Kailangan lang ng batch + type + kahit isang na-match na file bago pumayag mag-submit.
+const bulkCanSubmit = computed(() => bulkBatchId.value !== '' && bulkFiles.value.some((r) => r.participantId !== ''));
+const bulkMatchedCount = computed(() => bulkFiles.value.filter((r) => r.participantId !== '').length);
+const bulkUnmatchedCount = computed(() => bulkFiles.value.length - bulkMatchedCount.value);
+
+// Participants ng napiling batch lang (Complete/Pending, hindi Absent) — dito lang dapat mag-match ang mga file.
+const bulkBatchParticipants = computed(() => {
+    const batch = props.program.batches?.find((b) => b.id === bulkBatchId.value);
+    return (batch?.participants ?? []).filter((p) => p.attendance !== 'Absent');
+});
+
+// Normalize ng filename/pangalan bago i-compare — alisin ang extension, palitan ang
+// mga separator (_, -, ,, .) ng space, at gawing lowercase para hindi maapektuhan
+// ng pagkaka-format (hal. "Dela_Cruz-Juan.pdf" vs "Juan Dela Cruz").
+function normalizeName(str: string): string {
+    return str
+        .toLowerCase()
+        .replace(/\.pdf$/i, '')
+        .replace(/[_\-.,]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function tokenize(str: string): string[] {
+    return normalizeName(str)
+        .split(' ')
+        .filter((t) => t.length > 1); // huwag isama ang mga single-letter na initial (noise sa matching)
+}
+
+// Token-overlap similarity — hindi umaasa sa pagkakasunod-sunod ng pangalan
+// (Lastname, Firstname vs Firstname Lastname), dahil pareho lang ang tinitignan
+// na mga salita, hindi ang order nila.
+function matchScore(fileTokens: string[], nameTokens: string[]): number {
+    if (!fileTokens.length || !nameTokens.length) return 0;
+    const nameSet = new Set(nameTokens);
+    const hits = fileTokens.filter((t) => nameSet.has(t)).length;
+    return hits / Math.max(fileTokens.length, nameTokens.length);
+}
+
+// Kumuha ng pinaka-malapit na participant batay sa filename, pero "confident"
+// lang (malayo sa pangalawang pinaka-malapit) bago ito i-auto-assign — kung
+// hindi, iwanan na lang na blangko para manual na pipiliin ng user.
+function bestMatchFor(filename: string, excludeIds: Set<number>): number | '' {
+    const fileTokens = tokenize(filename);
+    let best: { id: number; score: number } | null = null;
+    let secondBestScore = 0;
+    for (const p of bulkBatchParticipants.value) {
+        if (excludeIds.has(p.id)) continue;
+        const score = matchScore(fileTokens, tokenize(p.employee?.name ?? ''));
+        if (!best || score > best.score) {
+            secondBestScore = best?.score ?? 0;
+            best = { id: p.id, score };
+        } else if (score > secondBestScore) {
+            secondBestScore = score;
+        }
+    }
+    if (best && best.score >= 0.6 && best.score - secondBestScore >= 0.15) {
+        return best.id;
+    }
+    return '';
+}
+
+function rematchAllBulkFiles() {
+    const assigned = new Set<number>();
+    bulkFiles.value = bulkFiles.value.map((row) => {
+        const participantId = bestMatchFor(row.file.name, assigned);
+        if (participantId !== '') assigned.add(participantId);
+        return { ...row, participantId };
+    });
+}
+
+function addBulkFiles(fileList: FileList | null) {
+    if (!fileList) return;
+    const assigned = new Set(bulkFiles.value.map((r) => r.participantId).filter((id): id is number => id !== ''));
+    for (const file of Array.from(fileList)) {
+        if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) continue;
+        const participantId = bestMatchFor(file.name, assigned);
+        if (participantId !== '') assigned.add(participantId);
+        bulkFiles.value.push({ file, participantId });
+    }
+}
+
+function handleBulkFileInput(e: Event) {
+    const input = e.target as HTMLInputElement;
+    addBulkFiles(input.files);
+    input.value = '';
+}
+
+function handleBulkDrop(e: DragEvent) {
+    e.preventDefault();
+    bulkDragOver.value = false;
+    addBulkFiles(e.dataTransfer?.files ?? null);
+}
+
+function removeBulkFile(index: number) {
+    bulkFiles.value.splice(index, 1);
+}
+
+// Iwasan ang parehong participant na ma-assign sa dalawang file nang sabay
+// (dropdown lang, hindi kailangang i-normalize dahil galing na sa <select>).
+function assignedElsewhere(index: number, participantId: number): boolean {
+    return bulkFiles.value.some((r, i) => i !== index && r.participantId === participantId);
+}
+
+function openBulkModal() {
+    bulkBatchId.value = props.program.batches?.[0]?.id ?? '';
+    bulkType.value = 'Completion';
+    bulkStatus.value = 'Issued';
+    bulkIssuedDate.value = new Date().toISOString().split('T')[0];
+    bulkIssuedBy.value = '';
+    bulkFiles.value = [];
+    bulkModalOpen.value = true;
+}
+
+function closeBulkModal() {
+    if (bulkProcessing.value) return;
+    bulkModalOpen.value = false;
+    bulkFiles.value = [];
+}
+
+watch(bulkBatchId, rematchAllBulkFiles);
+
+function submitBulk() {
+    if (!bulkCanSubmit.value) return;
+
+    bulkProcessing.value = true;
+
+    const data = new FormData();
+    data.append('batch_id', String(bulkBatchId.value));
+    data.append('program_code', props.program.program_code);
+    data.append('type', bulkType.value);
+    data.append('status', bulkStatus.value);
+    if (bulkIssuedDate.value) data.append('issued_date', bulkIssuedDate.value);
+    if (bulkIssuedBy.value) data.append('issued_by', bulkIssuedBy.value);
+
+    let i = 0;
+    for (const row of bulkFiles.value) {
+        if (row.participantId === '') continue;
+        data.append(`files[${i}][participant_id]`, String(row.participantId));
+        data.append(`files[${i}][file]`, row.file);
+        i++;
+    }
+
+    router.post(route('certificates.bulk-store'), data, {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => closeBulkModal(),
+        onFinish: () => {
+            bulkProcessing.value = false;
+        },
+    });
+}
 </script>
 
 <template>
@@ -396,7 +568,12 @@ async function deleteCert(cert: Certificate) {
                 </button>
             </div>
 
-            <span class="ml-auto text-xs text-muted-foreground"> {{ filtered.length }} participant{{ filtered.length !== 1 ? 's' : '' }} </span>
+            <Button variant="outline" size="sm" class="ml-auto gap-1.5" @click="openBulkModal">
+                <FileUp class="h-4 w-4" />
+                Bulk Upload
+            </Button>
+
+            <span class="text-xs text-muted-foreground"> {{ filtered.length }} participant{{ filtered.length !== 1 ? 's' : '' }} </span>
         </div>
 
         <!-- ── Participant cards grid ─────────────────────────────────────── -->
@@ -673,6 +850,144 @@ async function deleteCert(cert: Certificate) {
                         <Award class="mr-1.5 h-4 w-4" />
                         {{ processing ? 'Saving…' : editingCert ? 'Update Certificate' : 'Issue Certificate' }}
                     </Button>
+                </div>
+            </div>
+        </div>
+    </Teleport>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- Bulk Upload Modal                                          -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <Teleport to="body">
+        <div
+            v-if="bulkModalOpen"
+            class="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 backdrop-blur-sm sm:items-center"
+            @click.self="closeBulkModal"
+        >
+            <div class="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-background shadow-xl">
+                <!-- Header -->
+                <div class="flex items-start justify-between gap-4 border-b p-5">
+                    <div class="flex items-center gap-3">
+                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-950/50">
+                            <FileUp class="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold">Bulk Upload Certificates</p>
+                            <p class="text-xs text-muted-foreground">Upload multiple PDFs at once — matched to participants by filename</p>
+                        </div>
+                    </div>
+                    <button class="mt-0.5 rounded-lg p-1 text-muted-foreground hover:text-foreground" @click="closeBulkModal">
+                        <X class="h-4 w-4" />
+                    </button>
+                </div>
+
+                <!-- Body -->
+                <div class="flex flex-1 flex-col gap-4 overflow-y-auto p-5">
+                    <!-- Batch + Type + Status -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Batch</label>
+                            <select
+                                v-model="bulkBatchId"
+                                class="h-9 cursor-pointer rounded-md border bg-background px-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                            >
+                                <option v-for="b in program.batches" :key="b.id" :value="b.id">{{ b.batch }}</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Certificate Type</label>
+                            <select
+                                v-model="bulkType"
+                                class="h-9 cursor-pointer rounded-md border bg-background px-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                            >
+                                <option v-for="t in CERT_TYPES" :key="t" :value="t">{{ t }}</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</label>
+                            <select
+                                v-model="bulkStatus"
+                                class="h-9 cursor-pointer rounded-md border bg-background px-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                            >
+                                <option v-for="s in CERT_STATUSES" :key="s" :value="s">{{ s }}</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Date Issued</label>
+                            <Input v-model="bulkIssuedDate" type="date" class="h-9 text-sm" />
+                        </div>
+                    </div>
+
+                    <!-- Dropzone -->
+                    <label
+                        class="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-8 text-center text-sm text-muted-foreground transition-colors hover:bg-muted"
+                        :class="bulkDragOver ? 'border-primary bg-primary/5' : 'border-border'"
+                        @dragover.prevent="bulkDragOver = true"
+                        @dragleave.prevent="bulkDragOver = false"
+                        @drop="handleBulkDrop"
+                    >
+                        <Upload class="h-6 w-6" />
+                        <span>Drag & drop PDF files here, or <span class="font-semibold text-primary underline">browse</span></span>
+                        <span class="text-xs">Filenames should contain the participant's name (e.g. "Juan Dela Cruz.pdf")</span>
+                        <input type="file" accept=".pdf" multiple class="hidden" @change="handleBulkFileInput" />
+                    </label>
+
+                    <!-- Match summary -->
+                    <div v-if="bulkFiles.length > 0" class="flex items-center gap-3 text-xs">
+                        <span class="flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                            <CheckCircle2 class="h-3.5 w-3.5" /> {{ bulkMatchedCount }} matched
+                        </span>
+                        <span v-if="bulkUnmatchedCount > 0" class="flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400">
+                            <AlertTriangle class="h-3.5 w-3.5" /> {{ bulkUnmatchedCount }} need{{ bulkUnmatchedCount === 1 ? 's' : '' }} review
+                        </span>
+                    </div>
+
+                    <!-- File list / match table -->
+                    <div v-if="bulkFiles.length > 0" class="flex flex-col divide-y rounded-lg border">
+                        <div v-for="(row, index) in bulkFiles" :key="`${row.file.name}-${index}`" class="flex items-center gap-2 px-3 py-2">
+                            <component
+                                :is="row.participantId !== '' ? CheckCircle2 : AlertTriangle"
+                                class="h-4 w-4 shrink-0"
+                                :class="row.participantId !== '' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500 dark:text-amber-400'"
+                            />
+                            <span class="min-w-0 flex-1 truncate text-xs" :title="row.file.name">{{ row.file.name }}</span>
+                            <select
+                                v-model="row.participantId"
+                                class="h-8 w-48 shrink-0 cursor-pointer rounded-md border bg-background px-2 text-xs shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                                :class="row.participantId === '' ? 'border-amber-400 text-amber-600 dark:border-amber-700' : ''"
+                            >
+                                <option value="">— Select participant —</option>
+                                <option v-for="p in bulkBatchParticipants" :key="p.id" :value="p.id" :disabled="assignedElsewhere(index, p.id)">
+                                    {{ p.employee?.name ?? p.empcode }}{{ assignedElsewhere(index, p.id) ? ' (already assigned)' : '' }}
+                                </option>
+                            </select>
+                            <button
+                                class="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30"
+                                title="Remove"
+                                @click="removeBulkFile(index)"
+                            >
+                                <Trash2 class="h-3.5 w-3.5" />
+                            </button>
+                        </div>
+                    </div>
+
+                    <p v-else class="text-center text-xs text-muted-foreground">No files added yet.</p>
+                </div>
+
+                <!-- Footer -->
+                <div class="flex items-center justify-between gap-2 border-t px-5 py-4">
+                    <p class="text-xs text-muted-foreground">
+                        <template v-if="bulkFiles.length > 0">
+                            {{ bulkMatchedCount }} of {{ bulkFiles.length }} file{{ bulkFiles.length !== 1 ? 's' : '' }} will be uploaded
+                        </template>
+                    </p>
+                    <div class="flex gap-2">
+                        <Button variant="outline" :disabled="bulkProcessing" @click="closeBulkModal">Cancel</Button>
+                        <Button class="bg-violet-600 text-white hover:bg-violet-700" :disabled="bulkProcessing || !bulkCanSubmit" @click="submitBulk">
+                            <FileUp class="mr-1.5 h-4 w-4" />
+                            {{ bulkProcessing ? 'Uploading…' : `Upload ${bulkMatchedCount || ''} Certificate${bulkMatchedCount !== 1 ? 's' : ''}` }}
+                        </Button>
+                    </div>
                 </div>
             </div>
         </div>

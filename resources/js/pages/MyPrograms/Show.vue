@@ -9,135 +9,321 @@
             <div class="ph__overlay"></div>
             <div class="ph__inner">
                 <Link href="/#my-programs" class="ph__back"><ArrowLeft :size="15" /> Back to My Programs</Link>
-                <span class="ph__year"><CalendarDays :size="13" /> {{ program.year }} &middot; {{ program.batch_label }}</span>
-                <h1>{{ program.program_title }}</h1>
-                <div class="ph__meta">
-                    <span><MapPin :size="14" /> {{ program.venue || program.modality }}</span>
-                    <span><Clock :size="14" /> {{ formatDate(program.date_start) }} – {{ formatDate(program.date_end) }}</span>
-                </div>
-            </div>
-        </section>
 
-        <!-- Flash message -->
-        <div v-if="$page.props.flash?.success" class="flash flash--success"><CheckCircle2 :size="16" /> {{ $page.props.flash.success }}</div>
-
-        <!-- Stats -->
-        <section class="stats">
-            <div class="stats__inner">
-                <div class="stat-card stat-card--ring">
-                    <div class="ring-lg" :style="{ background: ringGradient }">
-                        <div class="ring-lg__hole">
-                            <strong>{{ hoursPercent }}%</strong>
-                            <span>complete</span>
+                <div class="ph__top">
+                    <div class="ph__title-col">
+                        <div class="ph__badges">
+                            <span class="ph__badge"><CalendarDays :size="12" /> {{ program.year }}</span>
+                            <span class="ph__badge ph__badge--muted">{{ program.batch_label }}</span>
+                        </div>
+                        <h1>{{ program.program_title }}</h1>
+                        <div class="ph__meta">
+                            <span v-if="program.venue"><MapPin :size="14" /> {{ program.venue }}</span>
+                            <span v-if="program.modality"><Layers :size="14" /> {{ program.modality }}</span>
+                            <span><CalendarDays :size="14" /> {{ formatDate(program.date_start) }} – {{ formatDate(program.date_end) }}</span>
                         </div>
                     </div>
-                    <div>
-                        <div class="stat-card__label">Hours Completed</div>
-                        <div class="stat-card__value">{{ program.hours_completed }} / {{ program.total_hours || '—' }} hrs</div>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <component :is="attendanceIcon" class="stat-card__icon" :class="attendanceColorClass" :size="26" />
-                    <div>
-                        <div class="stat-card__label">Attendance Status</div>
-                        <div class="stat-card__value">{{ program.attendance }}</div>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <FileWarning class="stat-card__icon" :class="program.requirements_missing > 0 ? 'icon--gold' : 'icon--green'" :size="26" />
-                    <div>
-                        <div class="stat-card__label">Requirements</div>
-                        <div class="stat-card__value">
-                            {{ program.requirements_total - program.requirements_missing }} / {{ program.requirements_total }} submitted
+
+                    <div class="ph__progress-card">
+                        <div class="ph__status" :class="`tone-${heroStatus.tone}`">
+                            <component :is="heroStatus.icon" :size="15" /> {{ heroStatus.label.toUpperCase() }}
                         </div>
+                        <p class="ph__progress-line">
+                            {{ program.hours_completed }} of {{ program.total_hours || '—' }} learning hours completed
+                        </p>
+                        <div class="ph__progress-bar">
+                            <div class="ph__progress-fill" :style="{ width: hoursPercent + '%' }"></div>
+                        </div>
+                        <span class="ph__progress-pct">{{ hoursPercent }}%</span>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- Tab Navigation -->
-        <nav class="tabs-nav">
-            <div class="tabs-nav__inner">
-                <button
-                    v-for="tab in TABS"
-                    :key="tab.key"
-                    type="button"
-                    class="tab-btn"
-                    :class="{ 'tab-btn--active': activeTab === tab.key }"
-                    @click="activeTab = tab.key"
-                >
-                    <component :is="tab.icon" :size="16" />
-                    {{ tab.label }}
-                    <span v-if="tab.badge" class="tab-btn__badge">{{ tab.badge }}</span>
-                </button>
-            </div>
-        </nav>
+        <div class="dashboard">
+            <!-- Flash message -->
+            <div v-if="$page.props.flash?.success" class="flash flash--success"><CheckCircle2 :size="16" /> {{ $page.props.flash.success }}</div>
 
-        <div class="tab-content">
-            <!-- About this Program -->
-            <section v-show="activeTab === 'about'" class="about">
-                <div class="about__inner">
-                    <h2>About this Program</h2>
-                    <div class="about__meta">
-                        <span v-if="program.program_type" class="about__type"><Tag :size="13" /> {{ program.program_type }}</span>
-                        <span v-if="program.program_code" class="about__code"><Hash :size="13" /> {{ program.program_code }}</span>
+            <!-- Progress Summary -->
+            <section class="summary">
+                <div class="summary__head">
+                    <h2>Progress Summary</h2>
+                    <p>Your current status for this program.</p>
+                </div>
+                <div class="summary__cards">
+                    <div class="s-card">
+                        <div class="s-card__icon-row">
+                            <span class="ring-sm" :style="{ background: ringGradient }"><span class="ring-sm__hole"></span></span>
+                            <span class="s-card__label">Learning Progress</span>
+                        </div>
+                        <div class="s-card__value">{{ program.hours_completed }} / {{ program.total_hours || '—' }} hrs</div>
+                        <div class="bar bar--sm"><div class="bar__fill" :style="{ width: hoursPercent + '%' }"></div></div>
+                        <div class="s-card__sub">{{ hoursPercent }}% complete</div>
                     </div>
-                    <p v-if="program.program_description" class="about__desc">{{ program.program_description }}</p>
+
+                    <div class="s-card">
+                        <div class="s-card__icon-row">
+                            <span class="s-icon" :class="attendanceColorClass"><component :is="attendanceIcon" :size="18" /></span>
+                            <span class="s-card__label">Attendance</span>
+                        </div>
+                        <div class="s-card__value">{{ attendanceCardText.label }}</div>
+                        <div class="s-card__sub">{{ attendanceCardText.sub }}</div>
+                    </div>
+
+                    <button type="button" class="s-card s-card--clickable" @click="activeTab = 'requirements'">
+                        <div class="s-card__icon-row">
+                            <span class="s-icon" :class="requirementsActionsNeeded > 0 ? 'icon--gold' : 'icon--green'"
+                                ><FileWarning :size="18"
+                            /></span>
+                            <span class="s-card__label">Requirements</span>
+                        </div>
+                        <div class="s-card__value">{{ requirementsSubmittedCount }} / {{ program.requirements_total }} submitted</div>
+                        <div class="s-card__sub" :class="requirementsActionsNeeded > 0 ? 'text-amber' : 'text-green'">
+                            {{
+                                requirementsActionsNeeded > 0
+                                    ? `${requirementsActionsNeeded} action${requirementsActionsNeeded > 1 ? 's' : ''} needed`
+                                    : 'All caught up'
+                            }}
+                        </div>
+                    </button>
                 </div>
             </section>
 
-            <!-- Requirements breakdown -->
-            <section v-show="activeTab === 'requirements'" class="reqs">
-                <div class="reqs__inner">
-                    <h2>Requirements Checklist</h2>
+            <!-- Sidebar -->
+            <aside class="side">
+                <div class="next-action" :class="nextActionRequirement ? 'next-action--pending' : 'next-action--done'">
+                    <template v-if="nextActionRequirement">
+                        <div class="next-action__eyebrow"><AlertCircle :size="14" /> Action Needed</div>
+                        <h3>{{ nextActionRequirement.status === 'Rejected' ? 'Revise' : 'Submit' }}: {{ nextActionRequirement.name }}</h3>
+                        <p v-if="nextActionRequirement.status === 'Rejected'">
+                            {{ nextActionRequirement.remarks || 'Please review and resubmit this requirement.' }}
+                        </p>
+                        <p v-else>This requirement has not yet been submitted.</p>
+                        <p class="next-action__due"><CalendarDays :size="13" /> Due: {{ formatDate(nextActionRequirement.due_date) }}</p>
+                        <button type="button" class="next-action__btn" @click="switchToRequirement(nextActionRequirement)">
+                            {{ nextActionRequirement.status === 'Rejected' ? 'Replace File' : 'Submit Requirement' }}
+                            <ArrowRight :size="14" />
+                        </button>
+                    </template>
+                    <template v-else>
+                        <div class="next-action__eyebrow next-action__eyebrow--done"><CheckCircle2 :size="14" /> You're All Set</div>
+                        <p>
+                            {{
+                                program.attendance === 'Absent'
+                                    ? "You've submitted a non-attendance justification, so no further requirements are needed."
+                                    : 'All required program requirements have been submitted.'
+                            }}
+                        </p>
+                    </template>
+                </div>
+
+                <div class="journey-card">
+                    <h3><Milestone :size="15" /> Program Journey</h3>
+                    <ul class="journey-list">
+                        <li v-for="step in programJourney" :key="step.key" class="journey-item" :class="`journey-item--${step.state}`">
+                            <span class="journey-dot">
+                                <CheckCircle2 v-if="step.state === 'done'" :size="16" />
+                                <span v-else-if="step.state === 'current'" class="journey-dot__pulse"></span>
+                                <CircleDashed v-else :size="16" />
+                            </span>
+                            <div class="journey-body">
+                                <span class="journey-label">{{ step.label }}</span>
+                                <span class="journey-date">{{ step.date ? formatDate(step.date) : step.state === 'done' ? '' : 'Pending' }}</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <div v-if="program.attendance !== 'Absent'" class="attend-card">
+                    <div class="attend-card__icon"><Info :size="16" /></div>
+                    <div>
+                        <h4>Unable to attend?</h4>
+                        <p>If you were unable to attend the program, you may submit a justification memo.</p>
+                        <button type="button" class="attend-card__btn" @click="activeTab = 'justification'">Submit Justification</button>
+                    </div>
+                </div>
+                <div v-else class="attend-card attend-card--recorded">
+                    <div class="attend-card__icon"><AlertCircle :size="16" /></div>
+                    <div>
+                        <h4>Non-Attendance Recorded</h4>
+                        <p>{{ program.justification ? 'Your justification memo has been submitted.' : 'You are marked Absent for this program.' }}</p>
+                        <button type="button" class="attend-card__btn" @click="activeTab = 'justification'">View Details</button>
+                    </div>
+                </div>
+
+                <div v-if="lastUpdatedLabel" class="updated-card">
+                    <Clock :size="13" />
+                    <div>
+                        <span class="updated-card__label">Last updated</span>
+                        <span class="updated-card__value">{{ lastUpdatedLabel }}</span>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Tab Navigation -->
+            <nav class="tabs-nav">
+                <div class="tabs-nav__inner">
+                    <div class="tabs-nav__scroll">
+                        <button
+                            v-for="tab in primaryTabs"
+                            :key="tab.key"
+                            type="button"
+                            class="tab-btn"
+                            :class="{ 'tab-btn--active': activeTab === tab.key }"
+                            @click="
+                                activeTab = tab.key;
+                                moreOpen = false;
+                            "
+                        >
+                            <component :is="tab.icon" :size="16" />
+                            {{ tab.label }}
+                            <span v-if="tab.badge" class="tab-btn__badge">{{ tab.badge }}</span>
+                        </button>
+                    </div>
+
+                    <div v-if="secondaryTabs.length" class="tab-more">
+                        <button type="button" class="tab-btn tab-btn--more" :class="{ 'tab-btn--active': isSecondaryActive }" @click="moreOpen = !moreOpen">
+                            {{ moreButtonLabel }} <ChevronDown :size="14" :class="{ 'rotate-180': moreOpen }" />
+                        </button>
+                        <div v-if="moreOpen" class="tab-more__backdrop" @click="moreOpen = false"></div>
+                        <div v-if="moreOpen" class="tab-more__menu">
+                            <button
+                                v-for="tab in secondaryTabs"
+                                :key="tab.key"
+                                type="button"
+                                class="tab-more__item"
+                                :class="{ 'tab-more__item--active': activeTab === tab.key }"
+                                @click="
+                                    activeTab = tab.key;
+                                    moreOpen = false;
+                                "
+                            >
+                                <component :is="tab.icon" :size="15" /> {{ tab.label }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <div class="tab-content">
+                <!-- About / Overview -->
+                <section v-show="activeTab === 'about'" class="about">
+                    <h2>Program Information</h2>
+                    <div class="info-grid">
+                        <div v-if="program.program_type" class="info-cell">
+                            <span class="info-cell__label">Program Type</span>
+                            <span class="info-cell__value">{{ program.program_type }}</span>
+                        </div>
+                        <div v-if="program.program_code" class="info-cell">
+                            <span class="info-cell__label">Program Code</span>
+                            <span class="info-cell__value">{{ program.program_code }}</span>
+                        </div>
+                        <div v-if="program.modality" class="info-cell">
+                            <span class="info-cell__label">Modality</span>
+                            <span class="info-cell__value">{{ program.modality }}</span>
+                        </div>
+                        <div v-if="program.venue" class="info-cell">
+                            <span class="info-cell__label">Venue</span>
+                            <span class="info-cell__value">{{ program.venue }}</span>
+                        </div>
+                        <div class="info-cell">
+                            <span class="info-cell__label">Date</span>
+                            <span class="info-cell__value">{{ formatDate(program.date_start) }} – {{ formatDate(program.date_end) }}</span>
+                        </div>
+                    </div>
+                    <template v-if="program.program_description">
+                        <h3 class="about__subhead">About this Program</h3>
+                        <p class="about__desc">{{ program.program_description }}</p>
+                    </template>
+                </section>
+
+                <!-- Requirements breakdown -->
+                <section v-show="activeTab === 'requirements'" class="reqs">
+                    <h2>Requirements &amp; Submissions</h2>
                     <p v-if="program.attendance === 'Absent'" class="reqs__sub reqs__sub--absent">
                         You were marked Absent for this program, so requirement submissions are no longer required.
                     </p>
-                    <p v-else class="reqs__sub">Submit each requirement below as a PDF file. You can re-submit anytime before it's approved.</p>
-                    <div class="reqs__chips">
-                        <span class="chip chip--approved"><CheckCircle2 :size="13" /> {{ program.requirements_approved }} Approved</span>
-                        <span class="chip chip--pending"><Clock :size="13" /> {{ program.requirements_pending }} Pending Review</span>
-                        <span class="chip chip--rejected"><XCircle :size="13" /> {{ program.requirements_rejected }} Rejected</span>
-                        <span class="chip chip--missing"><FileWarning :size="13" /> {{ program.requirements_missing }} Not Submitted</span>
+                    <p v-else class="reqs__sub">Track the documents you need to submit and their current status.</p>
+
+                    <div v-if="program.requirements_total > 0" class="reqs-progress">
+                        <div class="reqs-progress__top">
+                            <span class="reqs-progress__title">Requirements Progress</span>
+                            <span class="reqs-progress__pct">{{ requirementsProgressPercent }}%</span>
+                        </div>
+                        <div class="bar bar--lg"><div class="bar__fill" :style="{ width: requirementsProgressPercent + '%' }"></div></div>
+                        <div class="reqs-progress__bottom">
+                            <span>{{ requirementsSubmittedCount }} of {{ program.requirements_total }} requirements submitted</span>
+                            <div class="reqs__chips">
+                                <span class="chip chip--approved"><CheckCircle2 :size="13" /> {{ program.requirements_approved }} Approved</span>
+                                <span class="chip chip--pending"><Clock :size="13" /> {{ program.requirements_pending }} Pending Review</span>
+                                <span class="chip chip--rejected"><XCircle :size="13" /> {{ program.requirements_rejected }} Revision Needed</span>
+                                <span class="chip chip--missing"><FileWarning :size="13" /> {{ program.requirements_missing }} Not Submitted</span>
+                            </div>
+                        </div>
                     </div>
+
                     <div class="reqs__list">
                         <div
                             v-for="r in program.requirements"
+                            :id="`req-${r.id}`"
                             :key="r.id"
-                            class="req-row"
-                            :class="{ 'req-row--missing': !r.status && r.is_required }"
+                            class="req-card"
+                            :class="{ 'req-card--missing': !r.status && r.is_required }"
                         >
-                            <div class="req-row__icon">
-                                <component :is="reqIcon(r.status)" :size="18" :class="reqIconClass(r.status)" />
+                            <div class="req-card__top">
+                                <component :is="reqIcon(r.status)" :size="22" :class="reqIconClass(r.status)" class="req-card__icon" />
+                                <div class="req-card__main">
+                                    <div class="req-card__title">{{ r.name }}</div>
+                                    <div class="req-card__meta">
+                                        Due {{ formatDate(r.due_date) }}
+                                        <span v-if="!r.is_required" class="req-row__optional">&middot; Optional</span>
+                                    </div>
+                                </div>
+                                <span class="req-badge" :class="reqBadgeClass(r.status)">{{ statusLabel(r.status) }}</span>
                             </div>
-                            <div class="req-row__main">
-                                <div class="req-row__title">{{ r.name }}</div>
-                                <div class="req-row__meta">
-                                    Due {{ formatDate(r.due_date) }}
-                                    <span v-if="!r.is_required" class="req-row__optional">&middot; Optional</span>
+
+                            <div v-if="r.status === 'Rejected' && r.remarks" class="req-row__remarks">
+                                <strong>Reviewer note:</strong> {{ r.remarks }}
+                            </div>
+                            <div v-if="r.notes && expandedRequirement !== r.id" class="req-row__notes-readonly">
+                                <strong>Your note:</strong> {{ r.notes }}
+                            </div>
+
+                            <div class="req-card__bottom">
+                                <div v-if="r.file_url" class="req-card__file">
+                                    <FileText :size="14" />
+                                    <span>{{ r.file_name }}</span>
+                                    <span v-if="r.submitted_at" class="req-card__submitted">Submitted {{ formatDate(r.submitted_at) }}</span>
                                 </div>
-                                <div v-if="r.remarks && r.status === 'Rejected'" class="req-row__remarks">
-                                    <strong>Reviewer note:</strong> {{ r.remarks }}
-                                </div>
-                                <div v-if="r.file_url" class="req-row__file">
-                                    <a :href="r.file_url" target="_blank" rel="noopener" class="file-link">
-                                        <FileText :size="14" /> {{ r.file_name }}
+                                <div v-else class="req-card__file req-card__file--empty">No file submitted yet</div>
+
+                                <div class="req-card__actions">
+                                    <a v-if="r.file_url" :href="r.file_url" target="_blank" rel="noopener" class="req-btn req-btn--ghost">
+                                        View Submission
                                     </a>
                                     <button
                                         v-if="r.status !== 'Approved' && program.attendance !== 'Absent'"
                                         type="button"
-                                        class="delete-btn"
-                                        :disabled="deletingId === r.id"
-                                        @click="confirmDelete(r)"
+                                        class="req-btn req-btn--primary"
+                                        @click="toggleRequirementExpand(r.id)"
                                     >
+                                        {{ r.file_url ? 'Replace File' : 'Submit Requirement' }}
+                                        <ChevronDown :size="14" :class="{ 'rotate-180': expandedRequirement === r.id }" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div
+                                v-if="expandedRequirement === r.id && r.status !== 'Approved' && program.attendance !== 'Absent'"
+                                class="req-card__expand"
+                            >
+                                <div v-if="r.file_url" class="req-row__file">
+                                    <a :href="r.file_url" target="_blank" rel="noopener" class="file-link"><FileText :size="14" /> {{ r.file_name }}</a>
+                                    <button type="button" class="delete-btn" :disabled="deletingId === r.id" @click="confirmDelete(r)">
                                         <Trash2 :size="13" /> {{ deletingId === r.id ? 'Deleting…' : 'Delete' }}
                                     </button>
                                 </div>
-                                <form
-                                    v-if="r.status !== 'Approved' && program.attendance !== 'Absent'"
-                                    class="req-row__upload"
-                                    @submit.prevent="submitFile(r)"
-                                >
+                                <form class="req-row__upload" @submit.prevent="submitFile(r)">
                                     <label class="upload-input">
                                         <UploadCloud :size="14" />
                                         <span>{{ selectedFile[r.id]?.name || (r.file_url ? 'Replace file (PDF)' : 'Choose PDF file') }}</span>
@@ -151,26 +337,20 @@
                                         {{ uploadingId === r.id ? 'Saving…' : r.file_url ? 'Save Changes' : 'Submit' }}
                                     </button>
                                 </form>
-                                <div v-if="r.status !== 'Approved' && program.attendance !== 'Absent'" class="req-row__notes">
+                                <div class="req-row__notes">
                                     <textarea v-model="noteDraft[r.id]" placeholder="Add a note for the reviewer (optional)…" rows="2"></textarea>
                                 </div>
-                                <div v-else-if="r.notes" class="req-row__notes-readonly"><strong>Your note:</strong> {{ r.notes }}</div>
                                 <div v-if="fileError[r.id]" class="req-row__error">{{ fileError[r.id] }}</div>
                             </div>
-                            <span class="req-row__status" :class="reqBadgeClass(r.status)">
-                                {{ r.status || 'Not yet submitted' }}
-                            </span>
                         </div>
                         <div v-if="!program.requirements.length" class="reqs__empty">
                             <CheckCircle2 :size="18" /> No requirements have been set for this batch yet.
                         </div>
                     </div>
-                </div>
-            </section>
+                </section>
 
-            <!-- Absence Justification -->
-            <section v-show="activeTab === 'justification'" class="justification">
-                <div class="justification__inner">
+                <!-- Absence Justification -->
+                <section v-show="activeTab === 'justification'" class="justification">
                     <div v-if="program.attendance === 'Absent' && program.justification" class="justification__banner">
                         <AlertCircle :size="20" />
                         <div>
@@ -207,15 +387,10 @@
                         </button>
                     </form>
                     <div v-if="justificationError" class="req-row__error">{{ justificationError }}</div>
-                </div>
-            </section>
+                </section>
 
-            <!-- ══════════════════════════════════════════
-         CERTIFICATES SECTION
-    ══════════════════════════════════════════ -->
-            <section v-show="activeTab === 'certificates'" class="certs">
-                <div class="certs__inner">
-                    <!-- Section header -->
+                <!-- CERTIFICATES SECTION -->
+                <section v-show="activeTab === 'certificates'" class="certs">
                     <div class="certs__header">
                         <div class="certs__title-group">
                             <div class="certs__icon-wrap">
@@ -223,14 +398,11 @@
                             </div>
                             <div>
                                 <h2>My Certificates</h2>
-                                <p class="certs__sub">
-                                    Upload your training certificates for this program. Only PDF files are accepted (max 5MB each).
-                                </p>
+                                <p class="certs__sub">Upload your training certificates for this program. PDF only • Maximum 10MB.</p>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Existing certificate cards -->
                     <div v-if="program.certificates && program.certificates.length" class="cert-grid">
                         <div v-for="cert in program.certificates" :key="cert.id" class="cert-card">
                             <div class="cert-card__ribbon" :class="`cert-card__ribbon--${cert.status.toLowerCase()}`">
@@ -269,18 +441,16 @@
                         </div>
                     </div>
 
-                    <!-- Empty state -->
                     <div v-else class="certs__empty">
                         <div class="certs__empty-icon"><Award :size="48" color="#c7d2fe" /></div>
-                        <p class="certs__empty-title">No certificates uploaded yet</p>
-                        <p class="certs__empty-sub">Use the form below to upload your certificate for this program.</p>
+                        <p class="certs__empty-title">No certificates yet</p>
+                        <p class="certs__empty-sub">Your certificate will appear here once issued or uploaded.</p>
                     </div>
 
-                    <!-- Upload form -->
                     <div class="cert-upload">
                         <div class="cert-upload__header">
                             <span class="cert-upload__title">Upload a Certificate</span>
-                            <span class="cert-upload__hint">PDF only · Max 10MB</span>
+                            <span class="cert-upload__hint">PDF • Maximum 10MB</span>
                         </div>
                         <div class="cert-upload__row">
                             <div class="cert-upload__field">
@@ -314,15 +484,13 @@
                         </div>
                         <p v-if="certError" class="cert-upload__error">⚠ {{ certError }}</p>
                     </div>
-                </div>
-            </section>
+                </section>
 
-            <!-- Resource Speakers -->
-            <section v-show="activeTab === 'speakers'" class="speakers">
-                <div class="speakers__inner">
+                <!-- Resource Speakers -->
+                <section v-show="activeTab === 'speakers'" class="speakers">
                     <h2>Resource Speakers</h2>
                     <p class="reqs__sub">Facilitators and resource persons engaged for this program.</p>
-                    <div class="speakers__grid">
+                    <div v-if="program.resource_speakers?.length" class="speakers__grid">
                         <div v-for="s in program.resource_speakers" :key="s.id" class="speaker-card">
                             <div class="speaker-card__avatar"><Mic2 :size="18" /></div>
                             <div class="speaker-card__name">{{ s.name }}</div>
@@ -333,15 +501,14 @@
                             <div v-if="s.date_engaged" class="speaker-card__date"><CalendarDays :size="13" /> {{ formatDate(s.date_engaged) }}</div>
                         </div>
                     </div>
-                </div>
-            </section>
+                    <div v-else class="empty-note">No speakers listed for this program.</div>
+                </section>
 
-            <!-- Supporting Documents -->
-            <section v-show="activeTab === 'documents'" class="docs">
-                <div class="docs__inner">
+                <!-- Supporting Documents -->
+                <section v-show="activeTab === 'documents'" class="docs">
                     <h2>Supporting Documents</h2>
                     <p class="reqs__sub">Official memos, orders, and circulars related to this program.</p>
-                    <div class="docs__grid">
+                    <div v-if="program.supporting_documents?.length" class="docs__grid">
                         <div v-for="d in program.supporting_documents" :key="d.id" class="doc-card">
                             <div class="doc-card__top">
                                 <span class="doc-card__type">{{ d.document_type }}</span>
@@ -358,8 +525,9 @@
                             </a>
                         </div>
                     </div>
-                </div>
-            </section>
+                    <div v-else class="empty-note">No supporting documents available.</div>
+                </section>
+            </div>
         </div>
 
         <TheFooter />
@@ -372,12 +540,14 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import {
     AlertCircle,
     ArrowLeft,
+    ArrowRight,
     Award,
     BadgeCheck,
     BookOpen,
     Building2,
     CalendarDays,
     CheckCircle2,
+    ChevronDown,
     CircleDashed,
     ClipboardCheck,
     Clock,
@@ -386,9 +556,11 @@ import {
     FileWarning,
     Hash,
     Info,
+    Layers,
     MapPin,
     Medal,
     Mic2,
+    Milestone,
     Sparkles,
     Star,
     Tag,
@@ -397,7 +569,7 @@ import {
     UploadCloud,
     XCircle,
 } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import TheFooter from '../Welcome/sections/TheFooter.vue';
 import TheNavbar from '../Welcome/sections/TheNavbar.vue';
 
@@ -432,6 +604,14 @@ const TABS = computed(() => {
 
 const activeTab = ref('requirements');
 
+/* ---- Primary vs. secondary tab grouping for the redesigned tab bar ---- */
+const PRIMARY_TAB_ORDER = ['about', 'requirements', 'certificates'];
+const primaryTabs = computed(() => PRIMARY_TAB_ORDER.map((key) => TABS.value.find((t) => t.key === key)).filter(Boolean));
+const secondaryTabs = computed(() => TABS.value.filter((t) => !PRIMARY_TAB_ORDER.includes(t.key)));
+const moreOpen = ref(false);
+const isSecondaryActive = computed(() => secondaryTabs.value.some((t) => t.key === activeTab.value));
+const moreButtonLabel = computed(() => secondaryTabs.value.find((t) => t.key === activeTab.value)?.label ?? 'More');
+
 /* ---- Note drafts ---- */
 const noteDraft = ref(Object.fromEntries(props.program.requirements.map((r) => [r.id, r.notes || ''])));
 
@@ -454,6 +634,100 @@ const attendanceColorClass = computed(() => {
     return 'icon--gold';
 });
 
+/* ---- Hero status presentation ---- */
+const heroStatus = computed(() => {
+    const p = props.program;
+    if (p.attendance === 'Absent') {
+        return { label: 'Non-Attendance Recorded', icon: AlertCircle, tone: 'muted' };
+    }
+    if (p.total_hours > 0 && hoursPercent.value >= 100) {
+        return { label: 'Program Completed', icon: CheckCircle2, tone: 'green' };
+    }
+    if (p.hours_completed <= 0 && p.attendance === 'Pending') {
+        return { label: 'Attendance Pending', icon: Clock, tone: 'amber' };
+    }
+    return { label: 'In Progress', icon: CheckCircle2, tone: 'green' };
+});
+
+const attendanceCardText = computed(() => {
+    if (props.program.attendance === 'Complete') return { label: 'Complete', sub: 'All sessions attended' };
+    if (props.program.attendance === 'Absent') return { label: 'Absent', sub: 'Attendance requires attention' };
+    return { label: 'Pending', sub: 'Attendance is still being recorded' };
+});
+
+/* ---- Requirements summary computed ---- */
+const requirementsSubmittedCount = computed(() => props.program.requirements_total - props.program.requirements_missing);
+const requirementsActionsNeeded = computed(() => props.program.requirements_missing + props.program.requirements_rejected);
+const requirementsProgressPercent = computed(() =>
+    props.program.requirements_total > 0 ? Math.round((requirementsSubmittedCount.value / props.program.requirements_total) * 100) : 0,
+);
+
+/* ---- Next action: the single most urgent requirement to fix ---- */
+const nextActionRequirement = computed(() => {
+    if (props.program.attendance === 'Absent') return null;
+    const candidates = props.program.requirements.filter((r) => r.is_required && (r.status === 'Rejected' || !r.status));
+    return (
+        [...candidates].sort((a, b) => {
+            if (a.status === 'Rejected' && b.status !== 'Rejected') return -1;
+            if (b.status === 'Rejected' && a.status !== 'Rejected') return 1;
+            return new Date(a.due_date || 0).getTime() - new Date(b.due_date || 0).getTime();
+        })[0] ?? null
+    );
+});
+
+/* ---- Compact visual timeline built only from data we actually have ---- */
+const programJourney = computed(() => {
+    const p = props.program;
+    const now = new Date();
+    const started = p.date_start ? now >= new Date(p.date_start) : false;
+    const attendanceDone = p.attendance !== 'Pending' || p.hours_completed > 0;
+    const reqTotal = p.requirements_total ?? 0;
+    const reqAllSubmitted = reqTotal === 0 || p.requirements_missing === 0;
+    const reqAllApproved = reqTotal === 0 || p.requirements_approved === reqTotal;
+    const issuedCert = (p.certificates ?? []).find((c) => c.status === 'Issued');
+    const submittedDates = (p.requirements ?? [])
+        .map((r) => r.submitted_at)
+        .filter(Boolean)
+        .sort();
+    const lastSubmittedDate = submittedDates[submittedDates.length - 1] ?? null;
+
+    const steps = [
+        { key: 'enrolled', label: 'Enrolled', done: true, date: null },
+        { key: 'started', label: 'Training Started', done: started, date: started ? p.date_start : null },
+        { key: 'attendance', label: 'Attendance Recorded', done: attendanceDone, date: null },
+        { key: 'submitted', label: 'Requirements Submitted', done: reqAllSubmitted, date: reqAllSubmitted ? lastSubmittedDate : null },
+        { key: 'approved', label: 'Requirements Approved', done: reqAllApproved, date: null },
+        { key: 'certificate', label: 'Certificate Issued', done: !!issuedCert, date: issuedCert?.issued_date ?? null },
+    ];
+
+    let currentAssigned = false;
+    return steps.map((s) => {
+        let state = 'upcoming';
+        if (s.done) {
+            state = 'done';
+        } else if (!currentAssigned) {
+            state = 'current';
+            currentAssigned = true;
+        }
+        return { ...s, state };
+    });
+});
+
+/* ---- Last updated: derived only from real timestamps, never invented ---- */
+const lastUpdatedAt = computed(() => {
+    const dates = [...props.program.requirements.map((r) => r.submitted_at), props.program.justification?.uploaded_at]
+        .filter(Boolean)
+        .map((d) => new Date(d));
+    if (!dates.length) return null;
+    return new Date(Math.max(...dates.map((d) => d.getTime())));
+});
+const lastUpdatedLabel = computed(() => {
+    if (!lastUpdatedAt.value) return null;
+    const datePart = lastUpdatedAt.value.toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const timePart = lastUpdatedAt.value.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
+    return `${datePart} · ${timePart}`;
+});
+
 /* ---- Requirement helpers ---- */
 function reqIcon(status) {
     if (status === 'Approved') return CheckCircle2;
@@ -473,9 +747,28 @@ function reqBadgeClass(status) {
     if (status === 'Pending') return 'req-row__status--pending';
     return 'req-row__status--missing';
 }
+function statusLabel(status) {
+    if (status === 'Approved') return 'Approved';
+    if (status === 'Pending') return 'Pending Review';
+    if (status === 'Rejected') return 'Revision Needed';
+    return 'Not Submitted';
+}
 function formatDate(d) {
     if (!d) return '—';
     return new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+/* ---- Inline expand/collapse for a requirement's upload controls ---- */
+const expandedRequirement = ref(null);
+function toggleRequirementExpand(id) {
+    expandedRequirement.value = expandedRequirement.value === id ? null : id;
+}
+function switchToRequirement(requirement) {
+    activeTab.value = 'requirements';
+    expandedRequirement.value = requirement.id;
+    nextTick(() => {
+        document.getElementById(`req-${requirement.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
 }
 
 /* ---- Requirement file submission ---- */
@@ -685,15 +978,49 @@ async function confirmDeleteCert(cert) {
 
 <style scoped>
 .progress-page {
+    --tdi-blue: #1d3fc4;
+    --tdi-navy: #1a2744;
+    --tdi-green: #0ca678;
+    --tdi-green-bg: #ecfdf5;
+    --tdi-green-text: #065f46;
+    --tdi-amber: #f59f00;
+    --tdi-amber-bg: #fffbeb;
+    --tdi-amber-text: #92400e;
+    --tdi-red: #e03131;
+    --tdi-red-bg: #fef2f2;
+    --tdi-red-text: #991b1b;
+    --tdi-slate: #6b7280;
+    --tdi-slate-bg: #f3f4f6;
+    --tdi-border: #e5e7eb;
     font-family: 'Inter', system-ui, sans-serif;
     color: #1a2744;
     color-scheme: light;
+    background: #f7f9fd;
+}
+
+.tone-green {
+    color: var(--tdi-green-text);
+}
+.tone-amber {
+    color: var(--tdi-amber-text);
+}
+.tone-red {
+    color: var(--tdi-red-text);
+}
+.tone-muted {
+    color: var(--tdi-slate);
+}
+.text-green {
+    color: var(--tdi-green-text);
+}
+.text-amber {
+    color: var(--tdi-amber-text);
 }
 
 /* Hero */
 .ph {
     position: relative;
-    padding: 9rem 2rem 4rem;
+    padding: 8.5rem 1.5rem 3rem;
     overflow: hidden;
     background: #0f1c48;
 }
@@ -706,12 +1033,12 @@ async function confirmDeleteCert(cert) {
 .ph__overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, rgba(10, 21, 60, 0.92) 0%, rgba(10, 21, 60, 0.7) 100%);
+    background: linear-gradient(135deg, rgba(10, 21, 60, 0.92) 0%, rgba(10, 21, 60, 0.72) 100%);
 }
 .ph__inner {
     position: relative;
-    max-width: 900px;
-    margin: 0 auto;
+    width: min(100% - 2rem, 1120px);
+    margin-inline: auto;
 }
 .ph__back {
     display: inline-flex;
@@ -725,41 +1052,136 @@ async function confirmDeleteCert(cert) {
 .ph__back:hover {
     color: #fff;
 }
-.ph__year {
+.ph__top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 2rem;
+}
+.ph__title-col {
+    flex: 1;
+    min-width: 0;
+}
+.ph__badges {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.9rem;
+}
+.ph__badge {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 700;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.04em;
+    padding: 0.3rem 0.65rem;
+    border-radius: 20px;
+    background: rgba(245, 184, 0, 0.16);
     color: #f5b800;
-    text-transform: uppercase;
-    margin-bottom: 0.75rem;
+}
+.ph__badge--muted {
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.8);
 }
 .ph h1 {
-    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    font-size: clamp(1.6rem, 3.4vw, 2.35rem);
     font-weight: 800;
     color: #fff;
     line-height: 1.2;
-    margin-bottom: 1rem;
+    margin-bottom: 0.9rem;
 }
 .ph__meta {
     display: flex;
-    gap: 1.5rem;
+    gap: 1.25rem;
     flex-wrap: wrap;
 }
 .ph__meta span {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
+    font-size: 0.83rem;
+    color: rgba(255, 255, 255, 0.78);
+}
+.ph__progress-card {
+    width: 290px;
+    flex-shrink: 0;
+    background: #fff;
+    border-radius: 14px;
+    padding: 1.1rem 1.25rem;
+    box-shadow: 0 8px 24px rgba(8, 15, 45, 0.25);
+}
+.ph__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    margin-bottom: 0.6rem;
+}
+.ph__progress-line {
+    font-size: 0.83rem;
+    color: #4b5563;
+    margin-bottom: 0.7rem;
+}
+.ph__progress-bar {
+    height: 8px;
+    border-radius: 999px;
+    background: #e5e7eb;
+    overflow: hidden;
+    margin-bottom: 0.4rem;
+}
+.ph__progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: var(--tdi-green);
+    transition: width 0.3s ease;
+}
+.ph__progress-pct {
     font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.75);
+    font-weight: 800;
+    color: var(--tdi-navy);
+}
+
+/* Dashboard grid */
+.dashboard {
+    width: min(100% - 2rem, 1120px);
+    margin-inline: auto;
+    padding-block: 1.75rem 4rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 336px;
+    grid-template-areas:
+        'flash flash'
+        'summary side'
+        'tabs side'
+        'content side';
+    gap: 1.5rem 1.75rem;
+    align-items: start;
+}
+@media (max-width: 900px) {
+    .dashboard {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            'flash'
+            'summary'
+            'side'
+            'tabs'
+            'content';
+    }
+    .ph {
+        padding-top: 6.5rem;
+    }
+    .ph__top {
+        flex-direction: column;
+    }
+    .ph__progress-card {
+        width: 100%;
+    }
 }
 
 /* Flash */
 .flash {
-    max-width: 900px;
-    margin: 1.5rem auto 0;
+    grid-area: flash;
     padding: 0.85rem 1.25rem;
     border-radius: 10px;
     display: flex;
@@ -769,131 +1191,393 @@ async function confirmDeleteCert(cert) {
     font-weight: 600;
 }
 .flash--success {
-    background: #ecfdf5;
-    color: #065f46;
+    background: var(--tdi-green-bg);
+    color: var(--tdi-green-text);
 }
 
-/* Stats */
-.stats {
-    background: #ffffff;
-    padding: 0 2rem;
+/* Progress Summary */
+.summary {
+    grid-area: summary;
 }
-.stats__inner {
-    max-width: 900px;
-    margin: 0 auto;
-    transform: translateY(-2.5rem);
+.summary__head {
+    margin-bottom: 1rem;
+}
+.summary__head h2 {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--tdi-navy);
+}
+.summary__head p {
+    font-size: 0.85rem;
+    color: var(--tdi-slate);
+    margin-top: 0.15rem;
+}
+.summary__cards {
     display: grid;
-    grid-template-columns: 1.3fr 1fr 1fr;
-    gap: 1.25rem;
-}
-.stat-card {
-    background: #fff;
-    border-radius: 16px;
-    padding: 1.5rem;
-    box-shadow: 0 8px 30px rgba(15, 28, 72, 0.1);
-    display: flex;
-    align-items: center;
+    grid-template-columns: repeat(3, 1fr);
     gap: 1rem;
 }
-.stat-card--ring {
-    gap: 1.25rem;
+.s-card {
+    background: #fff;
+    border: 1px solid var(--tdi-border);
+    border-radius: 14px;
+    padding: 1.1rem 1.25rem;
+    box-shadow: 0 2px 10px rgba(15, 28, 72, 0.05);
+    text-align: left;
+    font-family: inherit;
+    cursor: default;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
-.stat-card__icon {
-    flex-shrink: 0;
+.s-card--clickable {
+    cursor: pointer;
+    transition:
+        border-color 0.15s,
+        box-shadow 0.15s;
 }
-.stat-card__label {
-    font-size: 0.75rem;
-    color: #6b7280;
-    font-weight: 600;
-    margin-bottom: 0.2rem;
+.s-card--clickable:hover {
+    border-color: var(--tdi-blue);
+    box-shadow: 0 4px 16px rgba(29, 63, 196, 0.12);
 }
-.stat-card__value {
-    font-size: 1.05rem;
+.s-card__icon-row {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+.s-card__label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--tdi-slate);
+}
+.s-card__value {
+    font-size: 1.15rem;
     font-weight: 800;
-    color: #1a2744;
+    color: var(--tdi-navy);
 }
-.ring-lg {
-    width: 72px;
-    height: 72px;
+.s-card__sub {
+    font-size: 0.78rem;
+    color: var(--tdi-slate);
+}
+.s-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.ring-sm {
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
-    padding: 4px;
+    padding: 3px;
     flex-shrink: 0;
 }
-.ring-lg__hole {
+.ring-sm__hole {
+    display: block;
     width: 100%;
     height: 100%;
     border-radius: 50%;
     background: #fff;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
 }
-.ring-lg__hole strong {
-    font-size: 1rem;
-    font-weight: 800;
-    color: #1d3fc4;
-    line-height: 1;
+.bar {
+    height: 6px;
+    border-radius: 999px;
+    background: #e5e7eb;
+    overflow: hidden;
 }
-.ring-lg__hole span {
-    font-size: 0.55rem;
-    color: #9ca3af;
+.bar--lg {
+    height: 9px;
+    margin-bottom: 0.6rem;
+}
+.bar__fill {
+    height: 100%;
+    border-radius: 999px;
+    background: var(--tdi-blue);
+    transition: width 0.3s ease;
 }
 .icon--green {
-    color: #0ca678;
+    color: var(--tdi-green);
 }
 .icon--gold {
-    color: #e67700;
+    color: var(--tdi-amber);
 }
 .icon--red {
-    color: #e03131;
+    color: var(--tdi-red);
 }
 .icon--muted {
     color: #9ca3af;
 }
 
-/* Tabs: split the page into panels so the user isn't stuck scrolling
-   through every section to find the one they want. */
-.tabs-nav {
-    position: sticky;
-    top: 68px;
-    z-index: 20;
+/* Sidebar */
+.side {
+    grid-area: side;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+.next-action {
     background: #fff;
-    border-bottom: 1px solid #e5e7eb;
-    margin-top: 1.5rem;
+    border: 1.5px solid var(--tdi-amber);
+    border-radius: 14px;
+    padding: 1.1rem 1.25rem;
+    box-shadow: 0 2px 10px rgba(15, 28, 72, 0.05);
+}
+.next-action--done {
+    border-color: var(--tdi-green);
+}
+.next-action__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--tdi-amber-text);
+    margin-bottom: 0.5rem;
+}
+.next-action__eyebrow--done {
+    color: var(--tdi-green-text);
+}
+.next-action h3 {
+    font-size: 0.98rem;
+    font-weight: 800;
+    color: var(--tdi-navy);
+    margin-bottom: 0.35rem;
+}
+.next-action p {
+    font-size: 0.8rem;
+    color: #4b5563;
+    line-height: 1.5;
+    margin-bottom: 0.6rem;
+}
+.next-action__due {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    color: var(--tdi-slate);
+    margin-bottom: 0.8rem !important;
+}
+.next-action__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border: none;
+    background: var(--tdi-blue);
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 0.55rem 1rem;
+    border-radius: 9px;
+    cursor: pointer;
+    width: 100%;
+    justify-content: center;
+    transition: background 0.15s;
+}
+.next-action__btn:hover {
+    background: #1535a8;
+}
+
+.journey-card,
+.attend-card,
+.updated-card {
+    background: #fff;
+    border: 1px solid var(--tdi-border);
+    border-radius: 14px;
+    padding: 1.1rem 1.25rem;
+    box-shadow: 0 2px 10px rgba(15, 28, 72, 0.05);
+}
+.journey-card h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: var(--tdi-navy);
+    margin-bottom: 0.9rem;
+}
+.journey-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.journey-item {
+    position: relative;
+    display: flex;
+    gap: 0.7rem;
+    padding-bottom: 1.1rem;
+}
+.journey-item:last-child {
+    padding-bottom: 0;
+}
+.journey-item:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 7.5px;
+    top: 20px;
+    bottom: 0;
+    width: 1.5px;
+    background: var(--tdi-border);
+}
+.journey-item--done:not(:last-child)::before {
+    background: var(--tdi-green);
+}
+.journey-dot {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #cbd5e1;
+    z-index: 1;
+    background: #fff;
+}
+.journey-item--done .journey-dot {
+    color: var(--tdi-green);
+}
+.journey-item--current .journey-dot {
+    color: var(--tdi-blue);
+}
+.journey-dot__pulse {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--tdi-blue);
+}
+.journey-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+.journey-label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--tdi-navy);
+}
+.journey-item--upcoming .journey-label {
+    color: #9ca3af;
+}
+.journey-date {
+    font-size: 0.72rem;
+    color: var(--tdi-slate);
+}
+
+.attend-card {
+    display: flex;
+    gap: 0.75rem;
+}
+.attend-card__icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: #eef1fc;
+    color: var(--tdi-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.attend-card--recorded .attend-card__icon {
+    background: var(--tdi-red-bg);
+    color: var(--tdi-red-text);
+}
+.attend-card h4 {
+    font-size: 0.88rem;
+    font-weight: 800;
+    color: var(--tdi-navy);
+    margin-bottom: 0.3rem;
+}
+.attend-card p {
+    font-size: 0.78rem;
+    color: var(--tdi-slate);
+    line-height: 1.45;
+    margin-bottom: 0.6rem;
+}
+.attend-card__btn {
+    border: 1.5px solid var(--tdi-blue);
+    background: #fff;
+    color: var(--tdi-blue);
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 0.4rem 0.85rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition:
+        background 0.15s,
+        color 0.15s;
+}
+.attend-card__btn:hover {
+    background: var(--tdi-blue);
+    color: #fff;
+}
+
+.updated-card {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--tdi-slate);
+}
+.updated-card__label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.updated-card__value {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--tdi-navy);
+    font-weight: 600;
+    margin-top: 0.1rem;
+}
+
+/* Tabs */
+.tabs-nav {
+    grid-area: tabs;
+    background: #fff;
+    border: 1px solid var(--tdi-border);
+    border-radius: 12px;
+    padding: 0.35rem;
 }
 .tabs-nav__inner {
-    max-width: 900px;
-    margin: 0 auto;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+.tabs-nav__scroll {
     display: flex;
     gap: 0.25rem;
-    padding: 0 2rem;
     overflow-x: auto;
+    min-width: 0;
 }
 .tab-btn {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
     white-space: nowrap;
-    padding: 0.9rem 1rem;
+    padding: 0.65rem 0.9rem;
     border: none;
     background: none;
+    border-radius: 8px;
     font-family: inherit;
-    font-size: 0.85rem;
+    font-size: 0.84rem;
     font-weight: 700;
-    color: #6b7280;
+    color: var(--tdi-slate);
     cursor: pointer;
-    border-bottom: 2.5px solid transparent;
     transition:
         color 0.15s,
-        border-color 0.15s;
+        background 0.15s;
 }
 .tab-btn:hover {
-    color: #1d3fc4;
+    color: var(--tdi-blue);
+    background: #f7f9fd;
 }
 .tab-btn--active {
-    color: #1d3fc4;
-    border-bottom-color: #1d3fc4;
+    color: #fff;
+    background: var(--tdi-blue);
 }
 .tab-btn__badge {
     display: inline-flex;
@@ -903,59 +1587,115 @@ async function confirmDeleteCert(cert) {
     height: 18px;
     padding: 0 5px;
     border-radius: 999px;
-    background: #f59f00;
+    background: var(--tdi-amber);
     color: #fff;
     font-size: 0.68rem;
     font-weight: 800;
 }
-.tab-content {
+.tab-btn--active .tab-btn__badge {
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--tdi-blue);
+}
+.tab-more {
+    position: relative;
+    flex-shrink: 0;
+}
+.rotate-180 {
+    transform: rotate(180deg);
+    transition: transform 0.15s;
+}
+.tab-more__backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 29;
+}
+.tab-more__menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 30;
+    background: #fff;
+    border: 1px solid var(--tdi-border);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(15, 28, 72, 0.14);
+    padding: 0.35rem;
+    min-width: 190px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+.tab-more__item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.7rem;
+    border: none;
+    background: none;
+    border-radius: 7px;
+    font-family: inherit;
+    font-size: 0.83rem;
+    font-weight: 600;
+    color: #374151;
+    text-align: left;
+    cursor: pointer;
+}
+.tab-more__item:hover {
     background: #f7f9fd;
-    padding: 2.5rem 0 4rem;
+}
+.tab-more__item--active {
+    color: var(--tdi-blue);
+    background: #eef1fc;
 }
 
-/* About this Program */
-.about {
-    padding: 0 2rem;
-    background: transparent;
+.tab-content {
+    grid-area: content;
+    min-width: 0;
 }
-.about__inner {
-    max-width: 900px;
-    margin: 0 auto;
+.tab-content > section {
     background: #fff;
-    border-radius: 16px;
-    padding: 1.75rem 2rem;
-    box-shadow: 0 2px 12px rgba(15, 28, 72, 0.05);
+    border: 1px solid var(--tdi-border);
+    border-radius: 14px;
+    padding: 1.5rem 1.75rem;
+    box-shadow: 0 2px 10px rgba(15, 28, 72, 0.05);
 }
+
+/* About / Overview */
 .about h2 {
     font-size: 1.15rem;
     font-weight: 800;
-    color: #1a2744;
-    margin-bottom: 0.6rem;
+    color: var(--tdi-navy);
+    margin-bottom: 1rem;
 }
-.about__meta {
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--tdi-border);
+}
+.info-cell {
     display: flex;
-    gap: 0.6rem;
-    flex-wrap: wrap;
-    margin-bottom: 0.85rem;
+    flex-direction: column;
+    gap: 0.25rem;
 }
-.about__type,
-.about__code {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-size: 0.76rem;
+.info-cell__label {
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #9ca3af;
+}
+.info-cell__value {
+    font-size: 0.88rem;
     font-weight: 700;
-    padding: 0.3rem 0.7rem;
-    border-radius: 20px;
+    color: var(--tdi-navy);
 }
-.about__type {
-    background: #eef1fc;
-    color: #1d3fc4;
-}
-.about__code {
-    background: #f3f4f6;
-    color: #4b5563;
-    font-family: monospace;
+.about__subhead {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--tdi-navy);
+    margin-bottom: 0.5rem;
 }
 .about__desc {
     font-size: 0.88rem;
@@ -963,131 +1703,113 @@ async function confirmDeleteCert(cert) {
     color: #4b5563;
 }
 
-/* Absence Justification */
-.justification {
-    padding: 0 2rem;
-    background: transparent;
-}
-.justification__inner {
-    max-width: 900px;
-    margin: 0 auto;
-    background: #fff;
-    border-radius: 16px;
-    padding: 1.75rem 2rem;
-    box-shadow: 0 2px 12px rgba(15, 28, 72, 0.05);
-}
-.justification__inner h2 {
+/* Requirements */
+.reqs h2 {
     font-size: 1.15rem;
     font-weight: 800;
-    color: #1a2744;
-    margin-bottom: 0.5rem;
-}
-.justification__banner {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-    background: #fef2f2;
-    color: #991b1b;
-    border-radius: 12px;
-    padding: 0.9rem 1.1rem;
-    margin-bottom: 1.25rem;
-}
-.justification__banner-title {
-    font-weight: 700;
-    font-size: 0.88rem;
-}
-.justification__banner-sub {
-    font-size: 0.8rem;
-    margin-top: 0.15rem;
-    color: #b91c1c;
-}
-
-/* Requirements */
-.reqs {
-    padding: 0 2rem;
-    background: transparent;
-}
-.reqs__inner {
-    max-width: 900px;
-    margin: 0 auto;
-}
-.reqs h2 {
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: #1a2744;
+    color: var(--tdi-navy);
     margin-bottom: 0.4rem;
 }
 .reqs__sub {
-    color: #6b7280;
-    margin-bottom: 1.5rem;
+    color: var(--tdi-slate);
+    font-size: 0.86rem;
+    margin-bottom: 1.25rem;
 }
 .reqs__sub--absent {
-    color: #991b1b;
+    color: var(--tdi-red-text);
     font-weight: 600;
+}
+.reqs-progress {
+    background: #f7f9fd;
+    border: 1px solid var(--tdi-border);
+    border-radius: 12px;
+    padding: 1rem 1.15rem;
+    margin-bottom: 1.5rem;
+}
+.reqs-progress__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--tdi-navy);
+    margin-bottom: 0.5rem;
+}
+.reqs-progress__pct {
+    color: var(--tdi-blue);
+    font-weight: 800;
+}
+.reqs-progress__bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    font-size: 0.78rem;
+    color: var(--tdi-slate);
 }
 .reqs__chips {
     display: flex;
-    gap: 0.6rem;
+    gap: 0.5rem;
     flex-wrap: wrap;
-    margin-bottom: 2rem;
 }
 .chip {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
-    font-size: 0.78rem;
+    gap: 0.3rem;
+    font-size: 0.74rem;
     font-weight: 700;
-    padding: 0.4rem 0.8rem;
+    padding: 0.3rem 0.65rem;
     border-radius: 20px;
 }
 .chip--approved {
-    background: #ecfdf5;
-    color: #065f46;
+    background: var(--tdi-green-bg);
+    color: var(--tdi-green-text);
 }
 .chip--pending {
-    background: #fffbeb;
-    color: #92400e;
+    background: var(--tdi-amber-bg);
+    color: var(--tdi-amber-text);
 }
 .chip--rejected {
-    background: #fef2f2;
-    color: #991b1b;
+    background: var(--tdi-red-bg);
+    color: var(--tdi-red-text);
 }
 .chip--missing {
-    background: #eff6ff;
-    color: #1e40af;
+    background: var(--tdi-slate-bg);
+    color: #4b5563;
 }
 .reqs__list {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
 }
-.req-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.9rem;
+.req-card {
     background: #fff;
-    border-radius: 14px;
-    padding: 1.1rem 1.25rem;
-    box-shadow: 0 2px 12px rgba(15, 28, 72, 0.05);
+    border: 1px solid var(--tdi-border);
+    border-radius: 12px;
+    padding: 1rem 1.15rem;
     border-left: 3px solid transparent;
 }
-.req-row--missing {
-    border-left-color: #f59f00;
+.req-card--missing {
+    border-left-color: var(--tdi-amber);
 }
-.req-row__icon {
-    margin-top: 0.1rem;
+.req-card__top {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+.req-card__icon {
     flex-shrink: 0;
+    margin-top: 0.1rem;
 }
-.req-row__main {
+.req-card__main {
     flex: 1;
     min-width: 0;
 }
-.req-row__title {
+.req-card__title {
     font-weight: 700;
     font-size: 0.92rem;
-    color: #1a2744;
+    color: var(--tdi-navy);
 }
-.req-row__meta {
+.req-card__meta {
     font-size: 0.76rem;
     color: #9ca3af;
     margin-top: 0.15rem;
@@ -1095,15 +1817,7 @@ async function confirmDeleteCert(cert) {
 .req-row__optional {
     font-style: italic;
 }
-.req-row__remarks {
-    font-size: 0.78rem;
-    color: #991b1b;
-    margin-top: 0.4rem;
-    background: #fef2f2;
-    border-radius: 8px;
-    padding: 0.4rem 0.6rem;
-}
-.req-row__status {
+.req-badge {
     font-size: 0.72rem;
     font-weight: 700;
     padding: 0.3rem 0.7rem;
@@ -1112,26 +1826,133 @@ async function confirmDeleteCert(cert) {
     flex-shrink: 0;
 }
 .req-row__status--approved {
-    background: #ecfdf5;
-    color: #065f46;
+    background: var(--tdi-green-bg);
+    color: var(--tdi-green-text);
 }
 .req-row__status--pending {
-    background: #fffbeb;
-    color: #92400e;
+    background: var(--tdi-amber-bg);
+    color: var(--tdi-amber-text);
 }
 .req-row__status--rejected {
-    background: #fef2f2;
-    color: #991b1b;
+    background: var(--tdi-red-bg);
+    color: var(--tdi-red-text);
 }
 .req-row__status--missing {
-    background: #f3f4f6;
+    background: var(--tdi-slate-bg);
     color: #6b7280;
 }
+.req-row__remarks {
+    font-size: 0.78rem;
+    color: var(--tdi-red-text);
+    margin-top: 0.6rem;
+    background: var(--tdi-red-bg);
+    border-radius: 8px;
+    padding: 0.5rem 0.7rem;
+}
+.req-row__notes-readonly {
+    font-size: 0.78rem;
+    color: #4b5563;
+    margin-top: 0.6rem;
+    background: #f9fafb;
+    border-radius: 8px;
+    padding: 0.4rem 0.6rem;
+}
+.req-card__bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #f1f3f9;
+}
+.req-card__file {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    color: #4b5563;
+    min-width: 0;
+}
+.req-card__file span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.req-card__file--empty {
+    color: #9ca3af;
+    font-style: italic;
+}
+.req-card__submitted {
+    color: #9ca3af;
+    font-style: normal;
+    flex-shrink: 0;
+}
+.req-card__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+.req-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 0.45rem 0.8rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+.req-btn--ghost {
+    background: #eef1fc;
+    color: var(--tdi-blue);
+}
+.req-btn--ghost:hover {
+    background: #dde4fb;
+}
+.req-btn--primary {
+    background: var(--tdi-blue);
+    color: #fff;
+}
+.req-btn--primary:hover {
+    background: #1535a8;
+}
+.req-card__expand {
+    margin-top: 0.9rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid #f1f3f9;
+}
+.reqs__empty {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #9ca3af;
+    font-size: 0.9rem;
+    padding: 1.5rem;
+    background: #f7f9fd;
+    border-radius: 12px;
+}
+.empty-note {
+    color: #9ca3af;
+    font-size: 0.85rem;
+    padding: 1.25rem;
+    background: #f7f9fd;
+    border-radius: 12px;
+    text-align: center;
+}
+
+/* Shared file/upload controls (requirements + justification) */
 .req-row__file {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    margin-top: 0.6rem;
+    margin-bottom: 0.75rem;
     flex-wrap: wrap;
 }
 .file-link {
@@ -1140,7 +1961,7 @@ async function confirmDeleteCert(cert) {
     gap: 0.35rem;
     font-size: 0.78rem;
     font-weight: 600;
-    color: #1d3fc4;
+    color: var(--tdi-blue);
     text-decoration: none;
     background: #eef1fc;
     padding: 0.35rem 0.7rem;
@@ -1155,7 +1976,7 @@ async function confirmDeleteCert(cert) {
     gap: 0.3rem;
     border: none;
     background: none;
-    color: #991b1b;
+    color: var(--tdi-red-text);
     font-size: 0.74rem;
     font-weight: 600;
     cursor: pointer;
@@ -1174,7 +1995,7 @@ async function confirmDeleteCert(cert) {
 .req-row__notes textarea {
     width: 100%;
     resize: vertical;
-    border: 1.5px solid #e5e7eb;
+    border: 1.5px solid var(--tdi-border);
     border-radius: 8px;
     padding: 0.5rem 0.7rem;
     font-size: 0.8rem;
@@ -1188,21 +2009,12 @@ async function confirmDeleteCert(cert) {
 }
 .req-row__notes textarea:focus {
     outline: none;
-    border-color: #1d3fc4;
-}
-.req-row__notes-readonly {
-    font-size: 0.78rem;
-    color: #4b5563;
-    margin-top: 0.5rem;
-    background: #f9fafb;
-    border-radius: 8px;
-    padding: 0.4rem 0.6rem;
+    border-color: var(--tdi-blue);
 }
 .req-row__upload {
     display: flex;
     gap: 0.6rem;
     align-items: center;
-    margin-top: 0.75rem;
     flex-wrap: wrap;
 }
 .upload-input {
@@ -1221,7 +2033,7 @@ async function confirmDeleteCert(cert) {
         background 0.15s;
 }
 .upload-input:hover {
-    border-color: #1d3fc4;
+    border-color: var(--tdi-blue);
     background: #f7f9fd;
 }
 .upload-input span {
@@ -1234,7 +2046,7 @@ async function confirmDeleteCert(cert) {
 }
 .upload-btn {
     border: none;
-    background: #1d3fc4;
+    background: var(--tdi-blue);
     color: #fff;
     font-size: 0.78rem;
     font-weight: 700;
@@ -1252,65 +2064,75 @@ async function confirmDeleteCert(cert) {
 }
 .req-row__error {
     font-size: 0.74rem;
-    color: #991b1b;
-    margin-top: 0.4rem;
+    color: var(--tdi-red-text);
+    margin-top: 0.6rem;
 }
-.reqs__empty {
+
+/* Absence Justification */
+.justification h2 {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--tdi-navy);
+    margin-bottom: 0.5rem;
+}
+.justification__banner {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: #9ca3af;
-    font-size: 0.9rem;
-    padding: 1.5rem;
-    background: #fff;
-    border-radius: 14px;
+    align-items: flex-start;
+    gap: 0.75rem;
+    background: var(--tdi-red-bg);
+    color: var(--tdi-red-text);
+    border-radius: 12px;
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 1.25rem;
+}
+.justification__banner-title {
+    font-weight: 700;
+    font-size: 0.88rem;
+}
+.justification__banner-sub {
+    font-size: 0.8rem;
+    margin-top: 0.15rem;
+    color: #b91c1c;
 }
 
 /* Resource speakers */
-.speakers {
-    padding: 0 2rem;
-    background: transparent;
-}
-.speakers__inner {
-    max-width: 900px;
-    margin: 0 auto;
-}
-.speakers h2 {
-    font-size: 1.5rem;
+.speakers h2,
+.docs h2 {
+    font-size: 1.15rem;
     font-weight: 800;
-    color: #1a2744;
+    color: var(--tdi-navy);
     margin-bottom: 0.4rem;
 }
 .speakers__grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.85rem;
 }
 .speaker-card {
-    background: #fff;
-    border-radius: 14px;
-    padding: 1.25rem;
-    box-shadow: 0 2px 12px rgba(15, 28, 72, 0.05);
+    background: #f7f9fd;
+    border: 1px solid var(--tdi-border);
+    border-radius: 12px;
+    padding: 1rem;
 }
 .speaker-card__avatar {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     background: #eef1fc;
-    color: #1d3fc4;
+    color: var(--tdi-blue);
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.6rem;
 }
 .speaker-card__name {
     font-weight: 700;
-    font-size: 0.92rem;
-    color: #1a2744;
+    font-size: 0.88rem;
+    color: var(--tdi-navy);
 }
 .speaker-card__role {
-    font-size: 0.76rem;
-    color: #6b7280;
+    font-size: 0.74rem;
+    color: var(--tdi-slate);
     margin-top: 0.15rem;
 }
 .speaker-card__topic,
@@ -1318,39 +2140,25 @@ async function confirmDeleteCert(cert) {
     display: flex;
     align-items: center;
     gap: 0.35rem;
-    font-size: 0.76rem;
+    font-size: 0.74rem;
     color: #4b5563;
-    margin-top: 0.5rem;
+    margin-top: 0.45rem;
 }
 
 /* Supporting Documents */
-.docs {
-    padding: 0 2rem;
-    background: transparent;
-}
-.docs__inner {
-    max-width: 900px;
-    margin: 0 auto;
-}
-.docs h2 {
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: #1a2744;
-    margin-bottom: 0.4rem;
-}
 .docs__grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.85rem;
 }
 .doc-card {
-    background: #fff;
-    border-radius: 14px;
-    padding: 1.25rem;
-    box-shadow: 0 2px 12px rgba(15, 28, 72, 0.05);
+    background: #f7f9fd;
+    border: 1px solid var(--tdi-border);
+    border-radius: 12px;
+    padding: 1rem;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.4rem;
 }
 .doc-card__top {
     display: flex;
@@ -1360,32 +2168,32 @@ async function confirmDeleteCert(cert) {
 }
 .doc-card__type {
     display: inline-flex;
-    font-size: 0.68rem;
+    font-size: 0.66rem;
     font-weight: 800;
     letter-spacing: 0.03em;
     text-transform: uppercase;
-    color: #1d3fc4;
+    color: var(--tdi-blue);
     background: #eef1fc;
     padding: 0.25rem 0.6rem;
     border-radius: 20px;
 }
 .doc-card__series {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     font-weight: 700;
     color: #9ca3af;
 }
 .doc-card__subject {
-    font-size: 0.92rem;
+    font-size: 0.9rem;
     font-weight: 700;
-    color: #1a2744;
+    color: var(--tdi-navy);
     line-height: 1.3;
 }
 .doc-card__meta {
     display: flex;
     flex-direction: column;
     gap: 0.3rem;
-    font-size: 0.76rem;
-    color: #6b7280;
+    font-size: 0.74rem;
+    color: var(--tdi-slate);
 }
 .doc-card__meta span {
     display: flex;
@@ -1398,9 +2206,9 @@ async function confirmDeleteCert(cert) {
     gap: 0.35rem;
     font-size: 0.78rem;
     font-weight: 700;
-    color: #1d3fc4;
+    color: var(--tdi-blue);
     text-decoration: none;
-    margin-top: 0.3rem;
+    margin-top: 0.2rem;
 }
 .doc-card__link:hover {
     text-decoration: underline;
@@ -1409,18 +2217,10 @@ async function confirmDeleteCert(cert) {
 /* ══════════════════════════════════════════
    CERTIFICATES
 ══════════════════════════════════════════ */
-.certs {
-    padding: 0 2rem;
-    background: transparent;
-}
-.certs__inner {
-    max-width: 900px;
-    margin: 0 auto;
-}
 .certs__header {
     display: flex;
     align-items: flex-start;
-    margin-bottom: 1.75rem;
+    margin-bottom: 1.5rem;
 }
 .certs__title-group {
     display: flex;
@@ -1428,48 +2228,40 @@ async function confirmDeleteCert(cert) {
     gap: 1rem;
 }
 .certs__icon-wrap {
-    width: 52px;
-    height: 52px;
-    border-radius: 14px;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
     background: linear-gradient(135deg, #1d3fc4 0%, #4f46e5 100%);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
 }
-.certs__inner h2 {
-    font-size: 1.5rem;
+.certs h2 {
+    font-size: 1.15rem;
     font-weight: 800;
-    color: #1a2744;
-    margin-bottom: 0.25rem;
+    color: var(--tdi-navy);
+    margin-bottom: 0.2rem;
 }
 .certs__sub {
-    color: #6b7280;
-    font-size: 0.85rem;
+    color: var(--tdi-slate);
+    font-size: 0.83rem;
     margin: 0;
 }
 
 .cert-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 1rem;
-    margin-bottom: 2rem;
+    margin-bottom: 1.75rem;
 }
 .cert-card {
     position: relative;
     background: #fff;
-    border-radius: 16px;
-    padding: 1.25rem;
-    box-shadow: 0 4px 20px rgba(15, 28, 72, 0.08);
-    border: 1.5px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 1.1rem;
+    border: 1px solid var(--tdi-border);
     overflow: hidden;
-    transition:
-        box-shadow 0.2s,
-        transform 0.2s;
-}
-.cert-card:hover {
-    box-shadow: 0 8px 30px rgba(15, 28, 72, 0.14);
-    transform: translateY(-2px);
 }
 .cert-card__ribbon {
     position: absolute;
@@ -1485,16 +2277,16 @@ async function confirmDeleteCert(cert) {
     text-transform: uppercase;
 }
 .cert-card__ribbon--issued {
-    background: #d1fae5;
-    color: #065f46;
+    background: var(--tdi-green-bg);
+    color: var(--tdi-green-text);
 }
 .cert-card__ribbon--pending {
-    background: #fef3c7;
-    color: #92400e;
+    background: var(--tdi-amber-bg);
+    color: var(--tdi-amber-text);
 }
 .cert-card__ribbon--revoked {
-    background: #fee2e2;
-    color: #991b1b;
+    background: var(--tdi-red-bg);
+    color: var(--tdi-red-text);
 }
 .cert-card__top {
     display: flex;
@@ -1514,7 +2306,7 @@ async function confirmDeleteCert(cert) {
 .cert-card__type {
     font-size: 0.85rem;
     font-weight: 800;
-    color: #1a2744;
+    color: var(--tdi-navy);
     line-height: 1.3;
 }
 .cert-card__number {
@@ -1537,7 +2329,7 @@ async function confirmDeleteCert(cert) {
 }
 .cert-card__remarks {
     font-size: 0.75rem;
-    color: #6b7280;
+    color: var(--tdi-slate);
     background: #f9fafb;
     border-radius: 8px;
     padding: 0.4rem 0.6rem;
@@ -1569,14 +2361,14 @@ async function confirmDeleteCert(cert) {
 }
 .cert-btn--view {
     background: #eef1fc;
-    color: #1d3fc4;
+    color: var(--tdi-blue);
 }
 .cert-btn--view:hover {
     background: #dde4fb;
 }
 .cert-btn--delete {
-    background: #fef2f2;
-    color: #991b1b;
+    background: var(--tdi-red-bg);
+    color: var(--tdi-red-text);
 }
 .cert-btn--delete:hover:not(:disabled) {
     background: #fee2e2;
@@ -1588,11 +2380,11 @@ async function confirmDeleteCert(cert) {
 
 .certs__empty {
     text-align: center;
-    padding: 2.5rem;
-    background: #fff;
-    border-radius: 16px;
-    border: 2px dashed #e5e7eb;
-    margin-bottom: 2rem;
+    padding: 2.25rem;
+    background: #f7f9fd;
+    border-radius: 14px;
+    border: 1.5px dashed var(--tdi-border);
+    margin-bottom: 1.75rem;
 }
 .certs__empty-icon {
     display: flex;
@@ -1600,20 +2392,20 @@ async function confirmDeleteCert(cert) {
     margin-bottom: 0.75rem;
 }
 .certs__empty-title {
-    font-size: 1rem;
+    font-size: 0.98rem;
     font-weight: 800;
-    color: #1a2744;
+    color: var(--tdi-navy);
     margin-bottom: 0.25rem;
 }
 .certs__empty-sub {
-    font-size: 0.82rem;
+    font-size: 0.8rem;
     color: #9ca3af;
 }
 
 .cert-upload {
     background: linear-gradient(135deg, #1d3fc4 0%, #3730a3 100%);
-    border-radius: 16px;
-    padding: 1.5rem;
+    border-radius: 14px;
+    padding: 1.35rem;
 }
 .cert-upload__header {
     display: flex;
@@ -1705,7 +2497,7 @@ async function confirmDeleteCert(cert) {
     align-items: center;
     gap: 0.4rem;
     background: #fff;
-    color: #1d3fc4;
+    color: var(--tdi-blue);
     font-weight: 800;
     font-size: 0.82rem;
     border: none;
@@ -1739,13 +2531,8 @@ async function confirmDeleteCert(cert) {
 }
 
 @media (max-width: 768px) {
-    .stats__inner {
+    .summary__cards {
         grid-template-columns: 1fr;
-        transform: none;
-        margin-top: 1.5rem;
-    }
-    .ph {
-        padding-top: 7rem;
     }
     .speakers__grid {
         grid-template-columns: 1fr;
@@ -1758,6 +2545,20 @@ async function confirmDeleteCert(cert) {
     }
     .cert-upload__btn {
         width: 100%;
+        justify-content: center;
+    }
+    .tab-content > section {
+        padding: 1.25rem;
+    }
+    .req-card__bottom {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .req-card__actions {
+        justify-content: stretch;
+    }
+    .req-btn {
+        flex: 1;
         justify-content: center;
     }
 }

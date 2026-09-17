@@ -23,6 +23,7 @@ defineProps<{
         active_batches: number;
         pending_submissions: number;
     };
+    years: number[];
 }>();
 
 /* ===================== SHARED FILTERS ===================== */
@@ -33,10 +34,16 @@ const STATUS_OPTIONS = ['PERMANENT', 'JOB ORDER', 'CONTRACTUAL', 'CTI'];
 
 const target = ref<'Nationwide' | 'OPCR'>('Nationwide');
 const region = ref('ALL');
-const selectedStatuses = ref<string[]>([...STATUS_OPTIONS]);
+// Naka-uncheck by default ang JOB ORDER — pero kapag manual na na-check ito
+// ng user, sinasama na ito sa bilang (parehong dinaanan ng shared filter
+// props kaya awtomatikong na-a-apply sa lahat ng compliance card).
+const selectedStatuses = ref<string[]>(STATUS_OPTIONS.filter((s) => s !== 'JOB ORDER'));
 
 const office = ref('ALL');
 const officeOptions = ref<string[]>([]);
+
+// Default: kasalukuyang taon.
+const year = ref<string>(String(new Date().getFullYear()));
 
 const toggleStatus = (status: string) => {
     if (selectedStatuses.value.includes(status)) {
@@ -104,6 +111,19 @@ watch(region, fetchOffices);
                     </SelectContent>
                 </Select>
 
+                <!-- Year filter -->
+                <Select v-model="year">
+                    <SelectTrigger class="h-9 w-28 text-xs font-semibold">
+                        <SelectValue placeholder="Year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem class="text-xs" value="ALL">All Years</SelectItem>
+                        <SelectItem v-for="y in years" :key="y" class="text-xs" :value="String(y)">
+                            {{ y }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+
                 <!-- Divider -->
                 <div class="h-5 w-px bg-border"></div>
 
@@ -126,17 +146,17 @@ watch(region, fetchOffices);
 
             <!-- ===================== TWO CARDS SIDE BY SIDE ===================== -->
             <div class="grid gap-4 md:grid-cols-2">
-                <TrainingComplianceCard :target="target" :region="region" :selected-statuses="selectedStatuses" :office="office" />
-                <SupervisoryComplianceCard :target="target" :region="region" :selected-statuses="selectedStatuses" :office="office" />
+                <TrainingComplianceCard :target="target" :region="region" :selected-statuses="selectedStatuses" :office="office" :year="year" />
+                <SupervisoryComplianceCard :target="target" :region="region" :selected-statuses="selectedStatuses" :office="office" :year="year" />
             </div>
 
             <!-- ===================== TREAP PANEL ===================== -->
-            <TreapComplianceCard :target="target" :region="region" :selected-statuses="selectedStatuses" :office="office" />
+            <TreapComplianceCard :target="target" :region="region" :selected-statuses="selectedStatuses" :office="office" :year="year" />
 
-            <ReapComplianceCard :target="target" :region="region" :selected-statuses="selectedStatuses" :office="office" />
+            <ReapComplianceCard :target="target" :region="region" :selected-statuses="selectedStatuses" :office="office" :year="year" />
 
             <!-- ===================== TDOR PANEL ===================== -->
-            <TdorComplianceCard :target="target" :region="region" :selected-statuses="selectedStatuses" :office="office" />
+            <TdorComplianceCard :target="target" :region="region" :selected-statuses="selectedStatuses" :office="office" :year="year" />
 
             <div class="grid auto-rows-min gap-4 md:grid-cols-3">
                 <div class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">

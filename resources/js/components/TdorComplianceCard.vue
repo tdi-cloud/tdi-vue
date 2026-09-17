@@ -9,6 +9,7 @@ const props = defineProps<{
     region: string;
     selectedStatuses: string[];
     office: string;
+    year: string;
 }>();
 
 // ─── State ───────────────────────────────────────────────────────────────────
@@ -60,6 +61,7 @@ async function fetchData() {
             region: props.region,
             office: props.office,
             office_filter: props.target,
+            year: props.year,
         });
         props.selectedStatuses.forEach((s) => params.append('plant_status[]', s));
         const res = await fetch(`/dashboard/tdor-compliance?${params}`);
@@ -69,7 +71,7 @@ async function fetchData() {
     }
 }
 
-watch(() => [props.region, props.selectedStatuses, props.office, props.target], fetchData, { immediate: true, deep: true });
+watch(() => [props.region, props.selectedStatuses, props.office, props.target, props.year], fetchData, { immediate: true, deep: true });
 
 // ─── Fetch list (drill-down) ─────────────────────────────────────────────────
 
@@ -85,6 +87,7 @@ async function fetchList(type: 'submitted' | 'not_submitted', reg = 'ALL') {
             region: props.region,
             office: props.office,
             office_filter: props.target,
+            year: props.year,
             type,
             reg,
         });
@@ -241,7 +244,10 @@ const modalTitle = computed(() => {
 </script>
 
 <template>
-    <div class="flex flex-col gap-5 rounded-2xl border bg-card p-5 shadow-sm">
+    <div class="relative isolate flex flex-col gap-5 overflow-hidden rounded-2xl border bg-card p-5 shadow-sm">
+        <!-- Decorative background texture — purely visual, sits behind existing content via negative z-index -->
+        <div class="tdi-texture-timeline pointer-events-none absolute inset-0 z-[-1] opacity-[0.05] dark:opacity-[0.08]" aria-hidden="true"></div>
+
         <!-- Header -->
         <div class="flex items-center gap-2">
             <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-950/50">
@@ -406,3 +412,16 @@ const modalTitle = computed(() => {
 
     <EmployeeProgressModal :empcode="selectedEmpcode" @close="selectedEmpcode = null" />
 </template>
+
+<style scoped>
+/* TDI Institutional Micro-Texture — same fine grid + radial-fade technique used
+   in the homepage "Digital Resources" section, tinted violet for the
+   Timeline / Reporting motif. */
+.tdi-texture-timeline {
+    background-image:
+        linear-gradient(rgba(167, 139, 250, 0.9) 1px, transparent 1px), linear-gradient(90deg, rgba(167, 139, 250, 0.9) 1px, transparent 1px);
+    background-size: 24px 24px;
+    -webkit-mask-image: radial-gradient(ellipse 240px 180px at 100% 0%, black 0%, transparent 75%);
+    mask-image: radial-gradient(ellipse 240px 180px at 100% 0%, black 0%, transparent 75%);
+}
+</style>

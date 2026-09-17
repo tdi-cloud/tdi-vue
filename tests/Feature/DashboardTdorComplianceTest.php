@@ -7,6 +7,7 @@ use App\Models\Program;
 use App\Models\Requirement;
 use App\Models\Submission;
 use App\Models\User;
+use Carbon\Carbon;
 
 function tdorTestAdmin(string $empcode): User
 {
@@ -50,7 +51,7 @@ function tdorTestEmployee(string $empcode, string $lastname, string $region = 'N
     ]);
 }
 
-function tdorTestSetup(): array
+function tdorTestSetup(?string $dateStart = null): array
 {
     $program = Program::create([
         'title' => 'TDOR Compliance Test Program',
@@ -64,13 +65,15 @@ function tdorTestSetup(): array
         'origin' => 'Local',
     ]);
 
+    $dateStart ??= now()->subMonths(8)->toDateString();
+
     $batch = Batch::create([
         'program_code' => $program->program_code,
         'batch' => 'Batch 1',
         'status' => 'Closed',
         'modality' => 'Onsite',
-        'date_start' => now()->subMonths(8)->toDateString(),
-        'date_end' => now()->subMonths(7)->toDateString(),
+        'date_start' => $dateStart,
+        'date_end' => Carbon::parse($dateStart)->addMonth()->toDateString(),
         'time_start' => '08:00',
         'time_end' => '17:00',
         'days' => '2',
@@ -255,6 +258,52 @@ test('tdor compliance list endpoint returns the correct employees per type', fun
     $submittedResponse->assertOk();
     expect($submittedResponse->json('count'))->toBe(1);
     expect($submittedResponse->json('employees.0.empcode'))->toBe($submittedEmployee->EMPCODE);
+});
+
+test('tdor compliance endpoint scopes the total/submitted counts to the selected batch year', function () {
+    $admin = tdorTestAdmin('EMP-TDOR-ADM-YR');
+    [$program2025, $batch2025, $requirement2025] = tdorTestSetup('2025-03-10');
+    [$program2026, $batch2026, $requirement2026] = tdorTestSetup('2026-03-10');
+
+    $employee2025 = tdorTestEmployee('EMP-TDOR-YR-2025', 'Santos');
+    $participant2025 = Participant::create([
+        'sort_order' => 1, 'batch_id' => $batch2025->id, 'empcode' => $employee2025->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+    ]);
+    Submission::create([
+        'participant_id' => $participant2025->id,
+        'program_code' => $program2025->program_code,
+        'batch_id' => $batch2025->id,
+        'requirement_id' => $requirement2025->id,
+        'status' => 'Pending',
+        'submitted_at' => now(),
+    ]);
+
+    $employee2026 = tdorTestEmployee('EMP-TDOR-YR-2026', 'Reyes');
+    Participant::create([
+        'sort_order' => 1, 'batch_id' => $batch2026->id, 'empcode' => $employee2026->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+    ]);
+    // Walang Submission ang 2026 employee — dapat mabilang bilang "not submitted".
+
+    $response = $this->actingAs($admin)->getJson(route('dashboard.tdor-compliance', [
+        'region' => 'ALL', 'year' => '2026', 'office' => 'ALL', 'office_filter' => 'ALL',
+    ]));
+
+    $response->assertOk();
+    // 1 lang ang total sa 2026 filter — ang 2025 batch/employee ay
+    // hindi dapat kasama (buong cohort ng TREAP/REAP/TDOR ay batay sa
+    // batch, kaya ang year filter ay umaapekto sa denominator dito).
+    expect($response->json('total'))->toBe(1);
+    expect($response->json('submitted'))->toBe(0);
+    expect($response->json('not_submitted'))->toBe(1);
+
+    $allResponse = $this->actingAs($admin)->getJson(route('dashboard.tdor-compliance', [
+        'region' => 'ALL', 'year' => 'ALL', 'office' => 'ALL', 'office_filter' => 'ALL',
+    ]));
+    $allResponse->assertOk();
+    expect($allResponse->json('total'))->toBe(2);
+    expect($allResponse->json('submitted'))->toBe(1);
 });
 
 test('non-admin users cannot access the tdor compliance endpoints', function () {

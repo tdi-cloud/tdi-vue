@@ -14,6 +14,7 @@ const props = defineProps<{
     region: string;
     selectedStatuses: string[];
     office: string;
+    year: string;
 }>();
 
 /* ===================== STATS DATA ===================== */
@@ -65,6 +66,7 @@ const fetchStats = async () => {
                 office_filter: props.target,
                 plant_status: props.selectedStatuses,
                 office: props.office,
+                year: props.year,
             },
         });
         stats.value = data;
@@ -83,7 +85,7 @@ const fetchStats = async () => {
 
 onMounted(fetchStats);
 // Re-fetch kapag nagbago ang shared props
-watch(() => [props.target, props.region, props.selectedStatuses, props.office], fetchStats, { deep: true });
+watch(() => [props.target, props.region, props.selectedStatuses, props.office, props.year], fetchStats, { deep: true });
 
 /* ===================== EMPLOYEE LIST MODAL ===================== */
 
@@ -119,6 +121,7 @@ const openList = async (type: 'trained' | 'not_trained') => {
                 office_filter: props.target,
                 plant_status: props.selectedStatuses,
                 office: props.office,
+                year: props.year,
             },
         });
         employees.value = data.employees;
@@ -189,7 +192,10 @@ const chartOptions = {
 </script>
 
 <template>
-    <div class="rounded-2xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border">
+    <div class="relative isolate overflow-hidden rounded-2xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border">
+        <!-- Decorative background texture — purely visual, sits behind existing content via negative z-index -->
+        <div class="tdi-texture-learning pointer-events-none absolute inset-0 z-[-1] opacity-[0.05] dark:opacity-[0.08]" aria-hidden="true"></div>
+
         <!-- HEADER -->
         <div class="flex flex-wrap items-center gap-2 border-b px-5 py-3">
             <h2 class="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide text-blue-900 dark:text-blue-300">
@@ -332,3 +338,16 @@ const chartOptions = {
         </Dialog>
     </div>
 </template>
+
+<style scoped>
+/* TDI Institutional Micro-Texture — same fine grid + radial-fade technique used
+   in the homepage "Digital Resources" section, tinted emerald for the Learning
+   Network motif (Employees → Learning → Competency → Development). */
+.tdi-texture-learning {
+    background-image:
+        linear-gradient(rgba(52, 211, 153, 0.9) 1px, transparent 1px), linear-gradient(90deg, rgba(52, 211, 153, 0.9) 1px, transparent 1px);
+    background-size: 26px 26px;
+    -webkit-mask-image: radial-gradient(ellipse 220px 220px at 100% 0%, black 0%, transparent 75%);
+    mask-image: radial-gradient(ellipse 220px 220px at 100% 0%, black 0%, transparent 75%);
+}
+</style>

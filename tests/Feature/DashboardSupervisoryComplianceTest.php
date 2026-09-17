@@ -5,6 +5,7 @@ use App\Models\Employee;
 use App\Models\Participant;
 use App\Models\Program;
 use App\Models\User;
+use Carbon\Carbon;
 
 function supCompTestAdmin(string $empcode): User
 {
@@ -48,7 +49,7 @@ function supCompTestEmployee(string $empcode, string $lastname, string $region =
     ]);
 }
 
-function supCompTestBatch(int $hours, string $category = 'Regional'): Batch
+function supCompTestBatch(int $hours, string $category = 'Regional', ?string $dateStart = null): Batch
 {
     $program = Program::create([
         'title' => 'Supervisory Compliance Test Program',
@@ -62,13 +63,15 @@ function supCompTestBatch(int $hours, string $category = 'Regional'): Batch
         'origin' => 'Local',
     ]);
 
+    $dateStart ??= now()->subMonths(2)->toDateString();
+
     return Batch::create([
         'program_code' => $program->program_code,
         'batch' => 'Batch 1',
         'status' => 'Closed',
         'modality' => 'Onsite',
-        'date_start' => now()->subMonths(2)->toDateString(),
-        'date_end' => now()->subMonths(1)->toDateString(),
+        'date_start' => $dateStart,
+        'date_end' => Carbon::parse($dateStart)->addMonth()->toDateString(),
         'time_start' => '08:00',
         'time_end' => '17:00',
         'days' => '5',
@@ -190,6 +193,40 @@ test('supervisory compliance endpoint excludes General Assembly programs from th
     // na-attend-an (40 hrs), hindi ito binibilang na learning intervention
     // kahit SUPERVISORY/MANAGERIAL ang type ng program.
     expect($response->json('completed'))->toBe(1);
+});
+
+test('supervisory compliance endpoint scopes the completed count to the selected batch year', function () {
+    $admin = supCompTestAdmin('EMP-SC-ADM-YR');
+
+    $batch2025 = supCompTestBatch(40, 'Regional', '2025-03-10');
+    $batch2026 = supCompTestBatch(40, 'Regional', '2026-03-10');
+
+    $completedIn2025 = supCompTestEmployee('EMP-SC-YR-2025', 'Santos');
+    Participant::create([
+        'sort_order' => 1, 'batch_id' => $batch2025->id, 'empcode' => $completedIn2025->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 40, 'added_by' => 'system',
+    ]);
+
+    $completedIn2026 = supCompTestEmployee('EMP-SC-YR-2026', 'Reyes');
+    Participant::create([
+        'sort_order' => 1, 'batch_id' => $batch2026->id, 'empcode' => $completedIn2026->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 40, 'added_by' => 'system',
+    ]);
+
+    $response = $this->actingAs($admin)->getJson(route('dashboard.supervisory-compliance', [
+        'region' => 'ALL', 'office' => 'ALL', 'office_filter' => 'ALL', 'sg_min' => 19, 'year' => '2026',
+    ]));
+
+    $response->assertOk();
+    // 1 lang ang "completed" sa 2026 filter — yung 2025 batch ay hindi
+    // dapat mabilang (year filter hindi apektado ang denominator).
+    expect($response->json('completed'))->toBe(1);
+
+    $allResponse = $this->actingAs($admin)->getJson(route('dashboard.supervisory-compliance', [
+        'region' => 'ALL', 'office' => 'ALL', 'office_filter' => 'ALL', 'sg_min' => 19, 'year' => 'ALL',
+    ]));
+    $allResponse->assertOk();
+    expect($allResponse->json('completed'))->toBe(2);
 });
 
 test('non-admin users cannot access the supervisory compliance endpoint', function () {

@@ -294,6 +294,9 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::post('/certificates', [CertificateController::class, 'store'])
         ->name('certificates.store');
 
+    Route::post('/certificates/bulk-store', [CertificateController::class, 'bulkStore'])
+        ->name('certificates.bulk-store');
+
     Route::delete('/certificates/{certificate}', [CertificateController::class, 'destroy'])
         ->name('certificates.destroy');
 
@@ -421,6 +424,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // CERTIFICATES
     Route::post('/my-programs/{batch}/certificates', [CertificateController::class, 'uploadByUser'])
         ->name('certificates.upload-by-user');
+
+    Route::post('/my-programs/{batch}/certificates/bulk', [CertificateController::class, 'bulkUploadByUser'])
+        ->name('certificates.bulk-upload-by-user');
 
     Route::delete('/my-programs/{batch}/certificates/{certificate}', [CertificateController::class, 'destroyByUser'])
         ->name('certificates.destroy-by-user');

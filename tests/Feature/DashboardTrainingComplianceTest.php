@@ -5,6 +5,7 @@ use App\Models\Employee;
 use App\Models\Participant;
 use App\Models\Program;
 use App\Models\User;
+use Carbon\Carbon;
 
 function trainingCompTestAdmin(string $empcode): User
 {
@@ -48,7 +49,7 @@ function trainingCompTestEmployee(string $empcode, string $lastname, string $reg
     ]);
 }
 
-function trainingCompTestBatch(int $hours = 16, string $category = 'Regional'): Batch
+function trainingCompTestBatch(int $hours = 16, string $category = 'Regional', ?string $dateStart = null): Batch
 {
     $program = Program::create([
         'title' => 'Training Compliance Test Program',
@@ -62,13 +63,15 @@ function trainingCompTestBatch(int $hours = 16, string $category = 'Regional'): 
         'origin' => 'Local',
     ]);
 
+    $dateStart ??= now()->subMonths(2)->toDateString();
+
     return Batch::create([
         'program_code' => $program->program_code,
         'batch' => 'Batch 1',
         'status' => 'Closed',
         'modality' => 'Onsite',
-        'date_start' => now()->subMonths(2)->toDateString(),
-        'date_end' => now()->subMonths(1)->toDateString(),
+        'date_start' => $dateStart,
+        'date_end' => Carbon::parse($dateStart)->addMonth()->toDateString(),
         'time_start' => '08:00',
         'time_end' => '17:00',
         'days' => '2',
@@ -180,6 +183,42 @@ test('training compliance endpoint zeroes out other regions when a single region
 
     // May data ang R5, pero dapat 0 dahil naka-filter tayo sa NCR lang.
     expect($trained[$r5Index])->toBe(0);
+});
+
+test('training compliance endpoint scopes the trained count to the selected batch year', function () {
+    $admin = trainingCompTestAdmin('EMP-TC-ADM-YR');
+
+    $batch2025 = trainingCompTestBatch(16, 'Regional', '2025-03-10');
+    $batch2026 = trainingCompTestBatch(16, 'Regional', '2026-03-10');
+
+    $trainedIn2025 = trainingCompTestEmployee('EMP-TC-YR-2025', 'Santos');
+    Participant::create([
+        'sort_order' => 1, 'batch_id' => $batch2025->id, 'empcode' => $trainedIn2025->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+    ]);
+
+    $trainedIn2026 = trainingCompTestEmployee('EMP-TC-YR-2026', 'Reyes');
+    Participant::create([
+        'sort_order' => 1, 'batch_id' => $batch2026->id, 'empcode' => $trainedIn2026->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+    ]);
+
+    $response = $this->actingAs($admin)->getJson(route('dashboard.training-compliance', [
+        'region' => 'ALL', 'office' => 'ALL', 'office_filter' => 'ALL', 'sg_min' => 1, 'year' => '2026',
+    ]));
+
+    $response->assertOk();
+    // +1 admin (CO) + 2 test employees = 3 total (year filter hindi
+    // apektado ang denominator, employee-level lang ang total). Trained =
+    // 1 lang — yung employee na trained sa 2026 batch.
+    expect($response->json('total'))->toBe(3);
+    expect($response->json('trained'))->toBe(1);
+
+    $allResponse = $this->actingAs($admin)->getJson(route('dashboard.training-compliance', [
+        'region' => 'ALL', 'office' => 'ALL', 'office_filter' => 'ALL', 'sg_min' => 1, 'year' => 'ALL',
+    ]));
+    $allResponse->assertOk();
+    expect($allResponse->json('trained'))->toBe(2);
 });
 
 test('non-admin users cannot access the training compliance endpoint', function () {

@@ -16,6 +16,7 @@ const props = defineProps<{
     region: string;
     selectedStatuses: string[];
     office: string;
+    year: string;
 }>();
 
 // SG selector — local lang ito, para sa supervisory card lang
@@ -80,6 +81,7 @@ const fetchStats = async () => {
                 plant_status: props.selectedStatuses,
                 sg_min: sgMin.value,
                 office: props.office,
+                year: props.year,
             },
         });
         stats.value = data;
@@ -100,7 +102,7 @@ const fetchStats = async () => {
 
 onMounted(fetchStats);
 // Re-fetch kapag nagbago ang shared props O ang local sgMin
-watch(() => [props.target, props.region, props.selectedStatuses, sgMin.value, props.office], fetchStats, { deep: true });
+watch(() => [props.target, props.region, props.selectedStatuses, sgMin.value, props.office, props.year], fetchStats, { deep: true });
 
 /* ===================== EMPLOYEE LIST MODAL ===================== */
 
@@ -140,6 +142,7 @@ const openList = async (type: 'completed' | 'in_progress' | 'not_started') => {
                 plant_status: props.selectedStatuses,
                 sg_min: sgMin.value,
                 office: props.office,
+                year: props.year,
             },
         });
         employees.value = data.employees;
@@ -210,7 +213,10 @@ const chartOptions = computed(() => ({
 </script>
 
 <template>
-    <div class="rounded-2xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border">
+    <div class="relative isolate overflow-hidden rounded-2xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border">
+        <!-- Decorative background texture — purely visual, sits behind existing content via negative z-index -->
+        <div class="tdi-texture-development pointer-events-none absolute inset-0 z-[-1] opacity-[0.05] dark:opacity-[0.08]" aria-hidden="true"></div>
+
         <!-- HEADER -->
         <div class="flex flex-wrap items-center gap-2 border-b px-5 py-3">
             <h2 class="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide text-blue-900 dark:text-blue-300">
@@ -421,3 +427,16 @@ const chartOptions = computed(() => ({
         <EmployeeProgressModal :empcode="selectedEmpcode" @close="selectedEmpcode = null" />
     </div>
 </template>
+
+<style scoped>
+/* TDI Institutional Micro-Texture — same fine grid + radial-fade technique used
+   in the homepage "Digital Resources" section, tinted blue for the Ascending
+   Development motif (Competency → Development → Leadership). */
+.tdi-texture-development {
+    background-image:
+        linear-gradient(rgba(96, 165, 250, 0.9) 1px, transparent 1px), linear-gradient(90deg, rgba(96, 165, 250, 0.9) 1px, transparent 1px);
+    background-size: 26px 26px;
+    -webkit-mask-image: radial-gradient(ellipse 240px 200px at 100% 100%, black 0%, transparent 75%);
+    mask-image: radial-gradient(ellipse 240px 200px at 100% 100%, black 0%, transparent 75%);
+}
+</style>
