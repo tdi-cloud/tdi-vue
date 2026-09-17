@@ -11,6 +11,11 @@ use Illuminate\Support\Facades\Storage;
 
 function defaultCoverTestAdmin(string $empcode): User
 {
+    return User::factory()->create(['empcode' => $empcode, 'access' => 'superadmin']);
+}
+
+function defaultCoverTestPlainAdmin(string $empcode): User
+{
     return User::factory()->create(['empcode' => $empcode, 'access' => 'admin']);
 }
 
@@ -71,6 +76,32 @@ function defaultCoverTestParticipant(string $empcode, bool $withOwnCover = false
         'added_by' => 'system',
     ]);
 }
+
+test('a regular admin cannot upload a default program cover image', function () {
+    Storage::fake('public');
+    $admin = defaultCoverTestPlainAdmin('EMP-DCOVER-PLAIN-01');
+
+    $response = $this->actingAs($admin)->post(route('programs.default-cover.upload'), [
+        'image' => UploadedFile::fake()->image('default.jpg'),
+    ]);
+
+    $response->assertForbidden();
+    expect(DefaultProgramCover::count())->toBe(0);
+});
+
+test('a regular admin cannot remove the default program cover', function () {
+    Storage::fake('public');
+    $superAdmin = defaultCoverTestAdmin('EMP-DCOVER-ADMIN-06');
+    $this->actingAs($superAdmin)->post(route('programs.default-cover.upload'), [
+        'image' => UploadedFile::fake()->image('default.jpg'),
+    ]);
+
+    $admin = defaultCoverTestPlainAdmin('EMP-DCOVER-PLAIN-02');
+    $response = $this->actingAs($admin)->delete(route('programs.default-cover.destroy'));
+
+    $response->assertForbidden();
+    expect(DefaultProgramCover::count())->toBe(1);
+});
 
 test('an admin can upload a default program cover image', function () {
     Storage::fake('public');

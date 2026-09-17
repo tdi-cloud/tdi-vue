@@ -12,7 +12,7 @@ import DefaultCoverPanel from '@/pages/programs/DefaultCoverPanel.vue';
 import GenerateTPMRModal from '@/pages/programs/GenerateTPMRModal.vue';
 import ProgramList from '@/pages/programs/ProgramList.vue';
 import { type BreadcrumbItem } from '@/types';
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, useForm, usePage } from '@inertiajs/vue3';
 import {
     AlignLeft,
     BadgePlus,
@@ -46,6 +46,9 @@ const breadcrumbs: BreadcrumbItem[] = [
         href: '/programs',
     },
 ];
+
+const page = usePage();
+const isSuperAdmin = computed(() => (page.props.auth as any)?.user?.access === 'superadmin');
 
 const showTPMR = ref(false);
 const showDefaultCover = ref(false);
@@ -338,7 +341,7 @@ const clearAllFilters = () => {
                 </div>
 
                 <div class="flex gap-4">
-                    <Button variant="outline" @click="showDefaultCover = true"> <Image /> Default Cover </Button>
+                    <Button v-if="isSuperAdmin" variant="outline" @click="showDefaultCover = true"> <Image /> Default Cover </Button>
 
                     <Button variant="outline" @click="showTPMR = true"> <FileText /> Generate TPMR </Button>
 
@@ -348,7 +351,7 @@ const clearAllFilters = () => {
 
                     <GenerateTPMRModal v-model="showTPMR" />
 
-                    <Dialog v-model:open="showDefaultCover">
+                    <Dialog v-if="isSuperAdmin" v-model:open="showDefaultCover">
                         <DialogContent class="sm:max-w-lg">
                             <DialogHeader>
                                 <DialogTitle>Default Program Cover</DialogTitle>
