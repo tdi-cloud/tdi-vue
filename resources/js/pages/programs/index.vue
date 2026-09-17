@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/AppLayout.vue';
+import DefaultCoverPanel from '@/pages/programs/DefaultCoverPanel.vue';
 import GenerateTPMRModal from '@/pages/programs/GenerateTPMRModal.vue';
 import ProgramList from '@/pages/programs/ProgramList.vue';
 import { type BreadcrumbItem } from '@/types';
@@ -21,6 +22,7 @@ import {
     FolderTree,
     Globe,
     Heading,
+    Image,
     Info,
     Layers3,
     LoaderCircle,
@@ -46,6 +48,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 const showTPMR = ref(false);
+const showDefaultCover = ref(false);
 
 interface ProgramListItem {
     id: number;
@@ -172,9 +175,16 @@ const submit = () => {
     });
 };
 
+interface DefaultCover {
+    id: number;
+    image: string;
+    image_url: string | null;
+}
+
 const props = defineProps<{
     programs: ProgramListItem[];
     userRegion: string | null;
+    defaultCover?: DefaultCover | null;
 }>();
 
 // Regional HRMOs (hindi "CO") ay limitado lang sa "Regional" category at sa
@@ -328,6 +338,8 @@ const clearAllFilters = () => {
                 </div>
 
                 <div class="flex gap-4">
+                    <Button variant="outline" @click="showDefaultCover = true"> <Image /> Default Cover </Button>
+
                     <Button variant="outline" @click="showTPMR = true"> <FileText /> Generate TPMR </Button>
 
                     <Button @click="openConfirmation" class="self-end rounded-lg bg-blue-600 font-extrabold hover:bg-blue-500 dark:text-white">
@@ -335,6 +347,18 @@ const clearAllFilters = () => {
                     </Button>
 
                     <GenerateTPMRModal v-model="showTPMR" />
+
+                    <Dialog v-model:open="showDefaultCover">
+                        <DialogContent class="sm:max-w-lg">
+                            <DialogHeader>
+                                <DialogTitle>Default Program Cover</DialogTitle>
+                                <DialogDescription>
+                                    Upload the placeholder image shown for programs that don't have their own cover page.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <DefaultCoverPanel :default-cover="defaultCover" />
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </div>
 

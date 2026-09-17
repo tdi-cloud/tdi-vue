@@ -3,10 +3,30 @@ import ForeignProgramsDashboardModal from '@/components/ForeignProgramsDashboard
 import NominationHistoryModal from '@/components/NominationHistoryModal.vue';
 import OrganizingSponsorModal from '@/components/OrganizingSponsorModal.vue';
 import SponsorConfigModal from '@/components/SponsorConfigModal.vue';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useConfirm } from '@/composables/useConfirm';
 import AppLayout from '@/layouts/AppLayout.vue';
+import {
+    DEADLINE_URGENCY_CLASS,
+    deadlineUrgency,
+    formatProgramDate,
+    modalityMeta,
+    PROGRAM_STATUS_OPTIONS,
+    programStatusMeta,
+} from '@/lib/foreignPrograms';
 import EditProgramModal from '@/pages/ForeignPrograms/EditProgramModal.vue';
+import type { BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import {
     AlignLeft,
@@ -15,8 +35,10 @@ import {
     Building,
     Building2,
     Calendar,
+    CalendarClock,
     CalendarDays,
     CheckCircle2,
+    ChevronDown,
     ChevronLeft,
     ChevronRight,
     Clock,
@@ -26,8 +48,10 @@ import {
     Globe,
     Hash,
     History,
+    ListFilter,
     MapPin,
     Pencil,
+    PlayCircle,
     Plus,
     Search,
     Settings,
@@ -39,6 +63,8 @@ import {
     X,
 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
+
+const breadcrumbs: BreadcrumbItem[] = [{ title: 'Foreign Programs', href: route('foreign-programs.index') }];
 
 const { confirmDialog } = useConfirm();
 const showDashboard = ref(false);
@@ -84,10 +110,18 @@ interface PaginatedPrograms {
     links: { url: string | null; label: string; active: boolean }[];
 }
 
+interface ProgramStats {
+    total: number;
+    active: number;
+    for_nomination: number;
+    completed: number;
+}
+
 const props = defineProps<{
     programs: PaginatedPrograms;
     years: number[];
     sponsorOptions: string[];
+    stats: ProgramStats;
     filters: {
         search?: string;
         status?: string;
@@ -100,27 +134,79 @@ const props = defineProps<{
     };
 }>();
 
+// --- Stat cards (real backend data, no hardcoded numbers) ---
+const percentOfTotal = (value: number) => (props.stats.total ? `${Math.round((value / props.stats.total) * 100)}% of total` : 'No programs yet');
+
+const statCards = computed(() => [
+    {
+        key: 'total',
+        label: 'Total Programs',
+        value: props.stats.total,
+        sub: 'All foreign programs',
+        icon: Globe,
+        iconBg: 'bg-blue-100 dark:bg-blue-950/40',
+        iconColor: 'text-blue-600 dark:text-blue-400',
+    },
+    {
+        key: 'active',
+        label: 'Active Programs',
+        value: props.stats.active,
+        sub: percentOfTotal(props.stats.active),
+        icon: PlayCircle,
+        iconBg: 'bg-emerald-100 dark:bg-emerald-950/40',
+        iconColor: 'text-emerald-600 dark:text-emerald-400',
+    },
+    {
+        key: 'for_nomination',
+        label: 'For Nomination',
+        value: props.stats.for_nomination,
+        sub: percentOfTotal(props.stats.for_nomination),
+        icon: Clock,
+        iconBg: 'bg-amber-100 dark:bg-amber-950/40',
+        iconColor: 'text-amber-600 dark:text-amber-400',
+    },
+    {
+        key: 'completed',
+        label: 'Completed Programs',
+        value: props.stats.completed,
+        sub: percentOfTotal(props.stats.completed),
+        icon: CheckCircle2,
+        iconBg: 'bg-violet-100 dark:bg-violet-950/40',
+        iconColor: 'text-violet-600 dark:text-violet-400',
+    },
+]);
+
 // --- Filters state ---
+// Selects use the 'all' sentinel (native <Select> can't carry an empty-string
+// value) and are translated back to "no filter" when the query is built.
 const search = ref(props.filters.search ?? '');
-const filterStatus = ref(props.filters.status ?? '');
-const filterYear = ref(props.filters.year ?? '');
-const filterSemester = ref(props.filters.semester ?? '');
-const filterOrg = ref(props.filters.organization ?? '');
-const filterCategory = ref(props.filters.category ?? '');
+const filterStatus = ref(props.filters.status || 'all');
+const filterYear = ref(props.filters.year || 'all');
+const filterSemester = ref(props.filters.semester || 'all');
+const filterOrg = ref(props.filters.organization || 'all');
+const filterCategory = ref(props.filters.category || 'all');
 const filterEmbassy = ref(props.filters.embassy_deadline ?? '');
 const filterInterview = ref(props.filters.interview_date ?? '');
+const showFilters = ref(false);
+const showAdvancedFilters = ref(false);
 
 const hasActiveFilters = computed(() =>
-    [
-        search.value,
-        filterStatus.value,
-        filterYear.value,
-        filterSemester.value,
-        filterOrg.value,
-        filterCategory.value,
-        filterEmbassy.value,
-        filterInterview.value,
-    ].some((v) => v !== ''),
+    [search.value !== '', filterStatus.value !== 'all', filterYear.value !== 'all', filterSemester.value !== 'all', filterOrg.value !== 'all', filterCategory.value !== 'all', filterEmbassy.value !== '', filterInterview.value !== ''].some(
+        Boolean,
+    ),
+);
+
+const activeFilterCount = computed(
+    () =>
+        [
+            filterStatus.value !== 'all',
+            filterYear.value !== 'all',
+            filterSemester.value !== 'all',
+            filterOrg.value !== 'all',
+            filterCategory.value !== 'all',
+            filterEmbassy.value !== '',
+            filterInterview.value !== '',
+        ].filter(Boolean).length,
 );
 
 const applyFilters = () => {
@@ -128,11 +214,11 @@ const applyFilters = () => {
         route('foreign-programs.index'),
         {
             search: search.value || undefined,
-            status: filterStatus.value || undefined,
-            year: filterYear.value || undefined,
-            semester: filterSemester.value || undefined,
-            organization: filterOrg.value || undefined,
-            category: filterCategory.value || undefined,
+            status: filterStatus.value === 'all' ? undefined : filterStatus.value,
+            year: filterYear.value === 'all' ? undefined : filterYear.value,
+            semester: filterSemester.value === 'all' ? undefined : filterSemester.value,
+            organization: filterOrg.value === 'all' ? undefined : filterOrg.value,
+            category: filterCategory.value === 'all' ? undefined : filterCategory.value,
             embassy_deadline: filterEmbassy.value || undefined,
             interview_date: filterInterview.value || undefined,
         },
@@ -148,14 +234,50 @@ watch([search, filterStatus, filterYear, filterSemester, filterOrg, filterCatego
 
 const clearFilters = () => {
     search.value = '';
-    filterStatus.value = '';
-    filterYear.value = '';
-    filterSemester.value = '';
-    filterOrg.value = '';
-    filterCategory.value = '';
+    filterStatus.value = 'all';
+    filterYear.value = 'all';
+    filterSemester.value = 'all';
+    filterOrg.value = 'all';
+    filterCategory.value = 'all';
     filterEmbassy.value = '';
     filterInterview.value = '';
 };
+
+const semesterLabel = (value: string) => (value === '1' ? '1st Semester (Jan–Jun)' : value === '2' ? '2nd Semester (Jul–Dec)' : value);
+
+const activeFilterChips = computed(() => {
+    const chips: { key: string; label: string; remove: () => void }[] = [];
+    if (filterStatus.value !== 'all') {
+        chips.push({ key: 'status', label: programStatusMeta(filterStatus.value).label, remove: () => (filterStatus.value = 'all') });
+    }
+    if (filterYear.value !== 'all') {
+        chips.push({ key: 'year', label: `Year: ${filterYear.value}`, remove: () => (filterYear.value = 'all') });
+    }
+    if (filterSemester.value !== 'all') {
+        chips.push({ key: 'semester', label: semesterLabel(filterSemester.value), remove: () => (filterSemester.value = 'all') });
+    }
+    if (filterCategory.value !== 'all') {
+        chips.push({ key: 'category', label: filterCategory.value, remove: () => (filterCategory.value = 'all') });
+    }
+    if (filterOrg.value !== 'all') {
+        chips.push({ key: 'organization', label: filterOrg.value, remove: () => (filterOrg.value = 'all') });
+    }
+    if (filterEmbassy.value !== '') {
+        chips.push({
+            key: 'embassy_deadline',
+            label: `Embassy: ${formatProgramDate(filterEmbassy.value)}`,
+            remove: () => (filterEmbassy.value = ''),
+        });
+    }
+    if (filterInterview.value !== '') {
+        chips.push({
+            key: 'interview_date',
+            label: `Interview: ${formatProgramDate(filterInterview.value)}`,
+            remove: () => (filterInterview.value = ''),
+        });
+    }
+    return chips;
+});
 
 function sponsorDisplay(program: ForeignProgram) {
     const fullName = program.sponsor?.full_name;
@@ -233,57 +355,7 @@ const confirmDelete = async (id: number) => {
     }
 };
 
-// --- Lookups ---
-const statusLabels: Record<string, string> = {
-    for_dissemination: 'For Dissemination',
-    waiting_for_nominees: 'Waiting for Nominees',
-    for_interview: 'For Interview',
-    for_endorsement: 'For Endorsement',
-    no_nominee: 'No Nominee',
-    waiting_for_result: 'Waiting for Result',
-    ongoing: 'Ongoing',
-    concluded: 'Concluded',
-    not_nfp_concern: 'Not NFP Concern',
-};
-
-const statusColors: Record<string, string> = {
-    for_dissemination: 'bg-slate-100 text-slate-700',
-    waiting_for_nominees: 'bg-amber-100 text-amber-700',
-    for_interview: 'bg-blue-100 text-blue-700',
-    for_endorsement: 'bg-violet-100 text-violet-700',
-    no_nominee: 'bg-red-100 text-red-700',
-    waiting_for_result: 'bg-cyan-100 text-cyan-700',
-    ongoing: 'bg-emerald-100 text-emerald-700',
-    concluded: 'bg-gray-200 text-gray-600',
-    not_nfp_concern: 'bg-neutral-200 text-neutral-500',
-};
-
-const modalityColors: Record<string, string> = {
-    'in-person': 'bg-emerald-100 text-emerald-700',
-    online: 'bg-purple-100 text-purple-700',
-    hybrid: 'bg-blue-100 text-blue-700',
-};
-
-const modalityIcons: Record<string, string> = {
-    'in-person': '🏢',
-    online: '💻',
-    hybrid: '🔀',
-};
-
-const formatDate = (date?: string) => {
-    if (!date) return '—';
-    // If already has time component (ISO from DB), use as-is
-    // If plain date YYYY-MM-DD, append time to avoid UTC shift
-    const d = date.includes('T') ? new Date(date) : new Date(date + 'T00:00:00');
-    if (isNaN(d.getTime())) return '—';
-    return d.toLocaleDateString('en-PH', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-    });
-};
-
-// Organizing Sponsors (Add Program form only — EditProgramModal.vue manages its own)
+// --- Organizing Sponsors (Add Program form only — EditProgramModal.vue manages its own) ---
 const showSponsorModal = ref(false);
 const sponsors = ref<string[]>([]);
 
@@ -331,21 +403,23 @@ function onConfigSaved() {
 
     <div v-if="showFormSettingsDropdown" class="fixed inset-0 z-40" @click="showFormSettingsDropdown = false" />
 
-    <AppLayout>
+    <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-4 p-4">
             <!-- Header -->
-            <div class="flex items-center justify-between">
+            <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                 <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 shadow-md">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 shadow-md">
                         <Earth class="h-5 w-5 text-white" />
                     </div>
                     <div>
                         <h1 class="text-xl font-bold leading-none">Foreign Programs</h1>
-                        <p class="mt-0.5 text-sm text-muted-foreground">Manage nominations for foreign training programs</p>
+                        <p class="mt-1 text-sm text-muted-foreground">
+                            Manage and monitor foreign training opportunities, nominations, and assessment progress.
+                        </p>
                     </div>
                 </div>
 
-                <div class="flex gap-2">
+                <div class="flex flex-wrap gap-2">
                     <Button variant="outline" class="border-indigo-200 text-indigo-700 shadow-sm hover:bg-indigo-50" @click="showDashboard = true">
                         <BarChart3 class="mr-1 h-4 w-4" /> Dashboard
                     </Button>
@@ -391,102 +465,215 @@ function onConfigSaved() {
                 </div>
             </div>
 
-            <!-- Search & Filter Bar -->
-            <div class="flex flex-col gap-3">
-                <div class="flex items-center gap-2">
-                    <div class="relative max-w-sm flex-1">
+            <!-- Stat cards -->
+            <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <Card v-for="stat in statCards" :key="stat.key" class="shadow-sm">
+                    <CardContent class="flex items-center gap-3 p-4">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" :class="stat.iconBg">
+                            <component :is="stat.icon" class="h-5 w-5" :class="stat.iconColor" />
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-2xl font-bold leading-none">{{ stat.value }}</p>
+                            <p class="mt-1.5 truncate text-xs font-semibold text-muted-foreground">{{ stat.label }}</p>
+                            <p class="mt-0.5 truncate text-[11px] text-muted-foreground">{{ stat.sub }}</p>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <!-- Search & Filter Toolbar -->
+            <div class="flex flex-col gap-2.5">
+                <div class="flex flex-wrap items-center gap-2 rounded-xl border bg-card px-4 py-3 shadow-sm">
+                    <div class="relative min-w-[220px] flex-1">
                         <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <input
-                            v-model="search"
-                            type="text"
-                            placeholder="Search programs..."
-                            class="w-full rounded-lg border bg-background py-2 pl-9 pr-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+                        <Input v-model="search" class="h-9 w-full pl-9 pr-8 text-sm shadow-none" placeholder="Search programs by title..." />
+                        <button
+                            v-if="search"
+                            type="button"
+                            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                            aria-label="Clear search"
+                            @click="search = ''"
+                        >
+                            <X class="h-4 w-4" />
+                        </button>
                     </div>
-                    <div class="flex items-center gap-1.5 rounded-lg border bg-muted/30 px-2 py-1.5 text-xs text-muted-foreground">
-                        <SlidersHorizontal class="h-3.5 w-3.5" />
-                        <span>Filters</span>
-                    </div>
-                    <Button v-if="hasActiveFilters" variant="ghost" class="gap-1 text-xs text-muted-foreground" @click="clearFilters">
+
+                    <Sheet v-model:open="showFilters">
+                        <SheetTrigger as-child>
+                            <Button variant="outline" class="h-9 shrink-0 gap-1.5 text-sm font-semibold">
+                                <SlidersHorizontal class="h-4 w-4" /> Filters
+                                <span
+                                    v-if="activeFilterCount"
+                                    class="ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-600 px-1 text-[11px] font-bold text-white"
+                                >
+                                    {{ activeFilterCount }}
+                                </span>
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent side="right" class="flex w-full flex-col gap-0 p-0 sm:max-w-sm">
+                            <SheetHeader class="border-b px-5 py-4 text-left">
+                                <SheetTitle class="flex items-center gap-2 text-base font-bold">
+                                    <SlidersHorizontal class="h-4 w-4" /> Filters
+                                </SheetTitle>
+                            </SheetHeader>
+
+                            <div class="flex-1 space-y-5 overflow-y-auto px-5 py-5">
+                                <div class="grid gap-1.5">
+                                    <Label class="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                                        <CheckCircle2 class="h-3.5 w-3.5" /> Status
+                                    </Label>
+                                    <Select v-model="filterStatus">
+                                        <SelectTrigger class="h-9 w-full text-xs">
+                                            <SelectValue placeholder="All statuses" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem class="text-xs" value="all">All statuses</SelectItem>
+                                            <SelectItem v-for="opt in PROGRAM_STATUS_OPTIONS" :key="opt.value" :value="opt.value" class="text-xs">
+                                                {{ opt.label }}
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="grid gap-1.5">
+                                        <Label class="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                                            <CalendarDays class="h-3.5 w-3.5" /> Year
+                                        </Label>
+                                        <Select v-model="filterYear">
+                                            <SelectTrigger class="h-9 w-full text-xs">
+                                                <SelectValue placeholder="All years" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem class="text-xs" value="all">All years</SelectItem>
+                                                <SelectItem v-for="y in years" :key="y" :value="String(y)" class="text-xs">{{ y }}</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div class="grid gap-1.5">
+                                        <Label class="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                                            <Clock class="h-3.5 w-3.5" /> Semester
+                                        </Label>
+                                        <Select v-model="filterSemester">
+                                            <SelectTrigger class="h-9 w-full text-xs">
+                                                <SelectValue placeholder="All" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem class="text-xs" value="all">All</SelectItem>
+                                                <SelectItem class="text-xs" value="1">1st (Jan–Jun)</SelectItem>
+                                                <SelectItem class="text-xs" value="2">2nd (Jul–Dec)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+
+                                <div class="grid gap-1.5">
+                                    <Label class="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                                        <Tag class="h-3.5 w-3.5" /> Category
+                                    </Label>
+                                    <Select v-model="filterCategory">
+                                        <SelectTrigger class="h-9 w-full text-xs">
+                                            <SelectValue placeholder="All categories" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem class="text-xs" value="all">All categories</SelectItem>
+                                            <SelectItem class="text-xs" value="Foreign">Foreign</SelectItem>
+                                            <SelectItem class="text-xs" value="Bilateral">Bilateral</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div class="grid gap-1.5">
+                                    <Label class="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                                        <Building class="h-3.5 w-3.5" /> Organization
+                                    </Label>
+                                    <Select v-model="filterOrg">
+                                        <SelectTrigger class="h-9 w-full text-xs">
+                                            <SelectValue placeholder="All organizations" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem class="text-xs" value="all">All organizations</SelectItem>
+                                            <SelectItem v-for="s in props.sponsorOptions" :key="s" :value="s" class="text-xs">{{ s }}</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <!-- Advanced filters: less frequently used, tucked away -->
+                                <Collapsible v-model:open="showAdvancedFilters" class="rounded-lg border">
+                                    <CollapsibleTrigger
+                                        class="flex w-full items-center justify-between px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground"
+                                    >
+                                        <span class="flex items-center gap-1.5"><ListFilter class="h-3.5 w-3.5" /> Advanced Filters</span>
+                                        <ChevronDown class="h-3.5 w-3.5 transition-transform" :class="showAdvancedFilters ? 'rotate-180' : ''" />
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent class="space-y-3 border-t px-3 pb-3 pt-3">
+                                        <div class="grid gap-1.5">
+                                            <Label class="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                                                <MapPin class="h-3.5 w-3.5" /> Embassy Deadline
+                                            </Label>
+                                            <Input v-model="filterEmbassy" type="date" class="h-9 w-full text-xs" />
+                                        </div>
+                                        <div class="grid gap-1.5">
+                                            <Label class="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                                                <Users class="h-3.5 w-3.5" /> Interview Date
+                                            </Label>
+                                            <Input v-model="filterInterview" type="date" class="h-9 w-full text-xs" />
+                                        </div>
+                                    </CollapsibleContent>
+                                </Collapsible>
+                            </div>
+
+                            <div class="flex shrink-0 items-center justify-between border-t px-5 py-3">
+                                <button
+                                    type="button"
+                                    class="text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                                    :disabled="!hasActiveFilters"
+                                    @click="clearFilters"
+                                >
+                                    Clear all filters
+                                </button>
+                                <Button size="sm" class="bg-blue-600 hover:bg-blue-700 dark:text-white" @click="showFilters = false">Done</Button>
+                            </div>
+                        </SheetContent>
+                    </Sheet>
+
+                    <Button v-if="hasActiveFilters" variant="ghost" class="h-9 gap-1 text-xs text-muted-foreground" @click="clearFilters">
                         <X class="h-3.5 w-3.5" /> Clear all
                     </Button>
                 </div>
 
-                <div class="grid grid-cols-2 gap-2 rounded-xl border bg-muted/30 p-3 md:grid-cols-4 lg:grid-cols-7">
-                    <div class="flex flex-col gap-1">
-                        <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                            <CheckCircle2 class="h-3 w-3" /> Status
-                        </label>
-                        <select v-model="filterStatus" class="rounded-lg border bg-background px-2 py-1.5 text-xs shadow-sm">
-                            <option value="">All</option>
-                            <option v-for="(label, key) in statusLabels" :key="key" :value="key">{{ label }}</option>
-                        </select>
-                    </div>
-                    <div class="flex flex-col gap-1">
-                        <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                            <CalendarDays class="h-3 w-3" /> Year
-                        </label>
-                        <select v-model="filterYear" class="rounded-lg border bg-background px-2 py-1.5 text-xs shadow-sm">
-                            <option value="">All</option>
-                            <option v-for="y in years" :key="y" :value="y">{{ y }}</option>
-                        </select>
-                    </div>
-                    <div class="flex flex-col gap-1">
-                        <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                            <Clock class="h-3 w-3" /> Semester
-                        </label>
-                        <select v-model="filterSemester" class="rounded-lg border bg-background px-2 py-1.5 text-xs shadow-sm">
-                            <option value="">All</option>
-                            <option value="1">1st (Jan–Jun)</option>
-                            <option value="2">2nd (Jul–Dec)</option>
-                        </select>
-                    </div>
-                    <div class="flex flex-col gap-1">
-                        <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                            <Tag class="h-3 w-3" /> Category
-                        </label>
-                        <select v-model="filterCategory" class="rounded-lg border bg-background px-2 py-1.5 text-xs shadow-sm">
-                            <option value="">All</option>
-                            <option value="Foreign">Foreign</option>
-                            <option value="Bilateral">Bilateral</option>
-                        </select>
-                    </div>
-                    <div class="flex flex-col gap-1">
-                        <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                            <Building class="h-3 w-3" /> Organization
-                        </label>
-                        <select v-model="filterOrg" class="rounded-lg border bg-background px-2 py-1.5 text-xs shadow-sm">
-                            <option value="">All</option>
-                            <option v-for="s in props.sponsorOptions" :key="s" :value="s">{{ s }}</option>
-                        </select>
-                    </div>
-                    <div class="flex flex-col gap-1">
-                        <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                            <MapPin class="h-3 w-3" /> Embassy Deadline
-                        </label>
-                        <input v-model="filterEmbassy" type="date" class="rounded-lg border bg-background px-2 py-1.5 text-xs shadow-sm" />
-                    </div>
-                    <div class="flex flex-col gap-1">
-                        <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                            <Users class="h-3 w-3" /> Interview Date
-                        </label>
-                        <input v-model="filterInterview" type="date" class="rounded-lg border bg-background px-2 py-1.5 text-xs shadow-sm" />
-                    </div>
+                <!-- Active filter chips -->
+                <div v-if="activeFilterChips.length" class="flex flex-wrap items-center gap-2">
+                    <span
+                        v-for="chip in activeFilterChips"
+                        :key="chip.key"
+                        class="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300"
+                    >
+                        {{ chip.label }}
+                        <button
+                            type="button"
+                            class="transition-colors hover:text-blue-900 dark:hover:text-blue-100"
+                            :aria-label="`Remove ${chip.label} filter`"
+                            @click="chip.remove()"
+                        >
+                            <X class="h-3 w-3" />
+                        </button>
+                    </span>
                 </div>
 
-                <p class="text-xs text-muted-foreground">
+                <p class="text-xs font-medium text-muted-foreground">
                     Showing {{ programs.from ?? 0 }}–{{ programs.to ?? 0 }} of {{ programs.total }} program(s)
                 </p>
             </div>
 
-            <!-- List -->
+            <!-- List: table on md+, stacked cards on small screens -->
             <div class="overflow-hidden rounded-2xl border shadow-sm">
-                <table v-if="programs.data.length" class="w-full table-fixed border-collapse text-sm">
+                <table v-if="programs.data.length" class="hidden w-full table-fixed border-collapse text-sm md:table">
                     <colgroup>
-                        <col style="width: 32%" />
+                        <col style="width: 30%" />
                         <col style="width: 8%" />
-                        <col style="width: 19%" />
-                        <col style="width: 11%" />
+                        <col style="width: 17%" />
+                        <col style="width: 10%" />
                         <col style="width: 11%" />
                         <col style="width: 11%" />
                         <col style="width: 8%" />
@@ -511,16 +698,22 @@ function onConfigSaved() {
                             class="group border-b transition-colors last:border-b-0 hover:bg-blue-50/50 dark:hover:bg-blue-950/20"
                         >
                             <td class="px-4 py-3 align-middle">
-                                <Link :href="route('foreign-programs.show', program.id)" class="flex min-w-0 flex-col gap-0.5">
-                                    <span class="truncate font-semibold leading-snug transition-colors group-hover:text-blue-600">{{
-                                        program.program_title
-                                    }}</span>
-                                    <span class="w-fit rounded-full px-2 py-0.5 text-[10px] font-semibold" :class="statusColors[program.status]">
-                                        {{ statusLabels[program.status] }}
-                                    </span>
+                                <Link :href="route('foreign-programs.show', program.id)" class="flex min-w-0 flex-col gap-1">
+                                    <Tooltip>
+                                        <TooltipTrigger as-child>
+                                            <span class="truncate font-semibold leading-snug transition-colors group-hover:text-blue-600">{{
+                                                program.program_title
+                                            }}</span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>{{ program.program_title }}</TooltipContent>
+                                    </Tooltip>
+                                    <Badge variant="outline" class="w-fit gap-1" :class="programStatusMeta(program.status).badgeClass">
+                                        <span class="h-1.5 w-1.5 rounded-full" :class="programStatusMeta(program.status).dotClass" />
+                                        {{ programStatusMeta(program.status).label }}
+                                    </Badge>
                                     <span
                                         v-if="program.created_by_empcode"
-                                        class="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground"
+                                        class="flex items-center gap-1 text-[10px] text-muted-foreground"
                                         :title="`Added by ${program.created_by_name} (${program.created_by_empcode})`"
                                     >
                                         <UserRound class="h-2.5 w-2.5 shrink-0" /> {{ program.created_by_empcode }}
@@ -537,31 +730,25 @@ function onConfigSaved() {
                             <td class="px-4 py-3 align-middle text-xs text-muted-foreground">
                                 <div class="flex items-center gap-1.5 whitespace-nowrap">
                                     <Calendar class="h-3.5 w-3.5 shrink-0 text-blue-400" />
-                                    <span>{{ formatDate(program.program_start) }} – {{ formatDate(program.program_end) }}</span>
+                                    <span>{{ formatProgramDate(program.program_start) }} – {{ formatProgramDate(program.program_end) }}</span>
                                 </div>
                             </td>
-                            <td class="px-4 py-3 align-middle text-xs capitalize text-muted-foreground">
-                                <div class="flex items-center gap-1.5">
-                                    <span>{{ modalityIcons[program.modality] }}</span>
-                                    <span>{{ program.modality }}</span>
-                                </div>
+                            <td class="px-4 py-3 align-middle text-xs">
+                                <Badge variant="outline" class="gap-1" :class="modalityMeta(program.modality).badgeClass">
+                                    <component :is="modalityMeta(program.modality).icon" class="h-3 w-3" />
+                                    {{ modalityMeta(program.modality).label }}
+                                </Badge>
                             </td>
-                            <td
-                                class="whitespace-nowrap px-4 py-3 align-middle text-xs"
-                                :class="program.interview_date ? 'text-violet-600' : 'text-muted-foreground'"
-                            >
+                            <td class="whitespace-nowrap px-4 py-3 align-middle text-xs" :class="DEADLINE_URGENCY_CLASS[deadlineUrgency(program.interview_date) ?? 'normal']">
                                 <div class="flex items-center gap-1.5">
                                     <Users class="h-3.5 w-3.5 shrink-0" />
-                                    <span>{{ formatDate(program.interview_date) }}</span>
+                                    <span>{{ formatProgramDate(program.interview_date) }}</span>
                                 </div>
                             </td>
-                            <td
-                                class="whitespace-nowrap px-4 py-3 align-middle text-xs"
-                                :class="program.embassy_deadline ? 'text-red-600' : 'text-muted-foreground'"
-                            >
+                            <td class="whitespace-nowrap px-4 py-3 align-middle text-xs" :class="DEADLINE_URGENCY_CLASS[deadlineUrgency(program.embassy_deadline) ?? 'normal']">
                                 <div class="flex items-center gap-1.5">
                                     <MapPin class="h-3.5 w-3.5 shrink-0" />
-                                    <span>{{ formatDate(program.embassy_deadline) }}</span>
+                                    <span>{{ formatProgramDate(program.embassy_deadline) }}</span>
                                 </div>
                             </td>
                             <td class="px-4 py-3 text-right align-middle text-muted-foreground">
@@ -604,6 +791,79 @@ function onConfigSaved() {
                     </tbody>
                 </table>
 
+                <!-- Stacked cards for small screens -->
+                <div v-if="programs.data.length" class="flex flex-col divide-y md:hidden">
+                    <div v-for="program in programs.data" :key="program.id" class="flex flex-col gap-3 p-4">
+                        <div class="flex items-start justify-between gap-3">
+                            <Link :href="route('foreign-programs.show', program.id)" class="flex min-w-0 flex-col gap-1.5">
+                                <span class="font-semibold leading-snug">{{ program.program_title }}</span>
+                                <Badge variant="outline" class="w-fit gap-1" :class="programStatusMeta(program.status).badgeClass">
+                                    <span class="h-1.5 w-1.5 rounded-full" :class="programStatusMeta(program.status).dotClass" />
+                                    {{ programStatusMeta(program.status).label }}
+                                </Badge>
+                            </Link>
+                            <div class="flex shrink-0 items-center gap-1">
+                                <button
+                                    @click="openView(program)"
+                                    class="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/30"
+                                    title="View details"
+                                >
+                                    <Eye class="h-4 w-4" />
+                                </button>
+                                <button
+                                    @click="openEdit(program)"
+                                    class="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-950/30"
+                                    title="Edit program"
+                                >
+                                    <Pencil class="h-4 w-4" />
+                                </button>
+                                <button
+                                    @click="confirmDelete(program.id)"
+                                    class="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
+                                    title="Delete program"
+                                >
+                                    <Trash2 class="h-4 w-4" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-1.5 truncate text-xs text-muted-foreground">
+                            <Building2 class="h-3.5 w-3.5 shrink-0 text-blue-400" />
+                            <span class="truncate">{{ sponsorDisplay(program) }}</span>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+                            <div class="flex items-center gap-1.5">
+                                <Calendar class="h-3.5 w-3.5 shrink-0 text-blue-400" />
+                                <span>{{ formatProgramDate(program.program_start) }} – {{ formatProgramDate(program.program_end) }}</span>
+                            </div>
+                            <Badge variant="outline" class="gap-1" :class="modalityMeta(program.modality).badgeClass">
+                                <component :is="modalityMeta(program.modality).icon" class="h-3 w-3" />
+                                {{ modalityMeta(program.modality).label }}
+                            </Badge>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2 rounded-lg bg-muted/30 p-2.5 text-xs">
+                            <div>
+                                <p class="text-[10px] font-semibold uppercase text-muted-foreground">Slots</p>
+                                <p class="mt-0.5 font-semibold">{{ program.nominees_count }} / {{ program.slots }}</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-semibold uppercase text-muted-foreground">Interview</p>
+                                <p class="mt-0.5 font-medium" :class="DEADLINE_URGENCY_CLASS[deadlineUrgency(program.interview_date) ?? 'normal']">
+                                    {{ formatProgramDate(program.interview_date) }}
+                                </p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-semibold uppercase text-muted-foreground">Embassy</p>
+                                <p class="mt-0.5 font-medium" :class="DEADLINE_URGENCY_CLASS[deadlineUrgency(program.embassy_deadline) ?? 'normal']">
+                                    {{ formatProgramDate(program.embassy_deadline) }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div v-if="programs.data.length === 0" class="flex flex-col items-center justify-center gap-3 py-24 text-muted-foreground">
                     <div class="relative">
                         <div class="flex h-20 w-20 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-950/30">
@@ -617,8 +877,14 @@ function onConfigSaved() {
                     </div>
                     <div class="text-center">
                         <p class="text-sm font-semibold">No programs found.</p>
-                        <p class="mt-1 text-xs">Try adjusting your search or filters.</p>
+                        <p class="mt-1 text-xs">
+                            {{ hasActiveFilters ? 'Try adjusting your search or filters.' : 'Get started by adding your first foreign program.' }}
+                        </p>
                     </div>
+                    <Button v-if="hasActiveFilters" variant="outline" size="sm" @click="clearFilters">Clear all filters</Button>
+                    <Button v-else class="bg-blue-600 hover:bg-blue-700 dark:text-white" size="sm" @click="showModal = true">
+                        <Plus class="mr-1 h-4 w-4" /> Add Program
+                    </Button>
                 </div>
             </div>
 
@@ -648,377 +914,438 @@ function onConfigSaved() {
             </div>
         </div>
 
-        <!-- ===== Quick View Modal ===== -->
-        <div v-if="viewProgram" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="closeView">
-            <div class="w-full max-w-lg rounded-2xl bg-background shadow-2xl">
-                <div class="flex items-start justify-between gap-3 border-b px-6 pb-4 pt-6">
-                    <div>
-                        <p class="mb-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Program Details</p>
-                        <h2 class="text-base font-bold leading-snug">{{ viewProgram.program_title }}</h2>
-                        <p class="mt-0.5 text-xs text-muted-foreground">{{ sponsorDisplay(viewProgram) }}</p>
+        <!-- ===== Quick View Dialog ===== -->
+        <Dialog :open="!!viewProgram" @update:open="(v) => !v && closeView()">
+            <DialogContent v-if="viewProgram" class="flex max-h-[85vh] max-w-2xl flex-col overflow-hidden !rounded-2xl p-0">
+                <DialogHeader class="shrink-0 border-b px-6 pb-4 pt-6 text-left">
+                    <p class="mb-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Program Details</p>
+                    <DialogTitle class="text-base font-bold leading-snug">{{ viewProgram.program_title }}</DialogTitle>
+                    <DialogDescription class="mt-0.5 text-xs">{{ sponsorDisplay(viewProgram) }}</DialogDescription>
+                    <div class="mt-2 flex flex-wrap gap-1.5">
+                        <Badge variant="outline" class="gap-1" :class="programStatusMeta(viewProgram.status).badgeClass">
+                            <span class="h-1.5 w-1.5 rounded-full" :class="programStatusMeta(viewProgram.status).dotClass" />
+                            {{ programStatusMeta(viewProgram.status).label }}
+                        </Badge>
+                        <Badge variant="outline" class="gap-1" :class="modalityMeta(viewProgram.modality).badgeClass">
+                            <component :is="modalityMeta(viewProgram.modality).icon" class="h-3 w-3" />
+                            {{ modalityMeta(viewProgram.modality).label }}
+                        </Badge>
+                        <Badge v-if="viewProgram.category" variant="outline">{{ viewProgram.category }}</Badge>
                     </div>
-                    <button @click="closeView" class="mt-0.5 shrink-0 text-muted-foreground transition-colors hover:text-foreground">
-                        <X class="h-5 w-5" />
-                    </button>
-                </div>
-                <div class="flex flex-col gap-4 px-6 py-5">
-                    <div class="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
-                        <div>
-                            <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Period</p>
-                            <p class="font-medium">{{ formatDate(viewProgram.program_start) }} – {{ formatDate(viewProgram.program_end) }}</p>
-                        </div>
-                        <div>
-                            <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Slots</p>
-                            <p class="font-medium">{{ viewProgram.nominees_count }} / {{ viewProgram.slots }}</p>
-                        </div>
-                        <div>
-                            <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Modality</p>
-                            <span
-                                class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
-                                :class="modalityColors[viewProgram.modality]"
+                </DialogHeader>
+
+                <Tabs default-value="overview" class="flex min-h-0 flex-1 flex-col">
+                    <div class="shrink-0 overflow-x-auto border-b px-4">
+                        <TabsList class="h-auto w-max gap-0 rounded-none bg-transparent p-0">
+                            <TabsTrigger
+                                value="overview"
+                                class="rounded-none border-b-2 border-transparent px-3 pb-2.5 pt-1 text-xs font-semibold data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
                             >
-                                {{ modalityIcons[viewProgram.modality] }} {{ viewProgram.modality }}
-                            </span>
-                        </div>
-                        <div>
-                            <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Status</p>
-                            <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold" :class="statusColors[viewProgram.status]">
-                                {{ statusLabels[viewProgram.status] }}
-                            </span>
-                        </div>
-                        <div>
-                            <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Submission Date</p>
-                            <p class="font-medium">{{ formatDate(viewProgram.submission_date) }}</p>
-                        </div>
-                        <div>
-                            <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Embassy Deadline</p>
-                            <p class="font-medium" :class="viewProgram.embassy_deadline ? 'text-red-600' : ''">
-                                {{ formatDate(viewProgram.embassy_deadline) }}
-                            </p>
-                        </div>
-                        <div>
-                            <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Interview Date</p>
-                            <p class="font-medium" :class="viewProgram.interview_date ? 'text-violet-600' : ''">
-                                {{ formatDate(viewProgram.interview_date) }}
-                            </p>
-                        </div>
-                        <div>
-                            <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Attached Agency</p>
-                            <p class="font-medium">{{ viewProgram.attached_agency || '—' }}</p>
-                        </div>
-                        <div class="col-span-2">
-                            <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Invited Agencies</p>
-                            <p class="font-medium">{{ viewProgram.invited_agencies || '—' }}</p>
-                        </div>
-                        <div class="col-span-2">
-                            <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Added By</p>
-                            <p class="font-medium">
-                                <template v-if="viewProgram.created_by_empcode">
-                                    {{ viewProgram.created_by_name }}
-                                    <span class="font-mono text-xs text-muted-foreground">({{ viewProgram.created_by_empcode }})</span>
-                                </template>
-                                <template v-else>—</template>
-                            </p>
-                        </div>
+                                Overview
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="schedule"
+                                class="rounded-none border-b-2 border-transparent px-3 pb-2.5 pt-1 text-xs font-semibold data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
+                            >
+                                Schedule
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="funding"
+                                class="rounded-none border-b-2 border-transparent px-3 pb-2.5 pt-1 text-xs font-semibold data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
+                            >
+                                Classification &amp; Funding
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="organizer"
+                                class="rounded-none border-b-2 border-transparent px-3 pb-2.5 pt-1 text-xs font-semibold data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
+                            >
+                                Organizer &amp; Agencies
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="dates"
+                                class="rounded-none border-b-2 border-transparent px-3 pb-2.5 pt-1 text-xs font-semibold data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
+                            >
+                                Key Dates
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="nominees"
+                                class="rounded-none border-b-2 border-transparent px-3 pb-2.5 pt-1 text-xs font-semibold data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
+                            >
+                                Nominees
+                            </TabsTrigger>
+                        </TabsList>
                     </div>
-                </div>
-                <div class="flex items-center justify-between border-t px-6 py-4">
+
+                    <div class="flex-1 overflow-y-auto px-6 py-5">
+                        <TabsContent value="overview" class="mt-0 flex flex-col gap-4">
+                            <div>
+                                <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Description</p>
+                                <p class="text-sm">{{ viewProgram.description || 'No description provided.' }}</p>
+                            </div>
+                            <div class="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                                <div>
+                                    <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Period</p>
+                                    <p class="font-medium">
+                                        {{ formatProgramDate(viewProgram.program_start) }} – {{ formatProgramDate(viewProgram.program_end) }}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Slots</p>
+                                    <p class="font-medium">{{ viewProgram.nominees_count }} / {{ viewProgram.slots }} filled</p>
+                                </div>
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="schedule" class="mt-0 flex flex-col gap-4 text-sm">
+                            <div class="grid grid-cols-2 gap-x-6 gap-y-4">
+                                <div>
+                                    <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Program Start</p>
+                                    <p class="font-medium">{{ formatProgramDate(viewProgram.program_start) }}</p>
+                                </div>
+                                <div>
+                                    <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Program End</p>
+                                    <p class="font-medium">{{ formatProgramDate(viewProgram.program_end) }}</p>
+                                </div>
+                                <template v-if="viewProgram.modality !== 'in-person'">
+                                    <div>
+                                        <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Online Start</p>
+                                        <p class="font-medium">{{ formatProgramDate(viewProgram.online_start) }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Online End</p>
+                                        <p class="font-medium">{{ formatProgramDate(viewProgram.online_end) }}</p>
+                                    </div>
+                                </template>
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="funding" class="mt-0 grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                            <div>
+                                <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Category</p>
+                                <p class="font-medium">{{ viewProgram.category || '—' }}</p>
+                            </div>
+                            <div>
+                                <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Fund Source</p>
+                                <p class="font-medium">{{ viewProgram.fund_source || '—' }}</p>
+                            </div>
+                            <div>
+                                <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Program Cost</p>
+                                <p class="font-medium">{{ viewProgram.program_cost || '—' }}</p>
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="organizer" class="mt-0 flex flex-col gap-4 text-sm">
+                            <div class="grid grid-cols-2 gap-x-6 gap-y-4">
+                                <div>
+                                    <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Organizing Sponsor</p>
+                                    <p class="font-medium">{{ sponsorDisplay(viewProgram) }}</p>
+                                </div>
+                                <div>
+                                    <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Attached Agency</p>
+                                    <p class="font-medium">{{ viewProgram.attached_agency || '—' }}</p>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Invited Agencies</p>
+                                <p class="font-medium">{{ viewProgram.invited_agencies || '—' }}</p>
+                            </div>
+                            <div>
+                                <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Added By</p>
+                                <p class="font-medium">
+                                    <template v-if="viewProgram.created_by_empcode">
+                                        {{ viewProgram.created_by_name }}
+                                        <span class="font-mono text-xs text-muted-foreground">({{ viewProgram.created_by_empcode }})</span>
+                                    </template>
+                                    <template v-else>—</template>
+                                </p>
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="dates" class="mt-0 grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                            <div>
+                                <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Submission Date</p>
+                                <p class="font-medium">{{ formatProgramDate(viewProgram.submission_date) }}</p>
+                            </div>
+                            <div>
+                                <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Embassy Deadline</p>
+                                <p class="font-medium" :class="DEADLINE_URGENCY_CLASS[deadlineUrgency(viewProgram.embassy_deadline) ?? 'normal']">
+                                    {{ formatProgramDate(viewProgram.embassy_deadline) }}
+                                </p>
+                            </div>
+                            <div>
+                                <p class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Interview Date</p>
+                                <p class="font-medium" :class="DEADLINE_URGENCY_CLASS[deadlineUrgency(viewProgram.interview_date) ?? 'normal']">
+                                    {{ formatProgramDate(viewProgram.interview_date) }}
+                                </p>
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="nominees" class="mt-0 flex flex-col gap-4">
+                            <div class="flex items-center gap-4 rounded-xl border bg-muted/30 p-4">
+                                <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950/40">
+                                    <Users class="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                                </div>
+                                <div>
+                                    <p class="text-lg font-bold leading-none">{{ viewProgram.nominees_count }} / {{ viewProgram.slots }}</p>
+                                    <p class="mt-1 text-xs text-muted-foreground">Nominees submitted against available slots</p>
+                                </div>
+                            </div>
+                            <p class="text-xs text-muted-foreground">
+                                Full nominee list, requirement submissions, and assessment status are managed on the program's detail page.
+                            </p>
+                            <Link
+                                :href="route('foreign-programs.show', viewProgram.id)"
+                                class="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-blue-600 transition-colors hover:text-blue-700"
+                            >
+                                <Users class="h-4 w-4" /> Manage Nominees & Requirements
+                            </Link>
+                        </TabsContent>
+                    </div>
+                </Tabs>
+
+                <DialogFooter class="shrink-0 border-t px-6 py-4 sm:justify-between">
                     <Link
                         :href="route('foreign-programs.show', viewProgram.id)"
                         class="flex items-center gap-1.5 text-sm font-medium text-blue-600 transition-colors hover:text-blue-700"
                     >
-                        <Users class="h-4 w-4" /> View Participants
+                        <Users class="h-4 w-4" /> View Full Program Page
                     </Link>
                     <Button variant="outline" @click="closeView">Close</Button>
-                </div>
-            </div>
-        </div>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
 
         <EditProgramModal :open="showEditModal" :program="editingProgram" @update:open="showEditModal = $event" />
 
         <!-- ===== Add Program Modal ===== -->
-        <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="showModal = false">
-            <div class="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-background shadow-2xl">
-                <div class="sticky top-0 z-10 flex items-center gap-3 rounded-t-2xl border-b bg-background px-6 py-4">
+        <Dialog :open="showModal" @update:open="showModal = $event">
+            <DialogContent class="flex max-h-[90vh] max-w-2xl flex-col overflow-hidden !rounded-2xl p-0">
+                <DialogHeader class="shrink-0 flex-row items-center gap-3 space-y-0 border-b px-6 py-4 text-left">
                     <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 shadow">
                         <Globe class="h-4 w-4 text-white" />
                     </div>
                     <div>
-                        <h2 class="text-base font-bold leading-none">Add Foreign Program</h2>
-                        <p class="mt-0.5 text-xs text-muted-foreground">Fill in the details for the new program</p>
+                        <DialogTitle class="text-base font-bold leading-none">Add Foreign Program</DialogTitle>
+                        <DialogDescription class="mt-0.5 text-xs">Fill in the details for the new program</DialogDescription>
                     </div>
-                    <button @click="showModal = false" class="ml-auto text-muted-foreground transition-colors hover:text-foreground">
-                        <X class="h-5 w-5" />
-                    </button>
-                </div>
+                </DialogHeader>
 
-                <div class="flex flex-col gap-6 p-6">
-                    <!-- Basic Info -->
-                    <div class="flex flex-col gap-4">
-                        <div class="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-blue-600 dark:text-blue-400">
-                            <FileText class="h-3.5 w-3.5" /> <span>Basic Information</span>
-                        </div>
-                        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                            <div class="flex flex-col gap-1 md:col-span-2">
-                                <label class="flex items-center gap-1.5 text-xs font-semibold">
-                                    <AlignLeft class="h-3.5 w-3.5 text-muted-foreground" /> Program Title <span class="text-red-500">*</span>
-                                </label>
-                                <input
-                                    v-model="form.program_title"
-                                    type="text"
-                                    placeholder="e.g. JICA Training on Public Administration"
-                                    class="rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                                <span v-if="form.errors.program_title" class="text-xs text-red-500">{{ form.errors.program_title }}</span>
+                <div class="flex-1 overflow-y-auto px-6 py-6">
+                    <div class="flex flex-col gap-6">
+                        <!-- Basic Info -->
+                        <div class="flex flex-col gap-4">
+                            <div class="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-blue-600 dark:text-blue-400">
+                                <FileText class="h-3.5 w-3.5" /> <span>Basic Information</span>
                             </div>
-                            <div class="flex flex-col gap-1 md:col-span-2">
-                                <label class="flex items-center gap-1.5 text-xs font-semibold">
-                                    <FileText class="h-3.5 w-3.5 text-muted-foreground" /> Description
-                                </label>
-                                <textarea
-                                    v-model="form.description"
-                                    rows="3"
-                                    class="resize-none rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    placeholder="Optional — brief overview of the program"
-                                ></textarea>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Schedule -->
-                    <div class="flex flex-col gap-4">
-                        <div class="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-blue-600 dark:text-blue-400">
-                            <CalendarDays class="h-3.5 w-3.5" /> <span>Schedule</span>
-                        </div>
-                        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                            <div class="flex flex-col gap-1">
-                                <label class="flex items-center gap-1.5 text-xs font-semibold">
-                                    <Calendar class="h-3.5 w-3.5 text-muted-foreground" /> Program Start <span class="text-red-500">*</span>
-                                </label>
-                                <input
-                                    v-model="form.program_start"
-                                    type="date"
-                                    class="rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                            </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="flex items-center gap-1.5 text-xs font-semibold">
-                                    <Calendar class="h-3.5 w-3.5 text-muted-foreground" /> Program End <span class="text-red-500">*</span>
-                                </label>
-                                <input
-                                    v-model="form.program_end"
-                                    type="date"
-                                    class="rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                            </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="flex items-center gap-1.5 text-xs font-semibold">
-                                    <Hash class="h-3.5 w-3.5 text-muted-foreground" /> Slots <span class="text-red-500">*</span>
-                                </label>
-                                <input
-                                    v-model="form.slots"
-                                    type="number"
-                                    min="1"
-                                    class="rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                            </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="flex items-center gap-1.5 text-xs font-semibold">
-                                    <Globe class="h-3.5 w-3.5 text-muted-foreground" /> Modality <span class="text-red-500">*</span>
-                                </label>
-                                <select
-                                    v-model="form.modality"
-                                    class="rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                >
-                                    <option value="in-person">🏢 In-person</option>
-                                    <option value="online">💻 Online</option>
-                                    <option value="hybrid">🔀 Hybrid</option>
-                                </select>
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div class="flex flex-col gap-1 md:col-span-2">
+                                    <Label class="flex items-center gap-1.5 text-xs font-semibold">
+                                        <AlignLeft class="h-3.5 w-3.5 text-muted-foreground" /> Program Title <span class="text-red-500">*</span>
+                                    </Label>
+                                    <Input v-model="form.program_title" type="text" placeholder="e.g. JICA Training on Public Administration" />
+                                    <span v-if="form.errors.program_title" class="text-xs text-red-500">{{ form.errors.program_title }}</span>
+                                </div>
+                                <div class="flex flex-col gap-1 md:col-span-2">
+                                    <Label class="flex items-center gap-1.5 text-xs font-semibold">
+                                        <FileText class="h-3.5 w-3.5 text-muted-foreground" /> Description
+                                    </Label>
+                                    <Textarea v-model="form.description" rows="3" placeholder="Optional — brief overview of the program" />
+                                </div>
                             </div>
                         </div>
 
-                        <template v-if="showOnlineDates">
-                            <div class="rounded-xl border border-purple-200 bg-purple-50 p-4 dark:border-purple-900 dark:bg-purple-950/30">
-                                <p class="mb-3 text-xs font-extrabold uppercase tracking-wide text-purple-600 dark:text-purple-400">
-                                    💻 Online Schedule
-                                </p>
-                                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <!-- Schedule -->
+                        <div class="flex flex-col gap-4">
+                            <div class="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-blue-600 dark:text-blue-400">
+                                <CalendarDays class="h-3.5 w-3.5" /> <span>Schedule</span>
+                            </div>
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div class="flex flex-col gap-1">
+                                    <Label class="flex items-center gap-1.5 text-xs font-semibold">
+                                        <Calendar class="h-3.5 w-3.5 text-muted-foreground" /> Program Start <span class="text-red-500">*</span>
+                                    </Label>
+                                    <Input v-model="form.program_start" type="date" />
+                                </div>
+                                <div class="flex flex-col gap-1">
+                                    <Label class="flex items-center gap-1.5 text-xs font-semibold">
+                                        <Calendar class="h-3.5 w-3.5 text-muted-foreground" /> Program End <span class="text-red-500">*</span>
+                                    </Label>
+                                    <Input v-model="form.program_end" type="date" />
+                                </div>
+                                <div class="flex flex-col gap-1">
+                                    <Label class="flex items-center gap-1.5 text-xs font-semibold">
+                                        <Hash class="h-3.5 w-3.5 text-muted-foreground" /> Slots <span class="text-red-500">*</span>
+                                    </Label>
+                                    <Input v-model="form.slots" type="number" min="1" />
+                                </div>
+                                <div class="flex flex-col gap-1">
+                                    <Label class="flex items-center gap-1.5 text-xs font-semibold">
+                                        <Globe class="h-3.5 w-3.5 text-muted-foreground" /> Modality <span class="text-red-500">*</span>
+                                    </Label>
+                                    <Select v-model="form.modality">
+                                        <SelectTrigger class="w-full"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="in-person">In-person</SelectItem>
+                                            <SelectItem value="online">Online</SelectItem>
+                                            <SelectItem value="hybrid">Hybrid</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <template v-if="showOnlineDates">
+                                <div class="rounded-xl border border-purple-200 bg-purple-50 p-4 dark:border-purple-900 dark:bg-purple-950/30">
+                                    <p class="mb-3 text-xs font-extrabold uppercase tracking-wide text-purple-600 dark:text-purple-400">
+                                        Online Schedule
+                                    </p>
+                                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                        <div class="flex flex-col gap-1">
+                                            <Label class="text-xs font-semibold">Online Start</Label>
+                                            <Input v-model="form.online_start" type="date" class="bg-white dark:bg-background" />
+                                        </div>
+                                        <div class="flex flex-col gap-1">
+                                            <Label class="text-xs font-semibold">Online End</Label>
+                                            <Input v-model="form.online_end" type="date" class="bg-white dark:bg-background" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- Classification & Funding -->
+                        <div class="flex flex-col gap-4">
+                            <div class="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-blue-600 dark:text-blue-400">
+                                <Banknote class="h-3.5 w-3.5" /> <span>Classification &amp; Funding</span>
+                            </div>
+                            <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/30">
+                                <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                                     <div class="flex flex-col gap-1">
-                                        <label class="text-xs font-semibold">Online Start</label>
-                                        <input
-                                            v-model="form.online_start"
-                                            type="date"
-                                            class="rounded-lg border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 dark:bg-background"
-                                        />
+                                        <Label class="flex items-center gap-1.5 text-xs font-semibold">
+                                            <Tag class="h-3.5 w-3.5 text-muted-foreground" /> Category <span class="text-red-500">*</span>
+                                        </Label>
+                                        <Select v-model="form.category">
+                                            <SelectTrigger class="w-full bg-white dark:bg-background"><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="Foreign">Foreign</SelectItem>
+                                                <SelectItem value="Bilateral">Bilateral</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                     <div class="flex flex-col gap-1">
-                                        <label class="text-xs font-semibold">Online End</label>
-                                        <input
-                                            v-model="form.online_end"
-                                            type="date"
-                                            class="rounded-lg border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 dark:bg-background"
-                                        />
+                                        <Label class="flex items-center gap-1.5 text-xs font-semibold">
+                                            <Banknote class="h-3.5 w-3.5 text-muted-foreground" /> Program Cost
+                                        </Label>
+                                        <Input v-model="form.program_cost" type="text" class="bg-white dark:bg-background" placeholder="e.g. 50,000" />
+                                    </div>
+                                    <div class="flex flex-col gap-1">
+                                        <Label class="flex items-center gap-1.5 text-xs font-semibold">
+                                            <FileText class="h-3.5 w-3.5 text-muted-foreground" /> Fund Source
+                                        </Label>
+                                        <Select v-model="form.fund_source">
+                                            <SelectTrigger class="w-full bg-white dark:bg-background"><SelectValue placeholder="— Select —" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="SDP">SDP</SelectItem>
+                                                <SelectItem value="Other Office">Other Office</SelectItem>
+                                                <SelectItem value="Sponsoring Organization">Sponsoring Organization</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                 </div>
                             </div>
-                        </template>
-                    </div>
-
-                    <!-- Classification & Funding -->
-                    <div class="flex flex-col gap-4">
-                        <div class="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-blue-600 dark:text-blue-400">
-                            <Banknote class="h-3.5 w-3.5" /> <span>Classification & Funding</span>
                         </div>
-                        <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/30">
+
+                        <!-- Organizer & Status -->
+                        <div class="flex flex-col gap-4">
+                            <div class="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-blue-600 dark:text-blue-400">
+                                <Building2 class="h-3.5 w-3.5" /> <span>Organizer &amp; Status</span>
+                            </div>
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div class="flex flex-col gap-1">
+                                    <Label class="flex items-center gap-1.5 text-xs font-semibold">
+                                        <Building2 class="h-3.5 w-3.5 text-muted-foreground" /> Organizing Sponsor <span class="text-red-500">*</span>
+                                    </Label>
+                                    <div class="flex gap-2">
+                                        <Select v-model="form.organizing_sponsor">
+                                            <SelectTrigger class="w-full flex-1"><SelectValue placeholder="— Select sponsor —" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem v-for="s in sponsors" :key="s" :value="s">{{ s }}</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <button
+                                            type="button"
+                                            class="whitespace-nowrap rounded-lg border px-3 py-2 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-50"
+                                            @click="openSponsorModal()"
+                                        >
+                                            + Manage
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col gap-1">
+                                    <Label class="flex items-center gap-1.5 text-xs font-semibold">
+                                        <CheckCircle2 class="h-3.5 w-3.5 text-muted-foreground" /> Status <span class="text-red-500">*</span>
+                                    </Label>
+                                    <Select v-model="form.status">
+                                        <SelectTrigger class="w-full"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem v-for="opt in PROGRAM_STATUS_OPTIONS" :key="opt.value" :value="opt.value">
+                                                {{ opt.label }}
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Key Dates -->
+                        <div class="flex flex-col gap-4">
+                            <div class="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-blue-600 dark:text-blue-400">
+                                <CalendarClock class="h-3.5 w-3.5" /> <span>Key Dates</span>
+                            </div>
                             <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                                 <div class="flex flex-col gap-1">
-                                    <label class="flex items-center gap-1.5 text-xs font-semibold">
-                                        <Tag class="h-3.5 w-3.5 text-muted-foreground" /> Category <span class="text-red-500">*</span>
-                                    </label>
-                                    <select
-                                        v-model="form.category"
-                                        class="rounded-lg border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-background"
-                                    >
-                                        <option value="Foreign">🌐 Foreign</option>
-                                        <option value="Bilateral">🤝 Bilateral</option>
-                                    </select>
+                                    <Label class="flex items-center gap-1.5 text-xs font-semibold">
+                                        <Calendar class="h-3.5 w-3.5 text-muted-foreground" /> Submission Date
+                                    </Label>
+                                    <Input v-model="form.submission_date" type="date" />
                                 </div>
                                 <div class="flex flex-col gap-1">
-                                    <label class="flex items-center gap-1.5 text-xs font-semibold">
-                                        <Banknote class="h-3.5 w-3.5 text-muted-foreground" /> Program Cost
-                                    </label>
-                                    <input
-                                        v-model="form.program_cost"
-                                        type="text"
-                                        class="rounded-lg border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-background"
-                                        placeholder="e.g. 50,000"
-                                    />
+                                    <Label class="flex items-center gap-1.5 text-xs font-semibold">
+                                        <Users class="h-3.5 w-3.5 text-muted-foreground" /> Interview Date
+                                    </Label>
+                                    <Input v-model="form.interview_date" type="date" />
                                 </div>
                                 <div class="flex flex-col gap-1">
-                                    <label class="flex items-center gap-1.5 text-xs font-semibold">
-                                        <FileText class="h-3.5 w-3.5 text-muted-foreground" /> Fund Source
-                                    </label>
-                                    <select
-                                        v-model="form.fund_source"
-                                        class="rounded-lg border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-background"
-                                    >
-                                        <option value="">— Select —</option>
-                                        <option value="SDP">SDP</option>
-                                        <option value="Other Office">Other Office</option>
-                                        <option value="Sponsoring Organization">Sponsoring Organization</option>
-                                    </select>
+                                    <Label class="flex items-center gap-1.5 text-xs font-semibold">
+                                        <MapPin class="h-3.5 w-3.5 text-muted-foreground" /> Embassy Deadline
+                                    </Label>
+                                    <Input v-model="form.embassy_deadline" type="date" />
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Organizer & Status -->
-                    <div class="flex flex-col gap-4">
-                        <div class="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-blue-600 dark:text-blue-400">
-                            <Building2 class="h-3.5 w-3.5" /> <span>Organizer & Status</span>
-                        </div>
-                        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                            <div class="flex flex-col gap-1">
-                                <label class="flex items-center gap-1.5 text-xs font-semibold">
-                                    <Building2 class="h-3.5 w-3.5 text-muted-foreground" /> Organizing Sponsor <span class="text-red-500">*</span>
-                                </label>
-                                <div class="flex gap-2">
-                                    <select
-                                        v-model="form.organizing_sponsor"
-                                        class="flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    >
-                                        <option value="">— Select sponsor —</option>
-                                        <option v-for="s in sponsors" :key="s" :value="s">{{ s }}</option>
-                                    </select>
-                                    <button
-                                        type="button"
-                                        class="whitespace-nowrap rounded-lg border px-3 py-2 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-50"
-                                        @click="openSponsorModal()"
-                                    >
-                                        + Manage
-                                    </button>
-                                </div>
+                        <!-- Agencies -->
+                        <div class="flex flex-col gap-4">
+                            <div class="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-blue-600 dark:text-blue-400">
+                                <Building class="h-3.5 w-3.5" /> <span>Invited Agencies</span>
                             </div>
                             <div class="flex flex-col gap-1">
-                                <label class="flex items-center gap-1.5 text-xs font-semibold">
-                                    <CheckCircle2 class="h-3.5 w-3.5 text-muted-foreground" /> Status <span class="text-red-500">*</span>
-                                </label>
-                                <select
-                                    v-model="form.status"
-                                    class="rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                >
-                                    <option v-for="(label, key) in statusLabels" :key="key" :value="key">{{ label }}</option>
-                                </select>
+                                <Label class="flex items-center gap-1.5 text-xs font-semibold">
+                                    <Building class="h-3.5 w-3.5 text-muted-foreground" /> Agencies
+                                </Label>
+                                <Textarea v-model="form.invited_agencies" rows="2" placeholder="Comma-separated, e.g. DILG, DBM, CSC" />
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- Key Dates -->
-                    <div class="flex flex-col gap-4">
-                        <div class="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-blue-600 dark:text-blue-400">
-                            <CalendarDays class="h-3.5 w-3.5" /> <span>Key Dates</span>
-                        </div>
-                        <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-                            <div class="flex flex-col gap-1">
-                                <label class="flex items-center gap-1.5 text-xs font-semibold">
-                                    <Calendar class="h-3.5 w-3.5 text-muted-foreground" /> Submission Date
-                                </label>
-                                <input
-                                    v-model="form.submission_date"
-                                    type="date"
-                                    class="rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                            </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="flex items-center gap-1.5 text-xs font-semibold">
-                                    <Users class="h-3.5 w-3.5 text-muted-foreground" /> Interview Date
-                                </label>
-                                <input
-                                    v-model="form.interview_date"
-                                    type="date"
-                                    class="rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                            </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="flex items-center gap-1.5 text-xs font-semibold">
-                                    <MapPin class="h-3.5 w-3.5 text-muted-foreground" /> Embassy Deadline
-                                </label>
-                                <input
-                                    v-model="form.embassy_deadline"
-                                    type="date"
-                                    class="rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Agencies -->
-                    <div class="flex flex-col gap-4">
-                        <div class="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-blue-600 dark:text-blue-400">
-                            <Building class="h-3.5 w-3.5" /> <span>Invited Agencies</span>
-                        </div>
-                        <div class="flex flex-col gap-1">
-                            <label class="flex items-center gap-1.5 text-xs font-semibold">
-                                <Building class="h-3.5 w-3.5 text-muted-foreground" /> Agencies
-                            </label>
-                            <textarea
-                                v-model="form.invited_agencies"
-                                rows="2"
-                                class="resize-none rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="Comma-separated, e.g. DILG, DBM, CSC"
-                            ></textarea>
                         </div>
                     </div>
                 </div>
 
-                <div class="sticky bottom-0 flex justify-end gap-2 rounded-b-2xl border-t bg-background px-6 py-4">
+                <DialogFooter class="shrink-0 border-t px-6 py-4">
                     <Button variant="outline" @click="showModal = false">Cancel</Button>
                     <Button class="bg-blue-600 hover:bg-blue-700 dark:text-white" :disabled="form.processing" @click="submit">
                         <Plus v-if="!form.processing" class="mr-1 h-4 w-4" />
                         {{ form.processing ? 'Saving...' : 'Save Program' }}
                     </Button>
-                </div>
-            </div>
-        </div>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </AppLayout>
 </template>

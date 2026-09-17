@@ -7,6 +7,7 @@ use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\CoverPageController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeclarationController;
+use App\Http\Controllers\DefaultProgramCoverController;
 use App\Http\Controllers\EmailReminderController;
 use App\Http\Controllers\EmployeeMapController;
 use App\Http\Controllers\EmployeeProgressController;
@@ -67,6 +68,10 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     // nasa itaas ng /programs/{program} para hindi ito ma-match bilang isang
     // route-model-bound program.
     Route::get('/programs/activity-log', [ProgramActivityController::class, 'index'])->name('programs.activity-log');
+    // Same reason: dapat nasa itaas ng /programs/{program} para hindi ma-match
+    // ang "default-cover" bilang isang route-model-bound program id.
+    Route::post('/programs/default-cover', [DefaultProgramCoverController::class, 'upload'])->name('programs.default-cover.upload');
+    Route::delete('/programs/default-cover', [DefaultProgramCoverController::class, 'destroy'])->name('programs.default-cover.destroy');
     Route::get('/programs/{program}', [ProgramController::class, 'show'])->name('programs.show');
     Route::delete('/programs/{program}', [ProgramController::class, 'destroy'])->name('programs.destroy');
     Route::get('/programs/{program}/edit', [ProgramController::class, 'edit'])->name('programs.edit');

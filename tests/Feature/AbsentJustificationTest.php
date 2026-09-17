@@ -1,10 +1,12 @@
 <?php
 
+use App\Http\Controllers\EnrolledProgramController;
 use App\Models\AbsentJustification;
 use App\Models\Batch;
 use App\Models\Employee;
 use App\Models\Participant;
 use App\Models\Program;
+use App\Models\Requirement;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -196,6 +198,14 @@ function selfJustificationParticipant(string $empcode, string $attendance = 'Pen
         'hours' => '16',
     ]);
 
+    Requirement::create([
+        'batch_id' => $batch->id,
+        'title' => 'Terminal Report',
+        'name' => 'TREAP',
+        'due_date' => '2026-01-10',
+        'is_required' => true,
+    ]);
+
     return Participant::create([
         'sort_order' => 1,
         'batch_id' => $batch->id,
@@ -322,4 +332,24 @@ test('the enrolled program detail page exposes the justification for the partici
         ->where('program.attendance', 'Absent')
         ->where('program.justification.id', fn ($id) => $id !== null)
     );
+});
+
+test('a participant marked absent is no longer flagged with missing requirements', function () {
+    Storage::fake('public');
+
+    $user = selfJustificationUser('EMP-JUST-08');
+    $participant = selfJustificationParticipant($user->empcode);
+
+    // Bago i-mark absent: dapat may missing requirement pa ang participant.
+    $before = EnrolledProgramController::forUser($user);
+    expect($before[0]['requirements_missing'])->toBe(1);
+
+    $this->actingAs($user)->post(
+        route('programs.my-progress.justification.submit', $participant->batch_id),
+        ['file' => UploadedFile::fake()->create('justification.pdf', 100, 'application/pdf')],
+    );
+
+    $after = EnrolledProgramController::forUser($user);
+    expect($after[0]['attendance'])->toBe('Absent');
+    expect($after[0]['requirements_missing'])->toBe(0);
 });

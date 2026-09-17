@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\DefaultProgramCover;
 use App\Models\Employee;
 use App\Models\Program;
 use App\Models\ProgramCompetency;
@@ -115,6 +116,7 @@ class ProgramController extends Controller
         return Inertia::render('programs/index', [
             'programs' => $programs,
             'userRegion' => $this->resolveUserRegion(),
+            'defaultCover' => DefaultProgramCover::first(),
         ]);
     }
 

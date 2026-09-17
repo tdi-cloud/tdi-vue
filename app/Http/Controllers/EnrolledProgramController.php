@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Batch;
 use App\Models\Certificate;
+use App\Models\DefaultProgramCover;
 use App\Models\Participant;
 use App\Models\Requirement;
 use App\Models\Submission;
@@ -248,9 +249,15 @@ class EnrolledProgramController extends Controller
             'total_hours' => (float) $batch->hours,
             'hours_completed' => (float) ($participant->hours ?? 0),
             'attendance' => $participant->attendance ?? 'Pending',
-            'cover_image' => $program->coverPage ? '/storage/'.$program->coverPage->image : null,
+            'cover_image' => $program->coverPage
+                ? '/storage/'.$program->coverPage->image
+                : (DefaultProgramCover::currentImagePath() ? '/storage/'.DefaultProgramCover::currentImagePath() : null),
             'requirements_total' => $reqList->count(),
-            'requirements_missing' => $reqList->filter(fn ($r) => $r['is_required'] && is_null($r['status']))->count(),
+            // Absent participants are no longer expected to submit requirements
+            // (see submitJustification()), so don't flag them as "missing".
+            'requirements_missing' => $participant->attendance === 'Absent'
+                ? 0
+                : $reqList->filter(fn ($r) => $r['is_required'] && is_null($r['status']))->count(),
             'requirements_pending' => $reqList->filter(fn ($r) => $r['status'] === 'Pending')->count(),
             'requirements_approved' => $reqList->filter(fn ($r) => $r['status'] === 'Approved')->count(),
             'requirements_rejected' => $reqList->filter(fn ($r) => $r['status'] === 'Rejected')->count(),

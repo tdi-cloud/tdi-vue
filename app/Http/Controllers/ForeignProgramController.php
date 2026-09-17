@@ -64,10 +64,12 @@ class ForeignProgramController extends Controller
 
         $programs = $query->orderByDesc('created_at')->paginate(15)->withQueryString();
 
-        $years = ForeignProgram::selectRaw('YEAR(program_start) as year')
-            ->distinct()
-            ->orderByDesc('year')
-            ->pluck('year');
+        $years = ForeignProgram::whereNotNull('program_start')
+            ->pluck('program_start')
+            ->map(fn ($date) => $date->year)
+            ->unique()
+            ->sortDesc()
+            ->values();
 
         $sponsors = ForeignProgram::whereNotNull('organizing_sponsor')
             ->where('organizing_sponsor', '!=', '')
@@ -75,10 +77,22 @@ class ForeignProgramController extends Controller
             ->orderBy('organizing_sponsor')
             ->pluck('organizing_sponsor');
 
+        $totalPrograms = ForeignProgram::count();
+        $forNomination = ForeignProgram::where('status', 'waiting_for_nominees')->count();
+        $completed = ForeignProgram::where('status', 'concluded')->count();
+
+        $stats = [
+            'total' => $totalPrograms,
+            'active' => $totalPrograms - $forNomination - $completed,
+            'for_nomination' => $forNomination,
+            'completed' => $completed,
+        ];
+
         return Inertia::render('ForeignPrograms/index', [
             'programs' => $programs,
             'years' => $years,
             'sponsorOptions' => $sponsors,
+            'stats' => $stats,
             'filters' => $request->only([
                 'search', 'status', 'year', 'semester',
                 'organization', 'category', 'embassy_deadline', 'interview_date',
