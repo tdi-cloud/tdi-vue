@@ -28,4 +28,16 @@ class SiteImage extends Model
             })
             ->all();
     }
+
+    /**
+     * Resolved URL ng iisang image slot lang (hal. 'auth_background'), para
+     * hindi na kailangang mag-load ng buong resolvedUrls() map sa mga pages
+     * na iisang slot lang ang kailangan.
+     */
+    public static function urlFor(string $key): ?string
+    {
+        $path = static::query()->where('key', $key)->value('path');
+
+        return $path ? Storage::disk('public')->url($path) : config("site-images.{$key}.default");
+    }
 }

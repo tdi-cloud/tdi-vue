@@ -5,6 +5,12 @@
 // ng isang superadmin. Kapag walang override sa `site_images` table, ito ang
 // gagamitin.
 return [
+    'auth_background' => [
+        'label' => 'Login & Register Background',
+        'section' => 'Login & Register',
+        'default' => '/storage/hero/hrmo.jpg',
+    ],
+
     'navbar_logo' => [
         'label' => 'Navbar Logo (TESDA Seal)',
         'section' => 'Navbar',

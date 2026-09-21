@@ -51,7 +51,7 @@ const submit = () => {
         <form @submit.prevent="submit" class="flex flex-col gap-6">
             <div class="grid gap-5">
                 <div class="grid gap-2">
-                    <Label for="email">Email address</Label>
+                    <Label for="email" class="text-white drop-shadow">Email address</Label>
                     <div class="relative">
                         <Mail class="pointer-events-none absolute inset-y-0 left-0 my-auto ml-3.5 h-4 w-4 text-blue-900/50" />
                         <Input
@@ -71,8 +71,13 @@ const submit = () => {
 
                 <div class="grid gap-2">
                     <div class="flex items-center justify-between">
-                        <Label for="password">Password</Label>
-                        <TextLink v-if="canResetPassword" :href="route('password.request')" class="text-sm text-blue-800" tabindex="5">
+                        <Label for="password" class="text-white drop-shadow">Password</Label>
+                        <TextLink
+                            v-if="canResetPassword"
+                            :href="route('password.request')"
+                            class="text-sm text-blue-100 drop-shadow hover:text-white"
+                            tabindex="5"
+                        >
                             Forgot password?
                         </TextLink>
                     </div>
@@ -103,10 +108,10 @@ const submit = () => {
                 </div>
 
                 <div class="flex items-center justify-between" tabindex="3">
-                    <Label for="remember" class="flex items-center space-x-3">
+                    <Label for="remember" class="flex items-center space-x-3 text-white drop-shadow">
                         <Checkbox
                             id="remember"
-                            class="border-blue-800 data-[state=checked]:border-blue-800 data-[state=checked]:bg-blue-800 data-[state=checked]:text-white"
+                            class="border-white/70 data-[state=checked]:border-blue-500 data-[state=checked]:bg-blue-500 data-[state=checked]:text-white"
                             v-model:checked="form.remember"
                             tabindex="4"
                         />
@@ -125,9 +130,9 @@ const submit = () => {
                 </Button>
             </div>
 
-            <div class="text-center text-sm text-muted-foreground">
+            <div class="text-center text-sm text-white/90 drop-shadow">
                 Don't have an account?
-                <TextLink :href="route('register')" class="text-blue-800" :tabindex="5">Sign up</TextLink>
+                <TextLink :href="route('register')" class="text-blue-100 hover:text-white" :tabindex="5">Sign up</TextLink>
             </div>
         </form>
     </AuthBase>

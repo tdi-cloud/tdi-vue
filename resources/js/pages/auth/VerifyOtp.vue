@@ -64,8 +64,8 @@ onMounted(() => {
 
             <!-- Heading -->
             <div class="text-center">
-                <h1 class="text-2xl font-bold text-foreground">Verify Your Email</h1>
-                <p class="mt-1 text-sm text-muted-foreground">
+                <h1 class="text-2xl font-bold text-white drop-shadow">Verify Your Email</h1>
+                <p class="mt-1 text-sm text-white/80 drop-shadow">
                     Enter the OTP sent to <strong>{{ email }}</strong>
                 </p>
             </div>
@@ -73,7 +73,7 @@ onMounted(() => {
             <form @submit.prevent="submit" class="flex w-full flex-col items-center gap-6">
                 <!-- 6-digit inputs -->
                 <div class="flex w-full flex-col items-center gap-2">
-                    <label class="text-xs font-semibold uppercase tracking-widest text-muted-foreground"> One-Time Password </label>
+                    <label class="text-xs font-semibold uppercase tracking-widest text-white/80 drop-shadow"> One-Time Password </label>
                     <div class="flex gap-3" @paste="onPaste">
                         <Input
                             v-for="(_, i) in digits"
@@ -95,7 +95,11 @@ onMounted(() => {
                     <p v-if="form.errors.otp" class="text-sm text-destructive">{{ form.errors.otp }}</p>
                 </div>
 
-                <Button type="submit" class="w-full" :disabled="form.processing || form.otp.length < 6">
+                <Button
+                    type="submit"
+                    class="w-full bg-gradient-to-b from-blue-700 to-blue-900 font-extrabold shadow-md shadow-blue-900/20 hover:brightness-110"
+                    :disabled="form.processing || form.otp.length < 6"
+                >
                     <LoaderCircle v-if="form.processing" class="mr-2 h-4 w-4 animate-spin" />
                     Verify OTP
                 </Button>

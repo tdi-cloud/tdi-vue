@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import type { SharedData } from '@/types';
+import { Link, usePage } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 
 defineProps<{
     title?: string;
@@ -8,14 +9,24 @@ defineProps<{
 }>();
 
 const logoFailed = ref(false);
+
+const page = usePage<SharedData>();
+const backgroundImage = computed(() => page.props.authBackground);
 </script>
 
 <template>
     <div
         class="relative flex min-h-svh flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-blue-50 via-white to-white p-6 md:p-10"
     >
-        <div class="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-blue-200/40 blur-3xl"></div>
-        <div class="pointer-events-none absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-blue-300/30 blur-3xl"></div>
+        <!-- Background photo, superadmin-configurable via the Homepage Images panel -->
+        <template v-if="backgroundImage">
+            <div class="absolute inset-0 bg-cover bg-center" :style="{ backgroundImage: `url(${backgroundImage})` }"></div>
+            <div class="absolute inset-0 bg-gradient-to-b from-blue-950/70 via-blue-950/50 to-blue-950/80"></div>
+        </template>
+        <template v-else>
+            <div class="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-blue-200/40 blur-3xl"></div>
+            <div class="pointer-events-none absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-blue-300/30 blur-3xl"></div>
+        </template>
 
         <div class="relative w-full max-w-sm">
             <div class="flex flex-col gap-8">
@@ -43,20 +54,32 @@ const logoFailed = ref(false);
                             </div>
                         </div>
                         <div class="text-center leading-tight">
-                            <p class="text-xs font-bold uppercase tracking-widest text-blue-900">TESDA Development Institute</p>
+                            <p
+                                class="text-xs font-bold uppercase tracking-widest"
+                                :class="backgroundImage ? 'text-white drop-shadow' : 'text-blue-900'"
+                            >
+                                TESDA Development Institute
+                            </p>
                         </div>
                     </Link>
                 </div>
 
-                <div class="rounded-2xl border border-blue-100 bg-white/80 p-8 shadow-xl shadow-blue-900/5 backdrop-blur-sm">
+                <div
+                    class="rounded-2xl border p-8 shadow-2xl backdrop-blur-xl"
+                    :class="
+                        backgroundImage
+                            ? 'border-blue-200/30 bg-gradient-to-br from-blue-400/20 via-blue-500/10 to-blue-900/25 shadow-black/20'
+                            : 'border-blue-100 bg-white/80 shadow-blue-900/5'
+                    "
+                >
                     <div class="mb-6 space-y-1 text-center">
-                        <h1 class="text-xl font-extrabold text-gray-900">{{ title }}</h1>
-                        <p class="text-center text-sm text-muted-foreground">{{ description }}</p>
+                        <h1 class="text-xl font-extrabold" :class="backgroundImage ? 'text-white drop-shadow' : 'text-gray-900'">{{ title }}</h1>
+                        <p class="text-center text-sm" :class="backgroundImage ? 'text-white/80' : 'text-muted-foreground'">{{ description }}</p>
                     </div>
                     <slot />
                 </div>
 
-                <p class="text-center text-xs text-muted-foreground">
+                <p class="text-center text-xs" :class="backgroundImage ? 'text-white/70 drop-shadow' : 'text-muted-foreground'">
                     © {{ new Date().getFullYear() }} TESDA Development Institute. All rights reserved.
                 </p>
             </div>

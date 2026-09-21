@@ -27,7 +27,7 @@ const submit = () => {
         <form @submit.prevent="submit">
             <div class="space-y-6">
                 <div class="grid gap-2">
-                    <Label htmlFor="password">Password</Label>
+                    <Label htmlFor="password" class="text-white drop-shadow">Password</Label>
                     <Input
                         id="password"
                         type="password"
@@ -42,7 +42,10 @@ const submit = () => {
                 </div>
 
                 <div class="flex items-center">
-                    <Button class="w-full" :disabled="form.processing">
+                    <Button
+                        class="w-full bg-gradient-to-b from-blue-700 to-blue-900 font-extrabold shadow-md shadow-blue-900/20 hover:brightness-110"
+                        :disabled="form.processing"
+                    >
                         <LoaderCircle v-if="form.processing" class="h-4 w-4 animate-spin" />
                         Confirm Password
                     </Button>

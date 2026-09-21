@@ -1,5 +1,5 @@
 <template>
-    <nav class="navbar" :class="{ 'navbar--scrolled': isScrolled }">
+    <nav class="navbar" :class="{ 'navbar--scrolled': isScrolled || mobileMenuOpen }">
         <div class="navbar__inner">
             <!-- Brand -->
             <a href="/" class="navbar__brand">

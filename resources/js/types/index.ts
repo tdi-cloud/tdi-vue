@@ -21,6 +21,7 @@ export interface SharedData {
     quote: { message: string; author: string };
     auth: Auth;
     unreadNotificationsCount: number;
+    authBackground: string | null;
     ziggy: {
         location: string;
         url: string;

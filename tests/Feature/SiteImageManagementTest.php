@@ -84,3 +84,28 @@ test('non-image uploads are rejected', function () {
         ])
         ->assertSessionHasErrors('image');
 });
+
+test('login page shares the default auth background when not customized', function () {
+    $this->get(route('login'))
+        ->assertInertia(fn ($page) => $page
+            ->component('auth/Login')
+            ->where('authBackground', config('site-images.auth_background.default'))
+        );
+});
+
+test('login and register pages share the customized auth background after upload', function () {
+    Storage::fake('public');
+    $path = UploadedFile::fake()->image('login-bg.jpg')->store('site-images', 'public');
+    SiteImage::create(['key' => 'auth_background', 'path' => $path]);
+
+    $expectedUrl = SiteImage::urlFor('auth_background');
+    expect($expectedUrl)->not->toBe(config('site-images.auth_background.default'));
+
+    // Guest-only ang login/register routes, kaya hindi dapat naka-actingAs
+    // dito para hindi ma-redirect palabas ng "guest" middleware.
+    $this->get(route('login'))
+        ->assertInertia(fn ($page) => $page->where('authBackground', $expectedUrl));
+
+    $this->get(route('register'))
+        ->assertInertia(fn ($page) => $page->where('authBackground', $expectedUrl));
+});

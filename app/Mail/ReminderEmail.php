@@ -16,6 +16,9 @@ class ReminderEmail extends Mailable
         public string $emailSubject,
         public string $body,
         public string $signature,
+        public ?string $trainingProgram = null,
+        public ?string $dueDate = null,
+        public ?string $status = null,
     ) {}
 
     public function envelope(): Envelope

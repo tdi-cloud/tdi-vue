@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import EmployeeProgressModal from '@/components/EmployeeProgressModal.vue';
-import { FileCheck, FileX, Loader2, TrendingUp, Users, X } from 'lucide-vue-next';
+import { FileCheck, FileX, Loader2, Search, TrendingUp, Users, X } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import VueApexCharts from 'vue3-apexcharts';
 
@@ -49,6 +49,17 @@ const modalRegion = ref('ALL');
 const modalEmployees = ref<EmployeeRow[]>([]);
 const modalLoading = ref(false);
 const modalCount = ref(0);
+const modalSearch = ref('');
+
+const filteredModalEmployees = computed(() => {
+    const q = modalSearch.value.trim().toLowerCase();
+    if (!q) return modalEmployees.value;
+    return modalEmployees.value.filter((emp) =>
+        [emp.name, emp.empcode, emp.position, emp.office_division, emp.office, emp.region, emp.batch_name].some((field) =>
+            field?.toLowerCase().includes(q),
+        ),
+    );
+});
 
 const selectedEmpcode = ref<string | null>(null);
 
@@ -81,6 +92,7 @@ async function fetchList(type: 'submitted' | 'not_submitted', reg = 'ALL') {
     modalOpen.value = true;
     modalLoading.value = true;
     modalEmployees.value = [];
+    modalSearch.value = '';
 
     try {
         const params = new URLSearchParams({
@@ -340,12 +352,42 @@ const modalTitle = computed(() => {
                         </div>
                         <div>
                             <p class="text-sm font-bold">{{ modalTitle }}</p>
-                            <p class="text-xs text-muted-foreground">{{ modalLoading ? 'Loading…' : `${modalCount} employee(s)` }}</p>
+                            <p class="text-xs text-muted-foreground">
+                                {{
+                                    modalLoading
+                                        ? 'Loading…'
+                                        : modalSearch.trim()
+                                          ? `${filteredModalEmployees.length} of ${modalCount} employee(s)`
+                                          : `${modalCount} employee(s)`
+                                }}
+                            </p>
                         </div>
                     </div>
                     <button class="rounded-lg p-1 text-muted-foreground hover:text-foreground" @click="modalOpen = false">
                         <X class="h-4 w-4" />
                     </button>
+                </div>
+
+                <!-- Search -->
+                <div v-if="!modalLoading" class="shrink-0 border-b px-5 py-3">
+                    <div class="relative">
+                        <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <input
+                            v-model="modalSearch"
+                            type="text"
+                            placeholder="Search by name, employee code, position, office, or region…"
+                            class="h-9 w-full rounded-lg border bg-background pl-9 pr-8 text-sm shadow-none outline-none focus:ring-2 focus:ring-emerald-500/30"
+                        />
+                        <button
+                            v-if="modalSearch"
+                            type="button"
+                            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                            aria-label="Clear search"
+                            @click="modalSearch = ''"
+                        >
+                            <X class="h-4 w-4" />
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Loading -->
@@ -369,7 +411,7 @@ const modalTitle = computed(() => {
                         </thead>
                         <tbody class="divide-y">
                             <tr
-                                v-for="(emp, i) in modalEmployees"
+                                v-for="(emp, i) in filteredModalEmployees"
                                 :key="emp.empcode"
                                 class="cursor-pointer transition-colors hover:bg-muted/30"
                                 @click="selectedEmpcode = emp.empcode"
@@ -400,6 +442,9 @@ const modalTitle = computed(() => {
                             </tr>
                             <tr v-if="modalEmployees.length === 0">
                                 <td colspan="7" class="px-4 py-12 text-center text-sm text-muted-foreground">No employees found.</td>
+                            </tr>
+                            <tr v-else-if="filteredModalEmployees.length === 0">
+                                <td colspan="7" class="px-4 py-12 text-center text-sm text-muted-foreground">No employees match your search.</td>
                             </tr>
                         </tbody>
                     </table>

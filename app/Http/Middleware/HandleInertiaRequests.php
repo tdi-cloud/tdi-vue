@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\SiteImage;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -47,6 +48,7 @@ class HandleInertiaRequests extends Middleware
                 'isNhrdcMember' => fn () => $request->user()?->isNhrdcMember() ?? false,
             ],
             'unreadNotificationsCount' => fn () => $request->user()?->unreadNotifications()->count() ?? 0,
+            'authBackground' => fn () => SiteImage::urlFor('auth_background'),
             'flash' => [
                 'success' => session('success'),
                 'error' => session('error'),

@@ -45,8 +45,10 @@ class EmailReminderController extends Controller
         // Huwag payagan ang sinuman na mag-send ng reminder para sa isang
         // requirement na hindi pa overdue — walang dapat i-remind hangga't
         // hindi pa lumalagpas ang due date nito.
+        $requirement = null;
+
         if (! empty($validated['requirement_id'])) {
-            $requirement = Requirement::find($validated['requirement_id']);
+            $requirement = Requirement::with('batch.program')->find($validated['requirement_id']);
 
             if ($requirement && (! $requirement->due_date || ! $requirement->due_date->lt(now()->startOfDay()))) {
                 throw ValidationException::withMessages([
@@ -55,10 +57,24 @@ class EmailReminderController extends Controller
             }
         }
 
+        // Ang "Requirement Overview" card sa email ay opsyonal lang lalabas
+        // kapag may specific requirement na pinili (may kumpletong program
+        // title at due date tayo dito) — hindi ito ipinipilit kapag general
+        // reminder lang (batch/program-level) ang ipinapadala.
+        //
+        // Status na "Overdue" (hindi "Pending Submission") ang ipinapadala
+        // dahil ang isa lang na katotohanan na alam natin dito ay na-lampasan
+        // na ang due date (na siyang tanging dahilan kung bakit pinayagan ang
+        // pag-send na ito sa itaas) — hindi natin alam kung na-submit na ba
+        // ito ng bawat isa sa maraming BCC recipient, kaya hindi tumpak na
+        // ipalagay na "Pending Submission" sila lahat.
         $mailable = new ReminderEmail(
             emailSubject: $validated['subject'],
             body: $validated['body'],
             signature: $validated['signature'] ?? '',
+            trainingProgram: $requirement?->batch?->program?->title,
+            dueDate: $requirement?->due_date?->format('F j, Y'),
+            status: $requirement ? 'Overdue' : null,
         );
 
         // BCC lahat ng recipients para hindi makita ng isa't isa ang emails ng iba

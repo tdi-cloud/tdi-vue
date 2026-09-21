@@ -101,25 +101,25 @@ const initials = (name: string) =>
         <form @submit.prevent="verify" class="flex flex-col gap-6">
             <div class="grid gap-6">
                 <div class="grid gap-2">
-                    <Label for="name">Name</Label>
+                    <Label for="name" class="text-white drop-shadow">Name</Label>
                     <Input id="name" type="text" required autofocus tabindex="1" autocomplete="name" v-model="form.name" placeholder="Full name" />
                     <InputError :message="verifyErrors.name" />
                 </div>
 
                 <div class="grid gap-2">
-                    <Label for="empcode">Employee Code</Label>
+                    <Label for="empcode" class="text-white drop-shadow">Employee Code</Label>
                     <Input id="empcode" type="text" required tabindex="2" autocomplete="off" v-model="form.empcode" placeholder="Employee code" />
                     <InputError :message="verifyErrors.empcode" />
                 </div>
 
                 <div class="grid gap-2">
-                    <Label for="email">Email address</Label>
+                    <Label for="email" class="text-white drop-shadow">Email address</Label>
                     <Input id="email" type="email" required tabindex="3" autocomplete="email" v-model="form.email" placeholder="email@example.com" />
                     <InputError :message="verifyErrors.email" />
                 </div>
 
                 <div class="grid gap-2">
-                    <Label for="password">Password</Label>
+                    <Label for="password" class="text-white drop-shadow">Password</Label>
                     <div class="relative">
                         <Input
                             id="password"
@@ -146,7 +146,7 @@ const initials = (name: string) =>
                 </div>
 
                 <div class="grid gap-2">
-                    <Label for="password_confirmation">Confirm password</Label>
+                    <Label for="password_confirmation" class="text-white drop-shadow">Confirm password</Label>
                     <div class="relative">
                         <Input
                             id="password_confirmation"
@@ -182,9 +182,9 @@ const initials = (name: string) =>
                 </Button>
             </div>
 
-            <div class="text-center text-sm text-muted-foreground">
+            <div class="text-center text-sm text-white/90 drop-shadow">
                 Already have an account?
-                <TextLink :href="route('login')" class="underline underline-offset-4" :tabindex="7">Log in</TextLink>
+                <TextLink :href="route('login')" class="text-blue-100 underline underline-offset-4 hover:text-white" :tabindex="7">Log in</TextLink>
             </div>
         </form>
 

@@ -996,6 +996,7 @@ async function confirmDeleteCert(cert) {
     color: #1a2744;
     color-scheme: light;
     background: #f7f9fd;
+    overflow-wrap: break-word;
 }
 
 .tone-green {
@@ -1020,7 +1021,10 @@ async function confirmDeleteCert(cert) {
 /* Hero */
 .ph {
     position: relative;
-    padding: 8.5rem 1.5rem 3rem;
+    /* Horizontal gutter comes from .ph__inner's own width/margin-inline below,
+       the same mechanism .dashboard uses — keeps hero content aligned with the
+       dashboard content beneath it at every viewport width. */
+    padding: 8.5rem 0 3rem;
     overflow: hidden;
     background: #0f1c48;
 }
@@ -1064,6 +1068,7 @@ async function confirmDeleteCert(cert) {
 }
 .ph__badges {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
     margin-bottom: 0.9rem;
 }
