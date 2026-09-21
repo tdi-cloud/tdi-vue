@@ -16,7 +16,7 @@ class EmployeeProgressController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Employee::with('user:id,empcode,avatar');
+        $query = Employee::with('user:id,empcode,avatar')->withCount('participants');
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -40,7 +40,10 @@ class EmployeeProgressController extends Controller
             $query->where('PLANTILLA STATUS', $request->plantilla);
         }
 
+        // Unahin sa listahan ang mga employee na may training programs bago
+        // yung mga wala pa, tapos LASTNAME pa rin ang panghuling sort.
         $employees = $query
+            ->orderByDesc('participants_count')
             ->orderBy('LASTNAME')
             ->paginate($request->get('per_page', 10))
             ->withQueryString();

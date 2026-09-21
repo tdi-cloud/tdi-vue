@@ -348,6 +348,89 @@ test('employees index scopes the office filter options to the selected region', 
         ->and($ncrOffices)->not->toContain('R4A Office');
 });
 
+test('employees index lists employees with training programs before those without', function () {
+    $admin = progressIndexTestAdmin('EMP-PIDX-ADM10');
+
+    // "Aaron" (alphabetically first) pero walang training program.
+    Employee::forceCreate([
+        'EMPCODE' => 'EMP-PIDX-10',
+        'OFFICE/DIVISION' => 'Test Division',
+        'LASTNAME' => 'Aaron',
+        'FIRSTNAME' => 'Wala',
+        'MI' => 'D',
+        'POSITION' => 'Test Position',
+        'SG' => '10',
+        'PLANTILLA STATUS' => 'Permanent',
+        'SEX' => 'M',
+        'REGION' => 'NCR',
+        'OFFICE' => 'Office A',
+        'LOCATION' => 'Main',
+        'SECTION' => 'Test Section',
+        'UNIT' => 'Test Unit',
+    ]);
+
+    // "Zorro" (alphabetically last) pero may training program.
+    $withProgram = Employee::forceCreate([
+        'EMPCODE' => 'EMP-PIDX-11',
+        'OFFICE/DIVISION' => 'Test Division',
+        'LASTNAME' => 'Zorro',
+        'FIRSTNAME' => 'May',
+        'MI' => 'D',
+        'POSITION' => 'Test Position',
+        'SG' => '10',
+        'PLANTILLA STATUS' => 'Permanent',
+        'SEX' => 'M',
+        'REGION' => 'NCR',
+        'OFFICE' => 'Office A',
+        'LOCATION' => 'Main',
+        'SECTION' => 'Test Section',
+        'UNIT' => 'Test Unit',
+    ]);
+
+    $program = Program::create([
+        'title' => 'Ordering Test Program',
+        'modality' => 'Onsite',
+        'pax' => '20',
+        'category' => 'Regional',
+        'type' => 'TECHNICAL',
+        'initiated' => 'NTTA',
+        'cost' => '0',
+        'fund' => 'Test',
+        'origin' => 'Local',
+    ]);
+
+    $batch = Batch::create([
+        'program_code' => $program->program_code,
+        'batch' => 'Batch 1',
+        'status' => 'Closed',
+        'modality' => 'Onsite',
+        'date_start' => '2026-01-01',
+        'date_end' => '2026-01-02',
+        'time_start' => '08:00',
+        'time_end' => '17:00',
+        'days' => '2',
+        'hours' => '16',
+    ]);
+
+    Participant::create([
+        'sort_order' => 1, 'batch_id' => $batch->id, 'empcode' => $withProgram->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('employees.index', [
+        'office' => 'Office A', 'per_page' => 100,
+    ]));
+    $response->assertOk();
+
+    $rows = collect($response->inertiaProps('employees')['data'])->pluck('EMPCODE')->values();
+    $withProgramIndex = $rows->search('EMP-PIDX-11');
+    $withoutProgramIndex = $rows->search('EMP-PIDX-10');
+
+    expect($withProgramIndex)->not->toBeFalse()
+        ->and($withoutProgramIndex)->not->toBeFalse()
+        ->and($withProgramIndex)->toBeLessThan($withoutProgramIndex);
+});
+
 test('employees index filters employees by the selected office', function () {
     $admin = progressIndexTestAdmin('EMP-PIDX-ADM8');
 
