@@ -33,6 +33,7 @@ use App\Http\Controllers\RequirementController;
 use App\Http\Controllers\RequirementsTrackerController;
 use App\Http\Controllers\ResourceSpeakerController;
 use App\Http\Controllers\SiteImageController;
+use App\Http\Controllers\SubmissionActivityController;
 use App\Http\Controllers\SubmissionController;
 use App\Http\Controllers\SupportingDocumentController;
 use App\Http\Controllers\TesdaOrderController;
@@ -133,6 +134,11 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
         ->name('programs.requirements.destroy');
 
     // REQUIREMENTS SUBMISSIONS
+    // Hidden na "daily monitoring" page (walang link sa navigation) — dapat
+    // nasa itaas ng /submissions/{submission} para hindi ito ma-match bilang
+    // isang route-model-bound submission.
+    Route::get('submissions/activity-log', [SubmissionActivityController::class, 'index'])
+        ->name('submissions.activity-log');
     Route::post('submissions', [SubmissionController::class, 'store'])
         ->name('submissions.store');
     Route::patch('submissions/{submission}/review', [SubmissionController::class, 'review'])

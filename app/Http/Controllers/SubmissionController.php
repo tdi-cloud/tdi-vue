@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Submission;
+use App\Models\SubmissionActivityLog;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -54,8 +55,14 @@ class SubmissionController extends Controller
 
         if ($submission) {
             $submission->update($data);
+
+            $changedFields = array_keys(collect($submission->getChanges())->except('updated_at')->all());
+            if (! empty($changedFields)) {
+                $this->logActivity($request, $submission, 'updated', ['changed_fields' => $changedFields]);
+            }
         } else {
             $submission = Submission::create($data);
+            $this->logActivity($request, $submission, 'encoded', ['file_uploaded' => $request->hasFile('file')]);
         }
 
         return back()->with('success', 'Submission saved successfully.');
@@ -78,14 +85,18 @@ class SubmissionController extends Controller
             'reviewed_by' => $request->user()->name ?? 'System',
         ]);
 
+        $this->logActivity($request, $submission, 'reviewed', ['remarks' => $validated['remarks'] ?? null]);
+
         return back()->with('success', 'Submission reviewed successfully.');
     }
 
     /**
      * Delete ng submission, kasama ang file nito sa storage.
      */
-    public function destroy(Submission $submission)
+    public function destroy(Request $request, Submission $submission)
     {
+        $this->logActivity($request, $submission, 'deleted');
+
         if ($submission->file_path) {
             Storage::disk('public')->delete($submission->file_path);
         }
@@ -102,5 +113,28 @@ class SubmissionController extends Controller
     private function sanitizeFilename(string $name): string
     {
         return preg_replace('/[^A-Za-z0-9_\-.]/', '_', basename($name));
+    }
+
+    /**
+     * I-record ang isang row sa "daily monitoring" audit trail ng submissions
+     * — ginagamit ng hidden na `/submissions/activity-log` na page.
+     *
+     * @param  array<string, mixed>|null  $meta
+     */
+    private function logActivity(Request $request, Submission $submission, string $action, ?array $meta = null): void
+    {
+        $submission->loadMissing(['participant.employee', 'requirement', 'batch']);
+
+        SubmissionActivityLog::create([
+            'submission_id' => $submission->id,
+            'participant_name' => $submission->participant?->employee?->name,
+            'requirement_name' => $submission->requirement?->name,
+            'program_code' => $submission->program_code,
+            'batch_label' => $submission->batch?->batch,
+            'action' => $action,
+            'status' => $submission->status,
+            'performed_by' => $request->user()->name ?? 'System',
+            'meta' => $meta,
+        ]);
     }
 }

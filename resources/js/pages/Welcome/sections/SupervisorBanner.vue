@@ -8,9 +8,11 @@ defineProps({
 </script>
 
 <template>
-    <section id="supervisory" class="sup-banner">
+    <section id="supervisory" class="sup-banner sup-banner--premium">
         <div class="sup-banner__card">
             <div class="sup-banner__glow" aria-hidden="true"></div>
+            <div class="sup-banner__geometry" aria-hidden="true"></div>
+            <div class="sup-banner__path" aria-hidden="true"></div>
 
             <div class="sup-banner__inner">
                 <div class="sup-banner__icon">
@@ -134,6 +136,28 @@ defineProps({
     transform: translateY(-2px);
 }
 
+/* Premium companion styling for TnaBanner. Remove `sup-banner--premium` to restore the original presentation. */
+.sup-banner--premium { padding: 0 1.5rem 3.5rem; background: #f7f9fd; }
+.sup-banner--premium .sup-banner__card {
+    max-width: 1440px;
+    padding: 1.6rem 2.25rem;
+    border: 1px solid rgba(178, 204, 255, 0.22);
+    border-radius: 22px;
+    background: linear-gradient(125deg, #06183e 0%, #0c3475 58%, #071d4a 100%);
+    box-shadow: 0 18px 40px rgba(10, 32, 79, 0.22), inset 0 1px rgba(255, 255, 255, 0.1);
+}
+.sup-banner--premium .sup-banner__glow { top: -135px; left: auto; right: 13%; width: 340px; height: 300px; background: radial-gradient(circle, rgba(245, 184, 0, 0.26), transparent 68%); }
+.sup-banner__geometry { position: absolute; top: 0; right: 0; width: 210px; height: 100%; opacity: 0.5; background: linear-gradient(135deg, transparent 28%, rgba(51, 104, 183, 0.52) 29% 48%, transparent 49%), linear-gradient(135deg, transparent 58%, rgba(245, 184, 0, 0.7) 59% 62%, transparent 63%); }
+.sup-banner__path { position: absolute; bottom: -125px; left: 8%; width: 340px; height: 220px; border: 1px solid rgba(245, 184, 0, 0.6); border-radius: 50% 50% 0 0; opacity: 0.72; transform: rotate(-12deg); }
+.sup-banner--premium .sup-banner__inner { gap: 1.15rem; }
+.sup-banner--premium .sup-banner__icon { width: 58px; height: 58px; border: 1px solid rgba(245, 184, 0, 0.65); border-radius: 16px; background: rgba(245, 184, 0, 0.12); color: #ffe18a; box-shadow: inset 0 1px rgba(255, 255, 255, 0.09); }
+.sup-banner--premium .sup-banner__eyebrow { border: 1px solid rgba(245, 184, 0, 0.6); background: rgba(245, 184, 0, 0.12); color: #ffe18a; }
+.sup-banner--premium .sup-banner__title { margin-top: 0.55rem; font-size: clamp(1.25rem, 2.2vw, 1.65rem); letter-spacing: -0.025em; }
+.sup-banner--premium .sup-banner__lead { max-width: 42rem; line-height: 1.5; color: rgba(255, 255, 255, 0.76); }
+.sup-banner--premium .sup-banner__cta { min-height: 48px; border-radius: 999px; background: #f5b800; color: #0f1c48; box-shadow: 0 8px 20px rgba(245, 184, 0, 0.25); }
+.sup-banner--premium .sup-banner__cta:hover { background: #ffca28; box-shadow: 0 11px 24px rgba(245, 184, 0, 0.38); }
+.sup-banner--premium .sup-banner__cta:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+
 @media (max-width: 820px) {
     .sup-banner__inner {
         flex-direction: column;
@@ -144,5 +168,7 @@ defineProps({
         align-self: stretch;
         justify-content: center;
     }
+    .sup-banner--premium .sup-banner__card { padding: 1.4rem 1.25rem; }
+    .sup-banner--premium .sup-banner__geometry { width: 120px; opacity: 0.34; }
 }
 </style>

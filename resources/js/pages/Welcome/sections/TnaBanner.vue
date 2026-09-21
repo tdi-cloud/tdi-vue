@@ -33,10 +33,12 @@ async function deleteAssessment() {
 </script>
 
 <template>
-    <section id="tna" class="tna-banner">
+    <section id="tna" class="tna-banner tna-banner--premium">
         <div class="tna-banner__card">
-            <!-- Decorative glow -->
+            <!-- Premium visual accents only; no application state or data is represented here. -->
             <div class="tna-banner__glow" aria-hidden="true"></div>
+            <div class="tna-banner__geometry" aria-hidden="true"></div>
+            <div class="tna-banner__path" aria-hidden="true"></div>
 
             <div class="tna-banner__grid">
                 <!-- LEFT: message -->
@@ -44,17 +46,20 @@ async function deleteAssessment() {
                     <span class="tna-banner__period"> <CalendarRange :size="14" /> TNA Cycle {{ data.period }} </span>
 
                     <h2 class="tna-banner__title">
-                        Training Needs Analysis
+                        <span>Training Needs</span> <em>Analysis</em>
                         <button type="button" class="tna-banner__info-btn" aria-label="What's new about this TNA" @click="showInfoModal = true">
                             <Info :size="15" />
                         </button>
                     </h2>
 
                     <p class="tna-banner__lead">
-                        Conducted every <b>3 years</b>, the TNA determines your Professional Development Plan. The assessment is now open for the
-                        position of <span class="tna-banner__pos">{{ data.position }}</span
-                        >.
+                        Identify your development needs and help shape your Professional Development Plan. This assessment is conducted every <b>3 years</b>.
                     </p>
+
+                    <div class="tna-banner__position">
+                        <span class="tna-banner__position-icon"><UserCheck :size="19" /></span>
+                        <span><small>Your Position</small><strong>{{ data.position }}</strong></span>
+                    </div>
 
                     <!-- Not yet submitted -->
                     <template v-if="!data.submitted">
@@ -101,9 +106,11 @@ async function deleteAssessment() {
                     </template>
                 </div>
 
-                <!-- RIGHT: steps -->
-                <ol class="tna-banner__steps">
-                    <li v-for="(s, i) in steps" :key="i" class="tna-step" :class="{ 'tna-step--done': data.submitted && i < 2 }">
+                <!-- RIGHT: existing workflow steps, presented as a visual timeline. -->
+                <div class="tna-banner__journey">
+                    <div class="tna-banner__journey-head"><h3>Your TNA Journey</h3><span>3 steps</span></div>
+                    <ol class="tna-banner__steps">
+                    <li v-for="(s, i) in steps" :key="i" class="tna-step" :class="{ 'tna-step--done': data.submitted && i < 2, 'tna-step--reviewed': data.reviewed && i === 2 }">
                         <span class="tna-step__num">{{ i + 1 }}</span>
                         <span class="tna-step__icon"><component :is="s.icon" :size="18" /></span>
                         <span class="tna-step__body">
@@ -111,7 +118,8 @@ async function deleteAssessment() {
                             <span class="tna-step__desc">{{ s.desc }}</span>
                         </span>
                     </li>
-                </ol>
+                    </ol>
+                </div>
             </div>
         </div>
 
@@ -519,4 +527,50 @@ async function deleteAssessment() {
     background: #ffca28;
     transform: translateY(-1px);
 }
+
+/* Premium institutional redesign. Remove `tna-banner--premium` from the section to restore the original presentation. */
+.tna-banner--premium { padding: 3.5rem 1.5rem; background: #f7f9fd; }
+.tna-banner--premium .tna-banner__card {
+    max-width: 1440px;
+    padding: 2.75rem 3rem;
+    border: 1px solid rgba(178, 204, 255, 0.22);
+    border-radius: 25px;
+    background: linear-gradient(125deg, #06183e 0%, #0c3475 56%, #071d4a 100%);
+    box-shadow: 0 22px 45px rgba(10, 32, 79, 0.25), inset 0 1px rgba(255, 255, 255, 0.1);
+}
+.tna-banner--premium .tna-banner__glow { top: -130px; right: 23%; width: 430px; height: 380px; background: radial-gradient(circle, rgba(245, 184, 0, 0.22), transparent 68%); }
+.tna-banner__geometry { position: absolute; inset: 0 auto auto 0; width: 220px; height: 220px; opacity: 0.55; background: linear-gradient(135deg, rgba(245, 184, 0, 0.85), transparent 33%), linear-gradient(135deg, transparent 44%, rgba(45, 101, 180, 0.4) 45% 57%, transparent 58%); clip-path: polygon(0 0, 100% 0, 0 100%); }
+.tna-banner__path { position: absolute; right: -12%; bottom: -80%; width: 72%; height: 130%; border: 2px solid rgba(245, 184, 0, 0.86); border-radius: 50% 0 0 0; opacity: 0.8; transform: rotate(-21deg); }
+.tna-banner--premium .tna-banner__grid { grid-template-columns: minmax(0, 1.15fr) minmax(390px, 0.9fr); gap: 3rem; align-items: stretch; }
+.tna-banner--premium .tna-banner__intro { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; }
+.tna-banner--premium .tna-banner__period { padding: 0.4rem 0.8rem; background: rgba(245, 184, 0, 0.12); border-color: #f5b800; color: #ffe18a; }
+.tna-banner--premium .tna-banner__title { flex-wrap: wrap; margin-top: 1rem; font-size: clamp(2rem, 3.3vw, 3rem); line-height: 1.03; letter-spacing: -0.045em; }
+.tna-banner--premium .tna-banner__title em { color: #f8c646; font-style: normal; }
+.tna-banner--premium .tna-banner__info-btn { width: 30px; height: 30px; border-color: #f5b800; color: #f8c646; }
+.tna-banner--premium .tna-banner__info-btn:focus-visible, .tna-banner--premium .tna-banner__cta:focus-visible, .tna-banner--premium .tna-banner__link:focus-visible, .tna-banner--premium .tna-banner__danger:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+.tna-banner--premium .tna-banner__lead { max-width: 31rem; margin-top: 0.8rem; font-size: 1rem; line-height: 1.55; }
+.tna-banner__position { display: flex; align-items: center; gap: 0.75rem; width: min(100%, 32rem); margin-top: 1.25rem; padding: 0.75rem 0.9rem; border: 1px solid rgba(172, 206, 255, 0.2); border-radius: 14px; background: rgba(6, 34, 83, 0.55); box-shadow: inset 0 1px rgba(255, 255, 255, 0.06); }
+.tna-banner__position-icon { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 50%; background: rgba(9, 53, 118, 0.95); color: #fff; }
+.tna-banner__position small, .tna-banner__position strong { display: block; }
+.tna-banner__position small { color: #f8c646; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+.tna-banner__position strong { margin-top: 0.12rem; color: #fff; font-size: 0.93rem; }
+.tna-banner--premium .tna-banner__cta { min-height: 53px; margin-top: 1rem; padding: 0.8rem 1.55rem; border-radius: 999px; font-size: 0.95rem; }
+.tna-banner--premium .tna-banner__done { margin-top: 1rem; background: rgba(16, 143, 105, 0.35); border-color: rgba(86, 226, 171, 0.55); color: #dcffee; }
+.tna-banner--premium .tna-banner__note { max-width: 29rem; line-height: 1.4; }
+.tna-banner--premium .tna-banner__journey { padding: 1.2rem 1.35rem; border: 1px solid rgba(178, 211, 255, 0.6); border-radius: 19px; background: linear-gradient(135deg, rgba(11, 50, 111, 0.72), rgba(3, 24, 66, 0.68)); box-shadow: inset 0 1px rgba(255, 255, 255, 0.12); backdrop-filter: blur(8px); }
+.tna-banner__journey-head { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 0.85rem; border-bottom: 1px solid rgba(191, 214, 255, 0.23); }
+.tna-banner__journey-head h3 { margin: 0; color: #fff; font-size: 1.18rem; font-weight: 800; }
+.tna-banner__journey-head span { color: #c9ddff; font-size: 0.78rem; }
+.tna-banner--premium .tna-banner__steps { gap: 0; margin-top: 0.25rem; }
+.tna-banner--premium .tna-step { grid-template-columns: 29px 42px 1fr; gap: 0.75rem; min-height: 77px; padding: 0.7rem 0; border: 0; border-radius: 0; background: transparent; }
+.tna-banner--premium .tna-step:not(:last-child)::after { position: absolute; top: 48px; bottom: -4px; left: 14px; width: 1px; background: rgba(182, 211, 255, 0.48); content: ''; }
+.tna-banner--premium .tna-step__num { z-index: 1; width: 29px; height: 29px; background: linear-gradient(135deg, #ffe47d, #e8a819); color: #102355; font-size: 0.85rem; box-shadow: 0 0 0 5px rgba(15, 55, 121, 0.8); }
+.tna-banner--premium .tna-step__icon { width: 42px; height: 42px; border: 1px solid rgba(181, 211, 255, 0.35); border-radius: 50%; background: rgba(8, 45, 105, 0.75); }
+.tna-banner--premium .tna-step__title { font-size: 0.9rem; }.tna-banner--premium .tna-step__desc { margin-top: 0.12rem; font-size: 0.74rem; }
+.tna-banner--premium .tna-step--done, .tna-banner--premium .tna-step--reviewed { background: transparent; }
+.tna-banner--premium .tna-step--done .tna-step__num, .tna-banner--premium .tna-step--reviewed .tna-step__num { background: #69d7a0; color: #073c38; }
+.tna-banner--premium .tna-step--done .tna-step__icon, .tna-banner--premium .tna-step--reviewed .tna-step__icon { border-color: rgba(105, 215, 160, 0.75); color: #9ef1c1; }
+
+@media (max-width: 1023px) { .tna-banner--premium .tna-banner__card { padding: 2rem; }.tna-banner--premium .tna-banner__grid { grid-template-columns: 1fr; gap: 1.75rem; }.tna-banner--premium .tna-banner__journey { max-width: 640px; } }
+@media (max-width: 520px) { .tna-banner--premium { padding: 2.25rem 1rem; }.tna-banner--premium .tna-banner__card { padding: 1.5rem 1.15rem; border-radius: 18px; }.tna-banner--premium .tna-banner__title { font-size: 2rem; }.tna-banner--premium .tna-banner__cta { width: 100%; justify-content: center; }.tna-banner__geometry { width: 130px; height: 130px; }.tna-banner--premium .tna-banner__journey { padding: 1rem; }.tna-banner--premium .tna-step { grid-template-columns: 26px 36px 1fr; gap: 0.55rem; }.tna-banner--premium .tna-step__icon { width: 36px; height: 36px; }.tna-banner--premium .tna-step:not(:last-child)::after { left: 13px; }.tna-banner--premium .tna-step__desc { font-size: 0.69rem; } }
 </style>
