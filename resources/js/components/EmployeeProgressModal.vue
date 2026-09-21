@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import FilePreviewModal from '@/components/FilePreviewModal.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import axios from 'axios';
 import {
@@ -97,6 +98,16 @@ const emit = defineEmits<{
 
 const loading = ref(false);
 const progress = ref<EmployeeProgress | null>(null);
+
+/* ---------- Submission file preview ---------- */
+const showFilePreview = ref(false);
+const previewFile = ref<{ url: string; title?: string; description?: string } | null>(null);
+
+const openFilePreview = (filePath: string, title?: string, description?: string) => {
+    previewFile.value = { url: `/storage/${filePath}`, title, description };
+    showFilePreview.value = true;
+};
+
 const activeReqs = ref<EnrolledProgram | null>(null);
 const programSearch = ref('');
 const programYear = ref('all');
@@ -533,16 +544,15 @@ const submissionStatusColor = (status?: string) => {
                                                                 {{ req.submission?.status ?? 'Not Submitted' }}
                                                             </span>
 
-                                                            <a
+                                                            <button
                                                                 v-if="req.submission?.file_path"
-                                                                :href="`/storage/${req.submission.file_path}`"
-                                                                target="_blank"
+                                                                type="button"
                                                                 class="text-blue-600 hover:text-blue-700"
                                                                 title="View File"
-                                                                @click.stop
+                                                                @click.stop="openFilePreview(req.submission.file_path, req.title)"
                                                             >
                                                                 <ExternalLink class="h-3.5 w-3.5" />
-                                                            </a>
+                                                            </button>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -596,4 +606,12 @@ const submissionStatusColor = (status?: string) => {
             </div>
         </div>
     </Teleport>
+
+    <FilePreviewModal
+        :open="showFilePreview"
+        :file-url="previewFile?.url ?? null"
+        :title="previewFile?.title"
+        :description="previewFile?.description"
+        @update:open="showFilePreview = $event"
+    />
 </template>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import FilePreviewModal from '@/components/FilePreviewModal.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -182,6 +183,15 @@ const submissionsTarget = computed(() => {
     if (!submissionsTargetId.value) return null;
     return participants.value.find((p: any) => p.id === submissionsTargetId.value) ?? null;
 });
+
+/* ---------- Submission file preview ---------- */
+const showFilePreview = ref(false);
+const previewFile = ref<{ url: string; title?: string; description?: string } | null>(null);
+
+const openFilePreview = (filePath: string, title?: string, description?: string) => {
+    previewFile.value = { url: `/storage/${filePath}`, title, description };
+    showFilePreview.value = true;
+};
 
 const mergedSubmissions = computed(() => {
     if (!submissionsTarget.value) return [];
@@ -1238,14 +1248,14 @@ const submissionSummary = computed(() => {
                                             <p v-if="row.submission?.remarks" class="mt-0.5 text-[11px] italic text-slate-500">
                                                 "{{ row.submission.remarks }}"
                                             </p>
-                                            <a
+                                            <button
                                                 v-if="row.submission?.file_path"
-                                                :href="`/storage/${row.submission.file_path}`"
-                                                target="_blank"
+                                                type="button"
                                                 class="mt-0.5 inline-flex items-center gap-0.5 text-[11px] font-semibold text-blue-600 hover:underline"
+                                                @click="openFilePreview(row.submission.file_path, row.requirement.name, row.requirement.title)"
                                             >
                                                 <FileText class="h-3 w-3" /> View file
-                                            </a>
+                                            </button>
                                         </div>
                                     </div>
 
@@ -1356,4 +1366,12 @@ const submissionSummary = computed(() => {
             </Dialog>
         </DialogContent>
     </Dialog>
+
+    <FilePreviewModal
+        :open="showFilePreview"
+        :file-url="previewFile?.url ?? null"
+        :title="previewFile?.title"
+        :description="previewFile?.description"
+        @update:open="showFilePreview = $event"
+    />
 </template>

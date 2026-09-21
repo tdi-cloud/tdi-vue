@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import FilePreviewModal from '@/components/FilePreviewModal.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -7,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useConfirm } from '@/composables/useConfirm';
 import { router } from '@inertiajs/vue3';
-import { Building2, CalendarDays, ExternalLink, Hash, LoaderCircle, Pencil, Plus, Save, ScrollText, Trash2 } from 'lucide-vue-next';
+import { Building2, CalendarDays, Eye, Hash, LoaderCircle, Pencil, Plus, Save, ScrollText, Trash2 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 const { confirmDialog } = useConfirm();
@@ -41,6 +42,37 @@ const documents = computed(() => props.program.supporting_documents ?? []);
 const showModal = ref(false);
 const editingDoc = ref<SupportingDocument | null>(null);
 const processing = ref(false);
+
+/* ---------- Preview modal state ---------- */
+const showPreview = ref(false);
+const previewDoc = ref<SupportingDocument | null>(null);
+
+const openPreview = (doc: SupportingDocument) => {
+    previewDoc.value = doc;
+    showPreview.value = true;
+};
+
+// Convert a Google Drive/Docs share link (or a direct file URL) into an
+// embeddable "/preview" URL so it can be shown inline sa isang iframe,
+// katulad ng inline preview ng Google Drive, sa halip na mag-open ng bagong tab.
+const embedUrl = (link: string): string => {
+    try {
+        const url = new URL(link);
+
+        if (url.hostname.includes('drive.google.com')) {
+            const fileId = link.match(/\/file\/d\/([^/]+)/)?.[1] ?? url.searchParams.get('id');
+            if (fileId) return `https://drive.google.com/file/d/${fileId}/preview`;
+        }
+
+        if (url.hostname.includes('docs.google.com')) {
+            return link.replace(/\/(edit|view)(\?.*)?$/, '/preview');
+        }
+    } catch {
+        // Hindi valid na URL — ituring na direct file link.
+    }
+
+    return link;
+};
 
 const form = ref({
     document_type: '',
@@ -227,15 +259,14 @@ const docTypeColor = (type: string) => {
                     </p>
                 </div>
 
-                <a
+                <button
                     v-if="doc.link"
-                    :href="doc.link"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    type="button"
                     class="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:underline"
+                    @click="openPreview(doc)"
                 >
-                    <ExternalLink class="h-3.5 w-3.5" /> View document
-                </a>
+                    <Eye class="h-3.5 w-3.5" /> View document
+                </button>
 
                 <div class="mt-2 flex justify-end gap-1 border-t pt-2">
                     <Button variant="ghost" size="sm" class="h-7 px-2 text-xs" @click="openEdit(doc)"> <Pencil class="h-3 w-3" /> Edit </Button>
@@ -343,5 +374,14 @@ const docTypeColor = (type: string) => {
                 </div>
             </DialogContent>
         </Dialog>
+
+        <!-- Document Preview Modal -->
+        <FilePreviewModal
+            :open="showPreview"
+            :file-url="previewDoc?.link ? embedUrl(previewDoc.link) : null"
+            :title="previewDoc?.subject"
+            :description="previewDoc?.document_number"
+            @update:open="showPreview = $event"
+        />
     </div>
 </template>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import FilePreviewModal from '@/components/FilePreviewModal.vue';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -189,6 +190,16 @@ const statusClass = (status: string) => {
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 const fileUrl = (s: Submission) => (s.file_path ? `/storage/${s.file_path}` : null);
+
+/* ===================== FILE PREVIEW ===================== */
+
+const showFilePreview = ref(false);
+const previewSubmission = ref<Submission | null>(null);
+
+const openFilePreview = (s: Submission) => {
+    previewSubmission.value = s;
+    showFilePreview.value = true;
+};
 
 /* ===================== REVIEW DIALOG ===================== */
 
@@ -433,9 +444,9 @@ const submitReview = () => {
                     <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold" :class="statusClass(s.status)">
                         {{ capitalize(s.status) }}
                     </span>
-                    <a v-if="fileUrl(s)" :href="fileUrl(s)!" target="_blank" rel="noopener noreferrer">
-                        <Button variant="outline" size="sm" class="h-7 text-xs"> <Eye class="mr-1 h-3.5 w-3.5" /> View PDF </Button>
-                    </a>
+                    <Button v-if="fileUrl(s)" variant="outline" size="sm" class="h-7 text-xs" @click="openFilePreview(s)">
+                        <Eye class="mr-1 h-3.5 w-3.5" /> View PDF
+                    </Button>
                     <Button variant="outline" size="sm" class="h-7 text-xs" @click="openReview(s)">
                         <Pencil class="mr-1 h-3.5 w-3.5" /> Review
                     </Button>
@@ -482,6 +493,15 @@ const submitReview = () => {
                 </div>
             </DialogContent>
         </Dialog>
+
+        <!-- ── File preview modal ── -->
+        <FilePreviewModal
+            :open="showFilePreview"
+            :file-url="previewSubmission ? fileUrl(previewSubmission) : null"
+            :title="previewSubmission ? participantName(previewSubmission) : undefined"
+            :description="previewSubmission?.requirement?.title"
+            @update:open="showFilePreview = $event"
+        />
 
         <!-- ── Missing submissions modal ── -->
         <MissingSubmissionsModal
