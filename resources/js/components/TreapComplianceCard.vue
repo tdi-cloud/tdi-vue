@@ -267,7 +267,7 @@ const modalTitle = computed(() => {
             </div>
             <div>
                 <h2 class="text-sm font-extrabold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">Terminal Report (TREAP)</h2>
-                <p class="text-xs text-muted-foreground">Overdue TREAP submission compliance · click any chart segment to see the list</p>
+                <p class="text-xs text-muted-foreground">TREAP submission compliance · click any chart segment to see the list</p>
             </div>
         </div>
 
@@ -412,7 +412,7 @@ const modalTitle = computed(() => {
                         <tbody class="divide-y">
                             <tr
                                 v-for="(emp, i) in filteredModalEmployees"
-                                :key="emp.empcode"
+                                :key="emp.empcode + i"
                                 class="cursor-pointer transition-colors hover:bg-muted/30"
                                 @click="selectedEmpcode = emp.empcode"
                             >

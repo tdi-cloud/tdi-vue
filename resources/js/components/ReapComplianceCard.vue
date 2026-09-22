@@ -257,7 +257,7 @@ const modalTitle = computed(() => {
                 <h2 class="text-sm font-extrabold uppercase tracking-wide text-indigo-700 dark:text-indigo-400">
                     Terminal Report &amp; Re-entry Action Plan (REAP)
                 </h2>
-                <p class="text-xs text-muted-foreground">Overdue REAP submission compliance · click any chart segment to see the list</p>
+                <p class="text-xs text-muted-foreground">REAP submission compliance · click any chart segment to see the list</p>
             </div>
         </div>
 
@@ -372,7 +372,7 @@ const modalTitle = computed(() => {
                         <tbody class="divide-y">
                             <tr
                                 v-for="(emp, i) in modalEmployees"
-                                :key="emp.empcode"
+                                :key="emp.empcode + i"
                                 class="cursor-pointer transition-colors hover:bg-muted/30"
                                 @click="selectedEmpcode = emp.empcode"
                             >

@@ -257,7 +257,7 @@ const modalTitle = computed(() => {
                 <h2 class="text-sm font-extrabold uppercase tracking-wide text-violet-700 dark:text-violet-400">
                     Training Development Outcome Report (TDOR)
                 </h2>
-                <p class="text-xs text-muted-foreground">Overdue TDOR submission compliance · click any chart segment to see the list</p>
+                <p class="text-xs text-muted-foreground">TDOR submission compliance · click any chart segment to see the list</p>
             </div>
         </div>
 
@@ -372,7 +372,7 @@ const modalTitle = computed(() => {
                         <tbody class="divide-y">
                             <tr
                                 v-for="(emp, i) in modalEmployees"
-                                :key="emp.empcode"
+                                :key="emp.empcode + i"
                                 class="cursor-pointer transition-colors hover:bg-muted/30"
                                 @click="selectedEmpcode = emp.empcode"
                             >

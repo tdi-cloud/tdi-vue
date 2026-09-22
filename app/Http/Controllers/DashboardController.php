@@ -576,18 +576,26 @@ class DashboardController extends Controller
      *
      * @return array{0: array<int>, 1: array<int>} [regionsSubmitted, regionsNotSubmitted]
      */
-    private function regionSubmissionBreakdown($baseParticipants, \Closure $submittedCond, array $allRegions, $filteredRegion): array
+    /**
+     * $perObligation: false (default, REAP/TDOR) — isang tao, isang bilang
+     * kahit ilang batch pa ang required sa kanya. true (TREAP) — bawat
+     * (empleyado × batch) na TREAP obligation ay hiwalay na binibilang, kaya
+     * kung marami ang required TREAP ng isang tao, lahat ng iyon ay kasama.
+     */
+    private function regionSubmissionBreakdown($baseParticipants, \Closure $submittedCond, array $allRegions, $filteredRegion, bool $perObligation = false): array
     {
+        $countExpr = $perObligation ? 'COUNT(*) as total' : 'COUNT(DISTINCT participants.empcode) as total';
+
         $totalByRegion = (clone $baseParticipants)
             ->select('employees.REGION as region')
-            ->selectRaw('COUNT(DISTINCT participants.empcode) as total')
+            ->selectRaw($countExpr)
             ->groupBy('employees.REGION')
             ->pluck('total', 'region');
 
         $submittedByRegion = (clone $baseParticipants)
             ->whereExists($submittedCond)
             ->select('employees.REGION as region')
-            ->selectRaw('COUNT(DISTINCT participants.empcode) as total')
+            ->selectRaw($countExpr)
             ->groupBy('employees.REGION')
             ->pluck('total', 'region');
 
@@ -614,16 +622,25 @@ class DashboardController extends Controller
     // ── Shared submitted condition builder ────────────────────────────────────
     // Ginagamit ang empcode matching (hindi participant_id) para ma-catch
     // ang mga submission kahit sa ibang batch ng parehong program nag-submit.
+    // TRIM/UPPER ang paghahambing (hindi plain whereColumn) para hindi
+    // mahuli ng stray whitespace o pagkakaiba ng letter case sa pagitan ng
+    // dalawang encoded na empcode ang isang totoong submission.
+    //
+    // $scopeToBatch: false (default, REAP/TDOR) — "submitted na ba SAAN MAN"
+    // ang tanong, isang beses lang binibilang ang tao. true (TREAP) —
+    // "submitted na ba ANG OBLIGASYONG ITO (batch na ito)" ang tanong, dahil
+    // bawat batch na may TREAP requirement ay hiwalay na binibilang.
 
-    private function submittedCondition(string $title): \Closure
+    private function submittedCondition(string $title, bool $scopeToBatch = false): \Closure
     {
-        return function ($q) use ($title) {
+        return function ($q) use ($title, $scopeToBatch) {
             $q->select(DB::raw(1))
                 ->from('submissions')
                 ->join('requirements as req_sub', 'submissions.requirement_id', '=', 'req_sub.id')
                 ->join('participants as p2', 'submissions.participant_id', '=', 'p2.id')
-                ->whereColumn('p2.empcode', 'participants.empcode')
-                ->where('req_sub.title', $title);
+                ->whereRaw('UPPER(TRIM(p2.empcode)) = UPPER(TRIM(participants.empcode))')
+                ->where('req_sub.title', $title)
+                ->when($scopeToBatch, fn ($sub) => $sub->whereColumn('p2.batch_id', 'participants.batch_id'));
         };
     }
 
@@ -643,15 +660,19 @@ class DashboardController extends Controller
             'CAR', 'CARAGA',
         ];
 
-        $today = now()->toDateString();
-        $submittedCond = $this->submittedCondition('TREAP');
+        // scopeToBatch=true: bawat (empleyado × batch) na TREAP obligation ay
+        // hiwalay na sinusuri — hindi "submitted na ba siya saan man", kundi
+        // "na-submit na ba ANG OBLIGASYONG ITO".
+        $submittedCond = $this->submittedCondition('TREAP', true);
 
+        // Lahat ng TREAP requirement ang bilangin — hindi lang ang mga overdue
+        // na — ang region/office/year/plantilla status na lang sa filter
+        // section ang dapat sumasala kung sino ang kasama sa count.
         $baseParticipants = DB::table('participants')
             ->join('batches', 'participants.batch_id', '=', 'batches.id')
             ->join('requirements', 'requirements.batch_id', '=', 'batches.id')
             ->join('employees', 'participants.empcode', '=', 'employees.EMPCODE')
             ->where('requirements.title', 'TREAP')
-            ->where('requirements.due_date', '<=', $today)
             ->where('participants.attendance', '!=', 'Absent');
 
         $baseParticipants = $this->applyEmployeeFilters(
@@ -659,15 +680,18 @@ class DashboardController extends Controller
         );
         $baseParticipants = $this->applyYearFilter($baseParticipants, $year);
 
-        $totalEmployees = (clone $baseParticipants)->distinct()->count('participants.empcode');
-        $submittedEmployees = (clone $baseParticipants)->whereExists($submittedCond)->distinct()->count('participants.empcode');
+        // Bawat TREAP obligation ang binibilang dito — hindi per-employee —
+        // kaya kung tatlo ang required na batch ng isang tao, tatlo rin ang
+        // dagdag sa total (at hiwalay masusuri kung alin dito ang submitted).
+        $totalEmployees = (clone $baseParticipants)->count();
+        $submittedEmployees = (clone $baseParticipants)->whereExists($submittedCond)->count();
 
         $notSubmitted = $totalEmployees - $submittedEmployees;
         $submittedPct = $totalEmployees > 0 ? round(($submittedEmployees / $totalEmployees) * 100, 1) : 0;
         $notSubmittedPct = $totalEmployees > 0 ? round(($notSubmitted / $totalEmployees) * 100, 1) : 0;
 
         [$regionsSubmitted, $regionsNotSubmitted] = $this->regionSubmissionBreakdown(
-            $baseParticipants, $submittedCond, $allRegions, $region
+            $baseParticipants, $submittedCond, $allRegions, $region, true
         );
 
         return response()->json([
@@ -693,15 +717,13 @@ class DashboardController extends Controller
         $reg = $request->reg;
         $type = $request->type;
 
-        $today = now()->toDateString();
-        $submittedCond = $this->submittedCondition('TREAP');
+        $submittedCond = $this->submittedCondition('TREAP', true);
 
         $query = DB::table('participants')
             ->join('batches', 'participants.batch_id', '=', 'batches.id')
             ->join('requirements', 'requirements.batch_id', '=', 'batches.id')
             ->join('employees', 'participants.empcode', '=', 'employees.EMPCODE')
             ->where('requirements.title', 'TREAP')
-            ->where('requirements.due_date', '<=', $today)
             ->where('participants.attendance', '!=', 'Absent');
 
         $query = $this->applyEmployeeFilters(
@@ -780,15 +802,18 @@ class DashboardController extends Controller
             'CAR', 'CARAGA',
         ];
 
-        $today = now()->toDateString();
-        $submittedCond = $this->submittedCondition('REAP');
+        // scopeToBatch=true: bawat (empleyado × batch) na REAP obligation ay
+        // hiwalay na sinusuri, hindi "submitted na ba siya saan man".
+        $submittedCond = $this->submittedCondition('REAP', true);
 
+        // Lahat ng REAP requirement ang bilangin — hindi lang ang mga overdue
+        // na — ang region/office/year/plantilla status na lang sa filter
+        // section ang dapat sumasala kung sino ang kasama sa count.
         $baseParticipants = DB::table('participants')
             ->join('batches', 'participants.batch_id', '=', 'batches.id')
             ->join('requirements', 'requirements.batch_id', '=', 'batches.id')
             ->join('employees', 'participants.empcode', '=', 'employees.EMPCODE')
             ->where('requirements.title', 'REAP')
-            ->where('requirements.due_date', '<=', $today)
             ->where('participants.attendance', '!=', 'Absent');
 
         $baseParticipants = $this->applyEmployeeFilters(
@@ -796,15 +821,16 @@ class DashboardController extends Controller
         );
         $baseParticipants = $this->applyYearFilter($baseParticipants, $year);
 
-        $totalEmployees = (clone $baseParticipants)->distinct()->count('participants.empcode');
-        $submittedEmployees = (clone $baseParticipants)->whereExists($submittedCond)->distinct()->count('participants.empcode');
+        // Bawat REAP obligation ang binibilang dito — hindi per-employee.
+        $totalEmployees = (clone $baseParticipants)->count();
+        $submittedEmployees = (clone $baseParticipants)->whereExists($submittedCond)->count();
 
         $notSubmitted = $totalEmployees - $submittedEmployees;
         $submittedPct = $totalEmployees > 0 ? round(($submittedEmployees / $totalEmployees) * 100, 1) : 0;
         $notSubmittedPct = $totalEmployees > 0 ? round(($notSubmitted / $totalEmployees) * 100, 1) : 0;
 
         [$regionsSubmitted, $regionsNotSubmitted] = $this->regionSubmissionBreakdown(
-            $baseParticipants, $submittedCond, $allRegions, $region
+            $baseParticipants, $submittedCond, $allRegions, $region, true
         );
 
         return response()->json([
@@ -830,15 +856,13 @@ class DashboardController extends Controller
         $reg = $request->reg;
         $type = $request->type;
 
-        $today = now()->toDateString();
-        $submittedCond = $this->submittedCondition('REAP');
+        $submittedCond = $this->submittedCondition('REAP', true);
 
         $query = DB::table('participants')
             ->join('batches', 'participants.batch_id', '=', 'batches.id')
             ->join('requirements', 'requirements.batch_id', '=', 'batches.id')
             ->join('employees', 'participants.empcode', '=', 'employees.EMPCODE')
             ->where('requirements.title', 'REAP')
-            ->where('requirements.due_date', '<=', $today)
             ->where('participants.attendance', '!=', 'Absent');
 
         $query = $this->applyEmployeeFilters(
@@ -917,15 +941,18 @@ class DashboardController extends Controller
             'CAR', 'CARAGA',
         ];
 
-        $today = now()->toDateString();
-        $submittedCond = $this->submittedCondition('TDOR');
+        // scopeToBatch=true: bawat (empleyado × batch) na TDOR obligation ay
+        // hiwalay na sinusuri, hindi "submitted na ba siya saan man".
+        $submittedCond = $this->submittedCondition('TDOR', true);
 
+        // Lahat ng TDOR requirement ang bilangin — hindi lang ang mga overdue
+        // na — ang region/office/year/plantilla status na lang sa filter
+        // section ang dapat sumasala kung sino ang kasama sa count.
         $baseParticipants = DB::table('participants')
             ->join('batches', 'participants.batch_id', '=', 'batches.id')
             ->join('requirements', 'requirements.batch_id', '=', 'batches.id')
             ->join('employees', 'participants.empcode', '=', 'employees.EMPCODE')
             ->where('requirements.title', 'TDOR')
-            ->where('requirements.due_date', '<=', $today)
             ->where('participants.attendance', '!=', 'Absent');
 
         $baseParticipants = $this->applyEmployeeFilters(
@@ -933,15 +960,16 @@ class DashboardController extends Controller
         );
         $baseParticipants = $this->applyYearFilter($baseParticipants, $year);
 
-        $totalEmployees = (clone $baseParticipants)->distinct()->count('participants.empcode');
-        $submittedEmployees = (clone $baseParticipants)->whereExists($submittedCond)->distinct()->count('participants.empcode');
+        // Bawat TDOR obligation ang binibilang dito — hindi per-employee.
+        $totalEmployees = (clone $baseParticipants)->count();
+        $submittedEmployees = (clone $baseParticipants)->whereExists($submittedCond)->count();
 
         $notSubmitted = $totalEmployees - $submittedEmployees;
         $submittedPct = $totalEmployees > 0 ? round(($submittedEmployees / $totalEmployees) * 100, 1) : 0;
         $notSubmittedPct = $totalEmployees > 0 ? round(($notSubmitted / $totalEmployees) * 100, 1) : 0;
 
         [$regionsSubmitted, $regionsNotSubmitted] = $this->regionSubmissionBreakdown(
-            $baseParticipants, $submittedCond, $allRegions, $region
+            $baseParticipants, $submittedCond, $allRegions, $region, true
         );
 
         return response()->json([
@@ -967,15 +995,13 @@ class DashboardController extends Controller
         $reg = $request->reg;
         $type = $request->type;
 
-        $today = now()->toDateString();
-        $submittedCond = $this->submittedCondition('TDOR');
+        $submittedCond = $this->submittedCondition('TDOR', true);
 
         $query = DB::table('participants')
             ->join('batches', 'participants.batch_id', '=', 'batches.id')
             ->join('requirements', 'requirements.batch_id', '=', 'batches.id')
             ->join('employees', 'participants.empcode', '=', 'employees.EMPCODE')
             ->where('requirements.title', 'TDOR')
-            ->where('requirements.due_date', '<=', $today)
             ->where('participants.attendance', '!=', 'Absent');
 
         $query = $this->applyEmployeeFilters(

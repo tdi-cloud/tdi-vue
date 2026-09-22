@@ -306,6 +306,96 @@ test('tdor compliance endpoint scopes the total/submitted counts to the selected
     expect($allResponse->json('submitted'))->toBe(1);
 });
 
+test('tdor compliance still counts a submission when the participant empcode differs only in case or whitespace', function () {
+    $admin = tdorTestAdmin('EMP-TDOR-ADM-WS');
+    [$program, $batch, $requirement] = tdorTestSetup();
+
+    $employee = tdorTestEmployee('EMP-TDOR-WS-01', 'Santos');
+    Participant::create([
+        'sort_order' => 1, 'batch_id' => $batch->id, 'empcode' => $employee->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+    ]);
+
+    // Submission's own participant row was encoded with a messier empcode —
+    // lowercase and a stray trailing space — for the same real employee.
+    $messyParticipant = Participant::create([
+        'sort_order' => 2, 'batch_id' => $batch->id, 'empcode' => ' '.strtolower($employee->EMPCODE).' ',
+        'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+    ]);
+    Submission::create([
+        'participant_id' => $messyParticipant->id,
+        'program_code' => $program->program_code,
+        'batch_id' => $batch->id,
+        'requirement_id' => $requirement->id,
+        'status' => 'Pending',
+        'submitted_at' => now(),
+    ]);
+
+    $response = $this->actingAs($admin)->getJson(route('dashboard.tdor-compliance', [
+        'region' => 'ALL', 'year' => 'ALL', 'office' => 'ALL', 'office_filter' => 'ALL',
+    ]));
+
+    $response->assertOk();
+    expect($response->json('total'))->toBe(1);
+    expect($response->json('submitted'))->toBe(1);
+    expect($response->json('not_submitted'))->toBe(0);
+});
+
+test('tdor compliance counts employees whose TDOR is not yet due (not overdue-only anymore)', function () {
+    $admin = tdorTestAdmin('EMP-TDOR-ADM-ND');
+    [$program, $batch, $requirement] = tdorTestSetup();
+    $requirement->update(['due_date' => now()->addMonth()->toDateString()]);
+
+    $notYetDueEmployee = tdorTestEmployee('EMP-TDOR-ND-01', 'Reyes');
+    Participant::create([
+        'sort_order' => 1, 'batch_id' => $batch->id, 'empcode' => $notYetDueEmployee->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+    ]);
+
+    $response = $this->actingAs($admin)->getJson(route('dashboard.tdor-compliance', [
+        'region' => 'ALL', 'year' => 'ALL', 'office' => 'ALL', 'office_filter' => 'ALL',
+    ]));
+
+    $response->assertOk();
+    expect($response->json('total'))->toBe(1);
+    expect($response->json('not_submitted'))->toBe(1);
+});
+
+test('tdor compliance counts each batch obligation separately, not once per employee', function () {
+    $admin = tdorTestAdmin('EMP-TDOR-ADM-MULTI');
+    [$programA, $batchA, $requirementA] = tdorTestSetup(now()->subMonths(9)->toDateString());
+    [$programB, $batchB, $requirementB] = tdorTestSetup(now()->subMonths(9)->toDateString());
+
+    $employee = tdorTestEmployee('EMP-TDOR-MULTI-01', 'Bautista');
+
+    $participantA = Participant::create([
+        'sort_order' => 1, 'batch_id' => $batchA->id, 'empcode' => $employee->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+    ]);
+    Participant::create([
+        'sort_order' => 1, 'batch_id' => $batchB->id, 'empcode' => $employee->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+    ]);
+
+    Submission::create([
+        'participant_id' => $participantA->id,
+        'program_code' => $programA->program_code,
+        'batch_id' => $batchA->id,
+        'requirement_id' => $requirementA->id,
+        'status' => 'Pending',
+        'submitted_at' => now(),
+    ]);
+
+    $response = $this->actingAs($admin)->getJson(route('dashboard.tdor-compliance', [
+        'region' => 'ALL', 'year' => 'ALL', 'office' => 'ALL', 'office_filter' => 'ALL',
+    ]));
+
+    $response->assertOk();
+    expect($response->json('total'))->toBe(2);
+    expect($response->json('submitted'))->toBe(1);
+    expect($response->json('not_submitted'))->toBe(1);
+});
+
 test('non-admin users cannot access the tdor compliance endpoints', function () {
     $employee = tdorTestEmployee('EMP-TDOR-REG-01', 'Reyes');
     $user = User::factory()->create(['empcode' => $employee->EMPCODE, 'access' => 'user']);
