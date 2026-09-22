@@ -1,642 +1,77 @@
 <template>
-    <section v-if="programs.length" class="enrolled" id="my-programs">
+    <section v-if="programs.length" id="my-programs" class="enrolled">
         <div class="enrolled__inner">
-            <div class="enrolled__header">
+            <header class="enrolled__header">
                 <div>
-                    <span class="eyebrow">YOUR LEARNING JOURNEY</span>
-                    <h2 class="enrolled__title">My Enrolled Programs</h2>
+                    <span class="eyebrow">Your learning journey</span>
+                    <h2>My Enrolled Programs</h2>
                     <p class="enrolled__sub">Track your attendance, hours, and pending requirements at a glance.</p>
+                    <p class="snapshot"><BookOpen :size="16" />{{ programs.length }} programs <i></i><Clock :size="16" />{{ totalHours }} learning hours <i></i><FileWarning :size="16" />{{ totalMissing }} requirements pending</p>
                 </div>
-
-                <div class="enrolled__filters">
-                    <div class="filter">
-                        <CalendarDays class="filter__icon" :size="15" />
-                        <select v-model="selectedYear">
-                            <option value="">All years</option>
-                            <option v-for="y in years" :key="y" :value="y">{{ y }}</option>
-                        </select>
-                    </div>
-                    <div class="filter">
-                        <Layers3 class="filter__icon" :size="15" />
-                        <select v-model="selectedType">
-                            <option value="">All types</option>
-                            <option v-for="t in TYPE_OPTIONS" :key="t" :value="t">{{ t }}</option>
-                        </select>
-                    </div>
-                    <button class="filter--toggle filter" :class="{ 'filter--active': missingOnly }" @click="missingOnly = !missingOnly">
-                        <FileWarning :size="15" />
-                        Missing requirements only
-                    </button>
+                <div class="filters" aria-label="Program filters">
+                    <label class="filter"><CalendarDays :size="16" /><select v-model="selectedYear" aria-label="Filter by year"><option value="">All years</option><option v-for="y in years" :key="y" :value="y">{{ y }}</option></select></label>
+                    <label class="filter"><Layers3 :size="16" /><select v-model="selectedType" aria-label="Filter by program type"><option value="">All types</option><option v-for="t in TYPE_OPTIONS" :key="t" :value="t">{{ t }}</option></select></label>
+                    <button type="button" class="filter filter--toggle" :class="{ 'filter--active': missingOnly }" @click="missingOnly = !missingOnly"><FileWarning :size="16" />Missing requirements only</button>
                 </div>
-            </div>
+            </header>
 
-            <!-- Summary strip -->
             <div class="summary">
-                <div class="summary__stat">
-                    <GraduationCap class="summary__icon" :size="20" />
-                    <div>
-                        <strong>{{ programs.length }}</strong>
-                        <span>Enrolled Program{{ programs.length === 1 ? '' : 's' }}</span>
-                    </div>
-                </div>
-                <div class="summary__stat">
-                    <Clock class="summary__icon summary__icon--blue" :size="20" />
-                    <div>
-                        <strong>{{ totalHours }}</strong>
-                        <span>Hours Completed</span>
-                    </div>
-                </div>
-                <div class="summary__stat">
-                    <FileWarning class="summary__icon summary__icon--gold" :size="20" />
-                    <div>
-                        <strong>{{ totalMissing }}</strong>
-                        <span>Requirements To Submit</span>
-                    </div>
-                </div>
-
-                <!-- Attendance donut -->
-                <div class="summary__donut">
-                    <div class="donut" :style="{ background: donutGradient }">
-                        <div class="donut__hole">
-                            <strong>{{ programs.length }}</strong>
-                            <span>total</span>
-                        </div>
-                    </div>
-                    <div class="donut__legend">
-                        <div class="legend__item"><i style="background: #0ca678"></i>Complete ({{ attendanceCounts.Complete }})</div>
-                        <div class="legend__item"><i style="background: #f59f00"></i>Pending ({{ attendanceCounts.Pending }})</div>
-                        <div class="legend__item"><i style="background: #e03131"></i>Absent ({{ attendanceCounts.Absent }})</div>
-                    </div>
-                </div>
+                <article class="metric"><div class="metric__icon metric__icon--blue"><GraduationCap :size="25" /></div><div><strong>{{ programs.length }}</strong><span>Enrolled Programs</span></div></article>
+                <article class="metric"><div class="metric__icon metric__icon--green"><Clock :size="25" /></div><div><strong>{{ totalHours }}</strong><span>Hours Completed</span></div></article>
+                <article class="metric"><div class="metric__icon metric__icon--amber"><FileWarning :size="25" /></div><div><strong>{{ totalMissing }}</strong><span>Requirements To Submit</span></div></article>
+                <article class="attendance-card"><div class="donut" :style="{ background: donutGradient }"><div><strong>{{ programs.length }}</strong><span>total</span></div></div><div class="legend"><p>Attendance Overview</p><span><i class="complete"></i>Complete <b>{{ attendanceCounts.Complete }}</b></span><span><i class="pending"></i>Pending <b>{{ attendanceCounts.Pending }}</b></span><span><i class="absent"></i>Absent <b>{{ attendanceCounts.Absent }}</b></span></div></article>
             </div>
 
-            <!-- Program cards -->
-            <div v-if="filteredPrograms.length" class="enrolled__grid">
-                <Link v-for="p in paginatedPrograms" :key="p.batch_id" :href="route('programs.my-progress', p.batch_id)" class="tile">
-                    <div class="tile__cover">
-                        <div class="ring" :style="{ background: ringGradient(p) }">
-                            <div class="ring__inner">
-                                <img v-if="p.cover_image" :src="p.cover_image" :alt="p.program_title" />
-                                <BookOpen v-else class="ring__placeholder" :size="26" />
-                            </div>
-                        </div>
-                        <span class="ring__percent">{{ progressPercent(p) }}%</span>
-                    </div>
-
-                    <div class="tile__body">
-                        <span class="tile__year">{{ p.year }} &middot; {{ p.batch_label }}</span>
-                        <h3 class="tile__title">{{ p.program_title }}</h3>
-
-                        <div class="tile__badges">
-                            <span class="badge" :class="attendanceBadge(p.attendance).class">
-                                <component :is="attendanceBadge(p.attendance).icon" :size="13" />
-                                {{ p.attendance }}
-                            </span>
-                            <span class="badge badge--neutral"> <Clock :size="13" /> {{ p.hours_completed }}/{{ p.total_hours || '—' }} hrs </span>
-                        </div>
-
-                        <div class="tile__footer">
-                            <span v-if="p.requirements_missing > 0" class="missing-pill">
-                                <FileWarning :size="13" /> {{ p.requirements_missing }} requirement{{ p.requirements_missing === 1 ? '' : 's' }}
-                                pending submission
-                            </span>
-                            <span v-else class="missing-pill missing-pill--clear"> <CheckCircle2 :size="13" /> All requirements submitted </span>
-                            <ChevronRight class="tile__arrow" :size="16" />
-                        </div>
+            <div class="section-heading"><h3>Your Programs</h3><span v-if="filteredPrograms.length">{{ filteredPrograms.length }} available</span></div>
+            <div v-if="filteredPrograms.length" class="grid">
+                <Link v-for="p in paginatedPrograms" :key="p.batch_id" :href="route('programs.my-progress', p.batch_id)" class="program-card">
+                    <div class="cover"><img v-if="p.cover_image" :src="p.cover_image" :alt="p.program_title" /><div v-else class="placeholder"><BookOpen :size="35" /></div><span class="shade"></span><span class="badge badge--cover" :class="attendanceBadge(p.attendance).class"><component :is="attendanceBadge(p.attendance).icon" :size="14" />{{ p.attendance }}</span></div>
+                    <div class="program-card__body">
+                        <span class="meta"><CalendarDays :size="13" />{{ p.year }}<i></i>{{ p.batch_label }}</span>
+                        <h4>{{ p.program_title }}</h4>
+                        <div class="badges"><span class="badge" :class="attendanceBadge(p.attendance).class"><component :is="attendanceBadge(p.attendance).icon" :size="13" />{{ p.attendance }}</span><span class="badge badge--neutral"><Clock :size="13" />{{ p.hours_completed }} / {{ p.total_hours || '-' }} hrs</span></div>
+                        <div class="progress"><div><span>Learning Progress</span><strong>{{ progressPercent(p) }}%</strong></div><div class="progress__track" role="progressbar" :aria-valuenow="progressPercent(p)" aria-valuemin="0" aria-valuemax="100"><span :style="{ width: `${progressPercent(p)}%` }"></span></div></div>
+                        <div class="requirements" :class="{ 'requirements--clear': p.requirements_missing === 0 }"><span v-if="p.requirements_missing > 0"><FileWarning :size="13" />{{ p.requirements_missing }} requirement{{ p.requirements_missing === 1 ? '' : 's' }} pending submission</span><span v-else><CheckCircle2 :size="13" />All requirements submitted</span><ChevronRight class="arrow" :size="17" /></div>
                     </div>
                 </Link>
             </div>
-
-            <div v-else class="enrolled__empty">
-                <FileWarning :size="22" />
-                No programs match this filter.
-            </div>
-
-            <!-- Pagination -->
-            <div v-if="filteredPrograms.length && totalPages > 1" class="pagination">
-                <button type="button" class="page-btn" :disabled="currentPage === 1" @click="goToPage(currentPage - 1)">
-                    <ChevronLeft :size="15" /> Previous
-                </button>
-
-                <div class="page-numbers">
-                    <button
-                        v-for="page in totalPages"
-                        :key="page"
-                        type="button"
-                        class="page-number"
-                        :class="{ 'page-number--active': page === currentPage }"
-                        @click="goToPage(page)"
-                    >
-                        {{ page }}
-                    </button>
-                </div>
-
-                <button type="button" class="page-btn" :disabled="currentPage === totalPages" @click="goToPage(currentPage + 1)">
-                    Next <ChevronRight :size="15" />
-                </button>
-            </div>
+            <div v-else class="empty"><div><FileWarning :size="25" /></div><h3>No programs found</h3><p>Try adjusting your filters to see more enrolled programs.</p></div>
+            <nav v-if="filteredPrograms.length" class="pagination" aria-label="Program pages"><p>Showing {{ (currentPage - 1) * PER_PAGE + 1 }}-{{ Math.min(currentPage * PER_PAGE, filteredPrograms.length) }} of {{ filteredPrograms.length }} programs</p><div v-if="totalPages > 1"><button type="button" class="page" aria-label="Previous page" :disabled="currentPage === 1" @click="goToPage(currentPage - 1)"><ChevronLeft :size="17" /></button><button v-for="page in totalPages" :key="page" type="button" class="page" :class="{ active: page === currentPage }" :aria-label="`Page ${page}`" @click="goToPage(page)">{{ page }}</button><button type="button" class="page" aria-label="Next page" :disabled="currentPage === totalPages" @click="goToPage(currentPage + 1)"><ChevronRight :size="17" /></button></div></nav>
         </div>
     </section>
 </template>
 
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import {
-    AlertCircle,
-    BookOpen,
-    CalendarDays,
-    CheckCircle2,
-    ChevronLeft,
-    ChevronRight,
-    Clock,
-    FileWarning,
-    GraduationCap,
-    Layers3,
-} from 'lucide-vue-next';
+import { AlertCircle, BookOpen, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock, FileWarning, GraduationCap, Layers3 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 
 const TYPE_OPTIONS = ['ADMIN', 'TECHNICAL', 'SUPERVISORY/MANAGERIAL', 'TEAM-BUILDING', 'OTHER'];
 const PER_PAGE = 6;
-
-const props = defineProps({
-    programs: { type: Array, default: () => [] },
-});
-
+const props = defineProps({ programs: { type: Array, default: () => [] } });
 const selectedYear = ref('');
 const selectedType = ref('');
 const missingOnly = ref(false);
 const currentPage = ref(1);
-
 const years = computed(() => [...new Set(props.programs.map((p) => p.year))].sort((a, b) => b - a));
-
-const filteredPrograms = computed(() =>
-    props.programs.filter((p) => {
-        if (selectedYear.value && p.year !== Number(selectedYear.value)) return false;
-        if (selectedType.value && p.program_type !== selectedType.value) return false;
-        if (missingOnly.value && p.requirements_missing === 0) return false;
-        return true;
-    }),
-);
-
+const filteredPrograms = computed(() => props.programs.filter((p) => {
+    if (selectedYear.value && p.year !== Number(selectedYear.value)) return false;
+    if (selectedType.value && p.program_type !== selectedType.value) return false;
+    if (missingOnly.value && p.requirements_missing === 0) return false;
+    return true;
+}));
 const totalPages = computed(() => Math.max(1, Math.ceil(filteredPrograms.value.length / PER_PAGE)));
-
-const paginatedPrograms = computed(() => {
-    const start = (currentPage.value - 1) * PER_PAGE;
-    return filteredPrograms.value.slice(start, start + PER_PAGE);
-});
-
-// Balik sa page 1 tuwing magbabago ang filters, para hindi maiwan sa isang
-// blangkong page kung mas kaunti na ang resulta.
-watch([selectedYear, selectedType, missingOnly], () => {
-    currentPage.value = 1;
-});
-
-function goToPage(page) {
-    currentPage.value = Math.min(Math.max(1, page), totalPages.value);
-}
-
+const paginatedPrograms = computed(() => filteredPrograms.value.slice((currentPage.value - 1) * PER_PAGE, currentPage.value * PER_PAGE));
+watch([selectedYear, selectedType, missingOnly], () => { currentPage.value = 1; });
+function goToPage(page) { currentPage.value = Math.min(Math.max(1, page), totalPages.value); }
 const totalHours = computed(() => props.programs.reduce((sum, p) => sum + (p.hours_completed || 0), 0));
-
 const totalMissing = computed(() => props.programs.reduce((sum, p) => sum + (p.requirements_missing || 0), 0));
-
-const attendanceCounts = computed(() => {
-    const counts = { Complete: 0, Pending: 0, Absent: 0 };
-    props.programs.forEach((p) => {
-        counts[p.attendance] = (counts[p.attendance] || 0) + 1;
-    });
-    return counts;
-});
-
-const donutGradient = computed(() => {
-    const total = props.programs.length || 1;
-    const c = attendanceCounts.value;
-    const pComplete = (c.Complete / total) * 100;
-    const pPending = (c.Pending / total) * 100;
-    return `conic-gradient(#0CA678 0% ${pComplete}%, #F59F00 ${pComplete}% ${pComplete + pPending}%, #e03131 ${pComplete + pPending}% 100%)`;
-});
-
-function progressPercent(p) {
-    if (p.total_hours > 0) return Math.min(100, Math.round((p.hours_completed / p.total_hours) * 100));
-    return p.attendance === 'Complete' ? 100 : 0;
-}
-
-function ringGradient(p) {
-    const pct = progressPercent(p);
-    return `conic-gradient(#1d3fc4 ${pct}%, #e5e7eb ${pct}%)`;
-}
-
-function attendanceBadge(status) {
-    if (status === 'Complete') return { class: 'badge--success', icon: CheckCircle2 };
-    if (status === 'Absent') return { class: 'badge--danger', icon: AlertCircle };
-    return { class: 'badge--pending', icon: Clock };
-}
+const attendanceCounts = computed(() => { const counts = { Complete: 0, Pending: 0, Absent: 0 }; props.programs.forEach((p) => { counts[p.attendance] = (counts[p.attendance] || 0) + 1; }); return counts; });
+const donutGradient = computed(() => { const total = props.programs.length || 1; const counts = attendanceCounts.value; const complete = (counts.Complete / total) * 100; const pending = (counts.Pending / total) * 100; return `conic-gradient(#0CA678 0% ${complete}%, #F59F00 ${complete}% ${complete + pending}%, #E03131 ${complete + pending}% 100%)`; });
+function progressPercent(p) { return p.total_hours > 0 ? Math.min(100, Math.round((p.hours_completed / p.total_hours) * 100)) : p.attendance === 'Complete' ? 100 : 0; }
+function attendanceBadge(status) { if (status === 'Complete') return { class: 'badge--success', icon: CheckCircle2 }; if (status === 'Absent') return { class: 'badge--danger', icon: AlertCircle }; return { class: 'badge--pending', icon: Clock }; }
 </script>
 
 <style scoped>
-.enrolled {
-    padding: 5rem 2rem;
-    background: #f7f9fd;
-}
-.enrolled__inner {
-    max-width: 1100px;
-    margin: 0 auto;
-}
-
-.eyebrow {
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.15em;
-    color: #0ca678;
-    text-transform: uppercase;
-    display: block;
-    margin-bottom: 0.6rem;
-}
-.enrolled__title {
-    font-size: clamp(1.6rem, 3vw, 2.2rem);
-    font-weight: 800;
-    color: #1a2744;
-    margin-bottom: 0.4rem;
-}
-.enrolled__sub {
-    color: #6b7280;
-    max-width: 480px;
-    line-height: 1.6;
-}
-
-.enrolled__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    flex-wrap: wrap;
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-}
-.enrolled__filters {
-    display: flex;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-}
-
-.filter {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    background: #fff;
-    border: 1.5px solid #e5e7eb;
-    border-radius: 10px;
-    padding: 0.5rem 0.85rem;
-    font-size: 0.82rem;
-    color: #374151;
-}
-.filter select {
-    border: none;
-    background: none;
-    font-size: 0.82rem;
-    color: #374151;
-    cursor: pointer;
-    color-scheme: light;
-}
-.filter select:focus {
-    outline: none;
-}
-.filter__icon {
-    color: #9ca3af;
-}
-.filter--toggle {
-    cursor: pointer;
-    font-weight: 600;
-    transition: all 0.15s;
-}
-.filter--toggle:hover {
-    border-color: #1d3fc4;
-}
-.filter--active {
-    background: #eef1fc;
-    border-color: #1d3fc4;
-    color: #1d3fc4;
-}
-
-/* Summary strip */
-.summary {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr) auto;
-    gap: 1.25rem;
-    align-items: center;
-    background: #fff;
-    border-radius: 18px;
-    padding: 1.75rem 2rem;
-    box-shadow: 0 4px 24px rgba(15, 28, 72, 0.06);
-    margin-bottom: 2.5rem;
-}
-.summary__stat {
-    display: flex;
-    align-items: center;
-    gap: 0.85rem;
-}
-.summary__icon {
-    color: #6b7280;
-    flex-shrink: 0;
-}
-.summary__icon--blue {
-    color: #1d3fc4;
-}
-.summary__icon--gold {
-    color: #e67700;
-}
-.summary__stat strong {
-    display: block;
-    font-size: 1.3rem;
-    font-weight: 800;
-    color: #1a2744;
-    line-height: 1.1;
-}
-.summary__stat span {
-    font-size: 0.75rem;
-    color: #6b7280;
-}
-
-.summary__donut {
-    display: flex;
-    align-items: center;
-    gap: 0.85rem;
-    padding-left: 1.25rem;
-    border-left: 1px solid #eee;
-}
-.donut {
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-.donut__hole {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: #fff;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-.donut__hole strong {
-    font-size: 0.78rem;
-    font-weight: 800;
-    color: #1a2744;
-    line-height: 1;
-}
-.donut__hole span {
-    font-size: 0.5rem;
-    color: #9ca3af;
-}
-.donut__legend {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-.legend__item {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.72rem;
-    color: #4b5563;
-    white-space: nowrap;
-}
-.legend__item i {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    display: inline-block;
-}
-
-/* Cards */
-.enrolled__grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1.25rem;
-}
-
-.tile {
-    display: flex;
-    gap: 1rem;
-    align-items: flex-start;
-    background: #fff;
-    border-radius: 16px;
-    padding: 1.25rem;
-    text-decoration: none;
-    color: inherit;
-    box-shadow: 0 2px 14px rgba(15, 28, 72, 0.06);
-    transition:
-        transform 0.2s,
-        box-shadow 0.2s;
-}
-.tile:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 30px rgba(15, 28, 72, 0.12);
-}
-
-.tile__cover {
-    position: relative;
-    flex-shrink: 0;
-    text-align: center;
-}
-.ring {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    padding: 3px;
-}
-.ring__inner {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    overflow: hidden;
-    background: #eef1fc;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.ring__inner img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-.ring__placeholder {
-    color: #1d3fc4;
-}
-.ring__percent {
-    display: block;
-    font-size: 0.65rem;
-    font-weight: 700;
-    color: #1d3fc4;
-    margin-top: 0.3rem;
-}
-
-.tile__body {
-    flex: 1;
-    min-width: 0;
-}
-.tile__year {
-    font-size: 0.7rem;
-    color: #9ca3af;
-    font-weight: 600;
-    letter-spacing: 0.03em;
-}
-.tile__title {
-    font-size: 0.98rem;
-    font-weight: 700;
-    color: #1a2744;
-    line-height: 1.3;
-    margin: 0.25rem 0 0.6rem;
-}
-
-.tile__badges {
-    display: flex;
-    gap: 0.4rem;
-    flex-wrap: wrap;
-    margin-bottom: 0.75rem;
-}
-.badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    font-size: 0.7rem;
-    font-weight: 700;
-    padding: 0.25rem 0.55rem;
-    border-radius: 20px;
-}
-.badge--success {
-    background: #ecfdf5;
-    color: #065f46;
-}
-.badge--pending {
-    background: #fffbeb;
-    color: #92400e;
-}
-.badge--danger {
-    background: #fef2f2;
-    color: #991b1b;
-}
-.badge--neutral {
-    background: #f3f4f6;
-    color: #374151;
-}
-
-.tile__footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-}
-.missing-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: #92400e;
-}
-.missing-pill--clear {
-    color: #065f46;
-}
-.tile__arrow {
-    color: #9ca3af;
-    flex-shrink: 0;
-}
-
-.enrolled__empty {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    justify-content: center;
-    color: #9ca3af;
-    font-size: 0.9rem;
-    padding: 2rem;
-    background: #fff;
-    border-radius: 16px;
-}
-
-/* Pagination */
-.pagination {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
-    margin-top: 2rem;
-    flex-wrap: wrap;
-}
-.page-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    background: #fff;
-    border: 1.5px solid #e5e7eb;
-    border-radius: 10px;
-    padding: 0.55rem 1rem;
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: #374151;
-    cursor: pointer;
-    transition: all 0.15s;
-}
-.page-btn:hover:not(:disabled) {
-    border-color: #1d3fc4;
-    color: #1d3fc4;
-}
-.page-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
-.page-numbers {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-}
-.page-number {
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
-    background: #fff;
-    border: 1.5px solid #e5e7eb;
-    color: #374151;
-    font-size: 0.82rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.15s;
-}
-.page-number:hover {
-    border-color: #1d3fc4;
-    color: #1d3fc4;
-}
-.page-number--active {
-    background: #1d3fc4;
-    border-color: #1d3fc4;
-    color: #fff;
-}
-
-@media (max-width: 1024px) {
-    .summary {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    .summary__donut {
-        grid-column: 1 / -1;
-        border-left: none;
-        padding-left: 0;
-        border-top: 1px solid #eee;
-        padding-top: 1rem;
-    }
-    .enrolled__grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-@media (max-width: 640px) {
-    .summary {
-        grid-template-columns: 1fr;
-    }
-    .enrolled__grid {
-        grid-template-columns: 1fr;
-    }
-}
+.enrolled{position:relative;isolation:isolate;overflow:hidden;padding:5.25rem 2rem;background:radial-gradient(circle at 7% 8%,#d3e4ff92,transparent 25rem),radial-gradient(circle at 90% 2%,#dfebffb3,transparent 23rem),#f7f9fc}.enrolled:before,.enrolled:after{position:absolute;z-index:-1;width:20rem;height:20rem;border:1px solid #77a1de1f;border-radius:50%;content:''}.enrolled:before{top:-14rem;right:15%}.enrolled:after{right:-12rem;bottom:7rem}.enrolled__inner{max-width:1420px;margin:auto}.enrolled__header{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:1.5rem;margin-bottom:2.15rem}.eyebrow{display:block;margin-bottom:.5rem;color:#1d3fc4;font-size:.72rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase}.enrolled h2{margin:0 0 .4rem;color:#17233f;font-size:clamp(1.75rem,3vw,2.15rem);font-weight:800}.enrolled__sub{max-width:520px;margin:0;color:#6b7280;font-size:.92rem;line-height:1.6}.snapshot{display:flex;align-items:center;flex-wrap:wrap;gap:.45rem;margin:.9rem 0 0;color:#254273;font-size:.83rem;font-weight:600}.snapshot svg{color:#1d3fc4}.snapshot i{width:1px;height:1.1rem;margin:0 .45rem;background:#cad6e8}.filters{display:flex;flex-wrap:wrap;gap:.65rem}.filter{display:flex;align-items:center;gap:.45rem;min-height:43px;padding:.55rem .85rem;color:#374151;font-size:.82rem;background:#fff;border:1px solid #dce4f0;border-radius:11px;box-shadow:0 2px 8px #1d3fc40a}.filter svg{color:#1d3fc4}.filter select{max-width:135px;color:#374151;font:inherit;background:transparent;border:0;cursor:pointer}.filter select:focus{outline:0}.filter--toggle{font-weight:700;cursor:pointer}.filter--toggle:hover{border-color:#1d3fc4}.filter--active{color:#1d3fc4;background:#eef4ff;border-color:#1d3fc4}.summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin-bottom:2.35rem}.metric,.attendance-card{display:flex;align-items:center;min-height:124px;padding:1.2rem;background:#ffffffe6;border:1px solid #e0e8f3;border-radius:15px;box-shadow:0 7px 20px #1c3c7110}.metric{gap:1rem}.metric__icon{display:grid;width:50px;height:50px;place-items:center;flex-shrink:0;border-radius:50%}.metric__icon--blue{color:#1d3fc4;background:#e8f0ff}.metric__icon--green{color:#07836a;background:#e4f8f1}.metric__icon--amber{color:#c97800;background:#fff3d9}.summary strong{display:block;color:#17233f;font-size:1.75rem;font-weight:800;line-height:1.1}.metric span{color:#405072;font-size:.75rem;font-weight:600}.attendance-card{gap:1rem}.donut{display:grid;width:68px;height:68px;place-items:center;flex-shrink:0;border-radius:50%}.donut>div{display:flex;width:46px;height:46px;align-items:center;justify-content:center;flex-direction:column;background:#fff;border-radius:50%}.donut strong{font-size:.95rem}.donut span{color:#71809c;font-size:.55rem}.legend p{margin:0 0 .25rem;color:#17233f;font-size:.77rem;font-weight:800}.legend span{display:flex;align-items:center;gap:.42rem;color:#405072;font-size:.7rem;line-height:1.55}.legend i{width:8px;height:8px;border-radius:50%}.complete{background:#0ca678}.pending{background:#f59f00}.absent{background:#e03131}.legend b{margin-left:auto;color:#17233f}.section-heading{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;margin:0 0 1rem .25rem}.section-heading h3{margin:0;color:#17233f;font-size:1.45rem;font-weight:800}.section-heading span{color:#71809c;font-size:.78rem;font-weight:600}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.35rem}.program-card{display:flex;min-width:0;flex-direction:column;overflow:hidden;color:inherit;text-decoration:none;background:#fff;border:1px solid #dfe7f2;border-radius:15px;box-shadow:0 5px 16px #1633600f;transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}.program-card:hover{transform:translateY(-4px);border-color:#b8caf0;box-shadow:0 14px 28px #1633601f}.program-card:focus-visible,.filter:focus-within,.filter--toggle:focus-visible,.page:focus-visible{outline:3px solid #1d3fc44d;outline-offset:3px}.cover{position:relative;width:100%;height:130px;overflow:hidden;background:#e8f0ff}.cover img{width:100%;height:100%;object-fit:cover;transition:transform .35s ease}.program-card:hover .cover img{transform:scale(1.035)}.shade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,#091f482e,transparent 55%)}.placeholder{display:grid;width:100%;height:100%;place-items:center;color:#1d3fc4;background:linear-gradient(135deg,#edf4ff,#dceaff)}.program-card__body{width:100%;min-width:0;padding:1rem;box-sizing:border-box}.badge--cover{position:absolute;top:.85rem;right:.85rem;box-shadow:0 2px 8px #10224624}.meta{display:inline-flex;align-items:center;gap:.32rem;color:#31558f;font-size:.7rem;font-weight:700}.meta i{width:3px;height:3px;border-radius:50%;background:#7b96c1}.program-card h4{display:-webkit-box;min-height:2.6em;margin:.35rem 0 .7rem;overflow:hidden;color:#17233f;font-size:1.02rem;font-weight:800;line-height:1.3;-webkit-box-orient:vertical;-webkit-line-clamp:2}.badges{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.8rem}.badge{display:inline-flex;align-items:center;gap:.3rem;padding:.25rem .55rem;font-size:.69rem;font-weight:800;border-radius:999px}.badge--success{color:#08765e;background:#eaf8f4}.badge--pending{color:#9a5a00;background:#fff3d9}.badge--danger{color:#b42323;background:#fff0f0}.badge--neutral{color:#31558f;background:#f1f5fb}.progress{margin-bottom:.85rem}.progress>div:first-child{display:flex;align-items:center;justify-content:space-between;margin-bottom:.38rem;color:#415476;font-size:.69rem;font-weight:600}.progress strong{color:#1d3fc4;font-size:.72rem}.progress__track{height:6px;overflow:hidden;background:#dfe9f7;border-radius:999px}.progress__track span{display:block;height:100%;border-radius:inherit;background:#1d63dd;transition:width .35s ease}.requirements{display:flex;align-items:center;justify-content:space-between;gap:.6rem;min-height:36px;padding:.55rem .65rem;color:#9a5a00;background:#fff5e5;border-radius:8px}.requirements--clear{color:#08765e;background:#eaf8f4}.requirements span{display:inline-flex;min-width:0;align-items:center;gap:.3rem;font-size:.67rem;font-weight:700}.arrow{flex-shrink:0;color:#71809c;transition:transform .22s ease,color .22s ease}.program-card:hover .arrow{color:#1d3fc4;transform:translateX(3px)}.empty{display:grid;min-height:215px;place-items:center;padding:1.5rem;color:#71809c;text-align:center;background:#fff;border:1px solid #dfe7f2;border-radius:15px}.empty div{display:grid;width:48px;height:48px;place-items:center;color:#c97800;background:#fff3d9;border-radius:50%}.empty h3{margin:.75rem 0 .2rem;color:#17233f;font-size:1rem}.empty p{margin:0}.pagination{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-top:1.45rem}.pagination p{margin:0;color:#405072;font-size:.78rem;font-weight:600}.pagination>div{display:flex;gap:.35rem}.page{display:inline-grid;width:36px;height:36px;place-items:center;color:#374151;font-size:.82rem;font-weight:700;cursor:pointer;background:#fff;border:1px solid #dbe5f1;border-radius:9px}.page:hover:not(:disabled){color:#1d3fc4;border-color:#1d3fc4}.page:disabled{opacity:.4;cursor:not-allowed}.page.active{color:#fff;background:#1d3fc4;border-color:#1d3fc4}@media(max-width:1100px){.summary{grid-template-columns:repeat(2,minmax(0,1fr))}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:640px){.enrolled{padding:3.75rem 1rem}.enrolled__header{align-items:stretch}.filters{width:100%}.filter{flex:1 1 145px}.filter--toggle{justify-content:center}.snapshot{font-size:.75rem}.snapshot i{display:none}.summary,.grid{grid-template-columns:1fr}.pagination{align-items:flex-start;flex-direction:column}}@media(prefers-reduced-motion:reduce){.program-card,.cover img,.progress__track span,.arrow{transition:none}.program-card:hover{transform:none}}
 </style>

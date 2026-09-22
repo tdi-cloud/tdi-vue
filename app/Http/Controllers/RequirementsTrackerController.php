@@ -68,6 +68,32 @@ class RequirementsTrackerController extends Controller
         ]);
     }
 
+    /**
+     * GET /requirements-tracker/search?q=...
+     * Ginagamit ng bulk submission import tool — ang admin ay may random na
+     * PDF (walang malinaw na pattern sa filename), kaya sa halip na mag-scroll
+     * sa buong tracker, hinahanap niya lang dito ang pangalan/empcode na
+     * nasa file, at ang mga tugma lang na missing na requirement ang lalabas.
+     */
+    public function search(Request $request)
+    {
+        $q = trim((string) $request->get('q', ''));
+        if ($q === '') {
+            return response()->json([]);
+        }
+
+        $request->merge(['search' => $q]);
+
+        $rows = $this->selectColumns($this->scopedQuery($request))
+            ->orderBy('e.LASTNAME')
+            ->orderBy('r.due_date')
+            ->limit(15)
+            ->get()
+            ->map(fn ($row) => $this->decorateRow($row));
+
+        return response()->json($rows);
+    }
+
     public function exportCsv(Request $request): StreamedResponse
     {
         $query = $this->scopedQuery($request);
@@ -161,6 +187,7 @@ class RequirementsTrackerController extends Controller
     private function selectColumns($query)
     {
         return $query->select([
+            'p.id as participant_id',
             'e.EMPCODE as empcode',
             'e.FIRSTNAME as firstname',
             'e.LASTNAME as lastname',

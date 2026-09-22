@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
+import BulkImportModal from '@/pages/RequirementsTracker/BulkImportModal.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import {
     AlertTriangle,
@@ -7,6 +8,7 @@ import {
     CalendarClock,
     CheckCircle2,
     ClipboardList,
+    CloudUpload,
     Download,
     FileWarning,
     ListChecks,
@@ -56,6 +58,8 @@ const props = defineProps<{
         overdue_only?: string;
     };
 }>();
+
+const showBulkImport = ref(false);
 
 const search = ref(props.filters.search ?? '');
 const requirementTitle = ref(props.filters.requirement_title ?? '');
@@ -122,16 +126,28 @@ const initials = (name: string) => {
     <AppLayout>
         <div class="flex flex-1 flex-col gap-5 p-4 md:p-6">
             <!-- Header -->
-            <div class="flex items-center gap-3">
-                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-sm">
-                    <ClipboardList class="h-5.5 w-5.5 text-white" />
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-sm"
+                    >
+                        <ClipboardList class="h-5.5 w-5.5 text-white" />
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-extrabold">Post-Training Requirements Tracker</h1>
+                        <p class="mt-0.5 text-sm text-muted-foreground">
+                            Monitor employees who have not yet submitted post-training requirements across all programs.
+                        </p>
+                    </div>
                 </div>
-                <div>
-                    <h1 class="text-2xl font-extrabold">Post-Training Requirements Tracker</h1>
-                    <p class="mt-0.5 text-sm text-muted-foreground">
-                        Monitor employees who have not yet submitted post-training requirements across all programs.
-                    </p>
-                </div>
+
+                <button
+                    type="button"
+                    class="inline-flex items-center gap-1.5 rounded-xl border bg-background px-4 py-2.5 text-sm font-semibold shadow-sm transition-colors hover:bg-muted"
+                    @click="showBulkImport = true"
+                >
+                    <CloudUpload class="h-4 w-4" /> Bulk Import Submissions
+                </button>
             </div>
 
             <!-- Stat cards -->
@@ -376,4 +392,6 @@ const initials = (name: string) => {
             </div>
         </div>
     </AppLayout>
+
+    <BulkImportModal :open="showBulkImport" @update:open="showBulkImport = $event" />
 </template>

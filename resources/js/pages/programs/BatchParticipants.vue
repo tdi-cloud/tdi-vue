@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/toast/use-toast';
 import { useConfirm } from '@/composables/useConfirm';
 import BulkAddParticipants from '@/pages/programs/BulkAddParticipants.vue';
+import BulkSubmissionUpload from '@/pages/programs/BulkSubmissionUpload.vue';
 import { router } from '@inertiajs/vue3';
 import {
     CheckCircle2,
@@ -510,6 +511,7 @@ const reorder = (participant: any, direction: 'up' | 'down') => {
 };
 
 const showBulkAdd = ref(false);
+const showBulkSubmissionUpload = ref(false);
 
 const clearingAll = ref(false);
 
@@ -789,10 +791,22 @@ const submissionSummary = computed(() => {
                             </div>
                         </div>
 
-                        <!-- Search -->
-                        <div v-if="participants.length" class="relative w-52">
-                            <Search class="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
-                            <Input v-model="listQuery" class="h-7 pl-6 text-xs" placeholder="Search enrolled..." />
+                        <div class="flex items-center gap-2">
+                            <Button
+                                v-if="participants.length && requirements.length"
+                                variant="outline"
+                                size="sm"
+                                class="h-7 text-xs"
+                                @click="showBulkSubmissionUpload = true"
+                            >
+                                <CloudUpload class="mr-1 h-3.5 w-3.5" /> Bulk Upload Submissions
+                            </Button>
+
+                            <!-- Search -->
+                            <div v-if="participants.length" class="relative w-52">
+                                <Search class="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+                                <Input v-model="listQuery" class="h-7 pl-6 text-xs" placeholder="Search enrolled..." />
+                            </div>
                         </div>
                     </div>
 
@@ -1374,4 +1388,6 @@ const submissionSummary = computed(() => {
         :description="previewFile?.description"
         @update:open="showFilePreview = $event"
     />
+
+    <BulkSubmissionUpload :open="showBulkSubmissionUpload" :batch="batch" @update:open="showBulkSubmissionUpload = $event" />
 </template>

@@ -146,9 +146,41 @@ test('lists employees with missing requirement submissions, excluding absentees 
     $overdueRow = $items->firstWhere('requirement_title', 'TREAP');
     expect($overdueRow['is_overdue'])->toBeTrue();
     expect($overdueRow['program_id'])->toBe($program->id);
+    expect($overdueRow['participant_id'])->toBe($missingParticipant->id);
 
     $upcomingRow = $items->firstWhere('requirement_title', 'TDOR');
     expect($upcomingRow['is_overdue'])->toBeFalse();
+});
+
+test('search endpoint finds a missing requirement by employee name or empcode, for the bulk import tool', function () {
+    $admin = trackerTestAdmin('EMP-ADM-SEARCH');
+    [$program, $batch, $overdueRequirement, $upcomingRequirement] = trackerTestSetup();
+
+    $missingEmployee = trackerTestEmployee('EMP-SEARCH-01', 'Villanueva');
+    $missingParticipant = Participant::create([
+        'sort_order' => 1, 'batch_id' => $batch->id, 'empcode' => $missingEmployee->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+    ]);
+
+    $byName = $this->actingAs($admin)->getJson(route('requirements-tracker.search', ['q' => 'Villanueva']));
+    $byName->assertOk();
+    $byNameResults = collect($byName->json());
+    expect($byNameResults->pluck('empcode')->all())->toContain($missingEmployee->EMPCODE);
+    expect($byNameResults->firstWhere('empcode', $missingEmployee->EMPCODE)['participant_id'])->toBe($missingParticipant->id);
+
+    $byEmpcode = $this->actingAs($admin)->getJson(route('requirements-tracker.search', ['q' => 'EMP-SEARCH-01']));
+    $byEmpcode->assertOk();
+    expect(collect($byEmpcode->json())->pluck('empcode')->all())->toContain($missingEmployee->EMPCODE);
+
+    // Blangko ang query — walang ibabalik, para hindi ma-dump ang buong table.
+    $empty = $this->actingAs($admin)->getJson(route('requirements-tracker.search', ['q' => '']));
+    $empty->assertOk();
+    expect($empty->json())->toBe([]);
+
+    // Walang tugma — blangkong array, hindi error.
+    $noMatch = $this->actingAs($admin)->getJson(route('requirements-tracker.search', ['q' => 'Nonexistent Name Xyz']));
+    $noMatch->assertOk();
+    expect($noMatch->json())->toBe([]);
 });
 
 test('overdue_only filter only returns requirements past their due date', function () {

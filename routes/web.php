@@ -278,6 +278,8 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('/requirements-tracker', [RequirementsTrackerController::class, 'index'])->name('requirements-tracker.index');
     Route::get('/requirements-tracker/export', [RequirementsTrackerController::class, 'exportCsv'])
         ->name('requirements-tracker.export');
+    Route::get('/requirements-tracker/search', [RequirementsTrackerController::class, 'search'])
+        ->name('requirements-tracker.search');
 
     // TNA SUMMARY
     Route::get('/tna-summary', [TnaController::class, 'summaryIndex'])->name('tna-summary.index');

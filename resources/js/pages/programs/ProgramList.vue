@@ -161,7 +161,7 @@ const dateRange = (program: Program) => {
     </div>
 
     <template v-else>
-        <div class="flex min-h-0 flex-1 flex-col gap-4">
+        <div class="program-list flex min-h-0 flex-1 flex-col gap-4">
             <!-- No search results -->
             <div v-if="filtered.length === 0" class="flex flex-col items-center justify-center py-20 text-center text-muted-foreground">
                 <p class="text-sm font-semibold">No programs found.</p>
@@ -169,17 +169,17 @@ const dateRange = (program: Program) => {
             </div>
 
             <!-- Scrollable list -->
-            <div v-else class="min-h-0 w-full max-w-full flex-1 overflow-y-auto overflow-x-hidden px-1 pb-4">
+            <div v-else class="program-list__scroll min-h-0 w-full max-w-full flex-1 overflow-y-auto overflow-x-hidden px-1 pb-4">
                 <TransitionGroup
                     v-if="!isChangingPage"
                     tag="div"
-                    class="flex flex-col divide-y overflow-hidden rounded-xl border bg-card shadow-lg"
+                    class="program-list__surface flex flex-col divide-y overflow-hidden rounded-xl border bg-card"
                     appear
                 >
                     <div
                         v-for="(program, index) in paginated"
                         :key="program.id"
-                        class="group flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50"
+                        class="program-row group flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50"
                         :style="{ animationDelay: `${index * 60}ms` }"
                         @click="viewProgram(program.id)"
                     >
@@ -193,7 +193,7 @@ const dateRange = (program: Program) => {
 
                         <!-- Text -->
                         <div class="min-w-0 flex-1 overflow-hidden">
-                            <p class="line-clamp-1 break-words text-sm font-extrabold text-sky-900 dark:text-cyan-400">
+                            <p class="line-clamp-1 break-words text-sm font-extrabold text-slate-900 dark:text-cyan-400">
                                 {{ program.title }}
                             </p>
                             <p class="line-clamp-1 break-words text-xs text-muted-foreground">
@@ -203,36 +203,36 @@ const dateRange = (program: Program) => {
                             <!-- Stats row -->
                             <div class="mt-1.5 flex flex-wrap items-center gap-3">
                                 <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                                    <Layers class="h-3 w-3 text-blue-500" />
+                                    <Layers class="h-3 w-3 text-blue-600 dark:text-blue-400" />
                                     {{ program.batches_count }} batch{{ program.batches_count === 1 ? '' : 'es' }}
                                 </span>
                                 <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                                    <Users class="h-3 w-3 text-purple-500" />
+                                    <Users class="h-3 w-3 text-slate-500 dark:text-slate-400" />
                                     {{ program.participants_count }} participant{{ program.participants_count === 1 ? '' : 's' }}
                                 </span>
                                 <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                                    <ClipboardList class="h-3 w-3 text-emerald-500" />
+                                    <ClipboardList class="h-3 w-3 text-slate-500 dark:text-slate-400" />
                                     {{ program.requirements_count }} requirement{{ program.requirements_count === 1 ? '' : 's' }}
                                 </span>
                                 <span
                                     v-if="dateRange(program)"
                                     class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400"
                                 >
-                                    <CalendarDays class="h-3 w-3 text-amber-500" />
+                                    <CalendarDays class="h-3 w-3 text-slate-500 dark:text-slate-400" />
                                     {{ dateRange(program) }}
                                 </span>
                                 <span
                                     v-if="program.added_by"
                                     class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400"
                                 >
-                                    <UserCog class="h-3 w-3 text-rose-500" />
+                                    <UserCog class="h-3 w-3 text-slate-500 dark:text-slate-400" />
                                     Added by {{ program.added_by }}
                                 </span>
                                 <span
                                     v-if="program.provider"
                                     class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400"
                                 >
-                                    <Building2 class="h-3 w-3 text-indigo-500" />
+                                    <Building2 class="h-3 w-3 text-slate-500 dark:text-slate-400" />
                                     {{ program.provider }}
                                 </span>
                             </div>
@@ -242,7 +242,7 @@ const dateRange = (program: Program) => {
                         <Button
                             variant="ghost"
                             size="icon"
-                            class="h-7 w-7 shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+                            class="program-row__delete h-7 w-7 shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
                             @click.stop="deleteProgram(program.id)"
                         >
                             <Trash2 class="h-4 w-4" />
@@ -253,12 +253,12 @@ const dateRange = (program: Program) => {
             </div>
 
             <!-- Pagination fixed at bottom -->
-            <div v-if="totalPages > 1" class="flex shrink-0 items-center justify-between border-t pt-4 text-xs text-muted-foreground">
+            <div v-if="totalPages > 1" class="program-pagination flex shrink-0 items-center justify-between border-t pt-4 text-xs text-muted-foreground">
                 <span>
                     Showing {{ (currentPage - 1) * perPage + 1 }}–{{ Math.min(currentPage * perPage, filtered.length) }} of
                     {{ filtered.length }} programs
                 </span>
-                <div class="flex shrink-0 flex-nowrap items-center gap-1">
+                <div class="program-pagination__controls flex shrink-0 flex-nowrap items-center gap-1">
                     <button
                         class="rounded border border-blue-200 px-3 py-1 text-xs text-blue-700 transition-colors hover:bg-blue-50 disabled:opacity-40 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40"
                         :disabled="currentPage === 1"
@@ -300,7 +300,7 @@ const dateRange = (program: Program) => {
     height: 48px;
     border-radius: 9999px;
     padding: 2px;
-    background: linear-gradient(135deg, #60a5fa, #1d3fc4);
+    background: #d2e1fb;
 }
 .cover-ring__inner {
     width: 100%;
@@ -319,6 +319,47 @@ const dateRange = (program: Program) => {
     width: 100%;
     height: 100%;
     object-fit: cover;
+}
+
+.program-list__scroll {
+    scrollbar-color: #cbd5e1 transparent;
+    scrollbar-width: thin;
+}
+
+.program-list__surface {
+    border-color: #dce5f0;
+    box-shadow: 0 8px 24px rgba(30, 64, 120, 0.08);
+}
+
+.program-row {
+    border-color: #e5ebf3;
+    transition:
+        background-color 180ms ease,
+        box-shadow 180ms ease;
+}
+
+.program-row:hover {
+    background: #f7faff;
+    box-shadow: inset 3px 0 0 #2563eb;
+}
+
+.program-row:focus-within {
+    background: #f7faff;
+}
+
+.program-row__delete:focus-visible {
+    opacity: 1;
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+.program-pagination {
+    border-color: #dce5f0;
+}
+
+.program-pagination__controls button {
+    min-width: 32px;
+    min-height: 32px;
 }
 
 .v-enter-active {
@@ -346,6 +387,49 @@ const dateRange = (program: Program) => {
     }
     100% {
         opacity: 0;
+    }
+}
+
+@media (max-width: 640px) {
+    .program-list__scroll {
+        padding-right: 0;
+        padding-left: 0;
+    }
+
+    .program-list__surface {
+        border-right: 0;
+        border-left: 0;
+        border-radius: 0;
+    }
+
+    .program-row {
+        align-items: flex-start;
+        gap: 0.65rem;
+        padding: 0.8rem 0.75rem;
+    }
+
+    .program-row__delete {
+        opacity: 1;
+    }
+
+    .program-pagination {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .program-pagination__controls {
+        max-width: 100%;
+        overflow-x: auto;
+        padding-bottom: 0.15rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .program-row,
+    .v-enter-active,
+    .v-leave-active {
+        transition: none;
+        animation: none;
     }
 }
 </style>
