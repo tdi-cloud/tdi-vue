@@ -125,7 +125,7 @@ class ForeignProgramController extends Controller
 
         ForeignProgram::create($data);
 
-        return back()->with('success', 'Foreign program created successfully.');
+        return $this->backToIndex($request)->with('success', 'Foreign program created successfully.');
     }
 
     public function update(Request $request, ForeignProgram $foreignProgram)
@@ -133,15 +133,38 @@ class ForeignProgramController extends Controller
         $data = $this->validateProgram($request);
         $foreignProgram->update($data);
 
-        return back()->with('success', 'Foreign program updated successfully.');
+        return $this->backToIndex($request)->with('success', 'Foreign program updated successfully.');
     }
 
-    public function destroy(ForeignProgram $foreignProgram)
+    public function destroy(Request $request, ForeignProgram $foreignProgram)
     {
         $foreignProgram->delete();
 
-        return redirect()->route('foreign-programs.index')
-            ->with('success', 'Foreign program deleted successfully.');
+        return $this->backToIndex($request)->with('success', 'Foreign program deleted successfully.');
+    }
+
+    public function bulkDestroy(Request $request)
+    {
+        $data = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:foreign_programs,id',
+        ]);
+
+        $count = ForeignProgram::whereIn('id', $data['ids'])->delete();
+
+        return $this->backToIndex($request)->with('success', "{$count} foreign program(s) deleted successfully.");
+    }
+
+    /**
+     * Redirect back to wherever the request actually came from (search/filter
+     * query string kasama), gamit ang Referer header mismo sa halip na ang
+     * Laravel `back()` helper — hindi kasi maaasahan ang session-based
+     * "previous URL" ni Laravel para sa mga Inertia (AJAX) na kahilingan,
+     * kaya nawawala ang mga aktibong filter tuwing mag-edit o mag-delete.
+     */
+    private function backToIndex(Request $request)
+    {
+        return redirect($request->headers->get('referer', route('foreign-programs.index')));
     }
 
     private function validateProgram(Request $request): array

@@ -215,6 +215,9 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
         ->name('foreign-programs.nomination-history');
 
     Route::get('/foreign-programs', [ForeignProgramController::class, 'index'])->name('foreign-programs.index');
+    // Dapat nasa itaas ng /foreign-programs/{foreignProgram} para hindi ito
+    // ma-match bilang isang route-model-bound program id.
+    Route::delete('/foreign-programs/bulk-destroy', [ForeignProgramController::class, 'bulkDestroy'])->name('foreign-programs.bulk-destroy');
     Route::get('/foreign-programs/{foreignProgram}', [ForeignProgramController::class, 'show'])->name('foreign-programs.show');
     Route::post('/foreign-programs', [ForeignProgramController::class, 'store'])->name('foreign-programs.store');
     Route::put('/foreign-programs/{foreignProgram}', [ForeignProgramController::class, 'update'])->name('foreign-programs.update');

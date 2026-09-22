@@ -130,6 +130,7 @@ const submit = () => {
     if (!props.program) return;
     editForm.put(route('foreign-programs.update', props.program.id), {
         preserveScroll: true,
+        preserveState: true,
         onSuccess: () => {
             emit('saved');
             close();

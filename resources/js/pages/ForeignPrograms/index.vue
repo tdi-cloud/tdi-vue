@@ -6,6 +6,7 @@ import SponsorConfigModal from '@/components/SponsorConfigModal.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -342,6 +343,7 @@ const submit = () => {
     form.attached_agency = '';
     form.post(route('foreign-programs.store'), {
         preserveScroll: true,
+        preserveState: true,
         onSuccess: () => {
             showModal.value = false;
             form.reset();
@@ -351,8 +353,57 @@ const submit = () => {
 
 const confirmDelete = async (id: number) => {
     if (await confirmDialog('Are you sure you want to delete this program?')) {
-        router.delete(route('foreign-programs.destroy', id), { preserveScroll: true });
+        router.delete(route('foreign-programs.destroy', id), { preserveScroll: true, preserveState: true });
     }
+};
+
+// --- Multiple selection (bulk delete) ---
+const selectedIds = ref<Set<number>>(new Set());
+
+const allVisibleSelected = computed(
+    () => props.programs.data.length > 0 && props.programs.data.every((p) => selectedIds.value.has(p.id)),
+);
+
+const toggleSelectAll = () => {
+    if (allVisibleSelected.value) {
+        props.programs.data.forEach((p) => selectedIds.value.delete(p.id));
+    } else {
+        props.programs.data.forEach((p) => selectedIds.value.add(p.id));
+    }
+};
+
+const toggleSelect = (id: number) => {
+    if (selectedIds.value.has(id)) {
+        selectedIds.value.delete(id);
+    } else {
+        selectedIds.value.add(id);
+    }
+};
+
+const clearSelection = () => selectedIds.value.clear();
+
+// Hindi na tugma sa view ang dating pinili kapag nagbago ang filter, page, o
+// pagkatapos ng bulk delete — i-reset na lang ang selection sa bawat bagong list.
+watch(
+    () => props.programs.data,
+    () => clearSelection(),
+);
+
+const bulkDeleting = ref(false);
+const confirmBulkDelete = async () => {
+    const count = selectedIds.value.size;
+    if (!count) return;
+    if (!(await confirmDialog(`Delete ${count} selected program(s)? This cannot be undone.`))) return;
+
+    bulkDeleting.value = true;
+    router.delete(route('foreign-programs.bulk-destroy'), {
+        data: { ids: Array.from(selectedIds.value) },
+        preserveScroll: true,
+        preserveState: true,
+        onFinish: () => {
+            bulkDeleting.value = false;
+        },
+    });
 };
 
 // --- Organizing Sponsors (Add Program form only — EditProgramModal.vue manages its own) ---
@@ -664,15 +715,36 @@ function onConfigSaved() {
                 <p class="text-xs font-medium text-muted-foreground">
                     Showing {{ programs.from ?? 0 }}–{{ programs.to ?? 0 }} of {{ programs.total }} program(s)
                 </p>
+
+                <!-- Bulk selection action bar -->
+                <div
+                    v-if="selectedIds.size"
+                    class="flex items-center justify-between gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 dark:border-red-900 dark:bg-red-950/30"
+                >
+                    <p class="text-xs font-semibold text-red-700 dark:text-red-300">{{ selectedIds.size }} program(s) selected</p>
+                    <div class="flex items-center gap-2">
+                        <Button size="sm" variant="ghost" class="h-7 text-xs" @click="clearSelection"> Clear </Button>
+                        <Button
+                            size="sm"
+                            variant="destructive"
+                            class="h-7 text-xs"
+                            :disabled="bulkDeleting"
+                            @click="confirmBulkDelete"
+                        >
+                            <Trash2 class="mr-1 h-3.5 w-3.5" /> Delete Selected
+                        </Button>
+                    </div>
+                </div>
             </div>
 
             <!-- List: table on md+, stacked cards on small screens -->
             <div class="overflow-hidden rounded-2xl border shadow-sm">
                 <table v-if="programs.data.length" class="hidden w-full table-fixed border-collapse text-sm md:table">
                     <colgroup>
-                        <col style="width: 30%" />
+                        <col style="width: 36px" />
+                        <col style="width: 28%" />
                         <col style="width: 8%" />
-                        <col style="width: 17%" />
+                        <col style="width: 16%" />
                         <col style="width: 10%" />
                         <col style="width: 11%" />
                         <col style="width: 11%" />
@@ -681,6 +753,13 @@ function onConfigSaved() {
                     </colgroup>
                     <thead>
                         <tr class="border-b bg-muted/50 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            <th class="px-3 py-2.5">
+                                <Checkbox
+                                    :checked="allVisibleSelected"
+                                    aria-label="Select all programs on this page"
+                                    @update:checked="toggleSelectAll"
+                                />
+                            </th>
                             <th class="px-4 py-2.5 text-left font-semibold">Program</th>
                             <th class="px-4 py-2.5 text-left font-semibold">Sponsor</th>
                             <th class="px-4 py-2.5 text-left font-semibold">Schedule</th>
@@ -696,7 +775,15 @@ function onConfigSaved() {
                             v-for="program in programs.data"
                             :key="program.id"
                             class="group border-b transition-colors last:border-b-0 hover:bg-blue-50/50 dark:hover:bg-blue-950/20"
+                            :class="selectedIds.has(program.id) ? 'bg-blue-50/40 dark:bg-blue-950/20' : ''"
                         >
+                            <td class="px-3 py-3 align-middle">
+                                <Checkbox
+                                    :checked="selectedIds.has(program.id)"
+                                    :aria-label="`Select ${program.program_title}`"
+                                    @update:checked="toggleSelect(program.id)"
+                                />
+                            </td>
                             <td class="px-4 py-3 align-middle">
                                 <Link :href="route('foreign-programs.show', program.id)" class="flex min-w-0 flex-col gap-1">
                                     <Tooltip>
@@ -793,15 +880,28 @@ function onConfigSaved() {
 
                 <!-- Stacked cards for small screens -->
                 <div v-if="programs.data.length" class="flex flex-col divide-y md:hidden">
-                    <div v-for="program in programs.data" :key="program.id" class="flex flex-col gap-3 p-4">
+                    <div
+                        v-for="program in programs.data"
+                        :key="program.id"
+                        class="flex flex-col gap-3 p-4"
+                        :class="selectedIds.has(program.id) ? 'bg-blue-50/40 dark:bg-blue-950/20' : ''"
+                    >
                         <div class="flex items-start justify-between gap-3">
-                            <Link :href="route('foreign-programs.show', program.id)" class="flex min-w-0 flex-col gap-1.5">
-                                <span class="font-semibold leading-snug">{{ program.program_title }}</span>
-                                <Badge variant="outline" class="w-fit gap-1" :class="programStatusMeta(program.status).badgeClass">
-                                    <span class="h-1.5 w-1.5 rounded-full" :class="programStatusMeta(program.status).dotClass" />
-                                    {{ programStatusMeta(program.status).label }}
-                                </Badge>
-                            </Link>
+                            <div class="flex min-w-0 items-start gap-2.5">
+                                <Checkbox
+                                    class="mt-0.5 shrink-0"
+                                    :checked="selectedIds.has(program.id)"
+                                    :aria-label="`Select ${program.program_title}`"
+                                    @update:checked="toggleSelect(program.id)"
+                                />
+                                <Link :href="route('foreign-programs.show', program.id)" class="flex min-w-0 flex-col gap-1.5">
+                                    <span class="font-semibold leading-snug">{{ program.program_title }}</span>
+                                    <Badge variant="outline" class="w-fit gap-1" :class="programStatusMeta(program.status).badgeClass">
+                                        <span class="h-1.5 w-1.5 rounded-full" :class="programStatusMeta(program.status).dotClass" />
+                                        {{ programStatusMeta(program.status).label }}
+                                    </Badge>
+                                </Link>
+                            </div>
                             <div class="flex shrink-0 items-center gap-1">
                                 <button
                                     @click="openView(program)"
