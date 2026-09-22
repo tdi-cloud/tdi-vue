@@ -50,6 +50,8 @@ interface EvaluationFormData {
     batch: {
         id: number;
         batch: string;
+        date_start: string | null;
+        date_end: string | null;
         program: {
             id: number;
             title: string;
@@ -67,6 +69,7 @@ interface ParticipantOption {
 const props = defineProps<{
     form: EvaluationFormData;
     participants: ParticipantOption[];
+    backgroundUrl: string | null;
 }>();
 
 onMounted(() => {
@@ -113,6 +116,16 @@ const SCALE10_LEGEND: string[] = [
     '2 = Poor',
     '1 = Completely Unacceptable',
 ];
+
+const formatDate = (d: string | null) => (d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '');
+
+const batchDateLabel = computed(() => {
+    const start = formatDate(props.form.batch.date_start);
+    const end = formatDate(props.form.batch.date_end);
+    if (!start) return '';
+    if (!end || end === start) return start;
+    return `${start} – ${end}`;
+});
 
 /* ── Respondent identity ─────────────────────────────────────────────────── */
 
@@ -280,8 +293,16 @@ function submit() {
 <template>
     <Head :title="form.title" />
 
-    <div class="min-h-screen bg-gray-100 px-4 py-8 [color-scheme:light]">
-        <div class="mx-auto max-w-2xl space-y-4">
+    <div class="relative min-h-screen bg-gray-100 px-4 py-8 [color-scheme:light]">
+        <!-- Background image (superadmin default via Homepage Images, or a per-batch override in Evaluation settings) -->
+        <div
+            v-if="backgroundUrl"
+            class="fixed inset-0 bg-cover bg-center bg-fixed"
+            :style="{ backgroundImage: `url(${backgroundUrl})` }"
+        ></div>
+        <div v-if="backgroundUrl" class="fixed inset-0 bg-white/80"></div>
+
+        <div class="relative mx-auto max-w-2xl space-y-4">
             <!-- Cover photo (only shown if the program has one uploaded) -->
             <div v-if="form.batch.program.cover_page?.image_url" class="overflow-hidden rounded-2xl shadow-md">
                 <img
@@ -296,7 +317,10 @@ function submit() {
                 <div class="bg-gradient-to-br from-rose-700 via-red-700 to-orange-600 px-6 pb-5 pt-6">
                     <p class="mb-1 text-xs font-semibold uppercase tracking-widest text-rose-200">Program Evaluation</p>
                     <h1 class="text-xl font-extrabold leading-tight text-white">{{ form.batch.program.title }}</h1>
-                    <p class="mt-0.5 text-xs text-white/80">{{ form.batch.batch }}</p>
+                    <p class="mt-0.5 text-xs text-white/80">
+                        {{ form.batch.batch }}
+                        <span v-if="batchDateLabel"> · {{ batchDateLabel }}</span>
+                    </p>
                 </div>
                 <div class="space-y-1 border-t-4 border-rose-500 bg-white px-6 py-3 text-xs text-gray-500">
                     <p v-if="form.intro_text">{{ form.intro_text }}</p>

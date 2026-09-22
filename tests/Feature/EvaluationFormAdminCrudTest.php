@@ -10,6 +10,8 @@ use App\Models\EvaluationSection;
 use App\Models\Program;
 use App\Models\ResourceSpeaker;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 function evalCrudAdmin(string $empcode): User
 {
@@ -136,6 +138,62 @@ test('admin can update evaluation form settings', function () {
     expect($form->title)->toBe('Updated Title');
     expect($form->intro_text)->toBe('Please answer honestly.');
     expect($form->is_active)->toBeFalse();
+});
+
+test('admin can upload a custom background for a batch, overriding the site default', function () {
+    Storage::fake('public');
+
+    $admin = evalCrudAdmin('EMP-EVCRUD-BG1');
+    $program = evalCrudProgram();
+    $batch = evalCrudBatch($program);
+    $form = EvaluationForm::create(['batch_id' => $batch->id, 'slug' => EvaluationForm::generateSlugFor($batch)]);
+
+    $this->actingAs($admin)
+        ->post(route('evaluation-forms.background.upload', $form), [
+            'image' => UploadedFile::fake()->image('bg.jpg'),
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    $form->refresh();
+    expect($form->background_image)->not->toBeNull();
+    Storage::disk('public')->assertExists($form->background_image);
+});
+
+test('admin can reset a batch background back to the site default', function () {
+    Storage::fake('public');
+
+    $admin = evalCrudAdmin('EMP-EVCRUD-BG2');
+    $program = evalCrudProgram();
+    $batch = evalCrudBatch($program);
+    $path = UploadedFile::fake()->image('bg.jpg')->store('evaluation-backgrounds', 'public');
+    $form = EvaluationForm::create([
+        'batch_id' => $batch->id,
+        'slug' => EvaluationForm::generateSlugFor($batch),
+        'background_image' => $path,
+    ]);
+
+    $this->actingAs($admin)
+        ->delete(route('evaluation-forms.background.destroy', $form))
+        ->assertSessionDoesntHaveErrors();
+
+    $form->refresh();
+    expect($form->background_image)->toBeNull();
+    Storage::disk('public')->assertMissing($path);
+});
+
+test('a non-image upload is rejected for the evaluation background', function () {
+    Storage::fake('public');
+
+    $admin = evalCrudAdmin('EMP-EVCRUD-BG3');
+    $program = evalCrudProgram();
+    $batch = evalCrudBatch($program);
+    $form = EvaluationForm::create(['batch_id' => $batch->id, 'slug' => EvaluationForm::generateSlugFor($batch)]);
+
+    $this->actingAs($admin)
+        ->post(route('evaluation-forms.background.upload', $form), [
+            'image' => UploadedFile::fake()->create('document.pdf', 100),
+        ])
+        ->assertSessionHasErrors('image');
 });
 
 test('admin can add, update, and delete a question in a section', function () {

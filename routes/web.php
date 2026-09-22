@@ -169,6 +169,8 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::post('/batches/{batch}/evaluation-form', [EvaluationFormController::class, 'store'])->name('batches.evaluation-form.store');
     Route::put('/evaluation-forms/{evaluationForm}', [EvaluationFormController::class, 'update'])->name('evaluation-forms.update');
     Route::delete('/evaluation-forms/{evaluationForm}', [EvaluationFormController::class, 'destroy'])->middleware('superadmin')->name('evaluation-forms.destroy');
+    Route::post('/evaluation-forms/{evaluationForm}/background', [EvaluationFormController::class, 'uploadBackground'])->name('evaluation-forms.background.upload');
+    Route::delete('/evaluation-forms/{evaluationForm}/background', [EvaluationFormController::class, 'destroyBackground'])->name('evaluation-forms.background.destroy');
 
     Route::put('/evaluation-sections/{evaluationSection}', [EvaluationFormController::class, 'updateSection'])->name('evaluation-sections.update');
     Route::post('/evaluation-sections/{evaluationSection}/move-up', [EvaluationFormController::class, 'moveSectionUp'])->name('evaluation-sections.move-up');

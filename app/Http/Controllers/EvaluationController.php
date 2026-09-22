@@ -7,6 +7,7 @@ use App\Models\EvaluationForm;
 use App\Models\EvaluationQuestion;
 use App\Models\EvaluationResponse;
 use App\Models\EvaluationSection;
+use App\Models\SiteImage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -44,6 +45,7 @@ class EvaluationController extends Controller
         return Inertia::render('Evaluation/Form', [
             'form' => $form,
             'participants' => $participants,
+            'backgroundUrl' => $form->background_image_url ?? SiteImage::urlFor('evaluation_background'),
         ]);
     }
 

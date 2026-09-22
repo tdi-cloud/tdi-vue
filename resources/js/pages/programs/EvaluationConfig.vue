@@ -19,12 +19,15 @@ import {
     ClipboardPaste,
     Copy,
     ExternalLink,
+    Image as ImageIcon,
     ListChecks,
     LoaderCircle,
     Pencil,
     Plus,
+    RotateCcw,
     Sparkles,
     Trash2,
+    Upload,
     Users,
     X,
 } from 'lucide-vue-next';
@@ -65,6 +68,7 @@ interface EvaluationFormData {
     slug: string;
     title: string;
     intro_text: string | null;
+    background_image_url: string | null;
     is_active: boolean;
     created_by_name: string | null;
     created_at: string;
@@ -83,6 +87,7 @@ interface Batch {
 const props = defineProps<{
     batch: Batch;
     siblingBatchesWithForms: { id: number; batch: string }[];
+    defaultBackgroundUrl: string;
 }>();
 
 const form = computed(() => props.batch.evaluation_form);
@@ -164,6 +169,51 @@ function saveSettings() {
             },
         },
     );
+}
+
+/* ── Background image ────────────────────────────────────────────────────── */
+const backgroundFileInput = ref<HTMLInputElement | null>(null);
+const uploadingBackground = ref(false);
+const removingBackground = ref(false);
+
+const previewBackgroundUrl = computed(() => form.value?.background_image_url ?? props.defaultBackgroundUrl);
+
+function triggerBackgroundUpload() {
+    backgroundFileInput.value?.click();
+}
+
+function handleBackgroundFileChange(e: Event) {
+    if (!form.value) return;
+    const target = e.target as HTMLInputElement;
+    const file = target.files?.[0];
+    if (!file) return;
+
+    uploadingBackground.value = true;
+    router.post(
+        route('evaluation-forms.background.upload', form.value.id),
+        { image: file },
+        {
+            preserveScroll: true,
+            forceFormData: true,
+            onFinish: () => {
+                uploadingBackground.value = false;
+                if (backgroundFileInput.value) backgroundFileInput.value.value = '';
+            },
+        },
+    );
+}
+
+async function resetBackground() {
+    if (!form.value) return;
+    if (!(await confirmDialog('Reset the background image back to the site default?', { confirmText: 'Reset' }))) return;
+
+    removingBackground.value = true;
+    router.delete(route('evaluation-forms.background.destroy', form.value.id), {
+        preserveScroll: true,
+        onFinish: () => {
+            removingBackground.value = false;
+        },
+    });
 }
 
 function toggleActive() {
@@ -602,6 +652,49 @@ function submitBulkFacilitators() {
                                 <BarChart3 class="mr-1 h-3 w-3" /> View Results Dashboard
                             </Button>
                         </Link>
+                    </div>
+
+                    <!-- Background image -->
+                    <div class="flex items-center gap-3 border-t pt-3">
+                        <img :src="previewBackgroundUrl" alt="Evaluation form background" class="h-14 w-20 shrink-0 rounded-lg object-cover" />
+                        <div class="min-w-0 flex-1">
+                            <p class="flex items-center gap-1.5 text-xs font-bold">
+                                <ImageIcon class="h-3.5 w-3.5 text-rose-600" /> Background Image
+                            </p>
+                            <p class="text-[11px] text-muted-foreground">
+                                {{ form.background_image_url ? 'Custom background for this batch.' : 'Using the site-wide default background.' }}
+                            </p>
+                        </div>
+                        <div class="flex shrink-0 items-center gap-2">
+                            <input
+                                ref="backgroundFileInput"
+                                type="file"
+                                accept="image/jpeg,image/jpg,image/png,image/webp"
+                                class="hidden"
+                                @change="handleBackgroundFileChange"
+                            />
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                class="h-7 text-xs"
+                                :disabled="uploadingBackground"
+                                @click="triggerBackgroundUpload"
+                            >
+                                <LoaderCircle v-if="uploadingBackground" class="mr-1 h-3 w-3 animate-spin" />
+                                <Upload v-else class="mr-1 h-3 w-3" /> Change
+                            </Button>
+                            <Button
+                                v-if="form.background_image_url"
+                                size="sm"
+                                variant="outline"
+                                class="h-7 text-xs"
+                                :disabled="removingBackground"
+                                @click="resetBackground"
+                            >
+                                <LoaderCircle v-if="removingBackground" class="mr-1 h-3 w-3 animate-spin" />
+                                <RotateCcw v-else class="mr-1 h-3 w-3" /> Reset
+                            </Button>
+                        </div>
                     </div>
 
                     <div v-if="isSuperAdmin" class="flex items-center justify-between gap-3 border-t pt-3">

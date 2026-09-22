@@ -10,8 +10,10 @@ use App\Models\EvaluationQuestion;
 use App\Models\EvaluationResponse;
 use App\Models\EvaluationSection;
 use App\Models\Program;
+use App\Models\SiteImage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -36,6 +38,7 @@ class EvaluationFormController extends Controller
         return Inertia::render('programs/EvaluationConfig', [
             'batch' => $batch,
             'siblingBatchesWithForms' => $siblingBatchesWithForms,
+            'defaultBackgroundUrl' => SiteImage::urlFor('evaluation_background'),
         ]);
     }
 
@@ -118,6 +121,38 @@ class EvaluationFormController extends Controller
         $evaluationForm->delete();
 
         return back()->with('success', 'Evaluation form deleted.');
+    }
+
+    // POST /evaluation-forms/{evaluationForm}/background
+    // Per-batch override ng site-wide default evaluation background (config
+    // site-images.evaluation_background) — kapag walang override, ang default
+    // na iyon ang gagamitin ng public evaluation form.
+    public function uploadBackground(Request $request, EvaluationForm $evaluationForm)
+    {
+        $request->validate([
+            'image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ]);
+
+        if ($evaluationForm->background_image && Storage::disk('public')->exists($evaluationForm->background_image)) {
+            Storage::disk('public')->delete($evaluationForm->background_image);
+        }
+
+        $path = $request->file('image')->store('evaluation-backgrounds', 'public');
+        $evaluationForm->update(['background_image' => $path]);
+
+        return back()->with('success', 'Evaluation background updated.');
+    }
+
+    // DELETE /evaluation-forms/{evaluationForm}/background
+    public function destroyBackground(EvaluationForm $evaluationForm)
+    {
+        if ($evaluationForm->background_image && Storage::disk('public')->exists($evaluationForm->background_image)) {
+            Storage::disk('public')->delete($evaluationForm->background_image);
+        }
+
+        $evaluationForm->update(['background_image' => null]);
+
+        return back()->with('success', 'Evaluation background reset to the site default.');
     }
 
     // ── Sections ──────────────────────────────────────────────────────────────

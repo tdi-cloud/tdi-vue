@@ -5,6 +5,8 @@ use App\Models\Employee;
 use App\Models\EvaluationForm;
 use App\Models\Participant;
 use App\Models\Program;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 function evalShowProgram(): Program
 {
@@ -93,5 +95,38 @@ test('an active evaluation form renders publicly with sections, facilitators, an
         ->has('form.facilitators', 1)
         ->has('participants', 1)
         ->where('participants.0.name', $employee->name)
+        ->where('form.batch.date_start', $batch->date_start)
+        ->where('form.batch.date_end', $batch->date_end)
     );
+});
+
+test('the public form uses the site-wide default background when the batch has no override', function () {
+    $batch = evalShowBatch(evalShowProgram());
+    $form = EvaluationForm::create(['batch_id' => $batch->id, 'slug' => EvaluationForm::generateSlugFor($batch)]);
+    $form->seedDefaults();
+
+    $response = $this->get(route('evaluate.show', $form->slug));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->where('backgroundUrl', config('site-images.evaluation_background.default'))
+    );
+});
+
+test('the public form uses the batch-specific background override when one is set', function () {
+    Storage::fake('public');
+
+    $batch = evalShowBatch(evalShowProgram());
+    $form = EvaluationForm::create(['batch_id' => $batch->id, 'slug' => EvaluationForm::generateSlugFor($batch)]);
+    $form->seedDefaults();
+
+    $path = UploadedFile::fake()->image('bg.jpg')->store('evaluation-backgrounds', 'public');
+    $form->update(['background_image' => $path]);
+
+    $response = $this->get(route('evaluate.show', $form->slug));
+
+    $response->assertOk();
+    $expectedUrl = Storage::disk('public')->url($path);
+    $response->assertInertia(fn ($page) => $page->where('backgroundUrl', $expectedUrl));
+    expect($expectedUrl)->not->toBe(config('site-images.evaluation_background.default'));
 });

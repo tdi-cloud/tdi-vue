@@ -6,6 +6,7 @@ use App\Support\EvaluationDefaults;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class EvaluationForm extends Model
@@ -15,10 +16,18 @@ class EvaluationForm extends Model
         'slug',
         'title',
         'intro_text',
+        'background_image',
         'is_active',
         'created_by_empcode',
         'created_by_name',
     ];
+
+    protected $appends = ['background_image_url'];
+
+    public function getBackgroundImageUrlAttribute(): ?string
+    {
+        return $this->background_image ? Storage::disk('public')->url($this->background_image) : null;
+    }
 
     protected function casts(): array
     {

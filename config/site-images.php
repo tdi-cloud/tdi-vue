@@ -11,6 +11,12 @@ return [
         'default' => '/storage/hero/hrmo.jpg',
     ],
 
+    'evaluation_background' => [
+        'label' => 'Evaluation Form Background (default for all batches)',
+        'section' => 'Evaluation Form',
+        'default' => '/storage/hero/cpsc.JPG',
+    ],
+
     'navbar_logo' => [
         'label' => 'Navbar Logo (TESDA Seal)',
         'section' => 'Navbar',
