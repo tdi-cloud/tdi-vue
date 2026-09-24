@@ -21,6 +21,7 @@ import {
     Save,
     Search,
     StickyNote,
+    UserCog,
     XCircle,
 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
@@ -42,13 +43,16 @@ interface Participant {
     id: number;
     empcode: string;
     attendance: string;
+    hours?: number | null;
     employee?: Employee | null;
     user_email?: string | null;
+    justification?: { id: number; file_path: string } | null;
 }
 
 interface Batch {
     id: number;
     batch: string;
+    hours?: number | string | null;
     participants?: Participant[];
     requirements?: { id: number; title: string; name: string; due_date: string }[];
 }
@@ -199,6 +203,86 @@ const previewSubmission = ref<Submission | null>(null);
 const openFilePreview = (s: Submission) => {
     previewSubmission.value = s;
     showFilePreview.value = true;
+};
+
+/* ===================== ATTENDANCE DIALOG ===================== */
+
+const showAttendance = ref(false);
+const attendanceTarget = ref<Submission | null>(null);
+const attStatus = ref<'Pending' | 'Complete' | 'Absent'>('Pending');
+const attHours = ref('');
+const attFile = ref<File | null>(null);
+const attProcessing = ref(false);
+const attErrors = ref<{ hours?: string; justification?: string }>({});
+
+const attendanceClass = (attendance: string) => {
+    switch (attendance) {
+        case 'Complete':
+            return 'bg-emerald-600/10 text-emerald-600 dark:text-emerald-400';
+        case 'Absent':
+            return 'bg-red-600/10 text-red-600 dark:text-red-400';
+        default:
+            return 'bg-amber-500/10 text-amber-600 dark:text-amber-400';
+    }
+};
+
+const openAttendance = (s: Submission) => {
+    attendanceTarget.value = s;
+
+    const current = ['Pending', 'Complete', 'Absent'].includes(s.participant?.attendance ?? '') ? s.participant!.attendance : 'Pending';
+    attStatus.value = current as 'Pending' | 'Complete' | 'Absent';
+    attHours.value = current === 'Complete' && s.participant?.hours ? String(s.participant.hours) : String(s.batch?.hours ?? '');
+
+    attFile.value = null;
+    attErrors.value = {};
+    showAttendance.value = true;
+};
+
+const onAttFileChange = (e: Event) => {
+    const input = e.target as HTMLInputElement;
+    attFile.value = input.files?.[0] ?? null;
+};
+
+const submitAttendance = () => {
+    if (!attendanceTarget.value?.participant) return;
+    attErrors.value = {};
+
+    if (attStatus.value === 'Complete') {
+        const h = Number(attHours.value);
+        if (!attHours.value || isNaN(h) || h <= 0) {
+            attErrors.value.hours = 'Please enter the completed hours.';
+            return;
+        }
+    }
+
+    if (attStatus.value === 'Absent' && !attFile.value && !attendanceTarget.value.participant.justification) {
+        attErrors.value.justification = 'Please upload the justification memo for the absence.';
+        return;
+    }
+
+    attProcessing.value = true;
+    router.post(
+        route('participants.attendance', attendanceTarget.value.participant.id),
+        {
+            attendance: attStatus.value,
+            hours: attStatus.value === 'Complete' ? attHours.value : 0,
+            justification: attStatus.value === 'Absent' ? attFile.value : null,
+        },
+        {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                showAttendance.value = false;
+                attendanceTarget.value = null;
+            },
+            onError: (errors) => {
+                attErrors.value = errors as any;
+            },
+            onFinish: () => {
+                attProcessing.value = false;
+            },
+        },
+    );
 };
 
 /* ===================== REVIEW DIALOG ===================== */
@@ -399,9 +483,9 @@ const submitReview = () => {
             <div
                 v-for="s in filteredSubmissions"
                 :key="s.id"
-                class="flex flex-wrap items-start justify-between gap-3 rounded-2xl border px-4 py-3 shadow-sm"
+                class="flex items-start justify-between gap-3 rounded-2xl border px-4 py-3 shadow-sm"
             >
-                <div class="flex min-w-0 flex-col gap-1">
+                <div class="flex min-w-0 flex-1 flex-col gap-1">
                     <p class="text-sm font-bold leading-snug">
                         {{ participantName(s) }}
                         <span class="text-xs font-normal text-muted-foreground">({{ s.participant?.empcode }})</span>
@@ -444,6 +528,16 @@ const submitReview = () => {
                     <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold" :class="statusClass(s.status)">
                         {{ capitalize(s.status) }}
                     </span>
+                    <button
+                        type="button"
+                        class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold transition-opacity hover:opacity-80"
+                        :class="attendanceClass(s.participant?.attendance ?? 'Pending')"
+                        title="Edit attendance"
+                        @click="openAttendance(s)"
+                    >
+                        {{ s.participant?.attendance ?? 'Pending' }}
+                        <Pencil class="h-2.5 w-2.5" />
+                    </button>
                     <Button v-if="fileUrl(s)" variant="outline" size="sm" class="h-7 text-xs" @click="openFilePreview(s)">
                         <Eye class="mr-1 h-3.5 w-3.5" /> View PDF
                     </Button>
@@ -453,6 +547,66 @@ const submitReview = () => {
                 </div>
             </div>
         </div>
+
+        <!-- ── Attendance dialog ── -->
+        <Dialog :open="showAttendance" @update:open="showAttendance = $event">
+            <DialogContent class="max-w-sm !rounded-2xl">
+                <DialogHeader>
+                    <DialogTitle class="flex items-center gap-2"> <UserCog class="h-5 w-5 text-blue-600" /> Edit Attendance </DialogTitle>
+                    <DialogDescription class="text-xs text-muted-foreground">
+                        {{ attendanceTarget ? participantName(attendanceTarget) : '' }} — {{ attendanceTarget?.batch?.batch }}
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div class="grid gap-3 py-1">
+                    <div class="grid gap-1">
+                        <Label class="text-xs">Status <span class="text-red-500">*</span></Label>
+                        <Select v-model="attStatus">
+                            <SelectTrigger class="h-8 text-xs">
+                                <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem class="text-xs" value="Pending">Pending</SelectItem>
+                                <SelectItem class="text-xs" value="Complete">Complete</SelectItem>
+                                <SelectItem class="text-xs" value="Absent">Absent</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div v-if="attStatus === 'Complete'" class="grid gap-1">
+                        <Label class="text-xs">Completed Hours <span class="text-red-500">*</span></Label>
+                        <Input class="h-8 text-xs" type="number" step="0.5" min="0.5" v-model="attHours" />
+                        <p v-if="attErrors.hours" class="text-xs text-red-500">{{ attErrors.hours }}</p>
+                    </div>
+
+                    <div v-if="attStatus === 'Absent'" class="grid gap-1">
+                        <Label class="text-xs">
+                            Justification Memo
+                            <span v-if="!attendanceTarget?.participant?.justification" class="text-red-500">*</span>
+                        </Label>
+                        <p v-if="attendanceTarget?.participant?.justification && !attFile" class="text-[11px] text-muted-foreground">
+                            Already has an uploaded memo. Choose a file only to replace it.
+                        </p>
+                        <input
+                            type="file"
+                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                            class="text-xs file:mr-2 file:rounded-md file:border-0 file:bg-muted file:px-2 file:py-1 file:text-xs"
+                            @change="onAttFileChange"
+                        />
+                        <p v-if="attErrors.justification" class="text-xs text-red-500">{{ attErrors.justification }}</p>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <Button variant="outline" size="sm" @click="showAttendance = false">Cancel</Button>
+                    <Button class="bg-blue-600 hover:bg-blue-700 dark:text-white" size="sm" :disabled="attProcessing" @click="submitAttendance">
+                        <LoaderCircle v-if="attProcessing" class="mr-1 h-3 w-3 animate-spin" />
+                        <Save v-else class="h-3.5 w-3.5" />
+                        Save Attendance
+                    </Button>
+                </div>
+            </DialogContent>
+        </Dialog>
 
         <!-- ── Review dialog ── -->
         <Dialog :open="showReview" @update:open="showReview = $event">

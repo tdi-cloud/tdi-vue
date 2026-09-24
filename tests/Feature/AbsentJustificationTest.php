@@ -147,6 +147,34 @@ test('marking absent without any file and no prior memo fails validation', funct
     ])->assertSessionHasErrors('justification');
 });
 
+test('an admin can delete the uploaded justification memo, reverting attendance to Pending', function () {
+    Storage::fake('public');
+    $admin = justificationTestAdmin('EMP-JADM-05');
+    [$participant] = justificationTestSetup();
+
+    $this->actingAs($admin)->post(route('participants.attendance', $participant), [
+        'attendance' => 'Absent',
+        'justification' => UploadedFile::fake()->create('memo.pdf', 100),
+    ]);
+    $path = $participant->refresh()->justification->file_path;
+
+    $response = $this->actingAs($admin)->delete(route('participants.justification.destroy', $participant));
+
+    $response->assertSessionDoesntHaveErrors();
+    $participant->refresh();
+    expect($participant->attendance)->toBe('Pending');
+    expect($participant->justification)->toBeNull();
+    Storage::disk('public')->assertMissing($path);
+});
+
+test('deleting a justification memo when there is none returns a 404', function () {
+    $admin = justificationTestAdmin('EMP-JADM-06');
+    [$participant] = justificationTestSetup();
+
+    $this->actingAs($admin)->delete(route('participants.justification.destroy', $participant))
+        ->assertNotFound();
+});
+
 // ── Participant self-service justification (My Programs) ───────────────────
 
 function selfJustificationUser(string $empcode): User

@@ -179,7 +179,7 @@ const dateRange = (program: Program) => {
                     <div
                         v-for="(program, index) in paginated"
                         :key="program.id"
-                        class="program-row group flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50"
+                        class="program-row group flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors"
                         :style="{ animationDelay: `${index * 60}ms` }"
                         @click="viewProgram(program.id)"
                     >
@@ -347,6 +347,21 @@ const dateRange = (program: Program) => {
     background: #f7faff;
 }
 
+:global(.dark) .program-list__surface {
+    border-color: #1f2937;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+}
+
+:global(.dark) .program-row {
+    border-color: #1f2937;
+}
+
+:global(.dark) .program-row:hover,
+:global(.dark) .program-row:focus-within {
+    background: #111827;
+    box-shadow: inset 3px 0 0 #2563eb;
+}
+
 .program-row__delete:focus-visible {
     opacity: 1;
     outline: 2px solid #2563eb;
@@ -355,6 +370,10 @@ const dateRange = (program: Program) => {
 
 .program-pagination {
     border-color: #dce5f0;
+}
+
+:global(.dark) .program-pagination {
+    border-color: #1f2937;
 }
 
 .program-pagination__controls button {

@@ -18,6 +18,7 @@ import {
     FileStack,
     Gauge,
     Images,
+    Inbox,
     Map,
     MessageSquareWarning,
     ShieldCheck,
@@ -67,6 +68,13 @@ const allNavItems: NavItem[] = [
         url: '/requirements-tracker',
         icon: ClipboardList,
         color: 'text-rose-500',
+        group: 'Monitoring',
+    },
+    {
+        title: 'Submissions',
+        url: '/submissions',
+        icon: Inbox,
+        color: 'text-blue-600',
         group: 'Monitoring',
     },
     {

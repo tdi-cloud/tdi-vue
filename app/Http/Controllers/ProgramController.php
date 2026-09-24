@@ -183,7 +183,7 @@ class ProgramController extends Controller
             },
         ]);
 
-        $submissions = Submission::with(['participant.employee', 'batch', 'requirement'])
+        $submissions = Submission::with(['participant.employee', 'participant.justification', 'batch', 'requirement'])
             ->where('program_code', $program->program_code)
             ->orderByDesc('submitted_at')
             ->get();

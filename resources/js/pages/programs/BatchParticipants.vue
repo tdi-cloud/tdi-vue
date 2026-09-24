@@ -134,6 +134,32 @@ const onFileChange = (e: Event) => {
     attFile.value = input.files?.[0] ?? null;
 };
 
+const deletingJustification = ref(false);
+
+const deleteJustificationMemo = async () => {
+    if (!attendanceTarget.value) return;
+    if (!(await confirmDialog('Remove the uploaded justification memo?', { confirmText: 'Remove' }))) return;
+
+    const participantId = attendanceTarget.value.id;
+    deletingJustification.value = true;
+    router.delete(route('participants.justification.destroy', participantId), {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => {
+            const updated = participants.value.find((p: any) => p.id === participantId);
+            if (updated) {
+                attendanceTarget.value = updated;
+                attStatus.value = ['Pending', 'Complete', 'Absent'].includes(updated.attendance) ? updated.attendance : 'Pending';
+            }
+            attFile.value = null;
+            attErrors.value = {};
+        },
+        onFinish: () => {
+            deletingJustification.value = false;
+        },
+    });
+};
+
 const submitAttendance = () => {
     if (!attendanceTarget.value) return;
     attErrors.value = {};
@@ -1106,14 +1132,26 @@ const submissionSummary = computed(() => {
                                 <span v-if="!attendanceTarget?.justification" class="text-red-500">*</span>
                             </Label>
 
-                            <a
-                                v-if="attendanceTarget?.justification"
-                                :href="`/storage/${attendanceTarget.justification.file_path}`"
-                                target="_blank"
-                                class="inline-flex w-fit items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-400"
-                            >
-                                <FileText class="h-3 w-3" /> View currently uploaded memo
-                            </a>
+                            <div v-if="attendanceTarget?.justification" class="flex items-center gap-1.5">
+                                <a
+                                    :href="`/storage/${attendanceTarget.justification.file_path}`"
+                                    target="_blank"
+                                    class="inline-flex w-fit items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-400"
+                                >
+                                    <FileText class="h-3 w-3" /> View currently uploaded memo
+                                </a>
+                                <button
+                                    type="button"
+                                    :disabled="deletingJustification"
+                                    title="Remove uploaded memo"
+                                    aria-label="Remove uploaded memo"
+                                    class="inline-flex items-center justify-center rounded-md border border-red-200 bg-red-50 p-1.5 text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400"
+                                    @click="deleteJustificationMemo"
+                                >
+                                    <LoaderCircle v-if="deletingJustification" class="h-3 w-3 animate-spin" />
+                                    <Trash2 v-else class="h-3 w-3" />
+                                </button>
+                            </div>
 
                             <input
                                 type="file"

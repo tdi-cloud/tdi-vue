@@ -207,6 +207,28 @@ class ParticipantController extends Controller
         return back()->with('success', 'Attendance updated.');
     }
 
+    /**
+     * Burahin ang na-upload na justification memo ng isang Absent participant,
+     * nang hindi kinakailangang baguhin ang buong attendance record.
+     * Kapag naubos ang memo habang Absent pa, ibabalik sa Pending — dahil
+     * required ang memo para valid ang Absent status (tingnan ang
+     * updateAttendance() sa taas).
+     *
+     * DELETE /participants/{participant}/justification
+     */
+    public function destroyJustification(Participant $participant)
+    {
+        abort_if(! $participant->justification, 404);
+
+        $this->deleteJustification($participant);
+
+        if ($participant->attendance === 'Absent') {
+            $participant->update(['attendance' => 'Pending']);
+        }
+
+        return back()->with('success', 'Justification memo removed.');
+    }
+
     public function applyToAll(Request $request, Participant $participant)
     {
         $request->validate([

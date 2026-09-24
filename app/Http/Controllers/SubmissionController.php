@@ -2,14 +2,51 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Program;
 use App\Models\Submission;
 use App\Models\SubmissionActivityLog;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
 
 class SubmissionController extends Controller
 {
+    // GET /submissions
+    // Global na "inbox" ng lahat ng requirement submissions, lintas sa lahat
+    // ng program — hindi tulad ng per-program na Submissions tab (ProgramController@show).
+    public function index(Request $request)
+    {
+        $query = Submission::with(['participant.employee', 'participant.justification', 'batch', 'requirement', 'program'])
+            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
+            ->when($request->filled('program_code'), fn ($q) => $q->where('program_code', $request->program_code))
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $search = $request->string('search');
+                $q->where(function ($sub) use ($search) {
+                    $sub->whereHas('participant.employee', function ($e) use ($search) {
+                        $e->where('FIRSTNAME', 'like', "%{$search}%")
+                            ->orWhere('LASTNAME', 'like', "%{$search}%")
+                            ->orWhere('EMPCODE', 'like', "%{$search}%");
+                    })->orWhereHas('requirement', fn ($r) => $r->where('title', 'like', "%{$search}%"));
+                });
+            })
+            ->orderByDesc('submitted_at');
+
+        $submissions = $query->paginate(20)->withQueryString();
+
+        return Inertia::render('Submissions/index', [
+            'submissions' => $submissions,
+            'programs' => Program::orderBy('title')->get(['id', 'program_code', 'title']),
+            'filters' => $request->only(['status', 'program_code', 'search']),
+            'stats' => [
+                'total' => Submission::count(),
+                'pending' => Submission::where('status', 'Pending')->count(),
+                'approved' => Submission::where('status', 'Approved')->count(),
+                'rejected' => Submission::where('status', 'Rejected')->count(),
+            ],
+        ]);
+    }
+
     public function store(Request $request)
     {
         $request->validate([

@@ -93,6 +93,8 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::delete('/participants/{participant}', [ParticipantController::class, 'destroy'])->name('participants.destroy');
     Route::post('/participants/{participant}/attendance', [ParticipantController::class, 'updateAttendance'])
         ->name('participants.attendance');
+    Route::delete('/participants/{participant}/justification', [ParticipantController::class, 'destroyJustification'])
+        ->name('participants.justification.destroy');
     Route::post('/participants/bulk-store', [ParticipantController::class, 'bulkStore'])
         ->name('participants.bulk-store');
     Route::post('/participants/{participant}/apply-to-all', [ParticipantController::class, 'applyToAll'])->name('participants.applyToAll');
@@ -139,6 +141,8 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     // isang route-model-bound submission.
     Route::get('submissions/activity-log', [SubmissionActivityController::class, 'index'])
         ->name('submissions.activity-log');
+    Route::get('submissions', [SubmissionController::class, 'index'])
+        ->name('submissions.index');
     Route::post('submissions', [SubmissionController::class, 'store'])
         ->name('submissions.store');
     Route::patch('submissions/{submission}/review', [SubmissionController::class, 'review'])

@@ -6,8 +6,10 @@ use App\Models\Batch;
 use App\Models\Certificate;
 use App\Models\DefaultProgramCover;
 use App\Models\Participant;
+use App\Models\PendingNotification;
 use App\Models\Requirement;
 use App\Models\Submission;
+use App\Notifications\RequirementSubmitted;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -119,7 +121,7 @@ class EnrolledProgramController extends Controller
             $path = $file->storeAs('submissions', $filename, 'public');
         }
 
-        Submission::updateOrCreate(
+        $saved = Submission::updateOrCreate(
             [
                 'participant_id' => $participant->id,
                 'requirement_id' => $requirement->id,
@@ -135,6 +137,14 @@ class EnrolledProgramController extends Controller
                 'reviewed_by' => $newFileUploaded ? null : ($submission->reviewed_by ?? null),
             ]
         );
+
+        // I-notify ang gumawa ng program (bawat bagong file na na-upload, kasama
+        // na ang resubmission pagkatapos ma-reject) — para malaman niyang may
+        // bagong dapat i-review. Hindi natin ino-notify ang sarili niya kung
+        // siya mismo ang nag-submit ng sarili niyang requirement.
+        if ($newFileUploaded && $batch->program?->added_by && $batch->program->added_by !== $participant->empcode) {
+            PendingNotification::notifyOrQueue($batch->program->added_by, new RequirementSubmitted($saved));
+        }
 
         return back()->with('success', $newFileUploaded
             ? 'Requirement submitted successfully. Awaiting review.'
