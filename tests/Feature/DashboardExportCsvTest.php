@@ -139,9 +139,10 @@ test('dashboard export csv includes the program office initiated and provider', 
         ->and($row[array_search('Provider', $header)])->toBe('Prompt Care EMS Training Academy');
 });
 
-test('dashboard export csv includes the program category', function () {
+test('dashboard export csv includes the program category and description', function () {
     $admin = exportCsvTestAdmin('EMP-EXP-ADM6');
-    [, $batch] = exportCsvTestBatch();
+    [$program, $batch] = exportCsvTestBatch();
+    $program->update(['description' => "A seminar on ethics, with \"quotes\"\nand a line break."]);
 
     $employee = exportCsvTestEmployee('EMP-EXP-09', 'NCR', 'Mendoza');
     Participant::create([
@@ -154,12 +155,22 @@ test('dashboard export csv includes the program category', function () {
     ]));
 
     $response->assertOk();
-    $lines = array_values(array_filter(explode("\n", $response->streamedContent())));
-    $header = str_getcsv(ltrim($lines[0], "\xEF\xBB\xBF"));
-    $row = str_getcsv(collect($lines)->first(fn ($l) => str_contains($l, 'EMP-EXP-09')));
+    $stream = fopen('php://memory', 'r+');
+    fwrite($stream, ltrim($response->streamedContent(), "\xEF\xBB\xBF"));
+    rewind($stream);
+
+    $header = fgetcsv($stream);
+    $row = null;
+    while (($record = fgetcsv($stream)) !== false) {
+        if (in_array('EMP-EXP-09', $record, true)) {
+            $row = $record;
+        }
+    }
 
     expect($header)->toContain('Category')
-        ->and($row[array_search('Category', $header)])->toBe('Regional');
+        ->and($header)->toContain('Description')
+        ->and($row[array_search('Category', $header)])->toBe('Regional')
+        ->and($row[array_search('Description', $header)])->toBe("A seminar on ethics, with \"quotes\"\nand a line break.");
 });
 
 test('dashboard export csv respects the region filter', function () {

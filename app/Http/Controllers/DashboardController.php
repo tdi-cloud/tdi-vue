@@ -152,7 +152,7 @@ class DashboardController extends Controller
                     ->on('s.participant_id', '=', 'p.id');
             })
             ->select(
-                'prog.program_code', 'prog.title as program_title', 'prog.type as program_type', 'prog.category as program_category',
+                'prog.program_code', 'prog.title as program_title', 'prog.type as program_type', 'prog.category as program_category', 'prog.description as program_description',
                 'prog.initiated as program_initiated', 'prog.provider as program_provider',
                 'b.batch as batch_label', 'b.status as batch_status',
                 'b.date_start as batch_date_start', 'b.date_end as batch_date_end',
@@ -187,7 +187,7 @@ class DashboardController extends Controller
             fwrite($out, "\xEF\xBB\xBF");
 
             fputcsv($out, [
-                'Program Code', 'Program Title', 'Program Type', 'Category', 'Office Initiated', 'Provider',
+                'Program Code', 'Program Title', 'Program Type', 'Category', 'Description', 'Office Initiated', 'Provider',
                 'Batch', 'Batch Status', 'Batch Start', 'Batch End',
                 'EMPCODE', 'Participant Name', 'Office/Division', 'Region', 'SG',
                 'Attendance', 'Hours',
@@ -209,6 +209,7 @@ class DashboardController extends Controller
                     $row->program_title,
                     $row->program_type,
                     $row->program_category,
+                    $row->program_description,
                     $row->program_initiated,
                     $row->program_provider,
                     $row->batch_label,
