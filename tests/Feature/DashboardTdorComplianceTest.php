@@ -341,7 +341,7 @@ test('tdor compliance still counts a submission when the participant empcode dif
     expect($response->json('not_submitted'))->toBe(0);
 });
 
-test('tdor compliance counts employees whose TDOR is not yet due (not overdue-only anymore)', function () {
+test('tdor compliance does not count requirements that are not yet due', function () {
     $admin = tdorTestAdmin('EMP-TDOR-ADM-ND');
     [$program, $batch, $requirement] = tdorTestSetup();
     $requirement->update(['due_date' => now()->addMonth()->toDateString()]);
@@ -357,8 +357,8 @@ test('tdor compliance counts employees whose TDOR is not yet due (not overdue-on
     ]));
 
     $response->assertOk();
-    expect($response->json('total'))->toBe(1);
-    expect($response->json('not_submitted'))->toBe(1);
+    expect($response->json('total'))->toBe(0);
+    expect($response->json('not_submitted'))->toBe(0);
 });
 
 test('tdor compliance counts each batch obligation separately, not once per employee', function () {

@@ -134,9 +134,9 @@ test('treap compliance endpoint counts submitted, not-submitted, and excludes ab
     expect($response->json('not_submitted'))->toBe(1);
 });
 
-test('treap compliance counts employees whose TREAP is not yet due (not overdue-only anymore)', function () {
+test('treap compliance does not count requirements that are not yet due', function () {
     $admin = treapTestAdmin('EMP-TREAP-ADM-ND');
-    // Due date sa hinaharap — dating hindi ito nabibilang, dapat kasama na ngayon.
+    // Due date sa hinaharap — hindi dapat nabibilang.
     [$program, $batch, $requirement] = treapTestSetup(now()->addMonth()->toDateString());
 
     $notYetDueEmployee = treapTestEmployee('EMP-TREAP-ND-01', 'Reyes');
@@ -150,8 +150,8 @@ test('treap compliance counts employees whose TREAP is not yet due (not overdue-
     ]));
 
     $response->assertOk();
-    expect($response->json('total'))->toBe(1);
-    expect($response->json('not_submitted'))->toBe(1);
+    expect($response->json('total'))->toBe(0);
+    expect($response->json('not_submitted'))->toBe(0);
 
     $listResponse = $this->actingAs($admin)->getJson(route('dashboard.treap-compliance.list', [
         'region' => 'ALL', 'year' => 'ALL', 'office' => 'ALL', 'office_filter' => 'ALL',
@@ -159,8 +159,7 @@ test('treap compliance counts employees whose TREAP is not yet due (not overdue-
     ]));
 
     $listResponse->assertOk();
-    expect($listResponse->json('count'))->toBe(1);
-    expect($listResponse->json('employees.0.empcode'))->toBe($notYetDueEmployee->EMPCODE);
+    expect($listResponse->json('count'))->toBe(0);
 });
 
 test('treap compliance counts each batch obligation separately, not once per employee', function () {

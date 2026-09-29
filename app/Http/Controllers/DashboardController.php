@@ -665,14 +665,15 @@ class DashboardController extends Controller
         // "na-submit na ba ANG OBLIGASYONG ITO".
         $submittedCond = $this->submittedCondition('TREAP', true);
 
-        // Lahat ng TREAP requirement ang bilangin — hindi lang ang mga overdue
-        // na — ang region/office/year/plantilla status na lang sa filter
-        // section ang dapat sumasala kung sino ang kasama sa count.
+        // Overdue lang (due_date <= ngayon) ang binibilang — hindi kasama ang
+        // mga hindi pa due; ang region/office/year/plantilla status ang sumasala
+        // sa iba pa.
         $baseParticipants = DB::table('participants')
             ->join('batches', 'participants.batch_id', '=', 'batches.id')
             ->join('requirements', 'requirements.batch_id', '=', 'batches.id')
             ->join('employees', 'participants.empcode', '=', 'employees.EMPCODE')
             ->where('requirements.title', 'TREAP')
+            ->where('requirements.due_date', '<=', now()->toDateString())
             ->where('participants.attendance', '!=', 'Absent');
 
         $baseParticipants = $this->applyEmployeeFilters(
@@ -724,6 +725,7 @@ class DashboardController extends Controller
             ->join('requirements', 'requirements.batch_id', '=', 'batches.id')
             ->join('employees', 'participants.empcode', '=', 'employees.EMPCODE')
             ->where('requirements.title', 'TREAP')
+            ->where('requirements.due_date', '<=', now()->toDateString())
             ->where('participants.attendance', '!=', 'Absent');
 
         $query = $this->applyEmployeeFilters(
@@ -806,14 +808,15 @@ class DashboardController extends Controller
         // hiwalay na sinusuri, hindi "submitted na ba siya saan man".
         $submittedCond = $this->submittedCondition('REAP', true);
 
-        // Lahat ng REAP requirement ang bilangin — hindi lang ang mga overdue
-        // na — ang region/office/year/plantilla status na lang sa filter
-        // section ang dapat sumasala kung sino ang kasama sa count.
+        // Overdue lang (due_date <= ngayon) ang binibilang — hindi kasama ang
+        // mga hindi pa due; ang region/office/year/plantilla status ang sumasala
+        // sa iba pa.
         $baseParticipants = DB::table('participants')
             ->join('batches', 'participants.batch_id', '=', 'batches.id')
             ->join('requirements', 'requirements.batch_id', '=', 'batches.id')
             ->join('employees', 'participants.empcode', '=', 'employees.EMPCODE')
             ->where('requirements.title', 'REAP')
+            ->where('requirements.due_date', '<=', now()->toDateString())
             ->where('participants.attendance', '!=', 'Absent');
 
         $baseParticipants = $this->applyEmployeeFilters(
@@ -863,6 +866,7 @@ class DashboardController extends Controller
             ->join('requirements', 'requirements.batch_id', '=', 'batches.id')
             ->join('employees', 'participants.empcode', '=', 'employees.EMPCODE')
             ->where('requirements.title', 'REAP')
+            ->where('requirements.due_date', '<=', now()->toDateString())
             ->where('participants.attendance', '!=', 'Absent');
 
         $query = $this->applyEmployeeFilters(
@@ -945,14 +949,15 @@ class DashboardController extends Controller
         // hiwalay na sinusuri, hindi "submitted na ba siya saan man".
         $submittedCond = $this->submittedCondition('TDOR', true);
 
-        // Lahat ng TDOR requirement ang bilangin — hindi lang ang mga overdue
-        // na — ang region/office/year/plantilla status na lang sa filter
-        // section ang dapat sumasala kung sino ang kasama sa count.
+        // Overdue lang (due_date <= ngayon) ang binibilang — hindi kasama ang
+        // mga hindi pa due; ang region/office/year/plantilla status ang sumasala
+        // sa iba pa.
         $baseParticipants = DB::table('participants')
             ->join('batches', 'participants.batch_id', '=', 'batches.id')
             ->join('requirements', 'requirements.batch_id', '=', 'batches.id')
             ->join('employees', 'participants.empcode', '=', 'employees.EMPCODE')
             ->where('requirements.title', 'TDOR')
+            ->where('requirements.due_date', '<=', now()->toDateString())
             ->where('participants.attendance', '!=', 'Absent');
 
         $baseParticipants = $this->applyEmployeeFilters(
@@ -1002,6 +1007,7 @@ class DashboardController extends Controller
             ->join('requirements', 'requirements.batch_id', '=', 'batches.id')
             ->join('employees', 'participants.empcode', '=', 'employees.EMPCODE')
             ->where('requirements.title', 'TDOR')
+            ->where('requirements.due_date', '<=', now()->toDateString())
             ->where('participants.attendance', '!=', 'Absent');
 
         $query = $this->applyEmployeeFilters(

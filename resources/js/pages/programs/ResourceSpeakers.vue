@@ -221,7 +221,10 @@ const batchLabel = (speaker: ResourceSpeaker) => {
         </div>
 
         <!-- Empty state with illustration -->
-        <div v-if="!speakers.length" class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed px-6 py-16 text-center">
+        <div
+            v-if="!speakers.length"
+            class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed px-6 py-16 text-center shadow-md"
+        >
             <!-- Illustration: speaker at podium / microphone -->
             <svg viewBox="0 0 200 160" class="h-40 w-auto" xmlns="http://www.w3.org/2000/svg">
                 <ellipse cx="100" cy="142" rx="70" ry="8" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
@@ -273,7 +276,7 @@ const batchLabel = (speaker: ResourceSpeaker) => {
             <div
                 v-for="speaker in speakers"
                 :key="speaker.id"
-                class="flex flex-col gap-2 rounded-xl border bg-card p-4 shadow-sm transition hover:shadow-md"
+                class="flex flex-col gap-2 rounded-xl border bg-card p-4 shadow-md transition hover:shadow-lg"
             >
                 <div class="flex items-start gap-3">
                     <div

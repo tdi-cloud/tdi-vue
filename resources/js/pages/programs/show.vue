@@ -288,58 +288,58 @@ const removeCompetency = async (competency: Competency) => {
                             <CoverPagePanel :program-id="program.id" :cover-page="program.cover_page" />
 
                             <!-- Description -->
-                            <div class="rounded-2xl border p-4 shadow-sm">
+                            <div class="rounded-2xl border p-4 shadow-md">
                                 <p class="mb-1 text-xs font-semibold text-muted-foreground">Description</p>
                                 <p class="text-sm leading-relaxed">{{ program.description || 'No description provided.' }}</p>
                             </div>
 
                             <!-- Details Grid -->
                             <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-                                <div class="flex flex-col gap-1 rounded-2xl border p-4">
+                                <div class="flex flex-col gap-1 rounded-2xl border p-4 shadow-md">
                                     <p class="text-xs text-muted-foreground">Modality</p>
                                     <p class="flex items-center gap-2 text-sm font-bold">
                                         <Presentation class="w-4 text-blue-500" /> {{ program.modality }}
                                     </p>
                                 </div>
-                                <div class="flex flex-col gap-1 rounded-2xl border p-4">
+                                <div class="flex flex-col gap-1 rounded-2xl border p-4 shadow-md">
                                     <p class="text-xs text-muted-foreground">Category</p>
                                     <p class="flex items-center gap-2 text-sm font-bold">
                                         <House class="w-4 text-indigo-500" />{{ program.category }}
                                     </p>
                                 </div>
-                                <div class="flex flex-col gap-1 rounded-2xl border p-4">
+                                <div class="flex flex-col gap-1 rounded-2xl border p-4 shadow-md">
                                     <p class="text-xs text-muted-foreground">Program Type</p>
                                     <p class="flex items-center gap-2 text-sm font-bold"><Settings2 class="w-5" /> {{ program.type }}</p>
                                 </div>
-                                <div class="flex flex-col gap-1 rounded-2xl border p-4">
+                                <div class="flex flex-col gap-1 rounded-2xl border p-4 shadow-md">
                                     <p class="text-xs text-muted-foreground">Target Pax</p>
                                     <p class="flex items-center gap-2 text-sm font-bold"><Users class="w-5 text-purple-500" /> {{ program.pax }}</p>
                                 </div>
-                                <div class="flex flex-col gap-1 rounded-2xl border p-4">
+                                <div class="flex flex-col gap-1 rounded-2xl border p-4 shadow-md">
                                     <p class="text-xs text-muted-foreground">Cost</p>
                                     <p class="flex items-center gap-2 text-sm font-bold">
                                         <Coins class="w-5 text-yellow-500" />{{ Number(program.cost).toLocaleString() }}
                                     </p>
                                 </div>
-                                <div class="flex flex-col gap-1 rounded-2xl border p-4">
+                                <div class="flex flex-col gap-1 rounded-2xl border p-4 shadow-md">
                                     <p class="text-xs text-muted-foreground">Fund Source</p>
                                     <p class="flex items-center gap-2 text-sm font-bold">
                                         <HandCoins class="w-5 text-green-500" />{{ program.fund }}
                                     </p>
                                 </div>
-                                <div class="flex flex-col gap-1 rounded-2xl border p-4">
+                                <div class="flex flex-col gap-1 rounded-2xl border p-4 shadow-md">
                                     <p class="text-xs text-muted-foreground">Office Initiated</p>
                                     <p class="flex items-center gap-2 text-sm font-bold">
                                         <Play class="w-5 text-orange-500" /> {{ program.initiated }}
                                     </p>
                                 </div>
-                                <div class="flex flex-col gap-1 rounded-2xl border p-4">
+                                <div class="flex flex-col gap-1 rounded-2xl border p-4 shadow-md">
                                     <p class="text-xs text-muted-foreground">Provider</p>
                                     <p class="flex items-center gap-2 text-sm font-bold">
                                         <Handshake class="w-8 text-blue-500" />{{ program.provider || '—' }}
                                     </p>
                                 </div>
-                                <div class="flex flex-col gap-1 rounded-2xl border p-4">
+                                <div class="flex flex-col gap-1 rounded-2xl border p-4 shadow-md">
                                     <p class="text-xs text-muted-foreground">Origin</p>
                                     <p class="flex items-center gap-2 text-sm font-bold"><Flag class="w-5 text-emerald-500" />{{ program.origin }}</p>
                                 </div>
@@ -347,7 +347,7 @@ const removeCompetency = async (competency: Competency) => {
                         </div>
 
                         <!-- RIGHT: Competencies sidebar (1/3 ng lapad) -->
-                        <div class="flex flex-col gap-3 rounded-2xl border p-4 shadow-sm">
+                        <div class="flex flex-col gap-3 rounded-2xl border p-4 shadow-md">
                             <div class="flex items-center justify-between">
                                 <p class="flex items-center gap-1.5 text-sm font-bold"><Lightbulb class="h-4 w-4 text-yellow-500" /> Competencies</p>
                                 <Button

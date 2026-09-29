@@ -18,6 +18,7 @@ class Submission extends Model
         'submitted_at',
         'reviewed_at',
         'reviewed_by',
+        'added_by',
     ];
 
     protected $casts = [

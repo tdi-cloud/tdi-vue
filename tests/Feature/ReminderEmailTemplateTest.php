@@ -83,3 +83,7 @@ test('the requirement card defaults to Pending Submission styling when no status
 
     expect($html)->toContain('Pending Submission');
 });
+
+test('the reminder email preview route is not exposed outside the local environment', function () {
+    $this->get('/mail-preview/reminder')->assertNotFound();
+});

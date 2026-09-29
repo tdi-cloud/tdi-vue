@@ -333,6 +333,8 @@ const clearAllFilters = () => {
     <Head title="Programs" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
+
+        <!-- HEADER  -->
         <div ref="pageRef" :style="{ height: pageHeight }" class="flex w-full max-w-full flex-col gap-4 overflow-hidden p-4">
             <div class="flex w-full shrink-0 flex-wrap items-center justify-between">
                 <div class="">

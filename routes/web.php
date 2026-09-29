@@ -40,6 +40,7 @@ use App\Http\Controllers\TesdaOrderController;
 use App\Http\Controllers\TnaController;
 use App\Http\Controllers\TPMRController;
 use App\Http\Controllers\UserManagementController;
+use App\Mail\ReminderEmail;
 use App\Models\ForeignNominee;
 use App\Models\SiteImage;
 use Illuminate\Support\Facades\Route;
@@ -541,6 +542,18 @@ Route::get('/nominate/{slug}/success', [ForeignNominationController::class, 'suc
 Route::get('/evaluate/{slug}', [EvaluationController::class, 'show'])->name('evaluate.show');
 Route::post('/evaluate/{slug}', [EvaluationController::class, 'submit'])->name('evaluate.submit');
 Route::get('/evaluate/{slug}/success', [EvaluationController::class, 'success'])->name('evaluate.success');
+
+// LOCAL ONLY: email template preview
+if (app()->environment('local')) {
+    Route::get('/mail-preview/reminder', fn () => new ReminderEmail(
+        emailSubject: 'Reminder: Submit your requirements',
+        body: '<p>Good day! This is a reminder to submit your pending requirements.</p>',
+        signature: 'TESDA Development Institute',
+        trainingProgram: 'Emergency First Aid with AED Training',
+        dueDate: 'October 5, 2026',
+        status: 'Pending',
+    ))->name('mail-preview.reminder');
+}
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

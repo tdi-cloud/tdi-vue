@@ -135,6 +135,7 @@ class EnrolledProgramController extends Controller
                 'submitted_at' => $newFileUploaded ? now() : ($submission->submitted_at ?? now()),
                 'reviewed_at' => $newFileUploaded ? null : ($submission->reviewed_at ?? null),
                 'reviewed_by' => $newFileUploaded ? null : ($submission->reviewed_by ?? null),
+                'added_by' => $submission ? $submission->added_by : $request->user()?->empcode,
             ]
         );
 

@@ -51,36 +51,7 @@
                     <!-- ══════════════════════════════════════════
                          PREMIUM TEXT-BASED BRAND HEADER (no logo image)
                     ══════════════════════════════════════════ -->
-                    <tr>
-                        <td class="tdi-px tdi-sans" style="background-color:#FFFFFF;padding:30px 32px 24px;">
-                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                                <tr>
-                                    <td class="tdi-stack" valign="top">
-                                        <p style="margin:0;font-size:13px;font-weight:700;color:#0B1F44;letter-spacing:4px;">T&nbsp;E&nbsp;S&nbsp;D&nbsp;A</p>
-                                        <p style="margin:5px 0 0;font-size:9px;font-weight:600;color:#64748B;letter-spacing:0.6px;line-height:1.4;text-transform:uppercase;">
-                                            Technical Education and Skills<br />Development Authority
-                                        </p>
-
-                                        <table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0 14px;">
-                                            <tr><td width="40" height="2" bgcolor="#C8A45D" style="background-color:#C8A45D;font-size:1px;line-height:2px;">&nbsp;</td></tr>
-                                        </table>
-
-                                        <p style="margin:0;font-size:19px;font-weight:800;color:#123B82;letter-spacing:0.5px;">TDI</p>
-                                        <p style="margin:2px 0 0;font-size:11px;font-weight:700;color:#0B1F44;letter-spacing:0.2px;">TESDA Development Institute</p>
-                                    </td>
-                                    <td class="tdi-stack tdi-stack-r" valign="top" align="right" width="180">
-                                        <table role="presentation" cellpadding="0" cellspacing="0" align="right" bgcolor="#EAF2FF" style="background-color:#EAF2FF;border-radius:999px;">
-                                            <tr>
-                                                <td style="padding:6px 14px;font-size:9.5px;font-weight:700;color:#123B82;letter-spacing:1.2px;text-transform:uppercase;white-space:nowrap;">
-                                                    Digital Notification
-                                                </td>
-                                            </tr>
-                                        </table>
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
+                   
 
                     <!-- thin gold accent line — premium seam between header and hero -->
                     <tr>
@@ -99,13 +70,13 @@
                                         <table role="presentation" cellpadding="0" cellspacing="0" width="46" style="background-color:rgba(255,255,255,0.12);border-radius:50%;">
                                             <tr>
                                                 <td align="center" valign="middle" height="46"
-                                                    style="font-family:Arial,Helvetica,sans-serif;font-size:20px;line-height:46px;font-weight:800;color:#E8D4A2;">!</td>
+                                                    style="font-family:Arial,Helvetica,sans-serif;font-size:20px;line-height:46px;font-weight:800;color:#E8D4A2;">🔔</td>
                                             </tr>
                                         </table>
                                     </td>
                                     <td valign="middle">
-                                        <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:2px;color:#E8D4A2;text-transform:uppercase;">Post-Training Requirements</p>
-                                        <p class="tdi-hero-title" style="margin:6px 0 0;font-size:25px;font-weight:800;color:#FFFFFF;line-height:1.3;letter-spacing:0.2px;">Reminder Notification</p>
+                                        <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:2px;color:#E8D4A2;text-transform:uppercase;">TESDA Development Institute</p>
+                                        <p class="tdi-hero-title" style="margin:6px 0 0;font-size:25px;font-weight:800;color:#FFFFFF;line-height:1.3;letter-spacing:0.2px;">Post-Training Requirements Reminder</p>
                                     </td>
                                 </tr>
                             </table>
@@ -156,11 +127,6 @@
                                         <td class="tdi-sans" style="padding:22px 24px;">
                                             <table role="presentation" cellpadding="0" cellspacing="0">
                                                 <tr>
-                                                    <td valign="middle" width="17" style="padding-right:9px;">
-                                                        <table role="presentation" width="9" cellpadding="0" cellspacing="0">
-                                                            <tr><td width="9" height="9" bgcolor="#0B1F44" style="background-color:#0B1F44;border-radius:2px;font-size:1px;line-height:9px;">&nbsp;</td></tr>
-                                                        </table>
-                                                    </td>
                                                     <td valign="middle">
                                                         <span style="font-size:11.5px;font-weight:800;letter-spacing:1.2px;color:#0B1F44;text-transform:uppercase;">Requirement Overview</span>
                                                     </td>

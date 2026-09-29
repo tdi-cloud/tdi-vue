@@ -87,7 +87,7 @@ const removeCover = async () => {
 </script>
 
 <template>
-    <div class="overflow-hidden rounded-2xl border shadow-sm">
+    <div class="overflow-hidden rounded-2xl border shadow-md">
         <!-- May image -->
         <div v-if="displayImage" class="group relative">
             <img :src="displayImage" alt="Program cover" class="h-48 w-full cursor-zoom-in object-cover md:h-56" @click="showLightbox = true" />

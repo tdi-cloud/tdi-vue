@@ -470,25 +470,25 @@ function submitBulk() {
         <!-- ── Summary cards ─────────────────────────────────────────────── -->
         <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div
-                class="flex flex-col gap-1 rounded-xl border bg-gradient-to-br from-violet-50 to-violet-100/50 p-4 dark:from-violet-950/40 dark:to-violet-900/20"
+                class="flex flex-col gap-1 rounded-xl border bg-gradient-to-br from-violet-50 to-violet-100/50 p-4 shadow-md dark:from-violet-950/40 dark:to-violet-900/20"
             >
                 <p class="text-xs font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400">Participants</p>
                 <p class="text-2xl font-extrabold text-violet-800 dark:text-violet-200">{{ stats.participants }}</p>
             </div>
             <div
-                class="flex flex-col gap-1 rounded-xl border bg-gradient-to-br from-sky-50 to-sky-100/50 p-4 dark:from-sky-950/40 dark:to-sky-900/20"
+                class="flex flex-col gap-1 rounded-xl border bg-gradient-to-br from-sky-50 to-sky-100/50 p-4 shadow-md dark:from-sky-950/40 dark:to-sky-900/20"
             >
                 <p class="text-xs font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">Total Certs</p>
                 <p class="text-2xl font-extrabold text-sky-800 dark:text-sky-200">{{ stats.total }}</p>
             </div>
             <div
-                class="flex flex-col gap-1 rounded-xl border bg-gradient-to-br from-emerald-50 to-emerald-100/50 p-4 dark:from-emerald-950/40 dark:to-emerald-900/20"
+                class="flex flex-col gap-1 rounded-xl border bg-gradient-to-br from-emerald-50 to-emerald-100/50 p-4 shadow-md dark:from-emerald-950/40 dark:to-emerald-900/20"
             >
                 <p class="text-xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">Issued</p>
                 <p class="text-2xl font-extrabold text-emerald-800 dark:text-emerald-200">{{ stats.issued }}</p>
             </div>
             <div
-                class="flex flex-col gap-1 rounded-xl border bg-gradient-to-br from-amber-50 to-amber-100/50 p-4 dark:from-amber-950/40 dark:to-amber-900/20"
+                class="flex flex-col gap-1 rounded-xl border bg-gradient-to-br from-amber-50 to-amber-100/50 p-4 shadow-md dark:from-amber-950/40 dark:to-amber-900/20"
             >
                 <p class="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">Pending</p>
                 <p class="text-2xl font-extrabold text-amber-800 dark:text-amber-200">{{ stats.pending }}</p>
@@ -581,7 +581,7 @@ function submitBulk() {
             <div
                 v-for="{ participant, batch } in paginated"
                 :key="`${participant.id}-${batch.id}`"
-                class="flex flex-col overflow-hidden rounded-2xl border bg-card shadow-sm"
+                class="flex flex-col overflow-hidden rounded-2xl border bg-card shadow-md"
             >
                 <!-- Card header -->
                 <div class="flex items-center gap-3 border-b bg-muted/30 p-4">

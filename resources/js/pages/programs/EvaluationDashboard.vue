@@ -4,10 +4,13 @@ import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import {
     BarChart3,
+    Check,
     ChevronLeft,
     ChevronRight,
     ClipboardCheck,
     Clock,
+    Copy,
+    FileText,
     Inbox,
     Loader2,
     MessageSquareText,
@@ -72,41 +75,103 @@ const avgBySection = ref<{ section_key: string; section_title: string; avg_ratin
 const avgByFacilitator = ref<{ id: number; name: string; avg_rating: number }[]>([]);
 const overallDistribution = ref<{ rating: number; total: number }[]>([]);
 const responsesPerBatch = ref<{ batch_id: number; batch_label: string; total: number }[]>([]);
+const findings = ref<{ intro: string; items: { label: string; text: string }[] } | null>(null);
+
+const findingsCopied = ref(false);
+
+/** Copies section "Program Evaluation Findings and Observations" as rich text. */
+async function copyFindings() {
+    if (!findings.value) return;
+
+    const heading = 'Program Evaluation Findings and Observations';
+    const items = findings.value.items.map((item) => `<li><b>${escapeHtml(item.label)}:</b> ${escapeHtml(item.text)}</li>`).join('');
+    const html = `<p><b>${heading}</b></p><p>${escapeHtml(findings.value.intro)}</p><ul>${items}</ul>`;
+    const plain = [heading, findings.value.intro, ...findings.value.items.map((item) => `• ${item.label}: ${item.text}`)].join('\n\n');
+
+    await writeRichText(html, plain);
+
+    findingsCopied.value = true;
+    setTimeout(() => (findingsCopied.value = false), 2000);
+}
+
+async function writeRichText(html: string, plain: string) {
+    if (typeof ClipboardItem !== 'undefined') {
+        await navigator.clipboard.write([
+            new ClipboardItem({
+                'text/html': new Blob([html], { type: 'text/html' }),
+                'text/plain': new Blob([plain], { type: 'text/plain' }),
+            }),
+        ]);
+    } else {
+        await navigator.clipboard.writeText(plain);
+    }
+}
+
+function escapeHtml(text: string) {
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 
 const avgOverallRating = computed(() => {
     const overall = avgBySection.value.find((s) => s.section_key === 'overall');
     return overall ? Number(overall.avg_rating).toFixed(1) : '—';
 });
 
+// The overall rating is on a 1–10 scale, so it's left out of this 5-point chart.
+const ratedSections = computed(() => avgBySection.value.filter((s) => s.section_key !== 'overall'));
+
 const sectionBarOptions = computed(() => ({
     chart: { type: 'bar', toolbar: { show: false } },
     plotOptions: { bar: { horizontal: true, borderRadius: 6, borderRadiusApplication: 'end', barHeight: '55%' } },
-    dataLabels: { enabled: true, formatter: (val: number) => Number(val).toFixed(1), style: { fontSize: '11px' } },
-    xaxis: { categories: avgBySection.value.map((s) => s.section_title), max: 5, labels: { style: { fontSize: '10px' } } },
+    dataLabels: { enabled: true, formatter: (val: number) => Number(val).toFixed(2), style: { fontSize: '11px' } },
+    xaxis: { categories: ratedSections.value.map((s) => s.section_title), max: 5, labels: { style: { fontSize: '10px' } } },
     colors: ['#e11d48'],
     grid: { borderColor: '#f1f5f9' },
 }));
-const sectionBarSeries = computed(() => [{ name: 'Avg Rating', data: avgBySection.value.map((s) => Number(s.avg_rating)) }]);
+const sectionBarSeries = computed(() => [{ name: 'Avg Rating', data: ratedSections.value.map((s) => Number(s.avg_rating)) }]);
 
 const facilitatorBarOptions = computed(() => ({
     chart: { type: 'bar', toolbar: { show: false } },
     plotOptions: { bar: { horizontal: true, borderRadius: 6, borderRadiusApplication: 'end', barHeight: '55%' } },
-    dataLabels: { enabled: true, formatter: (val: number) => Number(val).toFixed(1), style: { fontSize: '11px' } },
+    dataLabels: { enabled: true, formatter: (val: number) => Number(val).toFixed(2), style: { fontSize: '11px' } },
     xaxis: { categories: avgByFacilitator.value.map((f) => f.name), max: 5, labels: { style: { fontSize: '10px' } } },
     colors: ['#7c3aed'],
     grid: { borderColor: '#f1f5f9' },
 }));
 const facilitatorBarSeries = computed(() => [{ name: 'Avg Rating', data: avgByFacilitator.value.map((f) => Number(f.avg_rating)) }]);
 
+/** Same bands as the legend on the evaluation form's overall rating question. */
+const OVERALL_RATING_BANDS = [
+    { range: '1', label: 'Completely Unacceptable', min: 1, max: 1 },
+    { range: '2', label: 'Poor', min: 2, max: 2 },
+    { range: '3–4', label: 'Fair', min: 3, max: 4 },
+    { range: '5', label: 'Passing', min: 5, max: 5 },
+    { range: '6–7', label: 'Satisfactory', min: 6, max: 7 },
+    { range: '8–9', label: 'Very Good', min: 8, max: 9 },
+    { range: '10', label: 'Very Exceptional', min: 10, max: 10 },
+];
+
+const overallRatingBands = computed(() =>
+    OVERALL_RATING_BANDS.map((band) => ({
+        ...band,
+        total: overallDistribution.value
+            .filter((d) => Number(d.rating) >= band.min && Number(d.rating) <= band.max)
+            .reduce((sum, d) => sum + Number(d.total), 0),
+    })).filter((band) => band.total > 0),
+);
+
 const distributionBarOptions = computed(() => ({
     chart: { type: 'bar', toolbar: { show: false } },
-    plotOptions: { bar: { columnWidth: '55%', borderRadius: 6, borderRadiusApplication: 'end' } },
-    dataLabels: { enabled: false },
-    xaxis: { categories: overallDistribution.value.map((d) => `${d.rating}`), title: { text: 'Rating (1–10)', style: { fontSize: '10px' } } },
+    plotOptions: { bar: { columnWidth: '55%', borderRadius: 6, borderRadiusApplication: 'end', dataLabels: { position: 'top' } } },
+    dataLabels: { enabled: true, offsetY: -18, style: { fontSize: '11px', colors: ['#334155'] } },
+    xaxis: {
+        categories: overallRatingBands.value.map((b) => [b.range, b.label]),
+        title: { text: 'Rating', style: { fontSize: '10px' } },
+        labels: { style: { fontSize: '10px' } },
+    },
     colors: ['#f59e0b'],
     grid: { borderColor: '#f1f5f9' },
 }));
-const distributionBarSeries = computed(() => [{ name: 'Responses', data: overallDistribution.value.map((d) => d.total) }]);
+const distributionBarSeries = computed(() => [{ name: 'Responses', data: overallRatingBands.value.map((b) => b.total) }]);
 
 const batchDonutOptions = computed(() => ({
     chart: {
@@ -119,7 +184,7 @@ const batchDonutOptions = computed(() => ({
             },
         },
     },
-    labels: responsesPerBatch.value.map((r) => r.batch_label),
+    labels: responsesPerBatch.value.map((r) => `${r.batch_label} (${r.total})`),
     legend: { position: 'bottom', fontSize: '11px' },
     colors: ['#3b82f6', '#8b5cf6', '#06b6d4', '#ef4444', '#10b981', '#f59e0b', '#9ca3af'],
     stroke: { width: 3, colors: ['#ffffff'] },
@@ -150,6 +215,7 @@ async function fetchDashboard() {
         avgByFacilitator.value = data.avg_by_facilitator;
         overallDistribution.value = data.overall_distribution;
         responsesPerBatch.value = data.responses_per_batch;
+        findings.value = data.findings ?? null;
     } catch (err: any) {
         if (axios.isCancel(err) || err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') return;
         console.error('Evaluation dashboard fetch failed:', err?.response?.data ?? err);
@@ -325,7 +391,7 @@ onBeforeUnmount(() => {
 <template>
     <div class="flex flex-col gap-5">
         <!-- Batches: generate or manage evaluation forms without leaving this modal -->
-        <div class="overflow-hidden rounded-2xl border">
+        <div class="overflow-hidden rounded-2xl border shadow-md">
             <div class="flex items-center gap-1.5 border-b bg-muted/40 px-5 py-3">
                 <ClipboardCheck class="h-4 w-4 text-rose-600" />
                 <p class="text-sm font-bold">Batches</p>
@@ -378,7 +444,7 @@ onBeforeUnmount(() => {
 
         <div
             v-if="!batchesWithForms.length"
-            class="flex flex-col items-center gap-2 rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground"
+            class="flex flex-col items-center gap-2 rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground shadow-md"
         >
             <Inbox class="h-6 w-6 text-muted-foreground" />
             No evaluation forms have been set up for any batch in this program yet. Use "Generate" above to create one.
@@ -390,7 +456,7 @@ onBeforeUnmount(() => {
             <!-- Stat tiles -->
             <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div
-                    class="flex items-center gap-3 rounded-2xl border bg-gradient-to-br from-rose-50 to-white p-4 dark:from-rose-950/30 dark:to-background"
+                    class="flex items-center gap-3 rounded-2xl border bg-gradient-to-br from-rose-50 to-white p-4 shadow-md dark:from-rose-950/30 dark:to-background"
                 >
                     <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-600 shadow-sm">
                         <Users2 class="h-5 w-5 text-white" />
@@ -401,7 +467,7 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
                 <div
-                    class="flex items-center gap-3 rounded-2xl border bg-gradient-to-br from-amber-50 to-white p-4 dark:from-amber-950/30 dark:to-background"
+                    class="flex items-center gap-3 rounded-2xl border bg-gradient-to-br from-amber-50 to-white p-4 shadow-md dark:from-amber-950/30 dark:to-background"
                 >
                     <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 shadow-sm">
                         <Star class="h-5 w-5 text-white" />
@@ -412,7 +478,7 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
                 <div
-                    class="flex items-center gap-3 rounded-2xl border bg-gradient-to-br from-indigo-50 to-white p-4 dark:from-indigo-950/30 dark:to-background"
+                    class="flex items-center gap-3 rounded-2xl border bg-gradient-to-br from-indigo-50 to-white p-4 shadow-md dark:from-indigo-950/30 dark:to-background"
                 >
                     <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 shadow-sm">
                         <BarChart3 class="h-5 w-5 text-white" />
@@ -426,12 +492,12 @@ onBeforeUnmount(() => {
 
             <!-- Charts -->
             <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <div class="rounded-xl border p-4">
+                <div class="rounded-xl border p-4 shadow-md">
                     <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Average Rating per Section</p>
-                    <VueApexCharts v-if="avgBySection.length" type="bar" height="240" :options="sectionBarOptions" :series="sectionBarSeries" />
+                    <VueApexCharts v-if="ratedSections.length" type="bar" height="240" :options="sectionBarOptions" :series="sectionBarSeries" />
                     <p v-else class="py-10 text-center text-xs text-muted-foreground">No rating data yet.</p>
                 </div>
-                <div class="rounded-xl border p-4">
+                <div class="rounded-xl border p-4 shadow-md">
                     <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Average Rating per Facilitator</p>
                     <VueApexCharts
                         v-if="avgByFacilitator.length"
@@ -442,10 +508,10 @@ onBeforeUnmount(() => {
                     />
                     <p v-else class="py-10 text-center text-xs text-muted-foreground">No facilitator ratings yet.</p>
                 </div>
-                <div class="rounded-xl border p-4">
-                    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Overall Rating Distribution (1–10)</p>
+                <div class="rounded-xl border p-4 shadow-md">
+                    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Overall Rating Distribution</p>
                     <VueApexCharts
-                        v-if="overallDistribution.length"
+                        v-if="overallRatingBands.length"
                         type="bar"
                         height="240"
                         :options="distributionBarOptions"
@@ -453,7 +519,7 @@ onBeforeUnmount(() => {
                     />
                     <p v-else class="py-10 text-center text-xs text-muted-foreground">No overall ratings yet.</p>
                 </div>
-                <div class="rounded-xl border p-4">
+                <div class="rounded-xl border p-4 shadow-md">
                     <p class="mb-2 flex items-center justify-between gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                         <span>Responses per Batch</span>
                         <span v-if="responsesPerBatch.length" class="text-[10px] font-normal normal-case text-muted-foreground/70"
@@ -474,8 +540,35 @@ onBeforeUnmount(() => {
 
             <p v-if="loading" class="text-center text-xs text-muted-foreground">Loading...</p>
 
+            <!-- Program Evaluation Findings section of the After Activity Report, generated from the results above -->
+            <div class="overflow-hidden rounded-2xl border shadow-md">
+                <div class="flex items-center gap-1.5 border-b bg-muted/40 px-5 py-3">
+                    <FileText class="h-4 w-4 text-rose-600" />
+                    <p class="text-sm font-bold">Program Evaluation Findings and Observations</p>
+                    <button
+                        v-if="findings"
+                        type="button"
+                        class="ml-auto inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold transition-colors hover:bg-muted"
+                        @click="copyFindings"
+                    >
+                        <Check v-if="findingsCopied" class="h-3.5 w-3.5 text-emerald-600" />
+                        <Copy v-else class="h-3.5 w-3.5" />
+                        {{ findingsCopied ? 'Copied' : 'Copy' }}
+                    </button>
+                </div>
+                <div v-if="findings" class="flex flex-col gap-3 px-5 py-4 text-sm leading-relaxed">
+                    <p class="text-justify">{{ findings.intro }}</p>
+                    <ul v-if="findings.items.length" class="flex list-disc flex-col gap-2 pl-5">
+                        <li v-for="item in findings.items" :key="item.label" class="text-justify">
+                            <span class="font-bold">{{ item.label }}:</span> {{ item.text }}
+                        </li>
+                    </ul>
+                </div>
+                <p v-else class="px-5 py-8 text-center text-xs text-muted-foreground">No findings available yet.</p>
+            </div>
+
             <!-- Comments (grouped per question — respondents stay anonymous) -->
-            <div class="overflow-hidden rounded-2xl border">
+            <div class="overflow-hidden rounded-2xl border shadow-md">
                 <div class="flex items-center gap-1.5 border-b bg-muted/40 px-5 py-3">
                     <MessageSquareText class="h-4 w-4 text-rose-600" />
                     <p class="text-sm font-bold">Written Comments</p>
@@ -556,7 +649,7 @@ onBeforeUnmount(() => {
                         </div>
 
                         <div v-else-if="batchPanelData && batchPanelData.data.length" class="flex flex-col gap-2">
-                            <div v-for="response in batchPanelData.data" :key="response.id" class="rounded-xl border px-3 py-2.5">
+                            <div v-for="response in batchPanelData.data" :key="response.id" class="rounded-xl border px-3 py-2.5 shadow-md">
                                 <div class="flex items-start gap-2.5">
                                     <div
                                         class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-950/50"

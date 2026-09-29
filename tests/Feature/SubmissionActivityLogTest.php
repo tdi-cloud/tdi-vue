@@ -102,6 +102,48 @@ test('encoding a new submission records exactly one "encoded" activity log entry
         ->and($log->performed_by)->toBe('Ana Admin');
 });
 
+test('the empcode of the first user to encode a submission is recorded as added_by and later edits do not change it', function () {
+    $first = submissionActivityLogTestAdmin('EMP-SUB-07', 'First Encoder');
+    $second = submissionActivityLogTestAdmin('EMP-SUB-08', 'Second Editor');
+    $requirement = submissionActivityLogTestRequirement('EMP-SUB-07');
+    $participant = Participant::first();
+
+    $payload = [
+        'participant_id' => $participant->id,
+        'program_code' => $requirement->batch->program_code,
+        'batch_id' => $requirement->batch_id,
+        'requirement_id' => $requirement->id,
+    ];
+
+    $this->actingAs($first)->post(route('submissions.store'), $payload + ['notes' => 'One']);
+    $submission = Submission::where('participant_id', $participant->id)->firstOrFail();
+    expect($submission->added_by)->toBe('EMP-SUB-07');
+
+    $this->actingAs($second)->post(route('submissions.store'), $payload + ['notes' => 'Two']);
+    expect($submission->fresh()->added_by)->toBe('EMP-SUB-07');
+});
+
+test('the submissions list exposes added_by', function () {
+    $admin = submissionActivityLogTestAdmin('EMP-SUB-09', 'List Viewer');
+    $requirement = submissionActivityLogTestRequirement('EMP-SUB-09');
+    $participant = Participant::first();
+
+    Submission::create([
+        'participant_id' => $participant->id,
+        'program_code' => $requirement->batch->program_code,
+        'batch_id' => $requirement->batch_id,
+        'requirement_id' => $requirement->id,
+        'status' => 'Pending',
+        'added_by' => 'EMP-SUB-09',
+    ]);
+
+    $this->actingAs($admin)->get(route('submissions.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Submissions/index')
+            ->where('submissions.data.0.added_by', 'EMP-SUB-09'));
+});
+
 test('editing an existing submission records an "updated" activity log entry with the changed fields', function () {
     $admin = submissionActivityLogTestAdmin('EMP-SUB-02', 'Ben Editor');
     $requirement = submissionActivityLogTestRequirement('EMP-SUB-02');

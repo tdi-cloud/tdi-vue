@@ -88,6 +88,8 @@ class SubmissionController extends Controller
             'submitted_at' => $path ? Carbon::now() : $submission?->submitted_at,
             'reviewed_at' => $request->filled('status') ? Carbon::now() : $submission?->reviewed_at,
             'reviewed_by' => $request->filled('status') ? ($request->user()->name ?? 'System') : $submission?->reviewed_by,
+            // Empcode ng unang nag-encode/nag-upload — hindi ito nababago ng mga susunod na edit.
+            'added_by' => $submission ? $submission->added_by : $request->user()?->empcode,
         ];
 
         if ($submission) {

@@ -97,7 +97,7 @@ function accentFor(id: number) {
         <!-- Empty state -->
         <div
             v-else-if="orders.length === 0"
-            class="flex flex-col items-center justify-center rounded-2xl border border-dashed py-16 text-center text-muted-foreground"
+            class="flex flex-col items-center justify-center rounded-2xl border border-dashed py-16 text-center text-muted-foreground shadow-md"
         >
             <img src="/storage/images/tesda-order.png" alt="TESDA Order" class="mb-4 w-40 drop-shadow-lg" />
             <p class="text-sm font-semibold">No TESDA Orders generated yet.</p>
@@ -109,7 +109,7 @@ function accentFor(id: number) {
             <div
                 v-for="order in orders"
                 :key="order.id"
-                class="group relative overflow-hidden rounded-2xl border bg-card shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+                class="group relative overflow-hidden rounded-2xl border bg-card shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
             >
                 <!-- Watermark — faded TESDA Order artwork sa likod ng card, ibabang-kanang bahagi -->
                 <img

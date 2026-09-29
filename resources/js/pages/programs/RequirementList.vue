@@ -177,7 +177,7 @@ const removeRequirement = async (requirement: Requirement) => {
         </div>
 
         <!-- Walang batch pa -->
-        <div v-if="!batches.length" class="flex flex-col items-center justify-center gap-3 rounded-2xl border px-6 py-16 text-center">
+        <div v-if="!batches.length" class="flex flex-col items-center justify-center gap-3 rounded-2xl border px-6 py-16 text-center shadow-md">
             <!-- Illustration: empty clipboard / no batches -->
             <svg viewBox="0 0 200 160" class="h-40 w-auto" xmlns="http://www.w3.org/2000/svg">
                 <ellipse cx="100" cy="142" rx="70" ry="8" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
@@ -195,7 +195,7 @@ const removeRequirement = async (requirement: Requirement) => {
 
         <!-- Per-batch sections -->
         <template v-else>
-            <div v-for="batch in batches" :key="batch.id" class="flex flex-col gap-3 rounded-2xl border p-4 shadow-sm">
+            <div v-for="batch in batches" :key="batch.id" class="flex flex-col gap-3 rounded-2xl border p-4 shadow-md">
                 <div class="flex items-center justify-between">
                     <p class="flex items-center gap-1.5 text-sm font-bold">
                         <ClipboardList class="h-4 w-4 text-blue-500" />
@@ -212,7 +212,7 @@ const removeRequirement = async (requirement: Requirement) => {
                         <div
                             v-for="r in batch.requirements"
                             :key="r.id"
-                            class="group relative flex flex-col gap-2 rounded-xl border p-3.5 shadow-sm transition-shadow hover:shadow-md"
+                            class="group relative flex flex-col gap-2 rounded-xl border p-3.5 shadow-md transition-shadow hover:shadow-lg"
                             :class="r.is_required ? 'border-blue-200 bg-blue-50/40 dark:border-blue-800/40 dark:bg-blue-950/10' : 'bg-card'"
                         >
                             <button

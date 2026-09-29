@@ -134,7 +134,7 @@ test('reap compliance endpoint counts submitted, not-submitted, and excludes abs
     expect($response->json('not_submitted'))->toBe(1);
 });
 
-test('reap compliance counts employees whose REAP is not yet due (not overdue-only anymore)', function () {
+test('reap compliance does not count requirements that are not yet due', function () {
     $admin = reapTestAdmin('EMP-REAP-ADM-ND');
     [$program, $batch, $requirement] = reapTestSetup(now()->addMonth()->toDateString());
 
@@ -149,8 +149,8 @@ test('reap compliance counts employees whose REAP is not yet due (not overdue-on
     ]));
 
     $response->assertOk();
-    expect($response->json('total'))->toBe(1);
-    expect($response->json('not_submitted'))->toBe(1);
+    expect($response->json('total'))->toBe(0);
+    expect($response->json('not_submitted'))->toBe(0);
 });
 
 test('reap compliance counts each batch obligation separately, not once per employee', function () {

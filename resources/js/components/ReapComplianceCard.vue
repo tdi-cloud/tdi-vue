@@ -257,7 +257,7 @@ const modalTitle = computed(() => {
                 <h2 class="text-sm font-extrabold uppercase tracking-wide text-indigo-700 dark:text-indigo-400">
                     Terminal Report &amp; Re-entry Action Plan (REAP)
                 </h2>
-                <p class="text-xs text-muted-foreground">REAP submission compliance · click any chart segment to see the list</p>
+                <p class="text-xs text-muted-foreground">Overdue REAP submission compliance · click any chart segment to see the list</p>
             </div>
         </div>
 

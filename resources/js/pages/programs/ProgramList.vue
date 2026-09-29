@@ -312,8 +312,11 @@ const dateRange = (program: Program) => {
     align-items: center;
     justify-content: center;
 }
-:global(.dark) .cover-ring__inner {
-    background: rgba(37, 99, 235, 0.15);
+.dark .cover-ring {
+    background: rgba(37, 99, 235, 0.3);
+}
+.dark .cover-ring__inner {
+    background: #0f172a;
 }
 .cover-ring__inner img {
     width: 100%;
@@ -324,6 +327,10 @@ const dateRange = (program: Program) => {
 .program-list__scroll {
     scrollbar-color: #cbd5e1 transparent;
     scrollbar-width: thin;
+}
+
+.dark .program-list__scroll {
+    scrollbar-color: #334155 transparent;
 }
 
 .program-list__surface {
@@ -347,18 +354,18 @@ const dateRange = (program: Program) => {
     background: #f7faff;
 }
 
-:global(.dark) .program-list__surface {
-    border-color: #1f2937;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+.dark .program-list__surface {
+    border-color: #1e293b;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
-:global(.dark) .program-row {
-    border-color: #1f2937;
+.dark .program-row {
+    border-color: #1e293b;
 }
 
-:global(.dark) .program-row:hover,
-:global(.dark) .program-row:focus-within {
-    background: #111827;
+.dark .program-row:hover,
+.dark .program-row:focus-within {
+    background: rgba(37, 99, 235, 0.08);
     box-shadow: inset 3px 0 0 #2563eb;
 }
 
@@ -372,8 +379,8 @@ const dateRange = (program: Program) => {
     border-color: #dce5f0;
 }
 
-:global(.dark) .program-pagination {
-    border-color: #1f2937;
+.dark .program-pagination {
+    border-color: #1e293b;
 }
 
 .program-pagination__controls button {

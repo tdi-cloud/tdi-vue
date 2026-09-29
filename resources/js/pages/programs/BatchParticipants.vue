@@ -839,7 +839,7 @@ const submissionSummary = computed(() => {
                     <!-- Empty: no participants -->
                     <div
                         v-if="!participants.length"
-                        class="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-10 text-center dark:border-emerald-800 dark:bg-emerald-950/20"
+                        class="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-10 text-center shadow-md dark:border-emerald-800 dark:bg-emerald-950/20"
                     >
                         <svg viewBox="0 0 160 110" class="h-24 w-auto" xmlns="http://www.w3.org/2000/svg">
                             <ellipse cx="80" cy="98" rx="60" ry="6" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
@@ -884,7 +884,7 @@ const submissionSummary = computed(() => {
                     <!-- Empty: filter no match -->
                     <div
                         v-else-if="!filteredParticipants.length"
-                        class="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed px-6 py-8 text-center"
+                        class="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed px-6 py-8 text-center shadow-md"
                     >
                         <svg viewBox="0 0 140 100" class="h-20 w-auto" xmlns="http://www.w3.org/2000/svg">
                             <ellipse cx="70" cy="90" rx="50" ry="6" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
@@ -921,7 +921,7 @@ const submissionSummary = computed(() => {
 
                     <!-- Participant list -->
                     <template v-else>
-                        <div class="divide-y overflow-hidden rounded-xl border">
+                        <div class="divide-y overflow-hidden rounded-xl border shadow-md">
                             <!-- List header -->
                             <div class="grid grid-cols-[2rem_1fr_auto] items-center gap-2 border-b bg-muted/40 px-3 py-1.5">
                                 <span class="text-center text-[10px] font-bold uppercase tracking-wide text-muted-foreground">#</span>
@@ -1233,7 +1233,7 @@ const submissionSummary = computed(() => {
                         <!-- Empty: walang requirements -->
                         <div
                             v-if="!requirements.length"
-                            class="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed bg-card px-6 py-10 text-center"
+                            class="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed bg-card px-6 py-10 text-center shadow-md"
                         >
                             <svg viewBox="0 0 120 100" class="h-20 w-auto" xmlns="http://www.w3.org/2000/svg">
                                 <ellipse cx="60" cy="92" rx="44" ry="6" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
@@ -1274,7 +1274,7 @@ const submissionSummary = computed(() => {
                             <div
                                 v-for="row in mergedSubmissions"
                                 :key="row.requirement.id"
-                                class="rounded-xl border bg-card shadow-sm transition hover:shadow-md"
+                                class="rounded-xl border bg-card shadow-md transition hover:shadow-lg"
                                 :class="statusMeta(row.submission?.status, !!row.submission).ring"
                             >
                                 <!-- VIEW MODE -->

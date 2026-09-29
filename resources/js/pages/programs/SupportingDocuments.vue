@@ -201,7 +201,10 @@ const docTypeColor = (type: string) => {
         </div>
 
         <!-- Empty state with illustration -->
-        <div v-if="!documents.length" class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed px-6 py-16 text-center">
+        <div
+            v-if="!documents.length"
+            class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed px-6 py-16 text-center shadow-md"
+        >
             <!-- Folder illustration -->
             <svg viewBox="0 0 200 160" class="h-40 w-auto" xmlns="http://www.w3.org/2000/svg">
                 <ellipse cx="100" cy="142" rx="70" ry="8" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
@@ -233,7 +236,7 @@ const docTypeColor = (type: string) => {
             <div
                 v-for="doc in documents"
                 :key="doc.id"
-                class="flex flex-col gap-2 rounded-xl border bg-card p-4 shadow-sm transition hover:shadow-md"
+                class="flex flex-col gap-2 rounded-xl border bg-card p-4 shadow-md transition hover:shadow-lg"
             >
                 <div class="flex items-start justify-between gap-2">
                     <Badge :class="docTypeColor(doc.document_type)" class="border-0 text-[10px] font-bold">

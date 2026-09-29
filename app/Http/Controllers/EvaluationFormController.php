@@ -9,8 +9,10 @@ use App\Models\EvaluationForm;
 use App\Models\EvaluationQuestion;
 use App\Models\EvaluationResponse;
 use App\Models\EvaluationSection;
+use App\Models\Participant;
 use App\Models\Program;
 use App\Models\SiteImage;
+use App\Support\EvaluationFindings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -397,6 +399,7 @@ class EvaluationFormController extends Controller
             ->whereIn('evaluation_questions.type', [EvaluationQuestion::TYPE_LIKERT5, EvaluationQuestion::TYPE_SCALE10])
             ->selectRaw('evaluation_sections.key as section_key, evaluation_sections.title as section_title, avg(evaluation_answers.value_numeric) as avg_rating')
             ->groupBy('evaluation_sections.key', 'evaluation_sections.title')
+            ->orderByRaw('min(evaluation_sections.sort_order)')
             ->get();
 
         $avgByFacilitator = EvaluationAnswer::query()
@@ -424,12 +427,48 @@ class EvaluationFormController extends Controller
             ->groupBy('batches.id', 'batches.batch')
             ->get();
 
+        $avgByQuestion = EvaluationAnswer::query()
+            ->join('evaluation_questions', 'evaluation_answers.evaluation_question_id', '=', 'evaluation_questions.id')
+            ->join('evaluation_sections', 'evaluation_questions.evaluation_section_id', '=', 'evaluation_sections.id')
+            ->whereIn('evaluation_answers.evaluation_response_id', $responseIds)
+            ->where('evaluation_questions.type', EvaluationQuestion::TYPE_LIKERT5)
+            ->selectRaw('evaluation_sections.key as section_key, evaluation_questions.label, avg(evaluation_answers.value_numeric) as avg_rating')
+            ->groupBy('evaluation_sections.key', 'evaluation_questions.label')
+            ->orderByRaw('min(evaluation_questions.sort_order)')
+            ->get();
+
+        $radioAnswerCounts = EvaluationAnswer::query()
+            ->join('evaluation_questions', 'evaluation_answers.evaluation_question_id', '=', 'evaluation_questions.id')
+            ->join('evaluation_sections', 'evaluation_questions.evaluation_section_id', '=', 'evaluation_sections.id')
+            ->whereIn('evaluation_answers.evaluation_response_id', $responseIds)
+            ->where('evaluation_questions.type', EvaluationQuestion::TYPE_RADIO)
+            ->whereNull('evaluation_answers.evaluation_facilitator_id')
+            ->selectRaw('evaluation_sections.key as section_key, evaluation_questions.label, evaluation_answers.value_text, count(*) as total')
+            ->groupBy('evaluation_sections.key', 'evaluation_questions.label', 'evaluation_answers.value_text')
+            ->get();
+
+        $participantCount = Participant::query()
+            ->whereIn('batch_id', EvaluationForm::whereIn('id', $formIds)->select('batch_id'))
+            ->where(fn ($query) => $query->whereNull('attendance')->orWhere('attendance', '!=', 'Absent'))
+            ->count();
+
+        $findings = EvaluationFindings::build(
+            $totalResponses,
+            $participantCount,
+            $avgBySection,
+            $avgByQuestion,
+            $radioAnswerCounts,
+            $avgByFacilitator,
+            $overallDistribution,
+        );
+
         return response()->json([
             'total_responses' => $totalResponses,
             'avg_by_section' => $avgBySection,
             'avg_by_facilitator' => $avgByFacilitator,
             'overall_distribution' => $overallDistribution,
             'responses_per_batch' => $responsesPerBatch,
+            'findings' => $findings,
         ]);
     }
 

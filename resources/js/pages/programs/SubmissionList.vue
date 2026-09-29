@@ -381,7 +381,7 @@ const submitReview = () => {
 
         <!-- ── Stats ── -->
         <div v-if="submissions.length" class="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <div class="flex items-center gap-2.5 rounded-2xl border p-3">
+            <div class="flex items-center gap-2.5 rounded-2xl border p-3 shadow-md">
                 <div class="rounded-full bg-slate-100 p-2 dark:bg-slate-800">
                     <FileText class="h-4 w-4 text-slate-500" />
                 </div>
@@ -390,7 +390,7 @@ const submitReview = () => {
                     <p class="text-[11px] text-muted-foreground">Total</p>
                 </div>
             </div>
-            <div class="flex items-center gap-2.5 rounded-2xl border p-3">
+            <div class="flex items-center gap-2.5 rounded-2xl border p-3 shadow-md">
                 <div class="rounded-full bg-emerald-100 p-2 dark:bg-emerald-900/40">
                     <CheckCircle2 class="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                 </div>
@@ -399,7 +399,7 @@ const submitReview = () => {
                     <p class="text-[11px] text-muted-foreground">Approved</p>
                 </div>
             </div>
-            <div class="flex items-center gap-2.5 rounded-2xl border p-3">
+            <div class="flex items-center gap-2.5 rounded-2xl border p-3 shadow-md">
                 <div class="rounded-full bg-amber-100 p-2 dark:bg-amber-900/40">
                     <Clock3 class="h-4 w-4 text-amber-600 dark:text-amber-400" />
                 </div>
@@ -408,7 +408,7 @@ const submitReview = () => {
                     <p class="text-[11px] text-muted-foreground">Pending</p>
                 </div>
             </div>
-            <div class="flex items-center gap-2.5 rounded-2xl border p-3">
+            <div class="flex items-center gap-2.5 rounded-2xl border p-3 shadow-md">
                 <div class="rounded-full bg-red-100 p-2 dark:bg-red-900/40">
                     <XCircle class="h-4 w-4 text-red-600 dark:text-red-400" />
                 </div>
@@ -420,7 +420,7 @@ const submitReview = () => {
         </div>
 
         <!-- ── Empty: no submissions at all ── -->
-        <div v-if="!submissions.length" class="flex flex-col items-center justify-center gap-3 rounded-2xl border px-6 py-16 text-center">
+        <div v-if="!submissions.length" class="flex flex-col items-center justify-center gap-3 rounded-2xl border px-6 py-16 text-center shadow-md">
             <svg viewBox="0 0 200 160" class="h-40 w-auto" xmlns="http://www.w3.org/2000/svg">
                 <ellipse cx="100" cy="142" rx="70" ry="8" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
                 <path d="M40 70 L70 30 H130 L160 70 V125 H40 Z" fill="currentColor" class="text-blue-100 dark:text-blue-900/40" />
@@ -446,7 +446,7 @@ const submitReview = () => {
         <!-- ── Empty: filter no match ── -->
         <div
             v-else-if="!filteredSubmissions.length"
-            class="flex flex-col items-center justify-center gap-3 rounded-2xl border px-6 py-16 text-center"
+            class="flex flex-col items-center justify-center gap-3 rounded-2xl border px-6 py-16 text-center shadow-md"
         >
             <svg viewBox="0 0 200 160" class="h-36 w-auto" xmlns="http://www.w3.org/2000/svg">
                 <ellipse cx="100" cy="142" rx="70" ry="8" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
@@ -480,11 +480,7 @@ const submitReview = () => {
                 Showing <span class="font-semibold">{{ filteredSubmissions.length }}</span> of {{ submissions.length }} submission(s)
             </p>
 
-            <div
-                v-for="s in filteredSubmissions"
-                :key="s.id"
-                class="flex items-start justify-between gap-3 rounded-2xl border px-4 py-3 shadow-sm"
-            >
+            <div v-for="s in filteredSubmissions" :key="s.id" class="flex items-start justify-between gap-3 rounded-2xl border px-4 py-3 shadow-md">
                 <div class="flex min-w-0 flex-1 flex-col gap-1">
                     <p class="text-sm font-bold leading-snug">
                         {{ participantName(s) }}

@@ -66,7 +66,7 @@ const locate = (batch: any) => {
 </script>
 
 <template>
-    <div class="rounded-xl border p-3">
+    <div class="rounded-xl border p-3 shadow-md">
         <!-- Search input -->
         <div class="flex items-center gap-2">
             <div class="relative flex-1">

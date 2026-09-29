@@ -285,7 +285,10 @@ const formatTime = (t: string) => {
         <ParticipantSearch v-if="batches.length" :batches="batches" @locate="openParticipants" />
 
         <!-- Empty state -->
-        <div v-if="!batches.length" class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed px-6 py-14 text-center">
+        <div
+            v-if="!batches.length"
+            class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed px-6 py-14 text-center shadow-md"
+        >
             <svg viewBox="0 0 200 160" class="h-36 w-auto" xmlns="http://www.w3.org/2000/svg">
                 <ellipse cx="100" cy="142" rx="70" ry="8" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
                 <rect x="45" y="30" width="110" height="95" rx="10" fill="currentColor" class="text-blue-100 dark:text-blue-900/40" />
@@ -311,7 +314,7 @@ const formatTime = (t: string) => {
             <div
                 v-for="batch in batches"
                 :key="batch.id"
-                class="rounded-xl border border-l-4 bg-card bg-gradient-to-br to-background p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                class="rounded-xl border border-l-4 bg-card bg-gradient-to-br to-background p-4 shadow-md transition hover:-translate-y-0.5 hover:shadow-lg"
                 :class="[cardAccent(batch.status).border, cardAccent(batch.status).wash]"
             >
                 <div class="flex items-start justify-between">
