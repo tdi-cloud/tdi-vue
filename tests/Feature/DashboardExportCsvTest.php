@@ -113,6 +113,55 @@ test('dashboard export csv streams programs, batches, participants and attendanc
     expect($csv)->toContain(',10,'); // SG value ng exportCsvTestEmployee
 });
 
+test('dashboard export csv includes the program office initiated and provider', function () {
+    $admin = exportCsvTestAdmin('EMP-EXP-ADM5');
+    [$program, $batch] = exportCsvTestBatch();
+    $program->update(['provider' => 'Prompt Care EMS Training Academy']);
+
+    $employee = exportCsvTestEmployee('EMP-EXP-08', 'NCR', 'Villanueva');
+    Participant::create([
+        'sort_order' => 1, 'batch_id' => $batch->id, 'empcode' => $employee->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('dashboard.export-csv', [
+        'region' => 'ALL', 'office' => 'ALL', 'office_filter' => 'Nationwide',
+    ]));
+
+    $response->assertOk();
+    $lines = array_values(array_filter(explode("\n", $response->streamedContent())));
+    $header = str_getcsv(ltrim($lines[0], "\xEF\xBB\xBF"));
+    $row = str_getcsv(collect($lines)->first(fn ($l) => str_contains($l, 'EMP-EXP-08')));
+
+    expect($header)->toContain('Office Initiated')
+        ->and($header)->toContain('Provider')
+        ->and($row[array_search('Office Initiated', $header)])->toBe('NTTA')
+        ->and($row[array_search('Provider', $header)])->toBe('Prompt Care EMS Training Academy');
+});
+
+test('dashboard export csv includes the program category', function () {
+    $admin = exportCsvTestAdmin('EMP-EXP-ADM6');
+    [, $batch] = exportCsvTestBatch();
+
+    $employee = exportCsvTestEmployee('EMP-EXP-09', 'NCR', 'Mendoza');
+    Participant::create([
+        'sort_order' => 1, 'batch_id' => $batch->id, 'empcode' => $employee->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('dashboard.export-csv', [
+        'region' => 'ALL', 'office' => 'ALL', 'office_filter' => 'Nationwide',
+    ]));
+
+    $response->assertOk();
+    $lines = array_values(array_filter(explode("\n", $response->streamedContent())));
+    $header = str_getcsv(ltrim($lines[0], "\xEF\xBB\xBF"));
+    $row = str_getcsv(collect($lines)->first(fn ($l) => str_contains($l, 'EMP-EXP-09')));
+
+    expect($header)->toContain('Category')
+        ->and($row[array_search('Category', $header)])->toBe('Regional');
+});
+
 test('dashboard export csv respects the region filter', function () {
     $admin = exportCsvTestAdmin('EMP-EXP-ADM2');
     [$program, $batch] = exportCsvTestBatch();

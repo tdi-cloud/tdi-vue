@@ -108,7 +108,7 @@ final class EvaluationFindings
             $top = $answers->sortByDesc(fn ($row) => (int) $row->total)->first();
 
             return [
-                'phrase' => str(self::questionLabel($label))->rtrim(':')->lcfirst().' '.$top->value_text.' ('.(int) $top->total.' of '.$answered.')',
+                'phrase' => str(self::questionLabel($label))->rtrim(':')->lcfirst().' '.trim($top->value_text).' ('.(int) $top->total.' of '.$answered.')',
                 'isMajority' => (int) $top->total * 2 > $answered,
             ];
         })->values();
