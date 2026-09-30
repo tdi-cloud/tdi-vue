@@ -272,19 +272,8 @@ const removeCompetency = async (competency: Competency) => {
                 <TabsContent value="details" class="mt-0 flex flex-col gap-4 px-6 py-4">
                     <!-- HINATI: details sa kaliwa, competencies sa kanan -->
                     <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
-                        <!-- LEFT: Program Details (2/3 ng lapad) -->
+                        <!-- LEFT: Program content -->
                         <div class="flex flex-col gap-4 lg:col-span-2">
-                            <div class="flex items-center justify-between">
-                                <h1 class="font-bold">Program Details</h1>
-                                <Button
-                                    size="sm"
-                                    class="h-7 bg-rose-600 text-xs text-white hover:bg-rose-700"
-                                    @click="showEvaluationDashboard = true"
-                                >
-                                    <ClipboardCheck class="mr-1 h-3.5 w-3.5" /> Evaluation Results
-                                </Button>
-                            </div>
-
                             <CoverPagePanel :program-id="program.id" :cover-page="program.cover_page" />
 
                             <!-- Description -->
@@ -293,7 +282,9 @@ const removeCompetency = async (competency: Competency) => {
                                 <p class="text-sm leading-relaxed">{{ program.description || 'No description provided.' }}</p>
                             </div>
 
-                            <!-- Details Grid -->
+                            <!-- Program Details -->
+                            <section class="flex flex-col gap-4">
+                            <h2 class="font-bold">Program Details</h2>
                             <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                                 <div class="flex flex-col gap-1 rounded-2xl border p-4 shadow-md">
                                     <p class="text-xs text-muted-foreground">Modality</p>
@@ -344,9 +335,30 @@ const removeCompetency = async (competency: Competency) => {
                                     <p class="flex items-center gap-2 text-sm font-bold"><Flag class="w-5 text-emerald-500" />{{ program.origin }}</p>
                                 </div>
                             </div>
+                            </section>
                         </div>
 
-                        <!-- RIGHT: Competencies sidebar (1/3 ng lapad) -->
+                        <!-- RIGHT: Evaluation and competencies -->
+                        <div class="flex flex-col gap-4">
+                            <section class="rounded-2xl bg-gradient-to-br from-blue-700 to-indigo-800 p-5 text-white shadow-lg transition-shadow hover:shadow-xl">
+                                <div class="flex items-start gap-3">
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
+                                        <ClipboardCheck class="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <h2 class="text-base font-bold">Evaluation Results</h2>
+                                        <p class="mt-1 text-sm leading-relaxed text-blue-100">View aggregated participant feedback and program performance insights.</p>
+                                    </div>
+                                </div>
+                                <Button
+                                    size="sm"
+                                    class="mt-5 w-full border border-white/25 bg-white/15 text-white hover:bg-white/25"
+                                    @click="showEvaluationDashboard = true"
+                                >
+                                    View Evaluation Dashboard <span aria-hidden="true" class="ml-1">→</span>
+                                </Button>
+                            </section>
+
                         <div class="flex flex-col gap-3 rounded-2xl border p-4 shadow-md">
                             <div class="flex items-center justify-between">
                                 <p class="flex items-center gap-1.5 text-sm font-bold"><Lightbulb class="h-4 w-4 text-yellow-500" /> Competencies</p>
@@ -387,6 +399,7 @@ const removeCompetency = async (competency: Competency) => {
                                 <p class="text-xs font-semibold">No competencies yet.</p>
                                 <p class="mt-1 text-[11px]">Click "Add Competency" to attach competencies to this program.</p>
                             </div>
+                        </div>
                         </div>
                     </div>
 
