@@ -368,7 +368,7 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
     <Head :title="program.program_code" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex min-w-0 flex-1 flex-col gap-6 px-4 pb-10 pt-4 sm:px-6">
+        <div class="flex min-w-0 max-w-full flex-1 flex-col gap-4 px-3 pb-10 pt-3 sm:gap-6 sm:px-6 sm:pt-4">
             <!-- ===================== HERO ===================== -->
             <section
                 class="relative overflow-hidden rounded-2xl border border-blue-900/20 bg-gradient-to-br from-sky-900 via-blue-900 to-indigo-950 text-white shadow-xl dark:border-white/10 dark:from-slate-900 dark:via-blue-950 dark:to-indigo-950"
@@ -384,36 +384,36 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
                     class="pointer-events-none absolute -bottom-32 left-1/3 h-72 w-72 rounded-full bg-indigo-400/10 blur-3xl"
                 ></div>
 
-                <div class="relative flex flex-col gap-6 p-5 sm:p-7">
+                <div class="relative flex flex-col gap-4 p-4 sm:gap-6 sm:p-6 lg:p-7">
                     <!-- Top bar: back + actions -->
-                    <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
                         <Link
                             :href="route('programs.index')"
-                            class="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-blue-100 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                            class="-ml-2 inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-blue-100 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
                         >
                             <ArrowLeft class="h-4 w-4" /> Back to Programs
                         </Link>
-                        <div class="flex items-center gap-2">
+                        <div class="flex flex-wrap items-center gap-2">
                             <Button
                                 as-child
                                 variant="outline"
                                 size="sm"
-                                class="border-white/25 bg-white/10 text-white shadow-none hover:bg-white/20 hover:text-white"
+                                class="shrink-0 border-white/25 bg-white/10 text-white shadow-none hover:bg-white/20 hover:text-white"
                             >
                                 <Link :href="route('programs.edit', program.id)"> <Pencil class="h-4 w-4" /> Edit </Link>
                             </Button>
-                            <Button variant="destructive" size="sm" class="shadow-none" @click="deleteProgram">
+                            <Button variant="destructive" size="sm" class="shrink-0 shadow-none" @click="deleteProgram">
                                 <Trash2 class="h-4 w-4" /> Delete
                             </Button>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 items-center gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
+                    <div class="grid grid-cols-1 items-center gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
                         <!-- Identity -->
-                        <div class="flex min-w-0 flex-col gap-4">
-                            <div class="flex flex-wrap items-center gap-2">
+                        <div class="flex min-w-0 flex-col gap-3 sm:gap-4">
+                            <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
                                 <span
-                                    class="inline-flex items-center gap-1.5 rounded-md border border-amber-300/40 bg-amber-400/15 px-2.5 py-1 font-mono text-xs font-semibold tracking-wide text-amber-200"
+                                    class="inline-flex max-w-full items-center gap-1.5 break-all rounded-md border border-amber-300/40 bg-amber-400/15 px-2.5 py-1 font-mono text-xs font-semibold tracking-wide text-amber-200"
                                 >
                                     <Hash class="h-3.5 w-3.5" /> {{ program.program_code }}
                                 </span>
@@ -422,7 +422,7 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
                                 </span>
                             </div>
 
-                            <h1 class="break-words text-2xl font-bold leading-tight tracking-tight sm:text-3xl">
+                            <h1 class="break-words text-xl font-bold leading-tight tracking-tight sm:text-2xl lg:text-3xl">
                                 {{ program.title }}
                             </h1>
 
@@ -430,20 +430,20 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
                                 <span
                                     v-for="badge in heroBadges"
                                     :key="badge"
-                                    class="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-blue-50"
+                                    class="max-w-full break-words rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-blue-50"
                                 >
                                     {{ badge }}
                                 </span>
                             </div>
 
-                            <p class="line-clamp-3 max-w-3xl text-sm leading-relaxed text-blue-100/90">
+                            <p class="line-clamp-3 max-w-3xl break-words text-sm leading-relaxed text-blue-100/90">
                                 {{ program.description || 'No description provided.' }}
                             </p>
                         </div>
 
                         <!-- Cover -->
                         <div
-                            class="rounded-2xl bg-white/95 p-1.5 shadow-2xl ring-1 ring-white/20 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] dark:bg-slate-900"
+                            class="w-full min-w-0 rounded-2xl bg-white/95 p-0 shadow-2xl ring-1 ring-white/20 transition duration-200 dark:bg-slate-900 sm:mx-auto sm:max-w-md lg:mx-0 lg:max-w-none lg:hover:-translate-y-0.5 lg:hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]"
                         >
                             <CoverPagePanel :program-id="program.id" :cover-page="program.cover_page" />
                         </div>
@@ -452,18 +452,18 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
             </section>
 
             <!-- ===================== TABS ===================== -->
-            <Tabs v-model="activeTab" class="flex min-w-0 flex-1 flex-col gap-6">
-                <div ref="tabsSection" class="scroll-mt-4" :class="cardClass">
-                    <div class="overflow-x-auto [scrollbar-width:thin]">
-                        <TabsList class="flex h-auto w-max min-w-full justify-start gap-1 rounded-none bg-transparent px-2 py-0">
+            <Tabs v-model="activeTab" class="flex min-w-0 max-w-full flex-1 flex-col gap-4 sm:gap-6">
+                <div ref="tabsSection" class="min-w-0 scroll-mt-4 overflow-hidden" :class="cardClass">
+                    <div class="tabs-scroll overflow-x-auto overscroll-x-contain">
+                        <TabsList class="flex h-auto w-max min-w-full justify-start gap-0.5 rounded-none bg-transparent px-1 py-0 sm:gap-1 sm:px-2">
                             <TabsTrigger
                                 v-for="tab in tabs"
                                 :key="tab.value"
                                 :value="tab.value"
-                                class="relative shrink-0 rounded-none border-b-2 border-transparent px-3 py-3.5 text-sm font-medium text-slate-500 transition-colors hover:text-slate-900 data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:text-blue-700 data-[state=active]:shadow-none dark:text-slate-400 dark:hover:text-slate-100 dark:data-[state=active]:border-sky-400 dark:data-[state=active]:text-sky-300"
+                                class="relative shrink-0 whitespace-nowrap rounded-none border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-500 transition-colors hover:text-slate-900 data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:text-blue-700 data-[state=active]:shadow-none dark:text-slate-400 dark:hover:text-slate-100 dark:data-[state=active]:border-sky-400 dark:data-[state=active]:text-sky-300 sm:py-3.5"
                             >
                                 <span class="flex items-center gap-2">
-                                    <component :is="tab.icon" class="h-4 w-4" />
+                                    <component :is="tab.icon" class="h-4 w-4 shrink-0" />
                                     {{ tab.label }}
                                     <span
                                         v-if="tab.count"
@@ -478,33 +478,35 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
                 </div>
 
                 <!-- ===================== DETAILS TAB ===================== -->
-                <TabsContent value="details" class="mt-0 flex flex-col gap-6">
+                <TabsContent value="details" class="mt-0 flex min-w-0 max-w-full flex-col gap-4 sm:gap-6">
                     <!-- Summary metrics -->
-                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+                    <div class="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 xl:grid-cols-6">
                         <button
                             v-for="metric in metrics"
                             :key="metric.label"
                             type="button"
-                            class="group flex items-center gap-3 p-3.5 text-left transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:border-blue-500/50"
+                            class="group flex h-full min-w-0 items-center gap-2.5 p-3 text-left transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:border-blue-500/50 sm:gap-3 sm:p-3.5"
                             :class="cardClass"
                             :aria-label="`${metric.value} ${metric.label} — view`"
                             @click="metric.action"
                         >
-                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg" :class="metric.tone">
+                            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:h-10 sm:w-10" :class="metric.tone">
                                 <component :is="metric.icon" class="h-5 w-5" />
                             </span>
                             <span class="min-w-0">
-                                <span class="block text-xl font-bold leading-none text-slate-900 dark:text-white">{{ metric.value }}</span>
-                                <span class="mt-1 block truncate text-xs text-slate-500 dark:text-slate-400">{{ metric.label }}</span>
+                                <span class="block text-lg font-bold leading-none text-slate-900 dark:text-white sm:text-xl">{{ metric.value }}</span>
+                                <span class="mt-1 block break-words text-xs leading-tight text-slate-500 dark:text-slate-400">{{
+                                    metric.label
+                                }}</span>
                             </span>
                         </button>
                     </div>
 
-                    <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,340px)]">
+                    <div class="grid grid-cols-1 items-start gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,340px)]">
                         <!-- MAIN: Program information -->
                         <div class="flex min-w-0 flex-col gap-4">
                             <!-- Program Identity -->
-                            <section :class="cardClass" class="p-5">
+                            <section :class="cardClass" class="min-w-0 p-4 sm:p-5">
                                 <header class="mb-4 flex items-center gap-2">
                                     <span
                                         class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300"
@@ -514,11 +516,11 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
                                     <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200">Program Identity</h2>
                                 </header>
                                 <dl class="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,160px)_minmax(0,1fr)]">
-                                    <div>
+                                    <div class="min-w-0">
                                         <dt class="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
                                             Program Code
                                         </dt>
-                                        <dd class="mt-1 font-mono text-sm font-semibold text-slate-900 dark:text-white">
+                                        <dd class="mt-1 break-all font-mono text-sm font-semibold text-slate-900 dark:text-white">
                                             {{ program.program_code }}
                                         </dd>
                                     </div>
@@ -526,7 +528,7 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
                                         <dt class="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Title</dt>
                                         <dd class="mt-1 break-words text-sm font-semibold text-slate-900 dark:text-white">{{ program.title }}</dd>
                                     </div>
-                                    <div class="sm:col-span-2">
+                                    <div class="min-w-0 sm:col-span-2">
                                         <dt class="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
                                             Description
                                         </dt>
@@ -537,15 +539,15 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
                                 </dl>
                             </section>
 
-                            <!-- Delivery -->
-                            <section :class="cardClass" class="p-5">
+                            <!-- Implementation -->
+                            <section :class="cardClass" class="min-w-0 p-4 sm:p-5">
                                 <header class="mb-4 flex items-center gap-2">
                                     <span
                                         class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300"
                                     >
                                         <Truck class="h-4 w-4" />
                                     </span>
-                                    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200">Delivery</h2>
+                                    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200">Implementation</h2>
                                 </header>
                                 <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                                     <div
@@ -566,7 +568,7 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
 
                             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 <!-- Financial -->
-                                <section :class="cardClass" class="p-5">
+                                <section :class="cardClass" class="min-w-0 p-4 sm:p-5">
                                     <header class="mb-4 flex items-center gap-2">
                                         <span
                                             class="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"
@@ -579,12 +581,14 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
                                         <div
                                             v-for="field in financialFields"
                                             :key="field.label"
-                                            class="flex items-center justify-between gap-4 py-2.5 first:pt-0 last:pb-0"
+                                            class="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 py-2.5 first:pt-0 last:pb-0"
                                         >
-                                            <dt class="flex shrink-0 items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                                            <dt
+                                                class="flex shrink-0 items-center gap-2 pt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400"
+                                            >
                                                 <component :is="field.icon" class="h-4 w-4" :class="field.iconClass" /> {{ field.label }}
                                             </dt>
-                                            <dd class="min-w-0 break-words text-right text-sm font-semibold text-slate-900 dark:text-white">
+                                            <dd class="ml-auto min-w-0 break-words text-right text-sm font-semibold text-slate-900 dark:text-white">
                                                 {{ field.value }}
                                             </dd>
                                         </div>
@@ -592,7 +596,7 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
                                 </section>
 
                                 <!-- Organization -->
-                                <section :class="cardClass" class="p-5">
+                                <section :class="cardClass" class="min-w-0 p-4 sm:p-5">
                                     <header class="mb-4 flex items-center gap-2">
                                         <span
                                             class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
@@ -605,12 +609,14 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
                                         <div
                                             v-for="field in organizationFields"
                                             :key="field.label"
-                                            class="flex items-center justify-between gap-4 py-2.5 first:pt-0 last:pb-0"
+                                            class="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 py-2.5 first:pt-0 last:pb-0"
                                         >
-                                            <dt class="flex shrink-0 items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                                            <dt
+                                                class="flex shrink-0 items-center gap-2 pt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400"
+                                            >
                                                 <component :is="field.icon" class="h-4 w-4" :class="field.iconClass" /> {{ field.label }}
                                             </dt>
-                                            <dd class="min-w-0 break-words text-right text-sm font-semibold text-slate-900 dark:text-white">
+                                            <dd class="ml-auto min-w-0 break-words text-right text-sm font-semibold text-slate-900 dark:text-white">
                                                 {{ field.value }}
                                             </dd>
                                         </div>
@@ -620,9 +626,9 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
                         </div>
 
                         <!-- SIDEBAR: Quick actions + evaluation -->
-                        <aside class="flex min-w-0 flex-col gap-4">
+                        <aside class="grid min-w-0 grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-1">
                             <!-- Quick Actions -->
-                            <section :class="cardClass" class="p-5">
+                            <section :class="cardClass" class="min-w-0 p-4 sm:p-5">
                                 <header class="mb-4 flex items-center gap-2">
                                     <Zap class="h-4 w-4 text-amber-500" />
                                     <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200">Quick Actions</h2>
@@ -638,14 +644,14 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
                                         v-for="action in quickActions"
                                         :key="action.tab"
                                         type="button"
-                                        class="group flex w-full items-center gap-2.5 rounded-md border border-slate-200 px-3 py-2 text-left text-sm font-medium text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50/60 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:text-slate-200 dark:hover:border-blue-500/50 dark:hover:bg-blue-500/10 dark:hover:text-sky-300"
+                                        class="group flex min-h-10 w-full items-center gap-2.5 rounded-md border border-slate-200 px-3 py-2 text-left text-sm font-medium text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50/60 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:text-slate-200 dark:hover:border-blue-500/50 dark:hover:bg-blue-500/10 dark:hover:text-sky-300"
                                         @click="goToTab(action.tab)"
                                     >
                                         <component
                                             :is="action.icon"
                                             class="h-4 w-4 shrink-0 text-slate-400 group-hover:text-blue-600 dark:group-hover:text-sky-300"
                                         />
-                                        <span class="min-w-0 flex-1 truncate">{{ action.label }}</span>
+                                        <span class="min-w-0 flex-1 break-words leading-snug">{{ action.label }}</span>
                                         <ChevronRight
                                             class="h-4 w-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 dark:text-slate-600"
                                         />
@@ -655,7 +661,7 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
 
                             <!-- Evaluation Results -->
                             <section
-                                class="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-900 p-5 text-white shadow-lg ring-1 ring-blue-900/10 transition-shadow hover:shadow-xl dark:from-blue-900 dark:via-indigo-950 dark:to-slate-950 dark:ring-white/10"
+                                class="relative min-w-0 overflow-hidden rounded-xl bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-900 p-4 text-white shadow-lg ring-1 ring-blue-900/10 transition-shadow hover:shadow-xl dark:from-blue-900 dark:via-indigo-950 dark:to-slate-950 dark:ring-white/10 sm:p-5"
                             >
                                 <div
                                     aria-hidden="true"
@@ -665,7 +671,7 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
                                     <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/20">
                                         <ClipboardCheck class="h-5 w-5" />
                                     </div>
-                                    <div>
+                                    <div class="min-w-0">
                                         <h2 class="text-base font-semibold">Evaluation Results</h2>
                                         <p class="mt-1 text-sm leading-relaxed text-blue-100">
                                             View aggregated participant feedback and program performance insights.
@@ -674,7 +680,7 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
                                 </div>
                                 <Button
                                     size="sm"
-                                    class="relative mt-5 w-full border border-white/25 bg-white/15 text-white hover:bg-white/25"
+                                    class="relative mt-4 h-auto min-h-9 w-full whitespace-normal border border-white/25 bg-white/15 py-2 text-white hover:bg-white/25 sm:mt-5"
                                     @click="showEvaluationDashboard = true"
                                 >
                                     View Evaluation Dashboard <ArrowRight class="h-4 w-4" />
@@ -684,9 +690,9 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
                     </div>
 
                     <!-- Competencies -->
-                    <section ref="competenciesSection" class="scroll-mt-4 p-5" :class="cardClass">
-                        <header class="mb-5 flex flex-wrap items-center justify-between gap-3">
-                            <div class="flex items-center gap-2">
+                    <section ref="competenciesSection" class="min-w-0 scroll-mt-4 p-4 sm:p-5" :class="cardClass">
+                        <header class="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-center sm:justify-between">
+                            <div class="flex min-w-0 items-center gap-2">
                                 <span
                                     class="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-300"
                                 >
@@ -699,7 +705,7 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
                             </div>
                             <Button
                                 size="sm"
-                                class="bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500"
+                                class="h-9 w-full shrink-0 bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 sm:w-auto"
                                 @click="showCompetencyModal = true"
                             >
                                 <Plus class="h-4 w-4" /> Add Competency
@@ -707,7 +713,7 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
                         </header>
 
                         <!-- Grouped list -->
-                        <div v-if="groupedCompetencies.length" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                        <div v-if="groupedCompetencies.length" class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
                             <div
                                 v-for="group in groupedCompetencies"
                                 :key="group.domain"
@@ -735,7 +741,7 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
                                         <p class="min-w-0 break-words text-sm leading-snug text-slate-700 dark:text-slate-200">{{ c.competency }}</p>
                                         <button
                                             type="button"
-                                            class="mt-0.5 shrink-0 rounded text-slate-400 transition-all hover:text-red-500 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 sm:opacity-0 sm:group-hover:opacity-100"
+                                            class="-m-1 shrink-0 rounded p-1 text-slate-400 transition-all hover:text-red-500 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within:opacity-100 [@media(hover:hover)]:group-hover:opacity-100"
                                             :aria-label="`Remove ${c.competency}`"
                                             :title="`Remove ${c.competency}`"
                                             @click="removeCompetency(c)"
@@ -768,37 +774,37 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
                 </TabsContent>
 
                 <!-- Participants Tab -->
-                <TabsContent value="participants" class="mt-0 flex min-w-0 flex-col gap-4">
+                <TabsContent value="participants" class="mt-0 flex min-w-0 max-w-full flex-col gap-4">
                     <!-- BATCH SECTION: list ng batches + Add Batch modal -->
                     <BatchList :program="program" :batches="program.batches ?? []" />
                 </TabsContent>
 
                 <!-- Submissions Tab -->
-                <TabsContent value="submissions" class="mt-0 flex min-w-0 flex-col gap-4">
+                <TabsContent value="submissions" class="mt-0 flex min-w-0 max-w-full flex-col gap-4">
                     <SubmissionList :program="program" :submissions="submissions" />
                 </TabsContent>
 
                 <!-- Certificates Tab -->
-                <TabsContent value="certificates" class="mt-0 flex min-w-0 flex-col gap-4">
+                <TabsContent value="certificates" class="mt-0 flex min-w-0 max-w-full flex-col gap-4">
                     <CertificatesPanel :program="program" />
                 </TabsContent>
 
                 <!-- Requirements Tab -->
-                <TabsContent value="requirements" class="mt-0 flex min-w-0 flex-col gap-4">
+                <TabsContent value="requirements" class="mt-0 flex min-w-0 max-w-full flex-col gap-4">
                     <RequirementList :program="program" />
                 </TabsContent>
 
                 <!-- Supporting Documents Tab -->
-                <TabsContent value="Supporting" class="mt-0 flex min-w-0 flex-col gap-4">
+                <TabsContent value="Supporting" class="mt-0 flex min-w-0 max-w-full flex-col gap-4">
                     <SupportingDocuments :program="program" />
                 </TabsContent>
 
                 <!-- Resource Speakers Tab -->
-                <TabsContent value="resource" class="mt-0 flex min-w-0 flex-col gap-4">
+                <TabsContent value="resource" class="mt-0 flex min-w-0 max-w-full flex-col gap-4">
                     <ResourceSpeakers :program="program" />
                 </TabsContent>
 
-                <TabsContent value="tesda-order" class="mt-0 flex min-w-0 flex-col gap-4">
+                <TabsContent value="tesda-order" class="mt-0 flex min-w-0 max-w-full flex-col gap-4">
                     <TesdaOrderPanel :program="program" />
                 </TabsContent>
             </Tabs>
@@ -808,32 +814,34 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
         <Transition name="backdrop" appear>
             <div
                 v-if="showEvaluationDashboard"
-                class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-2 backdrop-blur-sm sm:p-4"
                 @click.self="showEvaluationDashboard = false"
             >
                 <div
-                    class="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-2xl bg-background shadow-2xl ring-1 ring-black/5 dark:ring-white/10"
+                    class="max-h-[92vh] w-full min-w-0 max-w-5xl overflow-y-auto overflow-x-hidden overscroll-contain rounded-2xl bg-background shadow-2xl ring-1 ring-black/5 dark:ring-white/10 sm:max-h-[90vh]"
                 >
                     <div
-                        class="sticky top-0 z-10 flex items-center gap-3 rounded-t-2xl border-b bg-gradient-to-r from-blue-800 via-blue-700 to-indigo-800 px-6 py-4 text-white"
+                        class="sticky top-0 z-10 flex items-center gap-3 rounded-t-2xl border-b bg-gradient-to-r from-blue-800 via-blue-700 to-indigo-800 px-4 py-3 text-white sm:px-6 sm:py-4"
                     >
                         <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20 shadow backdrop-blur">
                             <ClipboardCheck class="h-4 w-4 text-white" />
                         </div>
                         <div class="min-w-0">
                             <h2 class="text-base font-bold leading-none">Evaluation Results</h2>
-                            <p class="mt-0.5 truncate text-xs text-white/75">Aggregated feedback for {{ program.title }}</p>
+                            <p class="mt-1 line-clamp-2 break-words text-xs text-white/75 sm:mt-0.5 sm:truncate">
+                                Aggregated feedback for {{ program.title }}
+                            </p>
                         </div>
                         <button
                             type="button"
-                            class="ml-auto shrink-0 rounded text-white/80 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                            class="-mr-1 ml-auto shrink-0 rounded p-1 text-white/80 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                             aria-label="Close evaluation results"
                             @click="showEvaluationDashboard = false"
                         >
                             <X class="h-5 w-5" />
                         </button>
                     </div>
-                    <div class="p-4 sm:p-6">
+                    <div class="min-w-0 p-3 sm:p-6">
                         <EvaluationDashboard :program="program" />
                     </div>
                 </div>
@@ -850,5 +858,21 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
 .backdrop-enter-from,
 .backdrop-leave-to {
     opacity: 0;
+}
+
+/* Subtle, thin scrollbar for the horizontally scrollable tab strip. */
+.tabs-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(148 163 184 / 0.4) transparent;
+}
+.tabs-scroll::-webkit-scrollbar {
+    height: 4px;
+}
+.tabs-scroll::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background-color: rgb(148 163 184 / 0.4);
+}
+.tabs-scroll::-webkit-scrollbar-track {
+    background: transparent;
 }
 </style>
