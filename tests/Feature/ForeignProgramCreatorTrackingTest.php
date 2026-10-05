@@ -23,7 +23,7 @@ function creatorTrackingAdmin(string $empcode, string $name = 'Ana Admin'): User
         'UNIT' => 'Test Unit',
     ]);
 
-    return User::factory()->create(['empcode' => $empcode, 'access' => 'admin', 'name' => $name]);
+    return User::factory()->create(['empcode' => $empcode, 'access' => 'admin', 'is_fstp_member' => true, 'name' => $name]);
 }
 
 function creatorTrackingProgramPayload(): array

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureUserCanAccessForeignPrograms;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\EnsureUserIsNhrdcMember;
 use App\Http\Middleware\EnsureUserIsSuperAdmin;
@@ -27,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => EnsureUserIsAdmin::class,
             'superadmin' => EnsureUserIsSuperAdmin::class,
             'nhrdc' => EnsureUserIsNhrdcMember::class,
+            'fstp' => EnsureUserCanAccessForeignPrograms::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

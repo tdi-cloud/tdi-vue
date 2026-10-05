@@ -15,9 +15,16 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        // Full first name from the employee record (e.g. "MA. THERESE ANGELICA"),
+        // since users.name can't reliably be split into first/last names.
+        $firstName = $request->user()->empcode
+            ? Employee::where('EMPCODE', $request->user()->empcode)->value('FIRSTNAME')
+            : null;
+
         return Inertia::render('Dashboard', [
+            'firstName' => filled($firstName) ? trim($firstName) : null,
             'summary' => [
                 'employees' => Employee::count(),
                 'programs' => Program::count(),

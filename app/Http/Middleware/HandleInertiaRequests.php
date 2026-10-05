@@ -46,6 +46,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
                 'isNhrdcMember' => fn () => $request->user()?->isNhrdcMember() ?? false,
+                'canAccessForeignPrograms' => fn () => $request->user()?->canAccessForeignPrograms() ?? false,
             ],
             'unreadNotificationsCount' => fn () => $request->user()?->unreadNotifications()->count() ?? 0,
             'authBackground' => fn () => SiteImage::urlFor('auth_background'),

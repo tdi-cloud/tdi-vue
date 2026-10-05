@@ -40,6 +40,8 @@ const isSuperAdmin = computed(() => (page.props.auth as any)?.user?.access === '
 
 const isNhrdcMember = computed(() => (page.props.auth as any)?.isNhrdcMember === true);
 
+const canAccessForeignPrograms = computed(() => (page.props.auth as any)?.canAccessForeignPrograms === true);
+
 const allNavItems: NavItem[] = [
     // Mga monitoring / tracking / compliance na page
     {
@@ -161,6 +163,10 @@ const mainNavItems = computed<NavItem[]>(() => {
     let items: NavItem[] = [];
     if (isAdmin.value) {
         items = isSuperAdmin.value ? [...allNavItems, ...superAdminNavItems] : allNavItems;
+        // Foreign Programs is limited to FSTP unit members (and superadmins)
+        if (!canAccessForeignPrograms.value) {
+            items = items.filter((item) => item.url !== '/foreign-programs');
+        }
     }
     if (isNhrdcMember.value) {
         items = [...items, ...nhrdcNavItems];

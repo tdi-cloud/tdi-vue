@@ -177,14 +177,14 @@ const chartOptions = {
         animations: { enabled: true, speed: 1000, dynamicAnimation: { enabled: true, speed: 1000 } },
         sparkline: { enabled: true },
     },
-    colors: ['#34d399'],
+    colors: ['#10B981'],
     stroke: { lineCap: 'round' },
     plotOptions: {
         radialBar: {
             startAngle: 0,
             endAngle: 360,
             hollow: { size: '60%' },
-            track: { background: 'rgba(125, 211, 252, 0.3)', strokeWidth: '100%' },
+            track: { background: 'rgba(56, 189, 248, 0.22)', strokeWidth: '100%' },
             dataLabels: { name: { show: false }, value: { show: false } },
         },
     },
@@ -192,13 +192,13 @@ const chartOptions = {
 </script>
 
 <template>
-    <div class="relative isolate overflow-hidden rounded-2xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border">
+    <div class="tdi-card tdi-accent-emerald tdi-accent-to-sky relative isolate overflow-hidden rounded-2xl border">
         <!-- Decorative background texture — purely visual, sits behind existing content via negative z-index -->
-        <div class="tdi-texture-learning pointer-events-none absolute inset-0 z-[-1] opacity-[0.05] dark:opacity-[0.08]" aria-hidden="true"></div>
+        <div class="tdi-texture-learning pointer-events-none absolute inset-0 z-[-1] opacity-[0.025] dark:opacity-[0.04]" aria-hidden="true"></div>
 
         <!-- HEADER -->
-        <div class="flex flex-wrap items-center gap-2 border-b px-5 py-3">
-            <h2 class="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide text-blue-900 dark:text-blue-300">
+        <div class="flex flex-wrap items-center gap-2 border-b border-border/80 px-5 py-3">
+            <h2 class="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide text-[#0B4F8A] dark:text-sky-300">
                 <GraduationCap class="h-4 w-4" /> Employees Training Compliance Rate
                 <LoaderCircle v-if="loading" class="h-3.5 w-3.5 animate-spin text-blue-500" />
             </h2>
@@ -243,16 +243,16 @@ const chartOptions = {
                     <VueApexCharts type="radialBar" width="230" height="230" :options="chartOptions" :series="series" />
                     <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
                         <p class="text-3xl font-extrabold tabular-nums leading-none text-emerald-500">{{ animatedPercent }}%</p>
-                        <p class="mt-1 text-xs font-semibold text-slate-400">With Training</p>
+                        <p class="mt-1 text-xs font-semibold text-muted-foreground">With Training</p>
                     </div>
                 </div>
 
                 <!-- RIGHT: total -->
                 <div class="flex flex-col items-center gap-2 sm:items-start">
-                    <p class="text-3xl font-extrabold tabular-nums leading-none text-slate-700 dark:text-slate-200">
+                    <p class="text-3xl font-extrabold tabular-nums leading-none text-[#172033] dark:text-slate-50">
                         {{ animatedTotal.toLocaleString() }}
                     </p>
-                    <p class="mt-1 flex items-center gap-1.5 text-sm font-bold"><Users class="h-4 w-4" /> Employees</p>
+                    <p class="mt-1 flex items-center gap-1.5 text-sm font-bold text-muted-foreground"><Users class="h-4 w-4" /> Employees</p>
                 </div>
             </div>
 

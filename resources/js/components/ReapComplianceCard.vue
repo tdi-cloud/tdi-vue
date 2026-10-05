@@ -128,7 +128,7 @@ const donutOptions = computed(() => ({
         background: 'transparent',
     },
     labels: ['Submitted', 'Not Submitted'],
-    colors: ['#6366f1', '#f59e0b'],
+    colors: ['#2563EB', '#F43F5E'],
     fill: {
         type: 'solid',
         opacity: [0.45, 0.35],
@@ -136,13 +136,13 @@ const donutOptions = computed(() => ({
     stroke: {
         show: true,
         width: 1.5,
-        colors: ['#6366f1', '#f59e0b'],
+        colors: ['#2563EB', '#F43F5E'],
         lineCap: 'round',
     },
     legend: {
         position: 'bottom',
         fontSize: '12px',
-        labels: { colors: ['#6366f1', '#f59e0b'] },
+        labels: { colors: ['#2563EB', '#F43F5E'] },
     },
     plotOptions: {
         pie: {
@@ -155,13 +155,13 @@ const donutOptions = computed(() => ({
                     total: {
                         show: true,
                         label: 'Submitted',
-                        color: '#6366f1',
+                        color: '#2563EB',
                         fontSize: '13px',
                         fontWeight: 700,
                         formatter: () => (data.value ? `${data.value.submitted_pct}%` : '0%'),
                     },
                     value: {
-                        color: '#6366f1',
+                        color: '#2563EB',
                         fontWeight: 700,
                     },
                 },
@@ -196,18 +196,18 @@ const barOptions = computed(() => ({
             barHeight: '60%',
         },
     },
-    colors: ['#818cf8', '#d97706'],
+    colors: ['#2563EB', '#F43F5E'],
     xaxis: {
         categories: data.value?.regions ?? REGIONS,
         labels: {
-            style: { fontSize: '11px' },
+            style: { fontSize: '11px', colors: '#64748B' },
             formatter: (val: number) => `${Math.round(val)}%`,
         },
     },
     yaxis: {
-        labels: { style: { fontSize: '11px' } },
+        labels: { style: { fontSize: '11px', colors: '#64748B' } },
     },
-    legend: { position: 'top', fontSize: '12px' },
+    legend: { position: 'top', fontSize: '12px', labels: { colors: '#64748B' } },
     dataLabels: {
         enabled: true,
         style: { fontSize: '10px', colors: ['#fff'] },
@@ -218,7 +218,7 @@ const barOptions = computed(() => ({
     },
     tooltip: { y: { formatter: (val: number) => `${val} employees` } },
     fill: { opacity: 1 },
-    grid: { borderColor: '#f1f5f9' },
+    grid: { borderColor: 'rgba(148, 163, 184, 0.18)' },
 }));
 
 const barSeries = computed(() => [
@@ -244,17 +244,17 @@ const modalTitle = computed(() => {
 </script>
 
 <template>
-    <div class="relative isolate flex flex-col gap-5 overflow-hidden rounded-2xl border bg-card p-5 shadow-sm">
+    <div class="tdi-card tdi-accent-royal tdi-accent-to-emerald relative isolate flex flex-col gap-5 overflow-hidden rounded-2xl border p-5">
         <!-- Decorative background texture — purely visual, sits behind existing content via negative z-index -->
-        <div class="tdi-texture-reentry pointer-events-none absolute inset-0 z-[-1] opacity-[0.05] dark:opacity-[0.08]" aria-hidden="true"></div>
+        <div class="tdi-texture-reentry pointer-events-none absolute inset-0 z-[-1] opacity-[0.025] dark:opacity-[0.04]" aria-hidden="true"></div>
 
         <!-- Header -->
         <div class="flex items-center gap-2">
-            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-950/50">
-                <FileText class="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg tdi-icon-chip">
+                <FileText class="h-4 w-4 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-                <h2 class="text-sm font-extrabold uppercase tracking-wide text-indigo-700 dark:text-indigo-400">
+                <h2 class="text-sm font-extrabold uppercase tracking-wide text-blue-700 dark:text-blue-400">
                     Terminal Report &amp; Re-entry Action Plan (REAP)
                 </h2>
                 <p class="text-xs text-muted-foreground">Overdue REAP submission compliance · click any chart segment to see the list</p>
@@ -263,37 +263,37 @@ const modalTitle = computed(() => {
 
         <!-- Loading -->
         <div v-if="loading" class="flex justify-center py-12">
-            <div class="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent" />
+            <div class="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
         </div>
 
         <template v-else-if="data">
             <!-- Stat row -->
             <div class="grid grid-cols-3 gap-3">
-                <div class="flex flex-col gap-0.5 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/50">
+                <div class="flex flex-col gap-0.5 tdi-surface rounded-xl p-3">
                     <p class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                         <Users class="h-3 w-3" /> Total Required
                     </p>
                     <p class="text-2xl font-extrabold">{{ data.total.toLocaleString() }}</p>
                 </div>
                 <button
-                    class="flex cursor-pointer flex-col gap-0.5 rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-left transition-all hover:brightness-95 dark:border-indigo-800/40 dark:bg-indigo-950/20"
+                    class="flex cursor-pointer flex-col gap-0.5 rounded-xl border border-blue-200 bg-blue-50 p-3 text-left transition-all hover:brightness-95 dark:border-blue-800/40 dark:bg-blue-950/20"
                     @click="fetchList('submitted', 'ALL')"
                 >
-                    <p class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-indigo-700 dark:text-indigo-400">
+                    <p class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-400">
                         <FileText class="h-3 w-3" /> Submitted
                     </p>
-                    <p class="text-2xl font-extrabold text-indigo-700 dark:text-indigo-300">{{ data.submitted.toLocaleString() }}</p>
-                    <p class="text-xs font-semibold text-indigo-600 dark:text-indigo-400">{{ data.submitted_pct }}%</p>
+                    <p class="text-2xl font-extrabold text-blue-700 dark:text-blue-300">{{ data.submitted.toLocaleString() }}</p>
+                    <p class="text-xs font-semibold text-blue-600 dark:text-blue-400">{{ data.submitted_pct }}%</p>
                 </button>
                 <button
-                    class="flex cursor-pointer flex-col gap-0.5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-left transition-all hover:brightness-95 dark:border-amber-800/40 dark:bg-amber-950/20"
+                    class="flex cursor-pointer flex-col gap-0.5 rounded-xl border border-rose-200 bg-rose-50 p-3 text-left transition-all hover:brightness-95 dark:border-rose-800/40 dark:bg-rose-950/20"
                     @click="fetchList('not_submitted', 'ALL')"
                 >
-                    <p class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+                    <p class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-rose-600 dark:text-rose-400">
                         <FileX class="h-3 w-3" /> Not Submitted
                     </p>
-                    <p class="text-2xl font-extrabold text-amber-600 dark:text-amber-400">{{ data.not_submitted.toLocaleString() }}</p>
-                    <p class="text-xs font-semibold text-amber-500 dark:text-amber-400">{{ data.not_submitted_pct }}%</p>
+                    <p class="text-2xl font-extrabold text-rose-600 dark:text-rose-400">{{ data.not_submitted.toLocaleString() }}</p>
+                    <p class="text-xs font-semibold text-rose-500 dark:text-rose-400">{{ data.not_submitted_pct }}%</p>
                 </button>
             </div>
 
@@ -335,10 +335,10 @@ const modalTitle = computed(() => {
                     <div class="flex items-center gap-3">
                         <div
                             class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                            :class="modalType === 'submitted' ? 'bg-indigo-100 dark:bg-indigo-950/50' : 'bg-amber-100 dark:bg-amber-950/50'"
+                            :class="modalType === 'submitted' ? 'bg-blue-100 dark:bg-blue-950/50' : 'bg-rose-100 dark:bg-rose-950/50'"
                         >
-                            <FileText v-if="modalType === 'submitted'" class="h-4 w-4 text-indigo-600" />
-                            <FileX v-else class="h-4 w-4 text-amber-500" />
+                            <FileText v-if="modalType === 'submitted'" class="h-4 w-4 text-blue-600" />
+                            <FileX v-else class="h-4 w-4 text-rose-500" />
                         </div>
                         <div>
                             <p class="text-sm font-bold">{{ modalTitle }}</p>
@@ -385,7 +385,7 @@ const modalTitle = computed(() => {
                                 <td class="whitespace-nowrap px-4 py-2.5 text-xs text-muted-foreground">{{ emp.office_division }}</td>
                                 <td class="whitespace-nowrap px-4 py-2.5">
                                     <span
-                                        class="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
+                                        class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-950 dark:text-blue-300"
                                     >
                                         {{ emp.region }}
                                     </span>
@@ -394,7 +394,7 @@ const modalTitle = computed(() => {
                                 <td class="whitespace-nowrap px-4 py-2.5">
                                     <span
                                         class="text-xs font-semibold"
-                                        :class="modalType === 'not_submitted' ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'"
+                                        :class="modalType === 'not_submitted' ? 'text-rose-600 dark:text-rose-400' : 'text-muted-foreground'"
                                     >
                                         {{ formatDate(emp.due_date) }}
                                     </span>
@@ -415,11 +415,11 @@ const modalTitle = computed(() => {
 
 <style scoped>
 /* TDI Institutional Micro-Texture — same fine grid + radial-fade technique used
-   in the homepage "Digital Resources" section, tinted indigo for the
+   in the homepage "Digital Resources" section, tinted royal blue for the
    Continuous Learning / Re-entry Pathway motif. */
 .tdi-texture-reentry {
     background-image:
-        linear-gradient(rgba(99, 102, 241, 0.9) 1px, transparent 1px), linear-gradient(90deg, rgba(99, 102, 241, 0.9) 1px, transparent 1px);
+        linear-gradient(rgba(37, 99, 235, 0.9) 1px, transparent 1px), linear-gradient(90deg, rgba(37, 99, 235, 0.9) 1px, transparent 1px);
     background-size: 26px 26px;
     -webkit-mask-image: radial-gradient(ellipse 260px 260px at 100% 100%, black 0%, transparent 75%);
     mask-image: radial-gradient(ellipse 260px 260px at 100% 100%, black 0%, transparent 75%);

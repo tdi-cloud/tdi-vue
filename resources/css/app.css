@@ -108,3 +108,133 @@ html {
         scroll-behavior: smooth;
     }
 }
+
+/* ===================== TDI DASHBOARD — PREMIUM VISUAL SKIN =====================
+   Purely visual: scoped design tokens, card surfaces, hairline patterns and accent
+   lines for the dashboard. Overriding the theme variables only inside
+   `.tdi-dashboard` keeps the rest of the application untouched. */
+@layer components {
+    .tdi-dashboard {
+        /* TESDA institutional palette (RGB triplets so alpha can be applied) */
+        --tdi-navy: 7 26 61;
+        --tdi-tesda: 11 79 138;
+        --tdi-royal: 37 99 235;
+        --tdi-sky: 56 189 248;
+        --tdi-emerald: 16 185 129;
+        --tdi-gold: 212 167 44;
+        --tdi-amber: 245 158 11;
+        --tdi-rose: 244 63 94;
+        --tdi-violet: 139 92 246;
+        --tdi-accent: var(--tdi-tesda);
+
+        /* Light surfaces */
+        --background: 220 50% 97.6%;
+        --foreground: 221 38% 14.5%;
+        --card: 0 0% 100%;
+        --card-foreground: 221 38% 14.5%;
+        --muted: 210 40% 98%;
+        --muted-foreground: 215 16% 47%;
+        --border: 214 32% 91%;
+        --input: 214 32% 91%;
+        --sidebar-border: 214 32% 91%;
+
+        --tdi-pattern-ink: var(--tdi-tesda);
+        --tdi-pattern-alpha: 0.018;
+        --tdi-accent-alpha: 0.03;
+        --tdi-shadow: 0 1px 2px rgb(15 23 42 / 0.04), 0 6px 18px -8px rgb(var(--tdi-navy) / 0.1);
+        --tdi-shadow-hover: 0 2px 4px rgb(15 23 42 / 0.05), 0 16px 32px -14px rgb(var(--tdi-navy) / 0.2);
+
+        color: hsl(var(--foreground));
+        background-color: hsl(var(--background));
+        /* Barely visible page dot grid */
+        background-image: radial-gradient(rgb(var(--tdi-pattern-ink) / 0.07) 1px, transparent 1px);
+        background-size: 24px 24px;
+    }
+
+    .dark .tdi-dashboard {
+        --background: 223 49% 8.4%;
+        --foreground: 210 40% 98%;
+        --card: 221 39% 11%;
+        --card-foreground: 210 40% 98%;
+        --muted: 221 38% 14.5%;
+        --muted-foreground: 215 20% 65%;
+        --border: 218 30% 21%;
+        --input: 218 30% 21%;
+        --sidebar-border: 218 30% 21%;
+
+        --tdi-pattern-ink: 148 163 184;
+        --tdi-pattern-alpha: 0.015;
+        --tdi-accent-alpha: 0.04;
+        --tdi-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -12px rgb(0 0 0 / 0.55);
+        --tdi-shadow-hover: 0 2px 4px rgb(0 0 0 / 0.35), 0 18px 36px -16px rgb(0 0 0 / 0.7);
+
+        background-image: radial-gradient(rgb(var(--tdi-pattern-ink) / 0.05) 1px, transparent 1px);
+    }
+
+    /* Semantic accents — primary (line start / icon) and secondary (line end) */
+    .tdi-accent-navy { --tdi-accent: var(--tdi-tesda); }
+    .tdi-accent-royal { --tdi-accent: var(--tdi-royal); }
+    .tdi-accent-sky { --tdi-accent: var(--tdi-sky); }
+    .tdi-accent-emerald { --tdi-accent: var(--tdi-emerald); }
+    .tdi-accent-gold { --tdi-accent: var(--tdi-gold); }
+    .tdi-accent-amber { --tdi-accent: var(--tdi-amber); }
+    .tdi-accent-rose { --tdi-accent: var(--tdi-rose); }
+    .tdi-accent-violet { --tdi-accent: var(--tdi-violet); }
+    .tdi-accent-to-royal { --tdi-accent-2: var(--tdi-royal); }
+    .tdi-accent-to-sky { --tdi-accent-2: var(--tdi-sky); }
+    .tdi-accent-to-emerald { --tdi-accent-2: var(--tdi-emerald); }
+    .tdi-accent-to-gold { --tdi-accent-2: var(--tdi-gold); }
+    .tdi-accent-to-amber { --tdi-accent-2: var(--tdi-amber); }
+    .tdi-accent-to-violet { --tdi-accent-2: var(--tdi-violet); }
+
+    /* Premium card surface: white/slate base, faint diagonal hairlines, a soft
+       accent sheen in the top-right corner, and a thin accent line on top. */
+    .tdi-card {
+        border-color: hsl(var(--border));
+        background-color: hsl(var(--card));
+        background-image:
+            radial-gradient(circle at 100% 0%, rgb(var(--tdi-accent) / var(--tdi-accent-alpha)), transparent 42%),
+            repeating-linear-gradient(135deg, rgb(var(--tdi-pattern-ink) / var(--tdi-pattern-alpha)) 0 1px, transparent 1px 16px);
+        box-shadow: var(--tdi-shadow);
+        transition:
+            box-shadow 0.25s ease,
+            border-color 0.25s ease;
+    }
+
+    .tdi-card::before {
+        position: absolute;
+        inset: 0 0 auto 0;
+        z-index: 1;
+        height: 3px;
+        background: linear-gradient(90deg, rgb(var(--tdi-accent)), rgb(var(--tdi-accent-2, var(--tdi-accent)) / 0.85));
+        content: '';
+        pointer-events: none;
+    }
+
+    .tdi-card:hover {
+        border-color: rgb(var(--tdi-accent) / 0.3);
+        box-shadow:
+            var(--tdi-shadow-hover),
+            0 0 0 3px rgb(var(--tdi-accent) / 0.05);
+    }
+
+    /* Refined icon container with a soft accent glow */
+    .tdi-icon-chip {
+        border: 1px solid rgb(var(--tdi-accent) / 0.18);
+        background-color: rgb(var(--tdi-accent) / 0.1);
+        box-shadow: 0 4px 12px -4px rgb(var(--tdi-accent) / 0.35);
+        color: rgb(var(--tdi-accent));
+    }
+
+    /* Neutral secondary surface used for inner stat tiles */
+    .tdi-surface {
+        border: 1px solid hsl(var(--border) / 0.8);
+        background-color: hsl(var(--muted));
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .tdi-card {
+            transition: none;
+        }
+    }
+}

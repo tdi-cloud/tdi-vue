@@ -24,6 +24,7 @@ defineProps<{
         pending_submissions: number;
     };
     years: number[];
+    firstName: string | null;
 }>();
 
 /* ===================== SHARED FILTERS ===================== */
@@ -68,13 +69,13 @@ watch(region, fetchOffices);
     <Head title="Dashboard" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
+        <div class="tdi-dashboard flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
             <!-- ===================== SUMMARY BANNER ===================== -->
-            <DashboardSummaryBanner :summary="summary" />
+            <DashboardSummaryBanner :summary="summary" :first-name="firstName" />
 
             <!-- ===================== SHARED FILTER BAR ===================== -->
             <div
-                class="flex flex-wrap items-center gap-3 rounded-xl border border-sidebar-border/70 bg-card px-5 py-3 shadow-sm dark:border-sidebar-border"
+                class="tdi-card tdi-accent-navy tdi-accent-to-sky relative isolate flex flex-wrap items-center gap-3 overflow-hidden rounded-xl border px-5 py-3"
             >
                 <!-- Target filter -->
                 <Select v-model="target">
@@ -136,7 +137,7 @@ watch(region, fetchOffices);
                             :checked="selectedStatuses.includes(status)"
                             @change="toggleStatus(status)"
                         />
-                        <span class="text-[11px] font-bold tracking-wide text-slate-400">{{ status }}</span>
+                        <span class="text-[11px] font-bold tracking-wide text-muted-foreground">{{ status }}</span>
                     </label>
                 </div>
 
@@ -159,18 +160,18 @@ watch(region, fetchOffices);
             <TdorComplianceCard :target="target" :region="region" :selected-statuses="selectedStatuses" :office="office" :year="year" />
 
             <div class="grid auto-rows-min gap-4 md:grid-cols-3">
-                <div class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
+                <div class="tdi-card relative isolate aspect-video overflow-hidden rounded-xl border">
                     <PlaceholderPattern />
                 </div>
-                <div class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
+                <div class="tdi-card relative isolate aspect-video overflow-hidden rounded-xl border">
                     <PlaceholderPattern />
                 </div>
-                <div class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
+                <div class="tdi-card relative isolate aspect-video overflow-hidden rounded-xl border">
                     <PlaceholderPattern />
                 </div>
             </div>
 
-            <div class="relative min-h-[100vh] flex-1 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border md:min-h-min">
+            <div class="tdi-card relative isolate min-h-[100vh] flex-1 overflow-hidden rounded-xl border md:min-h-min">
                 <PlaceholderPattern />
             </div>
         </div>

@@ -257,3 +257,49 @@ test('non-admin users cannot access the hidden submissions activity log page', f
 
     $this->actingAs($user)->get(route('submissions.activity-log'))->assertForbidden();
 });
+
+test('removing a wrongly uploaded submission deletes the record and its uploaded file', function () {
+    Storage::fake('public');
+
+    $admin = submissionActivityLogTestAdmin('EMP-SUB-07', 'Ella Remover');
+    $requirement = submissionActivityLogTestRequirement('EMP-SUB-07');
+    $participant = Participant::first();
+
+    Storage::disk('public')->put('submissions/wrong-upload.pdf', 'dummy');
+
+    $submission = Submission::create([
+        'participant_id' => $participant->id,
+        'program_code' => $requirement->batch->program_code,
+        'batch_id' => $requirement->batch_id,
+        'requirement_id' => $requirement->id,
+        'status' => 'Pending',
+        'file_path' => 'submissions/wrong-upload.pdf',
+    ]);
+
+    $this->actingAs($admin)
+        ->from(route('submissions.index'))
+        ->delete(route('submissions.destroy', $submission))
+        ->assertRedirect(route('submissions.index'))
+        ->assertSessionHas('success');
+
+    expect(Submission::find($submission->id))->toBeNull();
+    Storage::disk('public')->assertMissing('submissions/wrong-upload.pdf');
+});
+
+test('non-admin users cannot remove a submission', function () {
+    $requirement = submissionActivityLogTestRequirement('EMP-SUB-08');
+    $participant = Participant::first();
+    $user = User::factory()->create(['empcode' => 'EMP-SUB-09', 'access' => 'user']);
+
+    $submission = Submission::create([
+        'participant_id' => $participant->id,
+        'program_code' => $requirement->batch->program_code,
+        'batch_id' => $requirement->batch_id,
+        'requirement_id' => $requirement->id,
+        'status' => 'Pending',
+    ]);
+
+    $this->actingAs($user)->delete(route('submissions.destroy', $submission))->assertForbidden();
+
+    expect(Submission::find($submission->id))->not->toBeNull();
+});

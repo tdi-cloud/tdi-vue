@@ -140,7 +140,7 @@ const donutOptions = computed(() => ({
         background: 'transparent',
     },
     labels: ['Submitted', 'Not Submitted'],
-    colors: ['#059669', '#f43f5e'],
+    colors: ['#10B981', '#F43F5E'],
     fill: {
         type: 'solid',
         opacity: [0.45, 0.35],
@@ -148,7 +148,7 @@ const donutOptions = computed(() => ({
     stroke: {
         show: true,
         width: 1.5,
-        colors: ['#059669', '#f43f5e'],
+        colors: ['#10B981', '#F43F5E'],
         lineCap: 'round',
     },
     legend: {
@@ -212,14 +212,14 @@ const barOptions = computed(() => ({
     xaxis: {
         categories: data.value?.regions ?? REGIONS,
         labels: {
-            style: { fontSize: '11px' },
+            style: { fontSize: '11px', colors: '#64748B' },
             formatter: (val: number) => `${Math.round(val)}%`,
         },
     },
     yaxis: {
-        labels: { style: { fontSize: '11px' } },
+        labels: { style: { fontSize: '11px', colors: '#64748B' } },
     },
-    legend: { position: 'top', fontSize: '12px' },
+    legend: { position: 'top', fontSize: '12px', labels: { colors: '#64748B' } },
     dataLabels: {
         enabled: true,
         style: { fontSize: '10px', colors: ['#fff'] },
@@ -230,7 +230,7 @@ const barOptions = computed(() => ({
     },
     tooltip: { y: { formatter: (val: number) => `${val} employees` } },
     fill: { opacity: 1 },
-    grid: { borderColor: '#f1f5f9' },
+    grid: { borderColor: 'rgba(148, 163, 184, 0.18)' },
 }));
 
 const barSeries = computed(() => [
@@ -256,13 +256,13 @@ const modalTitle = computed(() => {
 </script>
 
 <template>
-    <div class="relative isolate flex flex-col gap-5 overflow-hidden rounded-2xl border bg-card p-5 shadow-sm">
+    <div class="tdi-card tdi-accent-emerald tdi-accent-to-amber relative isolate flex flex-col gap-5 overflow-hidden rounded-2xl border p-5">
         <!-- Decorative background texture — purely visual, sits behind existing content via negative z-index -->
-        <div class="tdi-texture-document pointer-events-none absolute inset-0 z-[-1] opacity-[0.05] dark:opacity-[0.08]" aria-hidden="true"></div>
+        <div class="tdi-texture-document pointer-events-none absolute inset-0 z-[-1] opacity-[0.025] dark:opacity-[0.04]" aria-hidden="true"></div>
 
         <!-- Header -->
         <div class="flex items-center gap-2">
-            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950/50">
+            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg tdi-icon-chip">
                 <FileCheck class="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
@@ -279,7 +279,7 @@ const modalTitle = computed(() => {
         <template v-else-if="data">
             <!-- Stat row — clickable -->
             <div class="grid grid-cols-3 gap-3">
-                <div class="flex flex-col gap-0.5 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/50">
+                <div class="flex flex-col gap-0.5 tdi-surface rounded-xl p-3">
                     <p class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                         <Users class="h-3 w-3" /> Total Required
                     </p>
@@ -345,10 +345,10 @@ const modalTitle = computed(() => {
                     <div class="flex items-center gap-3">
                         <div
                             class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                            :class="modalType === 'submitted' ? 'bg-emerald-100 dark:bg-emerald-950/50' : 'bg-red-100 dark:bg-red-950/50'"
+                            :class="modalType === 'submitted' ? 'bg-emerald-100 dark:bg-emerald-950/50' : 'bg-rose-100 dark:bg-rose-950/50'"
                         >
                             <FileCheck v-if="modalType === 'submitted'" class="h-4 w-4 text-emerald-600" />
-                            <FileX v-else class="h-4 w-4 text-red-500" />
+                            <FileX v-else class="h-4 w-4 text-rose-500" />
                         </div>
                         <div>
                             <p class="text-sm font-bold">{{ modalTitle }}</p>
@@ -434,7 +434,7 @@ const modalTitle = computed(() => {
                                 <td class="whitespace-nowrap px-4 py-2.5">
                                     <span
                                         class="text-xs font-semibold"
-                                        :class="modalType === 'not_submitted' ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'"
+                                        :class="modalType === 'not_submitted' ? 'text-rose-600 dark:text-rose-400' : 'text-muted-foreground'"
                                     >
                                         {{ formatDate(emp.due_date) }}
                                     </span>

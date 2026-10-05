@@ -57,6 +57,10 @@ class UserManagementController extends Controller
             $query->where('users.access', $request->access);
         }
 
+        if ($request->boolean('fstp')) {
+            $query->where('users.is_fstp_member', true);
+        }
+
         $users = $query
             ->orderByRaw('CASE WHEN session_activity.last_activity >= ? THEN 0 ELSE 1 END', [$onlineThreshold])
             ->orderByDesc('session_activity.last_activity')
@@ -76,18 +80,20 @@ class UserManagementController extends Controller
         return Inertia::render('UserManagement/index', [
             'users' => $users,
             'accessLevels' => self::ACCESS_LEVELS,
-            'filters' => $request->only(['search', 'access']),
+            'filters' => $request->only(['search', 'access', 'fstp']),
         ]);
     }
 
-    // Handles both the inline "Change Access" select (sends only `access`)
-    // and the edit modal's name field (sends only `name`) — each caller only
-    // sends the field it's actually changing.
+    // Handles the inline "Change Access" select (sends only `access`), the
+    // "FSTP Unit" toggle (sends only `is_fstp_member`) and the edit modal's
+    // name field (sends only `name`) — each caller only sends the field it's
+    // actually changing.
     public function update(Request $request, User $user): RedirectResponse
     {
         $data = $request->validate([
             'access' => ['sometimes', 'required', Rule::in(self::ACCESS_LEVELS)],
             'name' => ['sometimes', 'required', 'string', 'max:255'],
+            'is_fstp_member' => ['sometimes', 'boolean'],
         ]);
 
         if (array_key_exists('access', $data) && $user->id === $request->user()->id) {

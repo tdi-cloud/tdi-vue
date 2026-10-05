@@ -4,7 +4,7 @@ import { useConfirm } from '@/composables/useConfirm';
 import { useInitials } from '@/composables/useInitials';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
-import { Building2, ChevronLeft, ChevronRight, Crown, Hash, Mail, Pencil, Search, ShieldCheck, SlidersHorizontal, X } from 'lucide-vue-next';
+import { Building2, ChevronLeft, ChevronRight, Crown, Earth, Hash, Mail, Pencil, Search, ShieldCheck, SlidersHorizontal, X } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 interface UserRow {
@@ -14,6 +14,7 @@ interface UserRow {
     empcode: string | null;
     office_division: string | null;
     access: string;
+    is_fstp_member: boolean;
     avatar: string | null;
     last_active_at: string | null;
     is_online: boolean;
@@ -35,6 +36,7 @@ const props = defineProps<{
     filters: {
         search?: string;
         access?: string;
+        fstp?: string;
     };
 }>();
 
@@ -43,16 +45,18 @@ const currentUserId = computed(() => (page.props.auth as any)?.user?.id);
 
 const search = ref(props.filters.search ?? '');
 const access = ref(props.filters.access ?? 'all');
+const fstpOnly = ref(props.filters.fstp === '1');
 
-const hasActiveFilters = computed(() => search.value !== '' || access.value !== 'all');
+const hasActiveFilters = computed(() => search.value !== '' || access.value !== 'all' || fstpOnly.value);
 
 const clearFilters = () => {
     search.value = '';
     access.value = 'all';
+    fstpOnly.value = false;
 };
 
 let debounce: ReturnType<typeof setTimeout>;
-watch([search, access], () => {
+watch([search, access, fstpOnly], () => {
     clearTimeout(debounce);
     debounce = setTimeout(() => {
         router.get(
@@ -60,6 +64,7 @@ watch([search, access], () => {
             {
                 search: search.value || undefined,
                 access: access.value !== 'all' ? access.value : undefined,
+                fstp: fstpOnly.value ? 1 : undefined,
             },
             { preserveScroll: true, preserveState: true, replace: true },
         );
@@ -112,6 +117,26 @@ const updateAccess = (user: UserRow, newAccess: string) => {
             preserveState: true,
             onFinish: () => {
                 savingId.value = null;
+            },
+        },
+    );
+};
+
+/* ---- FSTP Unit membership: grants admins access to Foreign Programs ---- */
+const savingFstpId = ref<number | null>(null);
+
+const isAdminLevel = (level: string) => level === 'admin' || level === 'superadmin';
+
+const toggleFstpMember = (user: UserRow) => {
+    savingFstpId.value = user.id;
+    router.put(
+        route('user-management.update', user.id),
+        { is_fstp_member: !user.is_fstp_member },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onFinish: () => {
+                savingFstpId.value = null;
             },
         },
     );
@@ -283,6 +308,15 @@ async function removeAvatar() {
                             <option v-for="lvl in accessLevels" :key="lvl" :value="lvl">{{ lvl.toUpperCase() }}</option>
                         </select>
                     </div>
+                    <div class="flex flex-col gap-1">
+                        <span class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            <Earth class="h-3 w-3" /> FSTP Unit
+                        </span>
+                        <label class="flex cursor-pointer items-center gap-2 rounded-lg border bg-background px-2 py-1.5 text-xs shadow-sm">
+                            <input v-model="fstpOnly" type="checkbox" class="h-3.5 w-3.5 accent-blue-600" />
+                            FSTP members only
+                        </label>
+                    </div>
                 </div>
 
                 <p class="text-xs text-muted-foreground">Showing {{ users.from ?? 0 }}–{{ users.to ?? 0 }} of {{ users.total }} user(s)</p>
@@ -306,6 +340,12 @@ async function removeAvatar() {
                             </th>
                             <th class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wide text-rose-700 dark:text-rose-300">
                                 Change Access
+                            </th>
+                            <th
+                                class="px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-rose-700 dark:text-rose-300"
+                                title="FSTP unit members can view and manage Foreign Programs"
+                            >
+                                FSTP Unit
                             </th>
                             <th class="px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-rose-700 dark:text-rose-300">Edit</th>
                         </tr>
@@ -372,6 +412,40 @@ async function removeAvatar() {
                                 >
                                     <option v-for="lvl in accessLevels" :key="lvl" :value="lvl">{{ lvl.toUpperCase() }}</option>
                                 </select>
+                            </td>
+                            <td class="px-4 py-3 text-center">
+                                <!-- Superadmins always have Foreign Programs access -->
+                                <span
+                                    v-if="u.access === 'superadmin'"
+                                    class="text-[11px] font-semibold text-muted-foreground"
+                                    title="Superadmins always have Foreign Programs access"
+                                >
+                                    Always
+                                </span>
+                                <button
+                                    v-else
+                                    type="button"
+                                    role="switch"
+                                    :aria-checked="u.is_fstp_member"
+                                    :aria-label="`FSTP unit member: ${u.name}`"
+                                    :disabled="!isAdminLevel(u.access) || savingFstpId === u.id"
+                                    :title="
+                                        !isAdminLevel(u.access)
+                                            ? 'Requires ADMIN access'
+                                            : u.is_fstp_member
+                                              ? 'Remove from FSTP unit (revokes Foreign Programs access)'
+                                              : 'Add to FSTP unit (grants Foreign Programs access)'
+                                    "
+                                    class="inline-flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
+                                    :class="
+                                        u.is_fstp_member && isAdminLevel(u.access)
+                                            ? 'justify-end bg-blue-600'
+                                            : 'justify-start bg-gray-300 dark:bg-gray-600'
+                                    "
+                                    @click="toggleFstpMember(u)"
+                                >
+                                    <span class="block h-4 w-4 rounded-full bg-white shadow" />
+                                </button>
                             </td>
                             <td class="px-4 py-3 text-center">
                                 <button

@@ -10,7 +10,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-    (e: 'locate', batch: any): void;
+    (e: 'locate', batch: any, participant: any): void;
 }>();
 
 const query = ref('');
@@ -59,9 +59,9 @@ const statusColor = (status: string) => {
     }
 };
 
-const locate = (batch: any) => {
+const locate = (batch: any, participant: any) => {
     query.value = '';
-    emit('locate', batch);
+    emit('locate', batch, participant);
 };
 </script>
 
@@ -108,7 +108,12 @@ const locate = (batch: any) => {
                                 {{ batch.status }}
                             </Badge>
                         </div>
-                        <Button variant="ghost" size="sm" class="h-7 px-2 text-xs text-blue-600 hover:text-blue-700" @click="locate(batch)">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            class="h-7 px-2 text-xs text-blue-600 hover:text-blue-700"
+                            @click="locate(batch, participant)"
+                        >
                             <ExternalLink class="h-3 w-3" /> Open
                         </Button>
                     </div>

@@ -50,6 +50,7 @@ const props = defineProps<{
     open: boolean;
     batch: any | null;
     program?: any | null;
+    initialQuery?: string;
 }>();
 
 const emit = defineEmits<{
@@ -438,7 +439,7 @@ watch(
             results.value = [];
             selected.value = [];
             showDropdown.value = false;
-            listQuery.value = '';
+            listQuery.value = props.initialQuery ?? '';
             page.value = 1;
             showSubmissions.value = false;
             submissionsTargetId.value = null;

@@ -203,66 +203,68 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::delete('/programs/{program}/cover', [CoverPageController::class, 'destroy'])->name('programs.cover.destroy');
 
     // FOREIGN PROGRAMS
+    // Restricted to FSTP unit members (see EnsureUserCanAccessForeignPrograms)
+    Route::middleware('fstp')->group(function () {
+        // FOREIGN DASHBOARD
+        Route::get('foreign-programs/dashboard-data', [ForeignProgramController::class, 'dashboardData'])
+            ->name('foreign-programs.dashboard-data');
 
-    // FOREIGN DASHBOARD
-    Route::get('foreign-programs/dashboard-data', [ForeignProgramController::class, 'dashboardData'])
-        ->name('foreign-programs.dashboard-data');
+        Route::get('foreign-programs/dashboard-nominees', [ForeignProgramController::class, 'dashboardNominees'])
+            ->name('foreign-programs.dashboard-nominees');
 
-    Route::get('foreign-programs/dashboard-nominees', [ForeignProgramController::class, 'dashboardNominees'])
-        ->name('foreign-programs.dashboard-nominees');
+        Route::get('/foreign-programs/by-sponsor', [ForeignProgramController::class, 'byOrganizingSponsor'])
+            ->name('foreign-programs.by-sponsor')
+            ->middleware('auth');
 
-    Route::get('/foreign-programs/by-sponsor', [ForeignProgramController::class, 'byOrganizingSponsor'])
-        ->name('foreign-programs.by-sponsor')
-        ->middleware('auth');
+        // NOMINATION HISTORY — lahat ng nagpasa sa public nomination form, latest to oldest
+        Route::get('/foreign-programs/nomination-history', [ForeignProgramController::class, 'nominationHistory'])
+            ->name('foreign-programs.nomination-history');
 
-    // NOMINATION HISTORY — lahat ng nagpasa sa public nomination form, latest to oldest
-    Route::get('/foreign-programs/nomination-history', [ForeignProgramController::class, 'nominationHistory'])
-        ->name('foreign-programs.nomination-history');
+        Route::get('/foreign-programs', [ForeignProgramController::class, 'index'])->name('foreign-programs.index');
+        // Dapat nasa itaas ng /foreign-programs/{foreignProgram} para hindi ito
+        // ma-match bilang isang route-model-bound program id.
+        Route::delete('/foreign-programs/bulk-destroy', [ForeignProgramController::class, 'bulkDestroy'])->name('foreign-programs.bulk-destroy');
+        Route::get('/foreign-programs/{foreignProgram}', [ForeignProgramController::class, 'show'])->name('foreign-programs.show');
+        Route::post('/foreign-programs', [ForeignProgramController::class, 'store'])->name('foreign-programs.store');
+        Route::put('/foreign-programs/{foreignProgram}', [ForeignProgramController::class, 'update'])->name('foreign-programs.update');
+        Route::delete('/foreign-programs/{foreignProgram}', [ForeignProgramController::class, 'destroy'])->name('foreign-programs.destroy');
 
-    Route::get('/foreign-programs', [ForeignProgramController::class, 'index'])->name('foreign-programs.index');
-    // Dapat nasa itaas ng /foreign-programs/{foreignProgram} para hindi ito
-    // ma-match bilang isang route-model-bound program id.
-    Route::delete('/foreign-programs/bulk-destroy', [ForeignProgramController::class, 'bulkDestroy'])->name('foreign-programs.bulk-destroy');
-    Route::get('/foreign-programs/{foreignProgram}', [ForeignProgramController::class, 'show'])->name('foreign-programs.show');
-    Route::post('/foreign-programs', [ForeignProgramController::class, 'store'])->name('foreign-programs.store');
-    Route::put('/foreign-programs/{foreignProgram}', [ForeignProgramController::class, 'update'])->name('foreign-programs.update');
-    Route::delete('/foreign-programs/{foreignProgram}', [ForeignProgramController::class, 'destroy'])->name('foreign-programs.destroy');
+        // NOMINEE ASSESSMENT SHEET
+        Route::get('/foreign-programs/{foreignProgram}/assessment', [ForeignNomineeAssessmentController::class, 'index'])
+            ->name('foreign-programs.assessment');
+        Route::get('/foreign-nominee-assessments/search-employee', [ForeignNomineeAssessmentController::class, 'searchEmployee'])
+            ->name('foreign-nominee-assessments.search-employee');
+        Route::post('/foreign-nominees/{nominee}/assessment', [ForeignNomineeAssessmentController::class, 'save'])
+            ->name('foreign-nominees.assessment.save');
 
-    // NOMINEE ASSESSMENT SHEET
-    Route::get('/foreign-programs/{foreignProgram}/assessment', [ForeignNomineeAssessmentController::class, 'index'])
-        ->name('foreign-programs.assessment');
-    Route::get('/foreign-nominee-assessments/search-employee', [ForeignNomineeAssessmentController::class, 'searchEmployee'])
-        ->name('foreign-nominee-assessments.search-employee');
-    Route::post('/foreign-nominees/{nominee}/assessment', [ForeignNomineeAssessmentController::class, 'save'])
-        ->name('foreign-nominees.assessment.save');
+        // Interview ratings — every NHRDC panel member submits their own rating per nominee
+        Route::post('/foreign-nominees/{nominee}/interview-ratings', [ForeignNomineeAssessmentController::class, 'saveInterviewRating'])
+            ->name('foreign-nominees.interview-ratings.save');
+        Route::delete('/foreign-nominee-interview-ratings/{foreignNomineeInterviewRating}', [ForeignNomineeAssessmentController::class, 'destroyInterviewRating'])
+            ->name('foreign-nominee-interview-ratings.destroy');
 
-    // Interview ratings — every NHRDC panel member submits their own rating per nominee
-    Route::post('/foreign-nominees/{nominee}/interview-ratings', [ForeignNomineeAssessmentController::class, 'saveInterviewRating'])
-        ->name('foreign-nominees.interview-ratings.save');
-    Route::delete('/foreign-nominee-interview-ratings/{foreignNomineeInterviewRating}', [ForeignNomineeAssessmentController::class, 'destroyInterviewRating'])
-        ->name('foreign-nominee-interview-ratings.destroy');
+        // Per-NHRDC assessment sheet PDF + signed copy upload
+        Route::get('/foreign-programs/{foreignProgram}/nhrdc/{nhrdcMember}/assessment-pdf', [ForeignNomineeAssessmentController::class, 'nhrdcPdf'])
+            ->name('foreign-programs.nhrdc-assessment-pdf');
+        Route::post('/foreign-programs/{foreignProgram}/nhrdc/{nhrdcMember}/signed-copy', [ForeignNomineeAssessmentController::class, 'uploadNhrdcSignedCopy'])
+            ->name('foreign-programs.nhrdc-signed-copy.upload');
+        Route::get('/foreign-programs/{foreignProgram}/nhrdc/{nhrdcMember}/signed-copy', [ForeignNomineeAssessmentController::class, 'downloadNhrdcSignedCopy'])
+            ->name('foreign-programs.nhrdc-signed-copy.download');
+        Route::delete('/foreign-programs/{foreignProgram}/nhrdc/{nhrdcMember}/signed-copy', [ForeignNomineeAssessmentController::class, 'destroyNhrdcSignedCopy'])
+            ->name('foreign-programs.nhrdc-signed-copy.destroy');
 
-    // Per-NHRDC assessment sheet PDF + signed copy upload
-    Route::get('/foreign-programs/{foreignProgram}/nhrdc/{nhrdcMember}/assessment-pdf', [ForeignNomineeAssessmentController::class, 'nhrdcPdf'])
-        ->name('foreign-programs.nhrdc-assessment-pdf');
-    Route::post('/foreign-programs/{foreignProgram}/nhrdc/{nhrdcMember}/signed-copy', [ForeignNomineeAssessmentController::class, 'uploadNhrdcSignedCopy'])
-        ->name('foreign-programs.nhrdc-signed-copy.upload');
-    Route::get('/foreign-programs/{foreignProgram}/nhrdc/{nhrdcMember}/signed-copy', [ForeignNomineeAssessmentController::class, 'downloadNhrdcSignedCopy'])
-        ->name('foreign-programs.nhrdc-signed-copy.download');
-    Route::delete('/foreign-programs/{foreignProgram}/nhrdc/{nhrdcMember}/signed-copy', [ForeignNomineeAssessmentController::class, 'destroyNhrdcSignedCopy'])
-        ->name('foreign-programs.nhrdc-signed-copy.destroy');
+        // NHRDC MEMBERS (roster of employees eligible to submit Interview ratings)
+        Route::get('/nhrdc-members', [NhrdcMemberController::class, 'index'])->name('nhrdc-members.index');
+        Route::post('/nhrdc-members', [NhrdcMemberController::class, 'store'])->name('nhrdc-members.store');
+        Route::delete('/nhrdc-members/{nhrdcMember}', [NhrdcMemberController::class, 'destroy'])->name('nhrdc-members.destroy');
+        Route::post('/nhrdc-members/{nhrdcMember}/move-up', [NhrdcMemberController::class, 'moveUp'])->name('nhrdc-members.move-up');
+        Route::post('/nhrdc-members/{nhrdcMember}/move-down', [NhrdcMemberController::class, 'moveDown'])->name('nhrdc-members.move-down');
 
-    // NHRDC MEMBERS (roster of employees eligible to submit Interview ratings)
-    Route::get('/nhrdc-members', [NhrdcMemberController::class, 'index'])->name('nhrdc-members.index');
-    Route::post('/nhrdc-members', [NhrdcMemberController::class, 'store'])->name('nhrdc-members.store');
-    Route::delete('/nhrdc-members/{nhrdcMember}', [NhrdcMemberController::class, 'destroy'])->name('nhrdc-members.destroy');
-    Route::post('/nhrdc-members/{nhrdcMember}/move-up', [NhrdcMemberController::class, 'moveUp'])->name('nhrdc-members.move-up');
-    Route::post('/nhrdc-members/{nhrdcMember}/move-down', [NhrdcMemberController::class, 'moveDown'])->name('nhrdc-members.move-down');
-
-    // FOREIGN PARTICIPANTS
-    Route::post('/foreign-programs/{foreignProgram}/participants', [ForeignParticipantController::class, 'store'])->name('foreign-participants.store');
-    Route::put('/foreign-participants/{foreignParticipant}', [ForeignParticipantController::class, 'update'])->name('foreign-participants.update');
-    Route::delete('/foreign-participants/{foreignParticipant}', [ForeignParticipantController::class, 'destroy'])->name('foreign-participants.destroy');
+        // FOREIGN PARTICIPANTS
+        Route::post('/foreign-programs/{foreignProgram}/participants', [ForeignParticipantController::class, 'store'])->name('foreign-participants.store');
+        Route::put('/foreign-participants/{foreignParticipant}', [ForeignParticipantController::class, 'update'])->name('foreign-participants.update');
+        Route::delete('/foreign-participants/{foreignParticipant}', [ForeignParticipantController::class, 'destroy'])->name('foreign-participants.destroy');
+    });
 
     // REGIONAL REPORTS
     // TPMR
@@ -302,11 +304,13 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('/batches/{batch}/declaration', [DeclarationController::class, 'generate'])
         ->name('batches.declaration');
 
-    // ORGANIZING SPONSORS
-    Route::get('/organizing-sponsors', [OrganizingSponsorController::class, 'index'])->name('organizing-sponsors.index');
-    Route::post('/organizing-sponsors', [OrganizingSponsorController::class, 'store'])->name('organizing-sponsors.store');
-    Route::put('/organizing-sponsors/{organizingSponsor}', [OrganizingSponsorController::class, 'update'])->name('organizing-sponsors.update');
-    Route::delete('/organizing-sponsors/{organizingSponsor}', [OrganizingSponsorController::class, 'destroy'])->name('organizing-sponsors.destroy');
+    // ORGANIZING SPONSORS (used only by Foreign Programs)
+    Route::middleware('fstp')->group(function () {
+        Route::get('/organizing-sponsors', [OrganizingSponsorController::class, 'index'])->name('organizing-sponsors.index');
+        Route::post('/organizing-sponsors', [OrganizingSponsorController::class, 'store'])->name('organizing-sponsors.store');
+        Route::put('/organizing-sponsors/{organizingSponsor}', [OrganizingSponsorController::class, 'update'])->name('organizing-sponsors.update');
+        Route::delete('/organizing-sponsors/{organizingSponsor}', [OrganizingSponsorController::class, 'destroy'])->name('organizing-sponsors.destroy');
+    });
 
     // EMAIL REMINDER
     Route::post('/email-reminder/send', [EmailReminderController::class, 'send'])
@@ -330,58 +334,60 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('/attendance/generate', [AttendanceController::class, 'generate'])
         ->name('attendance.generate');
 
-    // FOREIGN AGENCIES
-    Route::get('/foreign-agencies', [ForeignAgencyController::class, 'index'])->name('foreign-agencies.index');
-    Route::post('/foreign-agencies', [ForeignAgencyController::class, 'store'])->name('foreign-agencies.store');
-    Route::delete('/foreign-agencies/{foreignAgency}', [ForeignAgencyController::class, 'destroy'])->name('foreign-agencies.destroy');
+    Route::middleware('fstp')->group(function () {
+        // FOREIGN AGENCIES
+        Route::get('/foreign-agencies', [ForeignAgencyController::class, 'index'])->name('foreign-agencies.index');
+        Route::post('/foreign-agencies', [ForeignAgencyController::class, 'store'])->name('foreign-agencies.store');
+        Route::delete('/foreign-agencies/{foreignAgency}', [ForeignAgencyController::class, 'destroy'])->name('foreign-agencies.destroy');
 
-    // FOREIGN NOMINATION
-    Route::get('/foreign-sponsor-configs', [ForeignSponsorConfigController::class, 'index'])->name('foreign-sponsor-configs.index');
-    Route::post('/foreign-sponsor-configs', [ForeignSponsorConfigController::class, 'store'])->name('foreign-sponsor-configs.store');
-    Route::get('/foreign-sponsor-configs/{config}', [ForeignSponsorConfigController::class, 'show'])->name('foreign-sponsor-configs.show');
-    Route::put('/foreign-sponsor-configs/{config}', [ForeignSponsorConfigController::class, 'update'])->name('foreign-sponsor-configs.update');
+        // FOREIGN NOMINATION
+        Route::get('/foreign-sponsor-configs', [ForeignSponsorConfigController::class, 'index'])->name('foreign-sponsor-configs.index');
+        Route::post('/foreign-sponsor-configs', [ForeignSponsorConfigController::class, 'store'])->name('foreign-sponsor-configs.store');
+        Route::get('/foreign-sponsor-configs/{config}', [ForeignSponsorConfigController::class, 'show'])->name('foreign-sponsor-configs.show');
+        Route::put('/foreign-sponsor-configs/{config}', [ForeignSponsorConfigController::class, 'update'])->name('foreign-sponsor-configs.update');
 
-    // Requirements
-    Route::post('/foreign-sponsor-configs/{config}/requirements',
-        [ForeignSponsorConfigController::class, 'storeRequirement']
-    )->name('foreign-sponsor-configs.requirements.store');
+        // Requirements
+        Route::post('/foreign-sponsor-configs/{config}/requirements',
+            [ForeignSponsorConfigController::class, 'storeRequirement']
+        )->name('foreign-sponsor-configs.requirements.store');
 
-    Route::put('/foreign-nominee-requirements/{requirement}',
-        [ForeignSponsorConfigController::class, 'updateRequirement']
-    )->name('foreign-nominee-requirements.update');
+        Route::put('/foreign-nominee-requirements/{requirement}',
+            [ForeignSponsorConfigController::class, 'updateRequirement']
+        )->name('foreign-nominee-requirements.update');
 
-    Route::delete('/foreign-nominee-requirements/{requirement}',
-        [ForeignSponsorConfigController::class, 'destroyRequirement']
-    )->name('foreign-nominee-requirements.destroy');
+        Route::delete('/foreign-nominee-requirements/{requirement}',
+            [ForeignSponsorConfigController::class, 'destroyRequirement']
+        )->name('foreign-nominee-requirements.destroy');
 
-    // Admin-added nominee (participant)
-    Route::post('/foreign-programs/{foreignProgram}/nominees',
-        [ForeignSponsorConfigController::class, 'storeNominee']
-    )->name('foreign-nominees.store');
+        // Admin-added nominee (participant)
+        Route::post('/foreign-programs/{foreignProgram}/nominees',
+            [ForeignSponsorConfigController::class, 'storeNominee']
+        )->name('foreign-nominees.store');
 
-    // Nominee Status Update
-    Route::patch('/foreign-nominees/{nominee}/status',
-        [ForeignSponsorConfigController::class, 'updateNomineeStatus']
-    )->name('foreign-nominees.status');
+        // Nominee Status Update
+        Route::patch('/foreign-nominees/{nominee}/status',
+            [ForeignSponsorConfigController::class, 'updateNomineeStatus']
+        )->name('foreign-nominees.status');
 
-    Route::delete('/foreign-nominees/{nominee}', function (ForeignNominee $nominee) {
-        $nominee->delete();
+        Route::delete('/foreign-nominees/{nominee}', function (ForeignNominee $nominee) {
+            $nominee->delete();
 
-        return back();
-    })->name('foreign-nominees.destroy')->middleware('auth');
+            return back();
+        })->name('foreign-nominees.destroy')->middleware('auth');
 
-    // Submissions
-    Route::post('/foreign-nominees/{nominee}/requirements/{requirement}/submission',
-        [ForeignSponsorConfigController::class, 'storeSubmission']
-    )->name('foreign-nominee-submissions.store');
+        // Submissions
+        Route::post('/foreign-nominees/{nominee}/requirements/{requirement}/submission',
+            [ForeignSponsorConfigController::class, 'storeSubmission']
+        )->name('foreign-nominee-submissions.store');
 
-    Route::post('/foreign-nominee-submissions/{submission}/replace',
-        [ForeignSponsorConfigController::class, 'replaceSubmission']
-    )->name('foreign-nominee-submissions.replace');
+        Route::post('/foreign-nominee-submissions/{submission}/replace',
+            [ForeignSponsorConfigController::class, 'replaceSubmission']
+        )->name('foreign-nominee-submissions.replace');
 
-    Route::post('/foreign-nominees/{nominee}/accomplished-form/replace',
-        [ForeignSponsorConfigController::class, 'replaceAccomplishedForm']
-    )->name('foreign-nominees.accomplished-form.replace');
+        Route::post('/foreign-nominees/{nominee}/accomplished-form/replace',
+            [ForeignSponsorConfigController::class, 'replaceAccomplishedForm']
+        )->name('foreign-nominees.accomplished-form.replace');
+    });
 
     // TESDA ORDER
     Route::get('/programs/{program}/tesda-orders', [TesdaOrderController::class, 'index'])->name('tesda-orders.index');

@@ -29,7 +29,7 @@ function submissionReplaceTestAdmin(string $empcode): User
         'UNIT' => 'Test Unit',
     ]);
 
-    return User::factory()->create(['empcode' => $empcode, 'access' => 'admin']);
+    return User::factory()->create(['empcode' => $empcode, 'access' => 'admin', 'is_fstp_member' => true]);
 }
 
 function submissionReplaceTestSetup(): ForeignNomineeSubmission

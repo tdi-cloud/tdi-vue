@@ -26,6 +26,7 @@ class User extends Authenticatable
         'empcode',
         'password',
         'access',
+        'is_fstp_member',
         'avatar',
     ];
 
@@ -49,6 +50,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_fstp_member' => 'boolean',
         ];
     }
 
@@ -78,6 +80,15 @@ class User extends Authenticatable
     public function isSuperAdmin(): bool
     {
         return $this->access === 'superadmin';
+    }
+
+    /**
+     * Whether the user may view and manage Foreign Programs: superadmins always,
+     * otherwise only admins flagged as FSTP unit members.
+     */
+    public function canAccessForeignPrograms(): bool
+    {
+        return $this->isSuperAdmin() || ($this->isAdmin() && $this->is_fstp_member);
     }
 
     /**

@@ -85,8 +85,12 @@ const viewingBatchId = ref<number | null>(null);
 
 const viewingBatch = computed(() => props.batches.find((b) => b.id === viewingBatchId.value) ?? null);
 
-const openParticipants = (batch: any) => {
+// Pre-fills the modal's enrolled search when opened from the cross-batch participant search
+const participantsInitialQuery = ref('');
+
+const openParticipants = (batch: any, participant?: any) => {
     viewingBatchId.value = batch.id;
+    participantsInitialQuery.value = participant?.empcode ?? '';
     showParticipants.value = true;
 };
 
@@ -421,7 +425,13 @@ const formatTime = (t: string) => {
         </div>
 
         <!-- Modals -->
-        <BatchParticipants :open="showParticipants" :batch="viewingBatch" :program="program" @update:open="showParticipants = $event" />
+        <BatchParticipants
+            :open="showParticipants"
+            :batch="viewingBatch"
+            :program="program"
+            :initial-query="participantsInitialQuery"
+            @update:open="showParticipants = $event"
+        />
 
         <DeclarationModal :open="showDeclaration" :batch="declaringBatch" @update:open="showDeclaration = $event" />
 
