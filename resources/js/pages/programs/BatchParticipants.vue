@@ -65,11 +65,16 @@ let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 const selected = ref<EmployeeOption[]>([]);
 const processing = ref(false);
 
+// Participants being removed are hidden immediately (optimistic) so the deletion feels instant
+const removingIds = ref(new Set<number>());
+
 const participants = computed(() =>
-    [...(props.batch?.participants ?? [])].sort((a, b) => {
-        if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
-        return a.id - b.id; // tiebreaker
-    }),
+    [...(props.batch?.participants ?? [])]
+        .filter((p) => !removingIds.value.has(p.id))
+        .sort((a, b) => {
+            if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
+            return a.id - b.id; // tiebreaker
+        }),
 );
 const requirements = computed(() => props.batch?.requirements ?? []);
 
@@ -508,14 +513,21 @@ const removeParticipant = async (participant: any) => {
     const label = participant.employee?.name ?? participant.empcode;
     if (!(await confirmDialog(`Remove ${label} from this batch?`))) return;
 
+    removingIds.value.add(participant.id);
+
     router.delete(route('participants.destroy', participant.id), {
         preserveScroll: true,
+        preserveState: true,
         onError: () => {
             toast({
                 title: 'Something went wrong',
                 description: `Could not remove ${label}. Your session may have expired — try refreshing the page.`,
                 variant: 'destructive',
             });
+        },
+        onFinish: () => {
+            // On success the row is gone from props; on failure it reappears in the list
+            removingIds.value.delete(participant.id);
         },
     });
 };

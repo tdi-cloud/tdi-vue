@@ -88,17 +88,48 @@ const viewProgram = (id: number) => {
 };
 
 const perPage = 12;
-const currentPage = ref(1);
+
+// I-save ang kasalukuyang page para pagbalik galing sa program details,
+// doon pa rin sa parehong page ng listahan.
+const PAGE_STORAGE_KEY = 'programs.index.page';
+
+const savedPage = (() => {
+    try {
+        return Number(sessionStorage.getItem(PAGE_STORAGE_KEY)) || 1;
+    } catch {
+        return 1;
+    }
+})();
+
+const currentPage = ref(savedPage);
 const isChangingPage = ref(false);
+
+watch(currentPage, (val) => {
+    try {
+        sessionStorage.setItem(PAGE_STORAGE_KEY, String(val));
+    } catch {
+        // Hindi available ang sessionStorage — okay lang, hindi lang mase-save.
+    }
+});
 
 watch(
     () => [props.search, props.filterInitiated, props.filterBatchStatus, props.filterMonth, props.filterProvider, props.filterCategory],
     () => {
         currentPage.value = 1;
     },
+    { deep: true },
 );
 
 const totalPages = computed(() => Math.ceil(filtered.value.length / perPage));
+
+// Kung nabawasan ang programs (hal. may na-delete), huwag lumampas sa huling page.
+watch(
+    totalPages,
+    (val) => {
+        if (val > 0 && currentPage.value > val) currentPage.value = val;
+    },
+    { immediate: true },
+);
 
 const pageNumbers = computed(() => {
     const total = totalPages.value;

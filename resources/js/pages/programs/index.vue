@@ -79,12 +79,47 @@ const INITIATED_OPTIONS = [
 ];
 
 const BATCH_STATUS_OPTIONS = ['Active', 'Completed', 'Upcoming', 'Rescheduled'];
-const search = ref('');
-const filterInitiated = ref('all');
-const filterBatchStatus = ref('all');
-const filterMonth = ref('all');
-const filterProvider = ref<string[]>([]);
-const filterCategory = ref<string[]>([]);
+
+// I-save ang search at filters sa sessionStorage para pagbalik galing sa
+// program details ("Back to Programs"), hindi na mare-reset ang listahan.
+const FILTERS_STORAGE_KEY = 'programs.index.filters';
+
+const savedFilters = (() => {
+    try {
+        return JSON.parse(sessionStorage.getItem(FILTERS_STORAGE_KEY) ?? '{}');
+    } catch {
+        return {};
+    }
+})();
+
+const search = ref<string>(savedFilters.search ?? '');
+const filterInitiated = ref<string>(savedFilters.filterInitiated ?? 'all');
+const filterBatchStatus = ref<string>(savedFilters.filterBatchStatus ?? 'all');
+const filterMonth = ref<string>(savedFilters.filterMonth ?? 'all');
+const filterProvider = ref<string[]>(savedFilters.filterProvider ?? []);
+const filterCategory = ref<string[]>(savedFilters.filterCategory ?? []);
+
+watch(
+    [search, filterInitiated, filterBatchStatus, filterMonth, filterProvider, filterCategory],
+    () => {
+        try {
+            sessionStorage.setItem(
+                FILTERS_STORAGE_KEY,
+                JSON.stringify({
+                    search: search.value,
+                    filterInitiated: filterInitiated.value,
+                    filterBatchStatus: filterBatchStatus.value,
+                    filterMonth: filterMonth.value,
+                    filterProvider: filterProvider.value,
+                    filterCategory: filterCategory.value,
+                }),
+            );
+        } catch {
+            // Hindi available ang sessionStorage (hal. private mode) — okay lang, hindi lang mase-save.
+        }
+    },
+    { deep: true },
+);
 const showModal = ref(false);
 const showConfirm = ref(false);
 const showInfo = ref(false);

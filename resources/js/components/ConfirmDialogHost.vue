@@ -7,10 +7,17 @@ const { state, respond } = useConfirmDialogState();
 
 <template>
     <Teleport to="body">
+        <!--
+            .stop on pointerdown/focusin: this host lives outside any radix Dialog, so if these
+            events reach the document, an open modal treats them as a "click outside" and closes
+            (e.g. the Participants modal while removing a participant).
+        -->
         <div
             v-if="state.open"
             class="pointer-events-auto fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4"
             @click.self="respond(false)"
+            @pointerdown.stop
+            @focusin.stop
         >
             <div class="w-full max-w-sm rounded-2xl bg-background p-6 text-foreground shadow-2xl">
                 <div class="flex items-start gap-3">
