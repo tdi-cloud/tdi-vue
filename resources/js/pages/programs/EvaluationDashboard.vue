@@ -116,26 +116,42 @@ const avgOverallRating = computed(() => {
     return overall ? Number(overall.avg_rating).toFixed(1) : '—';
 });
 
+/* ---- Chart theming: ApexCharts doesn't follow the app's `dark` class, so feed it theme-aware colors ---- */
+const isDark = ref(document.documentElement.classList.contains('dark'));
+let themeObserver: MutationObserver | null = null;
+
+function syncIsDark() {
+    isDark.value = document.documentElement.classList.contains('dark');
+}
+
+const chartTheme = computed(() =>
+    isDark.value
+        ? { text: '#cbd5e1', strongText: '#f1f5f9', grid: '#334155', surface: '#0a0a0a', tooltip: 'dark' as const }
+        : { text: '#475569', strongText: '#334155', grid: '#f1f5f9', surface: '#ffffff', tooltip: 'light' as const },
+);
+
 // The overall rating is on a 1–10 scale, so it's left out of this 5-point chart.
 const ratedSections = computed(() => avgBySection.value.filter((s) => s.section_key !== 'overall'));
 
 const sectionBarOptions = computed(() => ({
-    chart: { type: 'bar', toolbar: { show: false } },
+    chart: { type: 'bar', toolbar: { show: false }, foreColor: chartTheme.value.text },
     plotOptions: { bar: { horizontal: true, borderRadius: 6, borderRadiusApplication: 'end', barHeight: '55%' } },
     dataLabels: { enabled: true, formatter: (val: number) => Number(val).toFixed(2), style: { fontSize: '11px' } },
     xaxis: { categories: ratedSections.value.map((s) => s.section_title), max: 5, labels: { style: { fontSize: '10px' } } },
     colors: ['#e11d48'],
-    grid: { borderColor: '#f1f5f9' },
+    grid: { borderColor: chartTheme.value.grid },
+    tooltip: { theme: chartTheme.value.tooltip },
 }));
 const sectionBarSeries = computed(() => [{ name: 'Avg Rating', data: ratedSections.value.map((s) => Number(s.avg_rating)) }]);
 
 const facilitatorBarOptions = computed(() => ({
-    chart: { type: 'bar', toolbar: { show: false } },
+    chart: { type: 'bar', toolbar: { show: false }, foreColor: chartTheme.value.text },
     plotOptions: { bar: { horizontal: true, borderRadius: 6, borderRadiusApplication: 'end', barHeight: '55%' } },
     dataLabels: { enabled: true, formatter: (val: number) => Number(val).toFixed(2), style: { fontSize: '11px' } },
     xaxis: { categories: avgByFacilitator.value.map((f) => f.name), max: 5, labels: { style: { fontSize: '10px' } } },
     colors: ['#7c3aed'],
-    grid: { borderColor: '#f1f5f9' },
+    grid: { borderColor: chartTheme.value.grid },
+    tooltip: { theme: chartTheme.value.tooltip },
 }));
 const facilitatorBarSeries = computed(() => [{ name: 'Avg Rating', data: avgByFacilitator.value.map((f) => Number(f.avg_rating)) }]);
 
@@ -160,22 +176,24 @@ const overallRatingBands = computed(() =>
 );
 
 const distributionBarOptions = computed(() => ({
-    chart: { type: 'bar', toolbar: { show: false } },
+    chart: { type: 'bar', toolbar: { show: false }, foreColor: chartTheme.value.text },
     plotOptions: { bar: { columnWidth: '55%', borderRadius: 6, borderRadiusApplication: 'end', dataLabels: { position: 'top' } } },
-    dataLabels: { enabled: true, offsetY: -18, style: { fontSize: '11px', colors: ['#334155'] } },
+    dataLabels: { enabled: true, offsetY: -18, style: { fontSize: '11px', colors: [chartTheme.value.strongText] } },
+    tooltip: { theme: chartTheme.value.tooltip },
     xaxis: {
         categories: overallRatingBands.value.map((b) => [b.range, b.label]),
         title: { text: 'Rating', style: { fontSize: '10px' } },
         labels: { style: { fontSize: '10px' } },
     },
     colors: ['#f59e0b'],
-    grid: { borderColor: '#f1f5f9' },
+    grid: { borderColor: chartTheme.value.grid },
 }));
 const distributionBarSeries = computed(() => [{ name: 'Responses', data: overallRatingBands.value.map((b) => b.total) }]);
 
 const batchDonutOptions = computed(() => ({
     chart: {
         type: 'donut',
+        foreColor: chartTheme.value.text,
         events: {
             // Clicking a slice opens a live view of who has submitted for that batch.
             dataPointSelection: (_event: unknown, _chartContext: unknown, config: { dataPointIndex: number }) => {
@@ -185,12 +203,24 @@ const batchDonutOptions = computed(() => ({
         },
     },
     labels: responsesPerBatch.value.map((r) => `${r.batch_label} (${r.total})`),
-    legend: { position: 'bottom', fontSize: '11px' },
+    legend: { position: 'bottom', fontSize: '11px', labels: { colors: chartTheme.value.text } },
     colors: ['#3b82f6', '#8b5cf6', '#06b6d4', '#ef4444', '#10b981', '#f59e0b', '#9ca3af'],
-    stroke: { width: 3, colors: ['#ffffff'] },
+    // Matches the card background so slices stay separated in both themes
+    stroke: { width: 3, colors: [chartTheme.value.surface] },
     dataLabels: { enabled: true, formatter: (val: number) => val.toFixed(0) + '%' },
+    tooltip: { theme: chartTheme.value.tooltip },
     plotOptions: {
-        pie: { donut: { size: '65%', labels: { show: true, total: { show: true, label: 'Total', fontSize: '12px', fontWeight: 700 } } } },
+        pie: {
+            donut: {
+                size: '65%',
+                labels: {
+                    show: true,
+                    name: { color: chartTheme.value.text },
+                    value: { color: chartTheme.value.strongText },
+                    total: { show: true, label: 'Total', fontSize: '12px', fontWeight: 700, color: chartTheme.value.text },
+                },
+            },
+        },
     },
 }));
 const batchDonutSeries = computed(() => responsesPerBatch.value.map((r) => r.total));
@@ -380,8 +410,11 @@ function isRecent(createdAt: string) {
 onMounted(() => {
     fetchDashboard();
     fetchComments(1);
+    themeObserver = new MutationObserver(syncIsDark);
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 });
 onBeforeUnmount(() => {
+    themeObserver?.disconnect();
     if (activeController) activeController.abort();
     if (commentsController) commentsController.abort();
     if (batchPanelController) batchPanelController.abort();

@@ -74,14 +74,14 @@ async function destroy() {
             :href="route('nhrdc.signed-copy.download', programId)"
             target="_blank"
             rel="noopener"
-            class="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-blue-600 shadow-sm transition hover:bg-blue-50"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-50 dark:border-indigo-500/30 dark:bg-slate-900 dark:text-indigo-300 dark:hover:bg-indigo-500/10"
         >
             View Signed Copy
         </a>
         <button
             type="button"
             :disabled="processing"
-            class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
             @click="triggerPick"
         >
             {{ processing ? 'Uploading…' : hasFile ? 'Replace Signed Copy' : 'Upload Signed Copy' }}
@@ -90,13 +90,13 @@ async function destroy() {
             v-if="hasFile"
             type="button"
             :disabled="processing"
-            class="inline-flex items-center gap-1.5 rounded-lg border border-red-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-red-600 shadow-sm transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 shadow-sm transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-500/30 dark:bg-slate-900 dark:text-red-400 dark:hover:bg-red-500/10"
             @click="destroy"
         >
             Delete
         </button>
         <span v-if="!hasFile && !processing" class="text-[11px] text-muted-foreground">No signed copy uploaded yet.</span>
         <input ref="fileInput" type="file" accept="application/pdf" class="hidden" @change="handleFileChange" />
-        <p v-if="error" class="w-full text-[11px] text-red-600">{{ error }}</p>
+        <p v-if="error" class="w-full text-[11px] text-red-600 dark:text-red-400">{{ error }}</p>
     </div>
 </template>
