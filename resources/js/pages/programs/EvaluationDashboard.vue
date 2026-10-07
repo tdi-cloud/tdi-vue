@@ -13,6 +13,7 @@ import {
     FileText,
     Inbox,
     Loader2,
+    Maximize2,
     MessageSquareText,
     Settings2,
     Sparkles,
@@ -240,6 +241,53 @@ const batchRateOptions = computed(() => ({
     },
 }));
 const batchRateSeries = computed(() => responsesPerBatch.value.map((r) => responseRate(Number(r.total), Number(r.participants))));
+
+/* ── Large view: opens one chart in a modal ───────────────────────────────── */
+type ChartKey = 'section' | 'facilitator' | 'distribution' | 'batch';
+const expandedChart = ref<ChartKey | null>(null);
+
+const expandedChartConfig = computed(() => {
+    switch (expandedChart.value) {
+        case 'section':
+            return {
+                title: 'Average Rating per Section',
+                type: 'bar',
+                height: 480,
+                options: sectionBarOptions.value,
+                series: sectionBarSeries.value,
+            };
+        case 'facilitator':
+            return {
+                title: 'Average Rating per Facilitator',
+                type: 'bar',
+                height: Math.max(480, avgByFacilitator.value.length * 40 + 80),
+                options: facilitatorBarOptions.value,
+                series: facilitatorBarSeries.value,
+            };
+        case 'distribution':
+            return {
+                title: 'Overall Rating Distribution',
+                type: 'bar',
+                height: 480,
+                options: distributionBarOptions.value,
+                series: distributionBarSeries.value,
+            };
+        case 'batch':
+            return {
+                title: 'Response Rate per Batch',
+                type: 'radialBar',
+                height: 480,
+                options: batchRateOptions.value,
+                series: batchRateSeries.value,
+            };
+        default:
+            return null;
+    }
+});
+
+function closeExpandedChart() {
+    expandedChart.value = null;
+}
 
 let activeController: AbortController | null = null;
 
@@ -542,24 +590,52 @@ onBeforeUnmount(() => {
             <!-- Charts -->
             <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <div class="rounded-xl border p-4 shadow-md">
-                    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Average Rating per Section</p>
+                    <div class="mb-2 flex items-center justify-between gap-2">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Average Rating per Section</p>
+                        <button
+                            v-if="ratedSections.length"
+                            type="button"
+                            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                            title="Large view"
+                            @click="expandedChart = 'section'"
+                        >
+                            <Maximize2 class="h-3.5 w-3.5" />
+                        </button>
+                    </div>
                     <VueApexCharts v-if="ratedSections.length" type="bar" height="240" :options="sectionBarOptions" :series="sectionBarSeries" />
                     <p v-else class="py-10 text-center text-xs text-muted-foreground">No rating data yet.</p>
                 </div>
                 <div class="rounded-xl border p-4 shadow-md">
-                    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Average Rating per Facilitator</p>
+                    <div class="mb-2 flex items-center justify-between gap-2">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Average Rating per Facilitator</p>
+                        <button
+                            v-if="avgByFacilitator.length"
+                            type="button"
+                            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                            title="Large view"
+                            @click="expandedChart = 'facilitator'"
+                        >
+                            <Maximize2 class="h-3.5 w-3.5" />
+                        </button>
+                    </div>
                     <div v-if="avgByFacilitator.length" class="max-h-[260px] overflow-y-auto pr-1">
-                        <VueApexCharts
-                            type="bar"
-                            :height="facilitatorChartHeight"
-                            :options="facilitatorBarOptions"
-                            :series="facilitatorBarSeries"
-                        />
+                        <VueApexCharts type="bar" :height="facilitatorChartHeight" :options="facilitatorBarOptions" :series="facilitatorBarSeries" />
                     </div>
                     <p v-else class="py-10 text-center text-xs text-muted-foreground">No facilitator ratings yet.</p>
                 </div>
                 <div class="rounded-xl border p-4 shadow-md">
-                    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Overall Rating Distribution</p>
+                    <div class="mb-2 flex items-center justify-between gap-2">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Overall Rating Distribution</p>
+                        <button
+                            v-if="overallRatingBands.length"
+                            type="button"
+                            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                            title="Large view"
+                            @click="expandedChart = 'distribution'"
+                        >
+                            <Maximize2 class="h-3.5 w-3.5" />
+                        </button>
+                    </div>
                     <VueApexCharts
                         v-if="overallRatingBands.length"
                         type="bar"
@@ -570,12 +646,23 @@ onBeforeUnmount(() => {
                     <p v-else class="py-10 text-center text-xs text-muted-foreground">No overall ratings yet.</p>
                 </div>
                 <div class="rounded-xl border p-4 shadow-md">
-                    <p class="mb-2 flex items-center justify-between gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        <span>Response Rate per Batch</span>
-                        <span v-if="responsesPerBatch.length" class="text-[10px] font-normal normal-case text-muted-foreground/70"
-                            >Click a ring to see who submitted</span
-                        >
-                    </p>
+                    <div class="mb-2 flex items-center justify-between gap-2">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Response Rate per Batch</p>
+                        <div class="flex items-center gap-1.5">
+                            <span v-if="responsesPerBatch.length" class="text-[10px] text-muted-foreground/70"
+                                >Click a ring to see who submitted</span
+                            >
+                            <button
+                                v-if="responsesPerBatch.length"
+                                type="button"
+                                class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                title="Large view"
+                                @click="expandedChart = 'batch'"
+                            >
+                                <Maximize2 class="h-3.5 w-3.5" />
+                            </button>
+                        </div>
+                    </div>
                     <VueApexCharts
                         v-if="responsesPerBatch.length"
                         type="radialBar"
@@ -673,7 +760,43 @@ onBeforeUnmount(() => {
         </template>
     </div>
 
-    <!-- Live view: who has submitted for a batch (opened from the donut chart) -->
+    <!-- Large view of a single chart -->
+    <Transition name="backdrop" appear>
+        <div
+            v-if="expandedChartConfig"
+            class="fixed inset-0 z-[65] flex items-center justify-center bg-black/50 p-4"
+            @click.self="closeExpandedChart"
+        >
+            <Transition name="pop" appear>
+                <div class="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-background shadow-2xl">
+                    <div class="flex items-center gap-3 bg-gradient-to-r from-rose-700 via-red-700 to-orange-600 px-5 py-4 text-white">
+                        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/20 backdrop-blur">
+                            <BarChart3 class="h-4 w-4 text-white" />
+                        </div>
+                        <h2 class="min-w-0 flex-1 truncate text-sm font-bold">{{ expandedChartConfig.title }}</h2>
+                        <button type="button" class="text-white/80 transition-colors hover:text-white" @click="closeExpandedChart">
+                            <X class="h-5 w-5" />
+                        </button>
+                    </div>
+                    <div class="overflow-y-auto p-5">
+                        <p v-if="expandedChart === 'batch'" class="mb-2 text-right text-[10px] text-muted-foreground/70">
+                            Click a ring to see who submitted
+                        </p>
+                        <VueApexCharts
+                            :key="expandedChart ?? ''"
+                            :type="expandedChartConfig.type"
+                            :height="expandedChartConfig.height"
+                            :options="expandedChartConfig.options"
+                            :series="expandedChartConfig.series"
+                            :class="{ 'cursor-pointer': expandedChart === 'batch' }"
+                        />
+                    </div>
+                </div>
+            </Transition>
+        </div>
+    </Transition>
+
+    <!-- Live view: who has submitted for a batch (opened from the response rate chart) -->
     <Transition name="backdrop" appear>
         <div v-if="showBatchPanel" class="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4" @click.self="closeBatchPanel">
             <Transition name="pop" appear>
