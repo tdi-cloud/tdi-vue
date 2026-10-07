@@ -382,12 +382,6 @@ class EvaluationFormController extends Controller
             }
         })->pluck('id');
 
-        // Kept unfiltered by batch so the "Responses per Batch" breakdown always
-        // shows every batch, even while the other stats below are scoped to one.
-        $allFormIds = EvaluationForm::whereHas('batch', function ($q) use ($program) {
-            $q->where('program_code', $program->program_code);
-        })->pluck('id');
-
         $responseIds = EvaluationResponse::whereIn('evaluation_form_id', $formIds)->pluck('id');
 
         $totalResponses = $responseIds->count();
@@ -419,13 +413,23 @@ class EvaluationFormController extends Controller
             ->orderBy('rating')
             ->get();
 
-        $responsesPerBatch = EvaluationResponse::query()
-            ->join('evaluation_forms', 'evaluation_responses.evaluation_form_id', '=', 'evaluation_forms.id')
-            ->join('batches', 'evaluation_forms.batch_id', '=', 'batches.id')
-            ->whereIn('evaluation_forms.id', $allFormIds)
-            ->selectRaw('batches.id as batch_id, batches.batch as batch_label, count(*) as total')
-            ->groupBy('batches.id', 'batches.batch')
-            ->get();
+        // Every batch with a form is listed (even with zero responses) along with
+        // its participant count, so the chart can show a true response rate.
+        $responsesPerBatch = Batch::query()
+            ->where('program_code', $program->program_code)
+            ->whereHas('evaluationForm')
+            ->withCount(['participants' => fn ($query) => $query->where(
+                fn ($query) => $query->whereNull('attendance')->orWhere('attendance', '!=', 'Absent')
+            )])
+            ->with(['evaluationForm' => fn ($query) => $query->withCount('responses')])
+            ->orderBy('id')
+            ->get()
+            ->map(fn (Batch $batch) => [
+                'batch_id' => $batch->id,
+                'batch_label' => $batch->batch,
+                'total' => $batch->evaluationForm->responses_count,
+                'participants' => $batch->participants_count,
+            ]);
 
         $avgByQuestion = EvaluationAnswer::query()
             ->join('evaluation_questions', 'evaluation_answers.evaluation_question_id', '=', 'evaluation_questions.id')

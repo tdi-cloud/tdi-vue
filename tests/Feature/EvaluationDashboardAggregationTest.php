@@ -99,6 +99,20 @@ test('the dashboard aggregates ratings correctly across all batches and when fil
     [$formB, $facilitatorB] = evalDashFormWithFacilitator($batchB, 'Facilitator B');
     evalDashRecordResponse($formB, $facilitatorB, 6, 3);
 
+    foreach (['EMP-A1', 'EMP-A2', 'EMP-A3', 'EMP-A4'] as $index => $empcode) {
+        Participant::create([
+            'sort_order' => $index,
+            'batch_id' => $batchA->id,
+            'empcode' => $empcode,
+            'attendance' => $empcode === 'EMP-A4' ? 'Absent' : 'Complete',
+            'hours' => 0,
+            'added_by' => 'system',
+        ]);
+    }
+
+    // A batch with a form but no submissions yet should still be listed.
+    evalDashFormWithFacilitator(evalDashBatch($program, 'Batch C'), 'Facilitator C');
+
     // ── Combined (all batches) ──────────────────────────────────────────────
     $combined = $this->actingAs($admin)->getJson(route('programs.evaluation-dashboard', $program))->json();
 
@@ -114,6 +128,8 @@ test('the dashboard aggregates ratings correctly across all batches and when fil
     $responsesPerBatch = collect($combined['responses_per_batch'])->keyBy('batch_label');
     expect($responsesPerBatch['Batch A']['total'])->toBe(2);
     expect($responsesPerBatch['Batch B']['total'])->toBe(1);
+    expect($responsesPerBatch['Batch A']['participants'])->toBe(3); // absent participant excluded
+    expect($responsesPerBatch['Batch C']['total'])->toBe(0);
 
     // ── Filtered to Batch A only ────────────────────────────────────────────
     $filtered = $this->actingAs($admin)

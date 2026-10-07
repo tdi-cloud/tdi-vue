@@ -74,7 +74,7 @@ const totalResponses = ref(0);
 const avgBySection = ref<{ section_key: string; section_title: string; avg_rating: number }[]>([]);
 const avgByFacilitator = ref<{ id: number; name: string; avg_rating: number }[]>([]);
 const overallDistribution = ref<{ rating: number; total: number }[]>([]);
-const responsesPerBatch = ref<{ batch_id: number; batch_label: string; total: number }[]>([]);
+const responsesPerBatch = ref<{ batch_id: number; batch_label: string; total: number; participants: number }[]>([]);
 const findings = ref<{ intro: string; items: { label: string; text: string }[] } | null>(null);
 
 const findingsCopied = ref(false);
@@ -149,10 +149,13 @@ const facilitatorBarOptions = computed(() => ({
     plotOptions: { bar: { horizontal: true, borderRadius: 6, borderRadiusApplication: 'end', barHeight: '55%' } },
     dataLabels: { enabled: true, formatter: (val: number) => Number(val).toFixed(2), style: { fontSize: '11px' } },
     xaxis: { categories: avgByFacilitator.value.map((f) => f.name), max: 5, labels: { style: { fontSize: '10px' } } },
+    yaxis: { labels: { maxWidth: 220, style: { fontSize: '11px' } } },
     colors: ['#7c3aed'],
     grid: { borderColor: chartTheme.value.grid },
     tooltip: { theme: chartTheme.value.tooltip },
 }));
+// Each facilitator gets a fixed row height; the card scrolls when the list is long.
+const facilitatorChartHeight = computed(() => Math.max(240, avgByFacilitator.value.length * 36 + 60));
 const facilitatorBarSeries = computed(() => [{ name: 'Avg Rating', data: avgByFacilitator.value.map((f) => Number(f.avg_rating)) }]);
 
 /** Same bands as the legend on the evaluation form's overall rating question. */
@@ -190,40 +193,53 @@ const distributionBarOptions = computed(() => ({
 }));
 const distributionBarSeries = computed(() => [{ name: 'Responses', data: overallRatingBands.value.map((b) => b.total) }]);
 
-const batchDonutOptions = computed(() => ({
+/** Share of a batch's participants who have submitted, capped at 100%. */
+function responseRate(responded: number, participants: number) {
+    if (!participants) return 0;
+    return Math.min(100, Math.round((responded / participants) * 1000) / 10);
+}
+
+const batchResponseTotals = computed(() => ({
+    responded: responsesPerBatch.value.reduce((sum, r) => sum + Number(r.total), 0),
+    participants: responsesPerBatch.value.reduce((sum, r) => sum + Number(r.participants), 0),
+}));
+
+const batchRateOptions = computed(() => ({
     chart: {
-        type: 'donut',
+        type: 'radialBar',
         foreColor: chartTheme.value.text,
         events: {
-            // Clicking a slice opens a live view of who has submitted for that batch.
+            // Clicking a ring opens a live view of who has submitted for that batch.
             dataPointSelection: (_event: unknown, _chartContext: unknown, config: { dataPointIndex: number }) => {
                 const entry = responsesPerBatch.value[config.dataPointIndex];
                 if (entry) openBatchResponses(entry.batch_id, entry.batch_label);
             },
         },
     },
-    labels: responsesPerBatch.value.map((r) => `${r.batch_label} (${r.total})`),
-    legend: { position: 'bottom', fontSize: '11px', labels: { colors: chartTheme.value.text } },
+    labels: responsesPerBatch.value.map((r) => `${r.batch_label} (${r.total}/${r.participants})`),
+    legend: { show: true, position: 'bottom', fontSize: '11px', labels: { colors: chartTheme.value.text } },
     colors: ['#3b82f6', '#8b5cf6', '#06b6d4', '#ef4444', '#10b981', '#f59e0b', '#9ca3af'],
-    // Matches the card background so slices stay separated in both themes
-    stroke: { width: 3, colors: [chartTheme.value.surface] },
-    dataLabels: { enabled: true, formatter: (val: number) => val.toFixed(0) + '%' },
-    tooltip: { theme: chartTheme.value.tooltip },
+    stroke: { lineCap: 'round' },
+    tooltip: { enabled: false },
     plotOptions: {
-        pie: {
-            donut: {
-                size: '65%',
-                labels: {
+        radialBar: {
+            hollow: { size: responsesPerBatch.value.length > 1 ? '40%' : '60%' },
+            track: { background: chartTheme.value.grid },
+            dataLabels: {
+                name: { fontSize: '11px', color: chartTheme.value.text },
+                value: { fontSize: '18px', fontWeight: 700, color: chartTheme.value.strongText, formatter: (val: number) => `${val}%` },
+                total: {
                     show: true,
-                    name: { color: chartTheme.value.text },
-                    value: { color: chartTheme.value.strongText },
-                    total: { show: true, label: 'Total', fontSize: '12px', fontWeight: 700, color: chartTheme.value.text },
+                    label: 'Responded',
+                    fontSize: '11px',
+                    color: chartTheme.value.text,
+                    formatter: () => `${batchResponseTotals.value.responded}/${batchResponseTotals.value.participants}`,
                 },
             },
         },
     },
 }));
-const batchDonutSeries = computed(() => responsesPerBatch.value.map((r) => r.total));
+const batchRateSeries = computed(() => responsesPerBatch.value.map((r) => responseRate(Number(r.total), Number(r.participants))));
 
 let activeController: AbortController | null = null;
 
@@ -532,13 +548,14 @@ onBeforeUnmount(() => {
                 </div>
                 <div class="rounded-xl border p-4 shadow-md">
                     <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Average Rating per Facilitator</p>
-                    <VueApexCharts
-                        v-if="avgByFacilitator.length"
-                        type="bar"
-                        height="240"
-                        :options="facilitatorBarOptions"
-                        :series="facilitatorBarSeries"
-                    />
+                    <div v-if="avgByFacilitator.length" class="max-h-[260px] overflow-y-auto pr-1">
+                        <VueApexCharts
+                            type="bar"
+                            :height="facilitatorChartHeight"
+                            :options="facilitatorBarOptions"
+                            :series="facilitatorBarSeries"
+                        />
+                    </div>
                     <p v-else class="py-10 text-center text-xs text-muted-foreground">No facilitator ratings yet.</p>
                 </div>
                 <div class="rounded-xl border p-4 shadow-md">
@@ -554,20 +571,20 @@ onBeforeUnmount(() => {
                 </div>
                 <div class="rounded-xl border p-4 shadow-md">
                     <p class="mb-2 flex items-center justify-between gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        <span>Responses per Batch</span>
+                        <span>Response Rate per Batch</span>
                         <span v-if="responsesPerBatch.length" class="text-[10px] font-normal normal-case text-muted-foreground/70"
-                            >Click a slice to see who submitted</span
+                            >Click a ring to see who submitted</span
                         >
                     </p>
                     <VueApexCharts
                         v-if="responsesPerBatch.length"
-                        type="donut"
-                        height="240"
-                        :options="batchDonutOptions"
-                        :series="batchDonutSeries"
+                        type="radialBar"
+                        height="260"
+                        :options="batchRateOptions"
+                        :series="batchRateSeries"
                         class="cursor-pointer"
                     />
-                    <p v-else class="py-10 text-center text-xs text-muted-foreground">No responses yet.</p>
+                    <p v-else class="py-10 text-center text-xs text-muted-foreground">No evaluation forms yet.</p>
                 </div>
             </div>
 
