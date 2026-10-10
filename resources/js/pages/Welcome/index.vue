@@ -19,6 +19,7 @@
         <PathwaySection />
         <ProgramsSection />
         <ForeignScholarshipSection :images="siteImages" />
+        <HowToVideosSection :videos="howToVideos" />
         <ResourcesSection />
         <CtaBanner />
         <TheFooter />
@@ -39,6 +40,7 @@ import TnaBanner from './sections/TnaBanner.vue';
 // import ScholarshipsSection from './sections/ScholarshipsSection.vue'
 import CtaBanner from './sections/CtaBanner.vue';
 import ForeignScholarshipSection from './sections/ForeignScholarshipSection.vue';
+import HowToVideosSection from './sections/HowToVideosSection.vue';
 import PathwaySection from './sections/PathwaySection.vue';
 import ResourcesSection from './sections/ResourcesSection.vue';
 import TheFooter from './sections/TheFooter.vue';
@@ -49,6 +51,7 @@ defineProps({
     supervisorTna: { type: Object, default: null },
     nhrdcRating: { type: Object, default: null },
     siteImages: { type: Object, default: () => ({}) },
+    howToVideos: { type: Array, default: () => [] },
 });
 </script>
 

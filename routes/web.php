@@ -39,6 +39,7 @@ use App\Http\Controllers\SupportingDocumentController;
 use App\Http\Controllers\TesdaOrderController;
 use App\Http\Controllers\TnaController;
 use App\Http\Controllers\TPMRController;
+use App\Http\Controllers\TutorialVideoController;
 use App\Http\Controllers\UserManagementController;
 use App\Mail\ReminderEmail;
 use App\Models\ForeignNominee;
@@ -55,6 +56,7 @@ Route::get('/', function () {
         'supervisorTna' => TnaController::supervisorBannerData(auth()->user()),
         'nhrdcRating' => NhrdcSelfServiceController::bannerData(auth()->user()),
         'siteImages' => SiteImage::resolvedUrls(),
+        'howToVideos' => TutorialVideoController::homepageData(auth()->user()),
     ]);
 })->name('home');
 
@@ -129,6 +131,10 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
 
     // CALENDAR
     Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
+
+    // HOW-TO VIDEOS — admins watch; uploading is superadmin only (see below)
+    Route::get('/how-to-videos', [TutorialVideoController::class, 'index'])->name('how-to-videos.index');
+    Route::get('/how-to-videos/{tutorialVideo}/documentation', [TutorialVideoController::class, 'documentation'])->name('how-to-videos.documentation');
 
     // PROGRAM REQUIREMENTS
     Route::post('programs/{program}/requirements', [RequirementController::class, 'store'])
@@ -413,6 +419,12 @@ Route::middleware(['auth', 'verified', 'superadmin'])->group(function () {
     Route::get('/site-images', [SiteImageController::class, 'index'])->name('site-images.index');
     Route::post('/site-images/{key}', [SiteImageController::class, 'update'])->name('site-images.update');
     Route::delete('/site-images/{key}', [SiteImageController::class, 'destroy'])->name('site-images.destroy');
+
+    // HOW-TO VIDEOS (upload, edit, delete)
+    Route::post('/how-to-videos', [TutorialVideoController::class, 'store'])->name('how-to-videos.store');
+    Route::post('/how-to-videos/{tutorialVideo}', [TutorialVideoController::class, 'update'])->name('how-to-videos.update');
+    Route::delete('/how-to-videos/{tutorialVideo}', [TutorialVideoController::class, 'destroy'])->name('how-to-videos.destroy');
+    Route::post('/how-to-videos/{tutorialVideo}/documentation', [TutorialVideoController::class, 'updateDocumentation'])->name('how-to-videos.documentation.update');
 
     // PROBLEM REPORTS
     Route::get('/problem-reports', [ProblemReportController::class, 'index'])->name('problem-reports.index');

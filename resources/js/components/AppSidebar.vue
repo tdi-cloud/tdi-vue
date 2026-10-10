@@ -21,6 +21,7 @@ import {
     Inbox,
     Map,
     MessageSquareWarning,
+    PlayCircle,
     ShieldCheck,
     Users,
 } from 'lucide-vue-next';
@@ -121,6 +122,13 @@ const allNavItems: NavItem[] = [
         url: '/supporting-documents',
         icon: FileStack,
         color: 'text-amber-500',
+        group: 'Management',
+    },
+    {
+        title: 'How-to Videos',
+        url: '/how-to-videos',
+        icon: PlayCircle,
+        color: 'text-sky-500',
         group: 'Management',
     },
 ];

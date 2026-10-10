@@ -18,6 +18,7 @@
                 <a href="#programs" class="nav-link" @click.prevent="scrollTo('programs')">Programs</a>
                 <a href="#foreign-scholarships" class="nav-link" @click.prevent="scrollTo('foreign-scholarships')">FSTP</a>
                 <a href="#resources" class="nav-link" @click.prevent="scrollTo('resources')">Resources</a>
+                <Link v-if="isAdmin" :href="route('how-to-videos.index')" class="nav-link">How-to Videos</Link>
                 <Link v-if="auth?.user" href="/#my-programs" class="nav-link nav-link--mine">
                     <GraduationCap class="h-3.5 w-3.5" /> My Programs
                 </Link>
@@ -79,6 +80,7 @@
             <a href="#programs" class="nav-link" @click="close('programs')">Programs</a>
             <a href="#foreign-scholarships" class="nav-link" @click="close('foreign-scholarships')">FSTP</a>
             <a href="#resources" class="nav-link" @click="close('resources')">Resources</a>
+            <Link v-if="isAdmin" :href="route('how-to-videos.index')" class="nav-link" @click="mobileMenuOpen = false">How-to Videos</Link>
 
             <div class="mobile-menu__actions">
                 <template v-if="auth?.user">
