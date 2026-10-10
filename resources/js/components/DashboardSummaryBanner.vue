@@ -26,9 +26,9 @@ const greeting = computed(() => {
 // Prefer the full first name from the employee record; fall back to the first word of the account name
 const firstName = computed(() => props.firstName || page.props.auth?.user?.name?.split(' ')[0] || '');
 
-// TEMPORARY BER MONTHS THEME — EASILY REVERTIBLE
+// TEMPORARY HALLOWEEN THEME — EASILY REVERTIBLE
 // Set to false after the season to restore the complete default banner design.
-const isBerMonthsTheme = true;
+const isHalloweenTheme = true;
 
 const stats = computed(() => [
     { label: 'Employees Monitored', value: props.summary.employees, icon: Users, accent: 'blue' },
@@ -36,46 +36,44 @@ const stats = computed(() => [
     { label: 'Active Batches', value: props.summary.active_batches, icon: CalendarCheck, accent: 'gold' },
     { label: 'Pending Submissions', value: props.summary.pending_submissions, icon: ClipboardList, accent: 'amber' },
 ]);
-
-const festiveLightColors = ['gold', 'warm', 'red', 'gold', 'warm', 'green', 'gold', 'warm', 'red', 'gold', 'warm', 'green'];
 </script>
 
 <template>
     <div
         class="relative isolate overflow-hidden rounded-2xl bg-gradient-to-br from-blue-800 via-blue-700 to-sky-600 px-6 py-5 text-white shadow-md"
-        :class="{ 'ber-months-theme': isBerMonthsTheme }"
+        :class="{ 'halloween-theme': isHalloweenTheme }"
     >
         <!-- Decorative background texture — purely visual, sits behind existing content via negative z-index -->
         <div class="tdi-texture-institutional pointer-events-none absolute inset-0 z-[-1] opacity-[0.07]" aria-hidden="true"></div>
 
-        <!-- TEMPORARY BER MONTHS THEME — EASILY REVERTIBLE -->
-        <div v-if="isBerMonthsTheme" class="ber-festive-scene pointer-events-none" aria-hidden="true">
-            <div class="ber-string-lights">
-                <span v-for="(color, index) in festiveLightColors" :key="index" class="ber-light" :class="`ber-light--${color}`"></span>
-            </div>
-            <div class="ber-pine ber-pine--top-left"></div>
-            <div class="ber-ornament ber-ornament--one"></div>
-            <div class="ber-ornament ber-ornament--two"></div>
-            <div class="ber-parol"><span></span><i></i></div>
-            <div class="ber-lantern"><span></span></div>
-            <div class="ber-pine ber-pine--bottom-right"></div>
-            <div class="ber-gift"></div>
-            <i class="ber-bokeh ber-bokeh--one"></i>
-            <i class="ber-bokeh ber-bokeh--two"></i>
-            <i class="ber-bokeh ber-bokeh--three"></i>
+        <!-- TEMPORARY HALLOWEEN THEME — EASILY REVERTIBLE -->
+        <div v-if="isHalloweenTheme" class="halloween-scene pointer-events-none" aria-hidden="true">
+            <div class="halloween-moon"></div>
+            <span class="halloween-bat halloween-bat--one"></span>
+            <span class="halloween-bat halloween-bat--two"></span>
+            <span class="halloween-bat halloween-bat--three"></span>
+            <div class="halloween-fog halloween-fog--back"></div>
+            <div class="halloween-fog halloween-fog--front"></div>
+            <span class="halloween-pumpkin halloween-pumpkin--large"></span>
+            <span class="halloween-pumpkin halloween-pumpkin--small"></span>
+            <i class="halloween-ember halloween-ember--one"></i>
+            <i class="halloween-ember halloween-ember--two"></i>
+            <i class="halloween-ember halloween-ember--three"></i>
+            <i class="halloween-ember halloween-ember--four"></i>
+            <div class="halloween-vignette"></div>
         </div>
 
         <div class="relative z-10">
-            <p v-if="isBerMonthsTheme" class="ber-seasonal-label">A Season of Growth and Gratitude</p>
-            <p class="text-lg font-bold" :class="{ 'sm:text-xl': isBerMonthsTheme }">
+            <p v-if="isHalloweenTheme" class="halloween-seasonal-label">A Spooktacular Season of Learning</p>
+            <p class="text-lg font-bold" :class="{ 'sm:text-xl': isHalloweenTheme }">
                 {{ greeting
                 }}<template v-if="firstName"
-                    >, <span :class="{ 'ber-name': isBerMonthsTheme }">{{ firstName }}</span></template
+                    >, <span :class="{ 'halloween-name': isHalloweenTheme }">{{ firstName }}</span></template
                 >
                 👋
             </p>
-            <p v-if="isBerMonthsTheme" class="mt-0.5 text-sm text-white/85">
-                Celebrating the season of learning, growth, and shared accomplishments.
+            <p v-if="isHalloweenTheme" class="mt-0.5 text-sm text-white/85">
+                A little Halloween magic, a lot of learning, and achievements worth celebrating.
             </p>
             <p v-else class="mt-0.5 text-sm text-white/80">Here's a quick look at what's happening across your programs today.</p>
 
@@ -84,11 +82,11 @@ const festiveLightColors = ['gold', 'warm', 'red', 'gold', 'warm', 'green', 'gol
                     v-for="stat in stats"
                     :key="stat.label"
                     class="kpi-tile relative flex items-center gap-3 overflow-hidden rounded-xl bg-white/10 px-4 py-3 backdrop-blur-sm"
-                    :class="[`kpi-tile--${stat.accent}`, isBerMonthsTheme ? ['ber-stat-card', `ber-stat-card--${stat.accent}`] : '']"
+                    :class="[`kpi-tile--${stat.accent}`, isHalloweenTheme ? ['halloween-stat-card', `halloween-stat-card--${stat.accent}`] : '']"
                 >
                     <div
                         class="kpi-tile-icon flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/15"
-                        :class="isBerMonthsTheme ? 'ber-stat-icon' : ''"
+                        :class="isHalloweenTheme ? 'halloween-stat-icon' : ''"
                     >
                         <component :is="stat.icon" class="h-4.5 w-4.5" />
                     </div>
@@ -148,342 +146,299 @@ const festiveLightColors = ['gold', 'warm', 'red', 'gold', 'warm', 'green', 'gol
         0 0 16px rgba(var(--kpi-accent), 0.28);
 }
 
-/* TEMPORARY BER MONTHS THEME — EASILY REVERTIBLE */
-.ber-months-theme {
+/* TEMPORARY HALLOWEEN THEME — EASILY REVERTIBLE
+   Midnight navy → charcoal-purple base, pumpkin light from the right,
+   violet ambience from the left. Everything decorative sits behind the z-10 content. */
+.halloween-theme {
     background:
-        radial-gradient(circle at 82% 28%, rgba(255, 204, 104, 0.25), transparent 20%),
-        radial-gradient(circle at 22% 100%, rgba(32, 132, 159, 0.22), transparent 31%), linear-gradient(125deg, #071a3d 0%, #0b3270 52%, #176da1 100%);
+        radial-gradient(38% 75% at 86% 22%, rgba(251, 146, 60, 0.32), transparent 70%),
+        radial-gradient(30% 65% at 100% 100%, rgba(234, 88, 12, 0.2), transparent 70%),
+        radial-gradient(35% 85% at 0% 0%, rgba(139, 92, 246, 0.2), transparent 70%),
+        radial-gradient(45% 80% at 40% 115%, rgba(91, 33, 182, 0.16), transparent 70%),
+        linear-gradient(125deg, #070b1f 0%, #10142f 42%, #1c1433 74%, #2a1630 100%);
     box-shadow:
-        0 14px 35px rgba(4, 21, 58, 0.28),
-        inset 0 1px rgba(255, 232, 177, 0.2);
+        0 14px 35px rgba(6, 4, 20, 0.35),
+        inset 0 1px rgba(253, 186, 116, 0.16);
 }
 
-.ber-festive-scene,
-.ber-festive-scene > * {
+.halloween-scene,
+.halloween-scene > * {
     position: absolute;
 }
 
-.ber-festive-scene {
+.halloween-scene {
     inset: 0;
     overflow: hidden;
 }
 
-.ber-string-lights {
-    top: 0;
-    left: 7%;
+/* Crescent moon: an inset shadow on an empty circle, with a soft halo behind it. */
+.halloween-moon {
+    top: 16px;
     right: 7%;
-    display: flex;
-    justify-content: space-between;
-    height: 25px;
-    border-top: 2px solid rgba(255, 224, 151, 0.5);
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    box-shadow: inset -10px 4px 0 0 #ffe4b8;
+    filter: drop-shadow(0 0 10px rgba(255, 210, 150, 0.55));
+    opacity: 0.9;
 }
-
-.ber-light {
-    top: 5px;
-    width: 7px;
-    height: 11px;
-    border-radius: 50% 50% 45% 45%;
-    box-shadow:
-        0 0 7px currentColor,
-        0 0 14px currentColor;
-    animation: ber-glow 3.2s ease-in-out infinite alternate;
-}
-
-.ber-light::before {
+.halloween-moon::before {
     position: absolute;
-    top: -4px;
-    left: 2px;
-    width: 3px;
-    height: 4px;
-    background: #cfa14c;
+    inset: -34px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 200, 140, 0.16), transparent 65%);
     content: '';
 }
-.ber-light--gold {
-    color: #ffe19a;
-    background: #ffe19a;
-}
-.ber-light--warm {
-    color: #fff4d1;
-    background: #fff4d1;
-    animation-delay: 0.8s;
-}
-.ber-light--red {
-    color: #f2998e;
-    background: #f2998e;
-    animation-delay: 1.4s;
-}
-.ber-light--green {
-    color: #9fd5b4;
-    background: #9fd5b4;
-    animation-delay: 2s;
-}
 
-.ber-pine {
-    width: 150px;
-    height: 78px;
-    opacity: 0.55;
-    background: repeating-linear-gradient(145deg, transparent 0 8px, #2a755c 9px 11px, transparent 12px 18px);
-    filter: drop-shadow(0 6px 9px rgba(2, 26, 37, 0.4));
-}
-.ber-pine--top-left {
-    top: -22px;
-    left: -28px;
-    transform: rotate(12deg);
-}
-.ber-pine--bottom-right {
-    right: -25px;
-    bottom: -26px;
-    transform: rotate(192deg);
-}
-
-.ber-ornament {
-    top: -6px;
+/* Tiny bats: clip-path silhouettes with a faint warm rim light. */
+.halloween-bat {
     width: 22px;
-    height: 28px;
-    border: 2px solid rgba(255, 236, 177, 0.7);
-    border-radius: 50%;
-    box-shadow: 0 0 18px rgba(255, 198, 86, 0.45);
-}
-.ber-ornament::before {
-    position: absolute;
-    top: -16px;
-    left: 9px;
-    width: 1px;
-    height: 15px;
-    background: #e7bc66;
-    content: '';
-}
-.ber-ornament--one {
-    left: 14%;
-    background: #a9444b;
-}
-.ber-ornament--two {
-    left: 20%;
-    top: 2px;
-    width: 17px;
-    height: 22px;
-    background: #d9ac55;
-}
-
-.ber-parol {
-    top: 22px;
-    right: 5.5%;
-    width: 76px;
-    height: 76px;
-    clip-path: polygon(
-        50% 0,
-        61% 30%,
-        85% 15%,
-        70% 39%,
-        100% 50%,
-        70% 61%,
-        85% 85%,
-        61% 70%,
-        50% 100%,
-        39% 70%,
-        15% 85%,
-        30% 61%,
-        0 50%,
-        30% 39%,
-        15% 15%,
-        39% 30%
-    );
-    background: linear-gradient(135deg, #fff5c7, #d49636 48%, #b64145);
-    filter: drop-shadow(0 0 10px #ffd26d) drop-shadow(0 0 25px rgba(255, 192, 82, 0.85));
-    animation: ber-parol-glow 4s ease-in-out infinite alternate;
-}
-.ber-parol span {
-    position: absolute;
-    inset: 18px;
-    border-radius: 50%;
-    background: #fff9dd;
-    box-shadow: 0 0 22px 8px rgba(255, 239, 172, 0.9);
-}
-.ber-parol i {
-    position: absolute;
-    right: 34px;
-    bottom: -25px;
-    width: 8px;
-    height: 27px;
-    background: linear-gradient(#d39a35, #b54144);
-}
-
-.ber-lantern {
-    bottom: -6px;
-    left: 6%;
-    width: 35px;
-    height: 44px;
-    border: 2px solid #e9bd62;
-    border-radius: 5px 5px 9px 9px;
-    background: linear-gradient(90deg, rgba(168, 70, 50, 0.9), rgba(255, 221, 129, 0.95), rgba(168, 70, 50, 0.9));
-    box-shadow: 0 0 21px rgba(255, 198, 90, 0.75);
-}
-.ber-lantern::before {
-    position: absolute;
-    top: -12px;
-    left: 8px;
-    width: 15px;
-    height: 10px;
-    border: 2px solid #e9bd62;
-    border-bottom: 0;
-    border-radius: 8px 8px 0 0;
-    content: '';
-}
-.ber-lantern span {
-    position: absolute;
-    top: 7px;
-    bottom: 7px;
-    left: 15px;
-    width: 2px;
-    background: rgba(142, 63, 49, 0.7);
-}
-
-.ber-gift {
-    right: 8%;
-    bottom: 9px;
-    width: 29px;
-    height: 24px;
-    border-radius: 3px;
-    background: #a7444d;
-    box-shadow: 0 4px 10px rgba(2, 19, 48, 0.4);
-}
-.ber-gift::before,
-.ber-gift::after {
-    position: absolute;
-    background: #edc46e;
-    content: '';
-}
-.ber-gift::before {
-    top: 0;
-    bottom: 0;
-    left: 12px;
-    width: 4px;
-}
-.ber-gift::after {
-    top: -4px;
-    left: -2px;
-    width: 33px;
-    height: 5px;
-}
-
-.ber-bokeh {
-    border-radius: 50%;
-    background: #ffe4a2;
-    filter: blur(1px);
-    opacity: 0.42;
-    box-shadow: 0 0 14px 5px rgba(255, 221, 135, 0.38);
-    animation: ber-glow 4s ease-in-out infinite alternate;
-}
-.ber-bokeh--one {
-    top: 34%;
-    left: 34%;
-    width: 6px;
-    height: 6px;
-}
-.ber-bokeh--two {
-    right: 26%;
-    bottom: 22%;
-    width: 9px;
     height: 9px;
+    background: #140b22;
+    clip-path: polygon(
+        0 30%,
+        18% 0,
+        30% 35%,
+        42% 20%,
+        46% 0,
+        50% 18%,
+        54% 0,
+        58% 20%,
+        70% 35%,
+        82% 0,
+        100% 30%,
+        88% 55%,
+        76% 45%,
+        64% 70%,
+        50% 100%,
+        36% 70%,
+        24% 45%,
+        12% 55%
+    );
+    filter: drop-shadow(0 0 3px rgba(253, 186, 116, 0.35));
+    animation: halloween-hover 6s ease-in-out infinite alternate;
+}
+.halloween-bat--one {
+    top: 14px;
+    right: 15%;
+    transform: rotate(-8deg);
+}
+.halloween-bat--two {
+    top: 38px;
+    right: 20%;
+    width: 16px;
+    height: 7px;
+    opacity: 0.8;
+    animation-delay: 1.5s;
+}
+.halloween-bat--three {
+    top: 10px;
+    right: 26%;
+    width: 13px;
+    height: 6px;
+    opacity: 0.6;
+    animation-delay: 3s;
+}
+
+/* Low fog drifting along the bottom edge. */
+.halloween-fog {
+    bottom: -18px;
+    height: 56px;
+    border-radius: 50%;
+    filter: blur(8px);
+    animation: halloween-drift 24s ease-in-out infinite alternate;
+}
+.halloween-fog--back {
+    left: -25%;
+    width: 90%;
+    background: radial-gradient(ellipse at center, rgba(196, 181, 253, 0.12), transparent 70%);
+}
+.halloween-fog--front {
+    right: -25%;
+    width: 85%;
+    bottom: -24px;
+    background: radial-gradient(ellipse at center, rgba(255, 228, 196, 0.08), transparent 70%);
+    animation-duration: 32s;
+    animation-direction: alternate-reverse;
+}
+
+/* Small, understated pumpkins peeking from the bottom-right corner. */
+.halloween-pumpkin {
+    bottom: 2px;
+    border-radius: 48% 48% 44% 44%;
+    background: radial-gradient(ellipse at 45% 35%, #f59a3c 0%, #d9681a 55%, #8f3a0c 100%);
+    box-shadow: 0 0 18px rgba(249, 115, 22, 0.35);
+    opacity: 0.75;
+}
+.halloween-pumpkin::before {
+    position: absolute;
+    inset: 1px 30%;
+    border-right: 1px solid rgba(90, 30, 5, 0.45);
+    border-left: 1px solid rgba(90, 30, 5, 0.45);
+    border-radius: 50%;
+    content: '';
+}
+.halloween-pumpkin::after {
+    position: absolute;
+    top: -4px;
+    left: 46%;
+    width: 3px;
+    height: 5px;
+    border-radius: 2px;
+    background: #4d5a2c;
+    transform: rotate(12deg);
+    content: '';
+}
+.halloween-pumpkin--large {
+    right: 2.5%;
+    width: 26px;
+    height: 19px;
+}
+.halloween-pumpkin--small {
+    right: calc(2.5% + 30px);
+    width: 18px;
+    height: 13px;
+    opacity: 0.6;
+}
+
+/* Warm floating embers. */
+.halloween-ember {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: #ffc38a;
+    box-shadow: 0 0 8px 2px rgba(251, 146, 60, 0.45);
+    opacity: 0.55;
+    animation: halloween-ember 5s ease-in-out infinite alternate;
+}
+.halloween-ember--one {
+    top: 28%;
+    left: 52%;
+}
+.halloween-ember--two {
+    top: 58%;
+    right: 24%;
+    width: 4px;
+    height: 4px;
     animation-delay: 1.2s;
 }
-.ber-bokeh--three {
-    top: 15%;
-    left: 47%;
-    width: 4px;
-    height: 4px;
-    animation-delay: 2.1s;
+.halloween-ember--three {
+    top: 20%;
+    right: 36%;
+    animation-delay: 2.4s;
+}
+.halloween-ember--four {
+    right: 11%;
+    bottom: 38%;
+    width: 2px;
+    height: 2px;
+    animation-delay: 3.4s;
 }
 
-.ber-seasonal-label {
+/* Cinematic edge shading. */
+.halloween-vignette {
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 70px rgba(3, 2, 12, 0.5);
+}
+
+.halloween-seasonal-label {
     margin-bottom: 0.25rem;
-    color: #ffe5a1;
+    color: #fdba74;
     font-size: 0.625rem;
     font-weight: 800;
     letter-spacing: 0.12em;
     text-transform: uppercase;
 }
-.ber-name {
-    color: #ffe19a;
-    text-shadow: 0 1px 12px rgba(255, 206, 106, 0.5);
-}
-.ber-stat-card {
-    border: 1px solid rgba(255, 234, 180, 0.22);
-    background: linear-gradient(135deg, rgba(7, 31, 72, 0.66), rgba(28, 93, 137, 0.38));
-    box-shadow:
-        inset 0 1px rgba(255, 255, 255, 0.11),
-        0 8px 20px rgba(2, 18, 48, 0.2);
-}
-.ber-stat-card:hover {
-    transform: translateY(-1px);
-    border-color: rgba(255, 224, 151, 0.45);
-}
-.ber-stat-icon {
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    box-shadow: 0 0 14px rgba(255, 233, 177, 0.17);
-}
-.ber-stat-card--blue .ber-stat-icon {
-    background: rgba(51, 153, 255, 0.3);
-}
-.ber-stat-card--green .ber-stat-icon {
-    background: rgba(42, 163, 125, 0.3);
-}
-.ber-stat-card--gold .ber-stat-icon {
-    background: rgba(220, 161, 53, 0.34);
-}
-.ber-stat-card--amber .ber-stat-icon {
-    background: rgba(245, 158, 11, 0.3);
+.halloween-name {
+    color: #fdb35c;
+    text-shadow: 0 0 14px rgba(251, 146, 60, 0.45);
 }
 
-@keyframes ber-glow {
+/* Stat cards: translucent midnight-purple glass, accents warmed to sit in the palette. */
+.halloween-theme .kpi-tile--blue {
+    --kpi-accent: 129, 161, 255;
+}
+.halloween-theme .kpi-tile--green {
+    --kpi-accent: 52, 211, 153;
+}
+.halloween-theme .kpi-tile--gold {
+    --kpi-accent: 251, 191, 36;
+}
+.halloween-theme .kpi-tile--amber {
+    --kpi-accent: 249, 115, 22;
+}
+.halloween-stat-card {
+    border: 1px solid rgba(253, 186, 116, 0.14);
+    background: linear-gradient(135deg, rgba(22, 17, 42, 0.64), rgba(44, 24, 58, 0.4));
+    box-shadow:
+        inset 0 1px rgba(255, 255, 255, 0.07),
+        0 8px 22px rgba(3, 2, 12, 0.32);
+}
+.halloween-stat-card:hover {
+    transform: translateY(-1px);
+    border-color: rgba(var(--kpi-accent), 0.42);
+    box-shadow:
+        inset 0 1px rgba(255, 255, 255, 0.09),
+        0 8px 22px rgba(3, 2, 12, 0.32),
+        0 0 18px rgba(var(--kpi-accent), 0.14);
+}
+.halloween-stat-icon {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(var(--kpi-accent), 0.2);
+}
+
+@keyframes halloween-hover {
     from {
-        opacity: 0.55;
-        transform: scale(0.88);
+        translate: 0 0;
     }
     to {
-        opacity: 1;
-        transform: scale(1);
+        translate: 3px -3px;
     }
 }
-@keyframes ber-parol-glow {
+@keyframes halloween-drift {
     from {
-        transform: scale(0.94);
+        transform: translateX(0);
     }
     to {
-        transform: scale(1);
+        transform: translateX(8%);
+    }
+}
+@keyframes halloween-ember {
+    from {
+        opacity: 0.3;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0.75;
+        transform: translateY(-6px);
     }
 }
 
 @media (max-width: 640px) {
-    .ber-parol {
-        top: 18px;
-        right: -14px;
-        width: 58px;
-        height: 58px;
-        opacity: 0.65;
+    .halloween-moon {
+        top: -10px;
+        right: -12px;
+        width: 34px;
+        height: 34px;
+        opacity: 0.7;
     }
-    .ber-ornament--two,
-    .ber-pine--top-left {
+    .halloween-bat,
+    .halloween-pumpkin,
+    .halloween-ember--one,
+    .halloween-ember--three {
         display: none;
     }
-    .ber-string-lights {
-        left: 3%;
-        right: 3%;
-    }
-    .ber-lantern {
-        left: 2%;
-        opacity: 0.65;
-    }
-    .ber-seasonal-label {
+    .halloween-seasonal-label {
         max-width: 235px;
         line-height: 1.4;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .ber-months-theme *,
-    .ber-months-theme *::before,
-    .ber-months-theme *::after {
+    .halloween-theme *,
+    .halloween-theme *::before,
+    .halloween-theme *::after {
         animation: none !important;
     }
 }
