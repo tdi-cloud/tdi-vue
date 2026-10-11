@@ -12,8 +12,6 @@ interface Props {
 defineProps<Props>();
 
 function logout() {
-    localStorage.setItem('appearance', 'light');
-    document.documentElement.classList.remove('dark');
     router.post(route('logout'));
 }
 </script>
