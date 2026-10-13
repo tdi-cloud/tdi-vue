@@ -227,14 +227,25 @@ test('the NHRDC member and their representative share one rating and the latest 
     expect($rating->rated_by_role)->toBe(ForeignNomineeInterviewRating::RATED_BY_NHRDC);
 });
 
-test('a representative cannot generate or upload the signed assessment sheet', function () {
+test('a representative can generate the NHRDC member\'s assessment sheet PDF', function () {
     [$member] = representativeTestNhrdc('EMP-REP-N13', 'Reyes');
     $representative = representativeTestUser('EMP-REP-R9', 'Santos');
     $member->update(['representative_empcode' => $representative->empcode]);
     $nominee = representativeTestNominee();
 
-    $this->actingAs($representative)->get(route('nhrdc.programs.assessment-pdf', $nominee->foreign_program_id))->assertForbidden();
+    $this->actingAs($representative)->get(route('nhrdc.programs.assessment-pdf', $nominee->foreign_program_id))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf');
+});
+
+test('a representative cannot upload or manage the signed assessment sheet', function () {
+    [$member] = representativeTestNhrdc('EMP-REP-N17', 'Reyes');
+    $representative = representativeTestUser('EMP-REP-R12', 'Santos');
+    $member->update(['representative_empcode' => $representative->empcode]);
+    $nominee = representativeTestNominee();
+
     $this->actingAs($representative)->postJson(route('nhrdc.signed-copy.upload', $nominee->foreign_program_id))->assertForbidden();
+    $this->actingAs($representative)->deleteJson(route('nhrdc.signed-copy.destroy', $nominee->foreign_program_id))->assertForbidden();
 });
 
 test('a removed representative loses access to the NHRDC rating area', function () {

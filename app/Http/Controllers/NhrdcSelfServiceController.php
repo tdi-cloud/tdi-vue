@@ -23,8 +23,9 @@ use Inertia\Response;
  *
  * A representative assigned by the FSTP unit uses the same area to rate on
  * their NHRDC member's behalf (the rating is saved under the member). The
- * member stays the signatory, so the assessment sheet PDF and signed copy
- * actions are reserved for the member themselves.
+ * member stays the signatory: a representative may generate the member's
+ * assessment sheet PDF, but the signed copy actions are reserved for the
+ * member themselves.
  */
 class NhrdcSelfServiceController extends Controller
 {
@@ -159,9 +160,11 @@ class NhrdcSelfServiceController extends Controller
     }
 
     // GET /nhrdc/programs/{foreignProgram}/assessment-pdf
+    // A representative may also generate it — the sheet is still the NHRDC
+    // member's (their ratings and name as signatory), ready for them to sign.
     public function pdf(ForeignProgram $foreignProgram)
     {
-        $nhrdcMember = $this->signatoryMember();
+        $nhrdcMember = $this->actingMember();
 
         return app(ForeignNomineeAssessmentController::class)->nhrdcPdf($foreignProgram, $nhrdcMember);
     }
@@ -200,13 +203,13 @@ class NhrdcSelfServiceController extends Controller
     }
 
     /**
-     * The assessment sheet PDF and signed copy belong to the NHRDC member as
-     * signatory — a representative may rate, but never sign or upload.
+     * The signed copy belongs to the NHRDC member as signatory — a
+     * representative may rate and generate the sheet, but never upload it.
      */
     private function signatoryMember(): NhrdcMember
     {
         return NhrdcMember::where('empcode', Auth::user()->empcode)->first()
-            ?? abort(403, 'Only the NHRDC member can generate or upload the signed assessment sheet.');
+            ?? abort(403, 'Only the NHRDC member can upload or manage the signed assessment sheet.');
     }
 
     /**

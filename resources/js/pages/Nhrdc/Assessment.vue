@@ -452,9 +452,19 @@ const sponsorDisplay = computed(() => {
                             <h2 class="text-base font-semibold text-slate-900 dark:text-slate-50">Rating on behalf of {{ representing.name }}</h2>
                             <p class="mt-0.5 text-xs text-slate-600 dark:text-slate-300">
                                 {{ representing.role }}. Your ratings are saved under their name and marked as entered by you. They remain the
-                                signatory, so the assessment sheet is generated and signed by them.
+                                signatory — generate their assessment sheet below for them to sign.
                             </p>
                         </div>
+                    </div>
+                    <div class="mt-4 border-t border-amber-200/70 pt-4 dark:border-amber-500/20">
+                        <a
+                            :href="route('nhrdc.programs.assessment-pdf', program.id)"
+                            target="_blank"
+                            rel="noopener"
+                            class="inline-flex w-fit items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 dark:bg-indigo-500 dark:hover:bg-indigo-400"
+                        >
+                            <FileText class="h-3.5 w-3.5" /> Generate PDF
+                        </a>
                     </div>
                 </section>
 
