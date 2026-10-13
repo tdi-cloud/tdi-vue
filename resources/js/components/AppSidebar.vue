@@ -39,7 +39,8 @@ const isAdmin = computed(() => {
 
 const isSuperAdmin = computed(() => (page.props.auth as any)?.user?.access === 'superadmin');
 
-const isNhrdcMember = computed(() => (page.props.auth as any)?.isNhrdcMember === true);
+// NHRDC members and their FSTP-assigned representatives both get the Interview Ratings area.
+const canRateAsNhrdc = computed(() => (page.props.auth as any)?.canRateAsNhrdc === true);
 
 const canAccessForeignPrograms = computed(() => (page.props.auth as any)?.canAccessForeignPrograms === true);
 
@@ -176,7 +177,7 @@ const mainNavItems = computed<NavItem[]>(() => {
             items = items.filter((item) => item.url !== '/foreign-programs');
         }
     }
-    if (isNhrdcMember.value) {
+    if (canRateAsNhrdc.value) {
         items = [...items, ...nhrdcNavItems];
     }
     return items;
@@ -198,7 +199,7 @@ const mainNavItems = computed<NavItem[]>(() => {
         </SidebarHeader>
 
         <SidebarContent>
-            <NavMain v-if="isAdmin || isNhrdcMember" :items="mainNavItems" />
+            <NavMain v-if="isAdmin || canRateAsNhrdc" :items="mainNavItems" />
         </SidebarContent>
 
         <SidebarFooter>

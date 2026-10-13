@@ -3,17 +3,17 @@
     <div class="doc-page">
         <TheNavbar class="no-print" />
 
-        <section class="hero" aria-labelledby="doc-title">
-            <div class="hero__inner">
-                <Link :href="route('how-to-videos.index')" class="hero__back no-print"><ArrowLeft :size="15" /> All how-to videos</Link>
-                <span class="hero__eyebrow"><BookOpenText :size="14" /> DOCUMENTATION</span>
+        <section class="doc-hero" aria-labelledby="doc-title">
+            <div class="doc-hero__inner">
+                <Link :href="route('how-to-videos.index')" class="doc-hero__back no-print"><ArrowLeft :size="15" /> All how-to videos</Link>
+                <span class="doc-hero__eyebrow"><BookOpenText :size="14" /> DOCUMENTATION</span>
                 <h1 id="doc-title">{{ video.title }}</h1>
-                <p v-if="video.description" class="hero__lead">{{ video.description }}</p>
-                <p class="hero__meta">
+                <p v-if="video.description" class="doc-hero__lead">{{ video.description }}</p>
+                <p class="doc-hero__meta">
                     <ListChecks :size="15" /> {{ steps.length }} step{{ steps.length === 1 ? '' : 's' }}
                     <span v-if="updatedOn"> · Added {{ updatedOn }}</span>
                 </p>
-                <div class="hero__tools no-print">
+                <div class="doc-hero__tools no-print">
                     <button type="button" class="btn btn--primary" @click="playing = video"><PlayCircle :size="16" /> Watch the video</button>
                     <button type="button" class="btn btn--glass" @click="copyLink">
                         <Check v-if="copied" :size="16" /><Link2 v-else :size="16" /> {{ copied ? 'Link copied' : 'Copy link' }}
@@ -133,19 +133,19 @@ const printPage = () => window.print();
     margin: 0;
 }
 
-.hero {
+.doc-hero {
     padding: 8rem 0 2.75rem;
     background: radial-gradient(90% 120% at 85% 0%, rgba(76, 110, 245, 0.35), transparent 60%), #0f1c48;
     color: #fff;
 }
-.hero__inner {
+.doc-hero__inner {
     width: min(900px, calc(100% - 2rem));
     margin-inline: auto;
     display: grid;
     gap: 0.75rem;
     justify-items: start;
 }
-.hero__back {
+.doc-hero__back {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
@@ -154,10 +154,10 @@ const printPage = () => window.print();
     color: #c5cee8;
     text-decoration: none;
 }
-.hero__back:hover {
+.doc-hero__back:hover {
     color: #fff;
 }
-.hero__eyebrow {
+.doc-hero__eyebrow {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
@@ -166,26 +166,26 @@ const printPage = () => window.print();
     letter-spacing: 0.15em;
     color: #8ce99a;
 }
-.hero h1 {
+.doc-hero h1 {
     font-size: clamp(1.7rem, 3.4vw, 2.5rem);
     font-weight: 800;
     letter-spacing: -0.01em;
     line-height: 1.15;
     text-wrap: balance;
 }
-.hero__lead {
+.doc-hero__lead {
     max-width: 65ch;
     line-height: 1.6;
     color: #c5cee8;
 }
-.hero__meta {
+.doc-hero__meta {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
     font-size: 0.85rem;
     color: #9aa6c7;
 }
-.hero__tools {
+.doc-hero__tools {
     display: flex;
     flex-wrap: wrap;
     gap: 0.6rem;
@@ -276,16 +276,16 @@ const printPage = () => window.print();
         background: #fff;
         color: #000;
     }
-    .hero {
+    .doc-hero {
         padding: 0 0 1rem;
         background: none;
         color: #000;
     }
-    .hero__lead,
-    .hero__meta {
+    .doc-hero__lead,
+    .doc-hero__meta {
         color: #333;
     }
-    .hero__eyebrow {
+    .doc-hero__eyebrow {
         color: #1d3fc4;
     }
     .doc-card {

@@ -49,6 +49,10 @@ test('the homepage lists the latest videos for admins only', function () {
         ->get(route('home'))
         ->assertInertia(fn (Assert $page) => $page->has('howToVideos', 4));
 
+    $this->actingAs(tutorialUser('EMP-TV-05', 'superadmin'))
+        ->get(route('home'))
+        ->assertInertia(fn (Assert $page) => $page->has('howToVideos', 4));
+
     $this->actingAs(tutorialUser('EMP-TV-04', 'user'))
         ->get(route('home'))
         ->assertInertia(fn (Assert $page) => $page->has('howToVideos', 0));

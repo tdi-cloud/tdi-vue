@@ -6,6 +6,8 @@ use App\Models\Program;
 use App\Models\Submission;
 use App\Models\SubmissionActivityLog;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -19,17 +21,7 @@ class SubmissionController extends Controller
     {
         $query = Submission::with(['participant.employee', 'participant.justification', 'batch', 'requirement', 'program'])
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
-            ->when($request->filled('program_code'), fn ($q) => $q->where('program_code', $request->program_code))
-            ->when($request->filled('search'), function ($q) use ($request) {
-                $search = $request->string('search');
-                $q->where(function ($sub) use ($search) {
-                    $sub->whereHas('participant.employee', function ($e) use ($search) {
-                        $e->where('FIRSTNAME', 'like', "%{$search}%")
-                            ->orWhere('LASTNAME', 'like', "%{$search}%")
-                            ->orWhere('EMPCODE', 'like', "%{$search}%");
-                    })->orWhereHas('requirement', fn ($r) => $r->where('title', 'like', "%{$search}%"));
-                });
-            })
+            ->tap(fn ($q) => $this->applyListFilters($q, $request))
             ->orderByDesc('submitted_at');
 
         $submissions = $query->paginate(20)->withQueryString();
@@ -44,6 +36,9 @@ class SubmissionController extends Controller
                 'approved' => Submission::where('status', 'Approved')->count(),
                 'rejected' => Submission::where('status', 'Rejected')->count(),
             ],
+            // "Approve all" here spans every program, so it's superadmin only.
+            'canApproveAll' => $request->user()->isSuperAdmin(),
+            'approvablePendingCount' => $this->applyListFilters(Submission::where('status', 'Pending'), $request)->count(),
         ]);
     }
 
@@ -127,6 +122,124 @@ class SubmissionController extends Controller
         $this->logActivity($request, $submission, 'reviewed', ['remarks' => $validated['remarks'] ?? null]);
 
         return back()->with('success', 'Submission reviewed successfully.');
+    }
+
+    /**
+     * PATCH /submissions/{submission}/submitted-at (admins and above)
+     *
+     * Corrects the date a requirement was submitted — e.g. it was handed in
+     * on time but encoded late — which also clears a wrong "Late" indication.
+     */
+    public function updateSubmittedAt(Request $request, Submission $submission): RedirectResponse
+    {
+        $validated = $request->validate([
+            'submitted_at' => 'required|date|before_or_equal:now',
+        ], [
+            'submitted_at.before_or_equal' => 'The submission date cannot be in the future.',
+        ]);
+
+        $previous = $submission->submitted_at?->toDateTimeString();
+        $submission->update(['submitted_at' => Carbon::parse($validated['submitted_at'])]);
+
+        $this->logActivity($request, $submission, 'updated', [
+            'changed_fields' => ['submitted_at'],
+            'previous_submitted_at' => $previous,
+            'new_submitted_at' => $submission->submitted_at->toDateTimeString(),
+        ]);
+
+        return back()->with('success', 'Submission date updated.');
+    }
+
+    /**
+     * POST /programs/{program}/submissions/approve-all (admins)
+     *
+     * Approves every Pending submission of one program — optionally only one
+     * batch — so admins don't have to review them one by one. Rejected
+     * submissions are left untouched.
+     */
+    public function approveAllForProgram(Request $request, Program $program): RedirectResponse
+    {
+        $validated = $request->validate([
+            'batch_id' => 'nullable|integer|exists:batches,id',
+        ]);
+
+        $query = Submission::where('program_code', $program->program_code)
+            ->when($validated['batch_id'] ?? null, fn ($q, $batchId) => $q->where('batch_id', $batchId));
+
+        $count = $this->approvePending($request, $query);
+
+        return back()->with('success', $count ? "{$count} submission(s) approved." : 'There are no pending submissions to approve.');
+    }
+
+    /**
+     * POST /submissions/approve-all (superadmins only)
+     *
+     * Approves every Pending submission across all programs, narrowed by the
+     * same program/search filters the global Submissions page is showing.
+     */
+    public function approveAll(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'program_code' => 'nullable|string',
+            'search' => 'nullable|string',
+        ]);
+
+        $query = $this->applyListFilters(Submission::query(), $request);
+
+        $count = $this->approvePending($request, $query);
+
+        return back()->with('success', $count ? "{$count} submission(s) approved." : 'There are no pending submissions to approve.');
+    }
+
+    /**
+     * Program + search filters of the global Submissions page — shared by the
+     * list and "Approve all" so the bulk action matches what is shown.
+     *
+     * @param  Builder<Submission>  $query
+     * @return Builder<Submission>
+     */
+    private function applyListFilters(Builder $query, Request $request): Builder
+    {
+        return $query
+            ->when($request->filled('program_code'), fn ($q) => $q->where('program_code', $request->program_code))
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $search = $request->string('search');
+                $q->where(function ($sub) use ($search) {
+                    $sub->whereHas('participant.employee', function ($e) use ($search) {
+                        $e->where('FIRSTNAME', 'like', "%{$search}%")
+                            ->orWhere('LASTNAME', 'like', "%{$search}%")
+                            ->orWhere('EMPCODE', 'like', "%{$search}%");
+                    })->orWhereHas('requirement', fn ($r) => $r->where('title', 'like', "%{$search}%"));
+                });
+            });
+    }
+
+    /**
+     * Approves the Pending submissions matched by the query, logging each one
+     * the same way a single review is logged. Returns how many were approved.
+     *
+     * @param  Builder<Submission>  $query
+     */
+    private function approvePending(Request $request, Builder $query): int
+    {
+        $reviewer = $request->user()->name ?? 'System';
+        $count = 0;
+
+        $query->where('status', 'Pending')
+            ->with(['participant.employee', 'requirement', 'batch'])
+            ->chunkById(200, function ($submissions) use ($request, $reviewer, &$count) {
+                foreach ($submissions as $submission) {
+                    $submission->update([
+                        'status' => 'Approved',
+                        'reviewed_at' => Carbon::now(),
+                        'reviewed_by' => $reviewer,
+                    ]);
+                    $this->logActivity($request, $submission, 'reviewed', ['bulk_approved' => true]);
+                    $count++;
+                }
+            });
+
+        return $count;
     }
 
     /**

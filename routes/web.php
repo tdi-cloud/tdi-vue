@@ -154,6 +154,16 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
         ->name('submissions.store');
     Route::patch('submissions/{submission}/review', [SubmissionController::class, 'review'])
         ->name('submissions.review');
+    // Correct the submission date (e.g. to clear a wrong "Late" indication)
+    Route::patch('submissions/{submission}/submitted-at', [SubmissionController::class, 'updateSubmittedAt'])
+        ->name('submissions.submitted-at.update');
+    // Approve every Pending submission at once — per program for admins,
+    // across all programs (global Submissions page) for superadmins only.
+    Route::post('programs/{program}/submissions/approve-all', [SubmissionController::class, 'approveAllForProgram'])
+        ->name('programs.submissions.approve-all');
+    Route::post('submissions/approve-all', [SubmissionController::class, 'approveAll'])
+        ->middleware('superadmin')
+        ->name('submissions.approve-all');
     Route::delete('submissions/{submission}', [SubmissionController::class, 'destroy'])
         ->name('submissions.destroy');
 
@@ -265,6 +275,9 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
         Route::delete('/nhrdc-members/{nhrdcMember}', [NhrdcMemberController::class, 'destroy'])->name('nhrdc-members.destroy');
         Route::post('/nhrdc-members/{nhrdcMember}/move-up', [NhrdcMemberController::class, 'moveUp'])->name('nhrdc-members.move-up');
         Route::post('/nhrdc-members/{nhrdcMember}/move-down', [NhrdcMemberController::class, 'moveDown'])->name('nhrdc-members.move-down');
+        // Representative authorized to rate nominees on the NHRDC member's behalf
+        Route::put('/nhrdc-members/{nhrdcMember}/representative', [NhrdcMemberController::class, 'assignRepresentative'])->name('nhrdc-members.representative.assign');
+        Route::delete('/nhrdc-members/{nhrdcMember}/representative', [NhrdcMemberController::class, 'removeRepresentative'])->name('nhrdc-members.representative.remove');
 
         // FOREIGN PARTICIPANTS
         Route::post('/foreign-programs/{foreignProgram}/participants', [ForeignParticipantController::class, 'store'])->name('foreign-participants.store');

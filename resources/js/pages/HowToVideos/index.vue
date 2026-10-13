@@ -4,22 +4,22 @@
         <TheNavbar />
 
         <!-- Hero header -->
-        <section class="hero" aria-labelledby="howto-hero-title">
-            <div class="hero__pattern" aria-hidden="true"></div>
-            <div class="hero__rings" aria-hidden="true">
+        <section class="howto-hero" aria-labelledby="howto-hero-title">
+            <div class="howto-hero__pattern" aria-hidden="true"></div>
+            <div class="howto-hero__rings" aria-hidden="true">
                 <span></span>
                 <span></span>
-                <span class="hero__rings-core"><Play :size="34" fill="currentColor" /></span>
+                <span class="howto-hero__rings-core"><Play :size="46" fill="currentColor" /></span>
             </div>
 
-            <div class="hero__inner">
-                <span class="hero__eyebrow"><PlayCircle :size="14" /> LEARNING &amp; DEVELOPMENT PORTAL</span>
-                <h1 id="howto-hero-title">Learn. Explore. <span class="hero__accent">Do more.</span></h1>
-                <p class="hero__lead">
+            <div class="howto-hero__inner">
+                <span class="howto-hero__eyebrow"><PlayCircle :size="14" /> LEARNING &amp; DEVELOPMENT PORTAL</span>
+                <h1 id="howto-hero-title">Learn. Explore. <span class="howto-hero__accent">Do more.</span></h1>
+                <p class="howto-hero__lead">
                     Your step-by-step guide to navigating the Learning &amp; Development Portal, completing tasks, and making the most of its
                     features.
                 </p>
-                <div class="hero__tools">
+                <div class="howto-hero__tools">
                     <div class="search">
                         <Search :size="18" class="search__icon" aria-hidden="true" />
                         <input
@@ -467,18 +467,21 @@ const remove = async (video: HowToVideo) => {
 }
 
 /* ===================== HERO =====================
-   Always the branded navy, in both themes. */
-.hero {
+   Always the branded navy, in both themes. Kept compact (banner-sized) so the
+   video list is visible without scrolling. Classes are prefixed "howto-hero"
+   because the homepage's unscoped ".hero" style (height: 100vh) would
+   otherwise leak in after visiting the homepage. */
+.howto-hero {
     position: relative;
     isolation: isolate;
     overflow: hidden;
-    padding: clamp(7rem, 12vw, 8.5rem) 0 clamp(2.75rem, 5vw, 3.75rem);
+    padding: 5.75rem 0 2rem;
     background:
         radial-gradient(70% 110% at 88% 0%, rgba(76, 110, 245, 0.42), transparent 62%),
         radial-gradient(45% 70% at 0% 100%, rgba(21, 170, 191, 0.14), transparent 70%), linear-gradient(160deg, #0c1739 0%, #0f1c48 55%, #13275f 100%);
     color: #fff;
 }
-.hero__pattern {
+.howto-hero__pattern {
     position: absolute;
     inset: 0;
     z-index: -1;
@@ -489,32 +492,32 @@ const remove = async (video: HowToVideo) => {
     mask-image: radial-gradient(80% 90% at 75% 30%, #000 20%, transparent 75%);
 }
 /* Abstract "play" mark: concentric rings, purely decorative. */
-.hero__rings {
+.howto-hero__rings {
     position: absolute;
     z-index: -1;
     right: max(2rem, calc((100% - 1100px) / 2));
     top: 50%;
     width: 300px;
     aspect-ratio: 1;
-    transform: translateY(-35%);
+    transform: translateY(-40%);
     display: grid;
     place-items: center;
 }
-.hero__rings > span {
+.howto-hero__rings > span {
     position: absolute;
     border-radius: 50%;
-    border: 1px solid rgba(145, 167, 255, 0.16);
+    border: 1.5px solid rgba(145, 167, 255, 0.28);
 }
-.hero__rings > span:nth-child(1) {
+.howto-hero__rings > span:nth-child(1) {
     inset: 0;
 }
-.hero__rings > span:nth-child(2) {
-    inset: 18%;
-    border-color: rgba(145, 167, 255, 0.22);
+.howto-hero__rings > span:nth-child(2) {
+    inset: 17%;
+    border-color: rgba(145, 167, 255, 0.36);
     background: radial-gradient(circle, rgba(76, 110, 245, 0.12), transparent 70%);
 }
-.hero__rings > .hero__rings-core {
-    inset: 36%;
+.howto-hero__rings > .howto-hero__rings-core {
+    inset: 33%;
     display: grid;
     place-items: center;
     padding-left: 5px;
@@ -523,15 +526,15 @@ const remove = async (video: HowToVideo) => {
     color: rgba(255, 255, 255, 0.55);
 }
 @media (max-width: 1040px) {
-    .hero__rings {
+    .howto-hero__rings {
         display: none;
     }
 }
-.hero__inner {
+.howto-hero__inner {
     width: min(1100px, calc(100% - 2rem));
     margin-inline: auto;
 }
-.hero__eyebrow {
+.howto-hero__eyebrow {
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
@@ -543,33 +546,32 @@ const remove = async (video: HowToVideo) => {
     border-radius: 999px;
     background: rgba(140, 233, 154, 0.08);
     border: 1px solid rgba(140, 233, 154, 0.22);
-    margin-bottom: 1.1rem;
+    margin-bottom: 0.7rem;
 }
-.hero h1 {
-    font-size: clamp(2rem, 5vw, 3.2rem);
+.howto-hero h1 {
+    font-size: clamp(1.6rem, 3.2vw, 2.25rem);
     font-weight: 800;
     letter-spacing: -0.025em;
-    line-height: 1.08;
-    margin-bottom: 0.9rem;
-    max-width: 18ch;
+    line-height: 1.1;
+    margin-bottom: 0.5rem;
 }
-.hero__accent {
+.howto-hero__accent {
     background: linear-gradient(90deg, #91a7ff, #66d9e8);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
 }
-.hero__lead {
+.howto-hero__lead {
     color: #c5cee8;
-    max-width: 56ch;
-    font-size: clamp(0.95rem, 1.6vw, 1.05rem);
-    line-height: 1.65;
+    max-width: 62ch;
+    font-size: 0.93rem;
+    line-height: 1.55;
 }
-.hero__tools {
+.howto-hero__tools {
     display: flex;
     flex-wrap: wrap;
     gap: 0.75rem;
-    margin-top: 1.9rem;
+    margin-top: 1.25rem;
     max-width: 640px;
 }
 .search {
@@ -579,8 +581,8 @@ const remove = async (video: HowToVideo) => {
     align-items: center;
     gap: 0.6rem;
     padding: 0 0.5rem 0 1rem;
-    height: 50px;
-    border-radius: 14px;
+    height: 44px;
+    border-radius: 12px;
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.18);
     color: #aab6d8;
@@ -605,7 +607,7 @@ const remove = async (video: HowToVideo) => {
     flex-shrink: 0;
 }
 /* Extra selector weight so the app's global input style (resources/css/app.css) doesn't override these. */
-.howto-page .hero .search input[type='search'] {
+.howto-page .howto-hero .search input[type='search'] {
     flex: 1;
     min-width: 0;
     height: 100%;
@@ -617,11 +619,11 @@ const remove = async (video: HowToVideo) => {
     font: inherit;
     font-size: 0.97rem;
 }
-.howto-page .hero .search input[type='search']::placeholder {
+.howto-page .howto-hero .search input[type='search']::placeholder {
     color: #9aa6c7;
 }
 /* A custom clear button replaces the browser's own. */
-.howto-page .hero .search input[type='search']::-webkit-search-cancel-button {
+.howto-page .howto-hero .search input[type='search']::-webkit-search-cancel-button {
     -webkit-appearance: none;
     appearance: none;
 }
@@ -686,9 +688,9 @@ const remove = async (video: HowToVideo) => {
     background: var(--hv-accent-hover);
 }
 .btn--hero {
-    height: 50px;
-    padding: 0 1.35rem;
-    border-radius: 14px;
+    height: 44px;
+    padding: 0 1.25rem;
+    border-radius: 12px;
     background: #fff;
     color: #0f1c48;
     box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.5);
@@ -1159,7 +1161,7 @@ const remove = async (video: HowToVideo) => {
 
 /* ===================== SMALL SCREENS ===================== */
 @media (max-width: 480px) {
-    .hero__tools .btn--hero {
+    .howto-hero__tools .btn--hero {
         width: 100%;
     }
 }

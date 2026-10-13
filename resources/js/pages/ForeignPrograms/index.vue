@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ForeignProgramsDashboardModal from '@/components/ForeignProgramsDashboardModal.vue';
+import NhrdcMemberModal from '@/components/NhrdcMemberModal.vue';
 import NominationHistoryModal from '@/components/NominationHistoryModal.vue';
 import OrganizingSponsorModal from '@/components/OrganizingSponsorModal.vue';
 import SponsorConfigModal from '@/components/SponsorConfigModal.vue';
@@ -61,6 +62,7 @@ import {
     Trash2,
     UserRound,
     Users,
+    UsersRound,
     X,
 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
@@ -70,6 +72,7 @@ const breadcrumbs: BreadcrumbItem[] = [{ title: 'Foreign Programs', href: route(
 const { confirmDialog } = useConfirm();
 const showDashboard = ref(false);
 const showNominationHistory = ref(false);
+const showNhrdcRoster = ref(false);
 const showFormSettingsDropdown = ref(false);
 
 interface ForeignProgram {
@@ -192,9 +195,16 @@ const showFilters = ref(false);
 const showAdvancedFilters = ref(false);
 
 const hasActiveFilters = computed(() =>
-    [search.value !== '', filterStatus.value !== 'all', filterYear.value !== 'all', filterSemester.value !== 'all', filterOrg.value !== 'all', filterCategory.value !== 'all', filterEmbassy.value !== '', filterInterview.value !== ''].some(
-        Boolean,
-    ),
+    [
+        search.value !== '',
+        filterStatus.value !== 'all',
+        filterYear.value !== 'all',
+        filterSemester.value !== 'all',
+        filterOrg.value !== 'all',
+        filterCategory.value !== 'all',
+        filterEmbassy.value !== '',
+        filterInterview.value !== '',
+    ].some(Boolean),
 );
 
 const activeFilterCount = computed(
@@ -360,9 +370,7 @@ const confirmDelete = async (id: number) => {
 // --- Multiple selection (bulk delete) ---
 const selectedIds = ref<Set<number>>(new Set());
 
-const allVisibleSelected = computed(
-    () => props.programs.data.length > 0 && props.programs.data.every((p) => selectedIds.value.has(p.id)),
-);
+const allVisibleSelected = computed(() => props.programs.data.length > 0 && props.programs.data.every((p) => selectedIds.value.has(p.id)));
 
 const toggleSelectAll = () => {
     if (allVisibleSelected.value) {
@@ -449,6 +457,7 @@ function onConfigSaved() {
     <Head title="Foreign Programs" />
     <ForeignProgramsDashboardModal v-if="showDashboard" @close="showDashboard = false" />
     <NominationHistoryModal v-if="showNominationHistory" @close="showNominationHistory = false" />
+    <NhrdcMemberModal v-if="showNhrdcRoster" @close="showNhrdcRoster = false" />
     <OrganizingSponsorModal v-if="showSponsorModal" @close="showSponsorModal = false" @select="onSponsorSelected" @updated="fetchSponsors" />
     <SponsorConfigModal :open="configModalOpen" :organizing-sponsor="selectedSponsor" @close="configModalOpen = false" @saved="onConfigSaved" />
 
@@ -456,65 +465,113 @@ function onConfigSaved() {
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-4 p-4">
-            <!-- Header -->
-            <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 shadow-md">
-                        <Earth class="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                        <h1 class="text-xl font-bold leading-none">Foreign Programs</h1>
-                        <p class="mt-1 text-sm text-muted-foreground">
-                            Manage and monitor foreign training opportunities, nominations, and assessment progress.
-                        </p>
-                    </div>
+            <!-- Header banner -->
+            <!-- Not overflow-hidden itself: the decoration layer clips instead, so the
+                 Requirements Form Settings dropdown can still extend below the banner. -->
+            <section class="relative -mx-4 -mt-4 bg-gradient-to-br from-[#0b1a45] via-[#122a6b] to-[#1d3fc4] text-white shadow-xl">
+                <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+                    <!-- Fine grid, fading toward the left -->
+                    <div
+                        class="absolute inset-0 opacity-[0.08]"
+                        style="
+                            background-image: linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px);
+                            background-size: 28px 28px;
+                            mask-image: linear-gradient(to left, black 10%, transparent 70%);
+                        "
+                    />
+                    <!-- Soft glows -->
+                    <div class="absolute -right-24 -top-28 h-80 w-80 rounded-full bg-sky-400/25 blur-3xl" />
+                    <div class="absolute -bottom-32 left-1/3 h-72 w-72 rounded-full bg-indigo-500/20 blur-3xl" />
+                    <!-- Orbit rings + globe watermark -->
+                    <div class="absolute -right-16 top-1/2 h-[22rem] w-[22rem] -translate-y-1/2 rounded-full border border-white/10" />
+                    <div class="absolute -right-4 top-1/2 h-64 w-64 -translate-y-1/2 rounded-full border border-dashed border-white/10" />
+                    <Earth class="absolute -right-6 top-1/2 h-56 w-56 -translate-y-1/2 text-white/[0.06]" />
+                    <!-- Gold accent line -->
+                    <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-300 via-amber-400 to-transparent" />
                 </div>
 
-                <div class="flex flex-wrap gap-2">
-                    <Button variant="outline" class="border-indigo-200 text-indigo-700 shadow-sm hover:bg-indigo-50" @click="showDashboard = true">
-                        <BarChart3 class="mr-1 h-4 w-4" /> Dashboard
-                    </Button>
-                    <Button
-                        variant="outline"
-                        class="border-violet-200 text-violet-700 shadow-sm hover:bg-violet-50"
-                        @click="showNominationHistory = true"
-                    >
-                        <History class="mr-1 h-4 w-4" /> Nomination History
-                    </Button>
-                    <div class="relative">
-                        <Button
-                            variant="outline"
-                            class="border-blue-200 text-blue-700 shadow-sm hover:bg-blue-50"
-                            @click="showFormSettingsDropdown = !showFormSettingsDropdown"
-                        >
-                            <Settings class="mr-1 h-4 w-4" /> Requirements Form Settings
-                        </Button>
-
-                        <!-- Dropdown ng sponsors -->
+                <div class="relative flex flex-col gap-6 p-6 md:p-7 xl:flex-row xl:items-end xl:justify-between">
+                    <div class="flex items-start gap-4">
                         <div
-                            v-if="showFormSettingsDropdown"
-                            class="absolute right-0 top-full z-50 mt-1 min-w-48 rounded-xl border bg-background py-1 shadow-lg"
+                            class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 to-amber-500 text-[#0b1a45] shadow-lg shadow-amber-500/30 ring-4 ring-white/10"
                         >
-                            <p class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Select Organizing Sponsor</p>
-                            <button
-                                v-for="sponsor in sponsors"
-                                :key="sponsor"
-                                class="w-full px-3 py-2 text-left text-sm transition-colors hover:bg-muted"
-                                @click="
-                                    openConfigModal(sponsor);
-                                    showFormSettingsDropdown = false;
-                                "
+                            <Earth class="h-7 w-7" />
+                        </div>
+                        <div class="min-w-0">
+                            <span
+                                class="inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-amber-300/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-amber-200"
                             >
-                                {{ sponsor }}
-                            </button>
-                            <p v-if="sponsors.length === 0" class="px-3 py-2 text-xs text-muted-foreground">No sponsors found.</p>
+                                <Globe class="h-3 w-3" /> FSTP Unit Workspace
+                            </span>
+                            <h1 class="mt-2 text-2xl font-extrabold tracking-tight md:text-3xl">Foreign Programs</h1>
+                            <p class="mt-1.5 max-w-xl text-sm leading-relaxed text-blue-100/80">
+                                Manage and monitor foreign training opportunities, nominations, and assessment progress.
+                            </p>
                         </div>
                     </div>
-                    <Button class="bg-blue-600 shadow-sm hover:bg-blue-700 dark:text-white" @click="showModal = true">
-                        <Plus class="mr-1 h-4 w-4" /> Add Program
-                    </Button>
+
+                    <div class="flex flex-wrap gap-2">
+                        <Button
+                            variant="outline"
+                            class="border-white/20 bg-white/10 text-white shadow-sm backdrop-blur hover:bg-white/20 hover:text-white"
+                            @click="showDashboard = true"
+                        >
+                            <BarChart3 class="mr-1 h-4 w-4" /> Dashboard
+                        </Button>
+                        <Button
+                            variant="outline"
+                            class="border-white/20 bg-white/10 text-white shadow-sm backdrop-blur hover:bg-white/20 hover:text-white"
+                            @click="showNominationHistory = true"
+                        >
+                            <History class="mr-1 h-4 w-4" /> Nomination History
+                        </Button>
+                        <Button
+                            variant="outline"
+                            class="border-white/20 bg-white/10 text-white shadow-sm backdrop-blur hover:bg-white/20 hover:text-white"
+                            @click="showNhrdcRoster = true"
+                        >
+                            <UsersRound class="mr-1 h-4 w-4" /> Manage NHRDC Roster
+                        </Button>
+                        <div class="relative">
+                            <Button
+                                variant="outline"
+                                class="border-white/20 bg-white/10 text-white shadow-sm backdrop-blur hover:bg-white/20 hover:text-white"
+                                @click="showFormSettingsDropdown = !showFormSettingsDropdown"
+                            >
+                                <Settings class="mr-1 h-4 w-4" /> Requirements Form Settings
+                            </Button>
+
+                            <!-- Dropdown ng sponsors -->
+                            <div
+                                v-if="showFormSettingsDropdown"
+                                class="absolute right-0 top-full z-50 mt-1 min-w-48 rounded-xl border bg-background py-1 shadow-lg"
+                            >
+                                <p class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                                    Select Organizing Sponsor
+                                </p>
+                                <button
+                                    v-for="sponsor in sponsors"
+                                    :key="sponsor"
+                                    class="w-full px-3 py-2 text-left text-sm transition-colors hover:bg-muted"
+                                    @click="
+                                        openConfigModal(sponsor);
+                                        showFormSettingsDropdown = false;
+                                    "
+                                >
+                                    {{ sponsor }}
+                                </button>
+                                <p v-if="sponsors.length === 0" class="px-3 py-2 text-xs text-muted-foreground">No sponsors found.</p>
+                            </div>
+                        </div>
+                        <Button
+                            class="bg-gradient-to-r from-amber-300 to-amber-400 font-bold text-[#0b1a45] shadow-lg shadow-amber-500/25 hover:from-amber-200 hover:to-amber-300"
+                            @click="showModal = true"
+                        >
+                            <Plus class="mr-1 h-4 w-4" /> Add Program
+                        </Button>
+                    </div>
                 </div>
-            </div>
+            </section>
 
             <!-- Stat cards -->
             <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -724,13 +781,7 @@ function onConfigSaved() {
                     <p class="text-xs font-semibold text-red-700 dark:text-red-300">{{ selectedIds.size }} program(s) selected</p>
                     <div class="flex items-center gap-2">
                         <Button size="sm" variant="ghost" class="h-7 text-xs" @click="clearSelection"> Clear </Button>
-                        <Button
-                            size="sm"
-                            variant="destructive"
-                            class="h-7 text-xs"
-                            :disabled="bulkDeleting"
-                            @click="confirmBulkDelete"
-                        >
+                        <Button size="sm" variant="destructive" class="h-7 text-xs" :disabled="bulkDeleting" @click="confirmBulkDelete">
                             <Trash2 class="mr-1 h-3.5 w-3.5" /> Delete Selected
                         </Button>
                     </div>
@@ -826,13 +877,19 @@ function onConfigSaved() {
                                     {{ modalityMeta(program.modality).label }}
                                 </Badge>
                             </td>
-                            <td class="whitespace-nowrap px-4 py-3 align-middle text-xs" :class="DEADLINE_URGENCY_CLASS[deadlineUrgency(program.interview_date) ?? 'normal']">
+                            <td
+                                class="whitespace-nowrap px-4 py-3 align-middle text-xs"
+                                :class="DEADLINE_URGENCY_CLASS[deadlineUrgency(program.interview_date) ?? 'normal']"
+                            >
                                 <div class="flex items-center gap-1.5">
                                     <Users class="h-3.5 w-3.5 shrink-0" />
                                     <span>{{ formatProgramDate(program.interview_date) }}</span>
                                 </div>
                             </td>
-                            <td class="whitespace-nowrap px-4 py-3 align-middle text-xs" :class="DEADLINE_URGENCY_CLASS[deadlineUrgency(program.embassy_deadline) ?? 'normal']">
+                            <td
+                                class="whitespace-nowrap px-4 py-3 align-middle text-xs"
+                                :class="DEADLINE_URGENCY_CLASS[deadlineUrgency(program.embassy_deadline) ?? 'normal']"
+                            >
                                 <div class="flex items-center gap-1.5">
                                     <MapPin class="h-3.5 w-3.5 shrink-0" />
                                     <span>{{ formatProgramDate(program.embassy_deadline) }}</span>
@@ -1335,14 +1392,21 @@ function onConfigSaved() {
                                         <Label class="flex items-center gap-1.5 text-xs font-semibold">
                                             <Banknote class="h-3.5 w-3.5 text-muted-foreground" /> Program Cost
                                         </Label>
-                                        <Input v-model="form.program_cost" type="text" class="bg-white dark:bg-background" placeholder="e.g. 50,000" />
+                                        <Input
+                                            v-model="form.program_cost"
+                                            type="text"
+                                            class="bg-white dark:bg-background"
+                                            placeholder="e.g. 50,000"
+                                        />
                                     </div>
                                     <div class="flex flex-col gap-1">
                                         <Label class="flex items-center gap-1.5 text-xs font-semibold">
                                             <FileText class="h-3.5 w-3.5 text-muted-foreground" /> Fund Source
                                         </Label>
                                         <Select v-model="form.fund_source">
-                                            <SelectTrigger class="w-full bg-white dark:bg-background"><SelectValue placeholder="— Select —" /></SelectTrigger>
+                                            <SelectTrigger class="w-full bg-white dark:bg-background"
+                                                ><SelectValue placeholder="— Select —"
+                                            /></SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="SDP">SDP</SelectItem>
                                                 <SelectItem value="Other Office">Other Office</SelectItem>

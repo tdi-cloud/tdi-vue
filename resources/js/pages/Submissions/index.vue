@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import EditSubmittedAtDialog from '@/components/EditSubmittedAtDialog.vue';
 import FilePreviewModal from '@/components/FilePreviewModal.vue';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -11,6 +12,7 @@ import { Head, router } from '@inertiajs/vue3';
 import {
     AlarmClockMinus,
     CalendarClock,
+    CheckCheck,
     CheckCircle2,
     Clock3,
     Eye,
@@ -101,6 +103,10 @@ const props = defineProps<{
         program_code?: string;
         search?: string;
     };
+    // Superadmin only — "Approve all" here spans every program.
+    canApproveAll: boolean;
+    // Pending submissions matching the current program/search filters.
+    approvablePendingCount: number;
 }>();
 
 const STATUSES = ['Pending', 'Approved', 'Rejected'];
@@ -177,6 +183,17 @@ const openFilePreview = (s: Submission) => {
     showFilePreview.value = true;
 };
 
+/* ===================== EDIT SUBMISSION DATE ===================== */
+
+// Admins can correct the submission date (e.g. to clear a wrong "Late" indication).
+const showEditDate = ref(false);
+const editDateTarget = ref<Submission | null>(null);
+
+const openEditDate = (s: Submission) => {
+    editDateTarget.value = s;
+    showEditDate.value = true;
+};
+
 /* ===================== REVIEW DIALOG ===================== */
 
 const showReview = ref(false);
@@ -215,6 +232,37 @@ const submitReview = () => {
 /* ===================== REMOVE SUBMISSION ===================== */
 
 const { confirmDialog } = useConfirm();
+
+/* ===================== APPROVE ALL (superadmin) ===================== */
+
+const approvingAll = ref(false);
+
+const approveAll = async () => {
+    const count = props.approvablePendingCount;
+    if (!count) return;
+    const programTitle = props.programs.find((p) => p.program_code === filterProgram.value)?.title;
+    const scope = programTitle ? `of "${programTitle}"` : 'across all programs';
+    const confirmed = await confirmDialog(
+        `Approve all ${count} pending submission(s) ${scope}${search.value ? ' that match your search' : ''}? Rejected submissions will not be changed.`,
+        { title: 'Approve all pending submissions?', confirmText: 'Approve all' },
+    );
+    if (!confirmed) return;
+
+    approvingAll.value = true;
+    router.post(
+        route('submissions.approve-all'),
+        {
+            program_code: filterProgram.value === 'all' ? null : filterProgram.value,
+            search: search.value || null,
+        },
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                approvingAll.value = false;
+            },
+        },
+    );
+};
 const removingId = ref<number | null>(null);
 
 // For wrongly uploaded submissions — deletes the record and its uploaded file.
@@ -347,6 +395,24 @@ onMounted(() => {
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2">
+                    <!-- Approve all pending (superadmin only; follows the program + search filters) -->
+                    <Button
+                        v-if="canApproveAll"
+                        class="h-9 bg-emerald-600 text-xs text-white hover:bg-emerald-700"
+                        :disabled="!approvablePendingCount || approvingAll"
+                        @click="approveAll"
+                    >
+                        <LoaderCircle v-if="approvingAll" class="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                        <CheckCheck v-else class="mr-1.5 h-3.5 w-3.5" />
+                        Approve all
+                        <span
+                            v-if="approvablePendingCount"
+                            class="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-white/25 px-1 text-[10px] font-bold leading-none"
+                        >
+                            {{ approvablePendingCount > 999 ? '999+' : approvablePendingCount }}
+                        </span>
+                    </Button>
+
                     <!-- Search -->
                     <div class="relative">
                         <Search class="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -450,6 +516,15 @@ onMounted(() => {
                         <p class="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
                             <CalendarClock class="h-3.5 w-3.5" />
                             Submitted: <span class="font-semibold text-foreground">{{ formatDateTime(s.submitted_at) }}</span>
+                            <button
+                                type="button"
+                                class="rounded p-0.5 text-muted-foreground transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/30"
+                                title="Edit submission date"
+                                aria-label="Edit submission date"
+                                @click="openEditDate(s)"
+                            >
+                                <Pencil class="h-3 w-3" />
+                            </button>
                             <template v-if="s.requirement?.due_date">
                                 <span class="mx-1">·</span>
                                 Due: {{ formatDate(s.requirement.due_date) }}
@@ -635,6 +710,12 @@ onMounted(() => {
                 </div>
             </DialogContent>
         </Dialog>
+
+        <EditSubmittedAtDialog
+            v-model:open="showEditDate"
+            :submission="editDateTarget"
+            :participant-name="editDateTarget ? participantName(editDateTarget) : undefined"
+        />
 
         <!-- File preview modal -->
         <FilePreviewModal

@@ -46,6 +46,8 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
                 'isNhrdcMember' => fn () => $request->user()?->isNhrdcMember() ?? false,
+                // Members and their FSTP-assigned representatives can both open the rating area.
+                'canRateAsNhrdc' => fn () => $request->user()?->canRateAsNhrdc() ?? false,
                 'canAccessForeignPrograms' => fn () => $request->user()?->canAccessForeignPrograms() ?? false,
             ],
             'unreadNotificationsCount' => fn () => $request->user()?->unreadNotifications()->count() ?? 0,

@@ -1,5 +1,5 @@
 <template>
-    <section v-if="videos.length" id="how-to-videos" class="howto">
+    <section v-if="isAdmin && videos.length" id="how-to-videos" class="howto">
         <div class="howto__inner">
             <div class="howto__header">
                 <div>
@@ -9,30 +9,23 @@
                 </div>
                 <Link :href="route('how-to-videos.index')" class="howto__all">View all videos <ArrowRight :size="16" /></Link>
             </div>
-
-            <div class="howto__grid">
-                <HowToVideoCard v-for="video in videos" :key="video.id" :video="video" @play="playing = video">
-                    <template v-if="video.steps_count" #actions>
-                        <Link :href="video.documentation_url" class="howto__doc"><BookOpenText :size="14" /> Read documentation</Link>
-                    </template>
-                </HowToVideoCard>
-            </div>
         </div>
-
-        <HowToVideoPlayer :video="playing" @close="playing = null" />
     </section>
 </template>
 
 <script setup lang="ts">
-import HowToVideoCard from '@/components/HowToVideoCard.vue';
-import HowToVideoPlayer, { type HowToVideo } from '@/components/HowToVideoPlayer.vue';
-import { Link } from '@inertiajs/vue3';
-import { ArrowRight, BookOpenText } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { type HowToVideo } from '@/components/HowToVideoPlayer.vue';
+import { Link, usePage } from '@inertiajs/vue3';
+import { ArrowRight } from 'lucide-vue-next';
+import { computed } from 'vue';
 
+// Only used to decide whether to show the section — the video list itself lives on the How-to Videos page.
 defineProps<{ videos: HowToVideo[] }>();
 
-const playing = ref<HowToVideo | null>(null);
+// Admins and above only. The server already sends no videos to anyone else
+// (TutorialVideoController::homepageData); this keeps the section hidden regardless.
+const page = usePage();
+const isAdmin = computed(() => ['admin', 'superadmin'].includes((page.props.auth as any)?.user?.access));
 </script>
 
 <style scoped>
@@ -50,7 +43,6 @@ const playing = ref<HowToVideo | null>(null);
     justify-content: space-between;
     gap: 1.5rem;
     flex-wrap: wrap;
-    margin-bottom: 2.5rem;
 }
 .eyebrow {
     font-size: 0.72rem;
@@ -76,24 +68,6 @@ const playing = ref<HowToVideo | null>(null);
     color: #6b7280;
     line-height: 1.65;
 }
-.howto__doc {
-    flex: 1 1 100%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.35rem;
-    padding: 0.45rem 0.7rem;
-    border-radius: 8px;
-    background: #eef2ff;
-    color: #1d3fc4;
-    font-size: 0.8rem;
-    font-weight: 600;
-    text-decoration: none;
-}
-.howto__doc:hover {
-    background: #1d3fc4;
-    color: #fff;
-}
 .howto__all {
     display: inline-flex;
     align-items: center;
@@ -110,22 +84,9 @@ const playing = ref<HowToVideo | null>(null);
 .howto__all:hover {
     background: #eef2ff;
 }
-.howto__grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 1.25rem;
-}
-@media (max-width: 1000px) {
-    .howto__grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
 @media (max-width: 560px) {
     .howto {
         padding: 3.5rem 1rem;
-    }
-    .howto__grid {
-        grid-template-columns: minmax(0, 1fr);
     }
 }
 </style>

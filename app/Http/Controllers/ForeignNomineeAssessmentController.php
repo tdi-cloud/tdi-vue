@@ -106,6 +106,8 @@ class ForeignNomineeAssessmentController extends Controller
         $data['nhrdc_name'] = $nhrdc->name;
         $data['nhrdc_position'] = NhrdcMember::roleFor($data['nhrdc_empcode']);
         $data['rated_by'] = Auth::id();
+        $data['rated_by_name'] = Auth::user()->name;
+        $data['rated_by_role'] = ForeignNomineeInterviewRating::RATED_BY_FSTP;
         $data['rated_at'] = now();
 
         $rating = ForeignNomineeInterviewRating::updateOrCreate(

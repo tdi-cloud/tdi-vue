@@ -3,7 +3,7 @@ import { Link } from '@inertiajs/vue3';
 import { ArrowRight, ClipboardCheck, UserCheck } from 'lucide-vue-next';
 
 defineProps({
-    data: { type: Object, required: true }, // { pending, rated, total }
+    data: { type: Object, required: true }, // { pending, rated, total, representing }
 });
 </script>
 
@@ -26,7 +26,11 @@ defineProps({
                     </h2>
                     <h2 v-else class="nhrdc-banner__title">You have rated all {{ data.rated }} nominee<span v-if="data.rated > 1">s</span></h2>
 
-                    <p v-if="data.pending" class="nhrdc-banner__lead">
+                    <p v-if="data.pending && data.representing" class="nhrdc-banner__lead">
+                        As the authorized representative of {{ data.representing }}, please rate the interview of the nominees on their behalf.
+                        {{ data.rated }} of {{ data.total }} already rated.
+                    </p>
+                    <p v-else-if="data.pending" class="nhrdc-banner__lead">
                         As an NHRDC committee member, please rate the interview of the nominees assigned to you.
                         {{ data.rated }} of {{ data.total }} already rated.
                     </p>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import NhrdcSelfSignedCopyUpload from '@/components/NhrdcSelfSignedCopyUpload.vue';
+import RatingMatrixModal from '@/components/RatingMatrixModal.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
 import axios from 'axios';
@@ -13,10 +14,12 @@ import {
     ClipboardCheck,
     FileCheck2,
     FileText,
+    Grid3x3,
     Loader2,
     Lock,
     MessageSquareText,
     Save,
+    UserCheck,
     Users,
 } from 'lucide-vue-next';
 import { computed, reactive, ref } from 'vue';
@@ -40,6 +43,8 @@ interface MyRating {
     emotional_stability: number;
     appearance: number;
     total: number;
+    rated_by_name: string | null;
+    rated_by_role: string | null;
 }
 
 interface Nominee {
@@ -68,9 +73,12 @@ const props = defineProps<{
     program: ForeignProgram;
     nominees: Nominee[];
     hasSignedCopy: boolean;
+    // Set when the user is an FSTP-assigned representative rating on an NHRDC member's behalf.
+    representing: { name: string | null; role: string } | null;
 }>();
 
 const hasSignedCopy = ref(props.hasSignedCopy);
+const showRatingMatrix = ref(false);
 
 // ── Criteria definitions ─────────────────────────────────────────────────────
 
@@ -426,8 +434,33 @@ const sponsorDisplay = computed(() => {
                     </div>
                 </section>
 
+                <!-- Representative: rating on behalf of the NHRDC member (no signing) -->
+                <section
+                    v-if="representing"
+                    class="relative overflow-hidden rounded-2xl border border-amber-200 bg-amber-50/70 p-5 shadow-sm dark:border-amber-500/30 dark:bg-amber-500/10 lg:col-span-3"
+                >
+                    <div class="flex items-start gap-3">
+                        <span
+                            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-200 bg-white text-amber-600 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+                        >
+                            <UserCheck class="h-5 w-5" />
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-700 dark:text-amber-300">
+                                Authorized Representative
+                            </p>
+                            <h2 class="text-base font-semibold text-slate-900 dark:text-slate-50">Rating on behalf of {{ representing.name }}</h2>
+                            <p class="mt-0.5 text-xs text-slate-600 dark:text-slate-300">
+                                {{ representing.role }}. Your ratings are saved under their name and marked as entered by you. They remain the
+                                signatory, so the assessment sheet is generated and signed by them.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- My assessment sheet: PDF + signed copy -->
                 <section
+                    v-else
                     class="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:col-span-3"
                 >
                     <div
@@ -498,7 +531,17 @@ const sponsorDisplay = computed(() => {
                         <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Nominees</p>
                         <h2 class="text-base font-semibold text-slate-900 dark:text-slate-50">Interview Assessment</h2>
                     </div>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">Select a nominee to rate</p>
+                    <div class="flex flex-wrap items-center justify-end gap-3">
+                        <p class="hidden text-xs text-slate-500 dark:text-slate-400 sm:block">Select a nominee to rate</p>
+                        <!-- Guide for raters: what each 1–5 score means per criterion -->
+                        <button
+                            type="button"
+                            class="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-orange-500/25 ring-1 ring-white/20 transition hover:-translate-y-0.5 hover:shadow-orange-500/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2"
+                            @click="showRatingMatrix = true"
+                        >
+                            <Grid3x3 class="h-4 w-4 transition-transform group-hover:rotate-90" /> View Rating Matrix
+                        </button>
+                    </div>
                 </div>
 
                 <div
@@ -561,6 +604,16 @@ const sponsorDisplay = computed(() => {
                                         </span>
                                     </span>
                                 </div>
+                                <p
+                                    v-if="n.my_rating?.rated_by_name"
+                                    class="mt-1 inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400"
+                                >
+                                    <UserCheck class="h-3 w-3" /> Rated by
+                                    <span class="font-semibold text-slate-700 dark:text-slate-200">{{ n.my_rating.rated_by_name }}</span>
+                                    <span v-if="n.my_rating.rated_by_role && n.my_rating.rated_by_role !== 'NHRDC'"
+                                        >({{ n.my_rating.rated_by_role }})</span
+                                    >
+                                </p>
                             </div>
 
                             <span
@@ -802,5 +855,6 @@ const sponsorDisplay = computed(() => {
                 </div>
             </section>
         </div>
+        <RatingMatrixModal v-model:open="showRatingMatrix" />
     </AppLayout>
 </template>

@@ -6,6 +6,8 @@ import ReportProblemButton from '@/components/ReportProblemButton.vue';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import type { BreadcrumbItemType } from '@/types';
+import { Link } from '@inertiajs/vue3';
+import { BookOpen } from 'lucide-vue-next';
 
 defineProps<{
     breadcrumbs?: BreadcrumbItemType[];
@@ -40,6 +42,14 @@ defineProps<{
         </div>
 
         <div class="ml-auto flex items-center gap-3">
+            <Link
+                :href="route('programs.my-programs')"
+                class="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-foreground/70 transition hover:bg-accent hover:text-accent-foreground"
+                aria-label="My enrolled programs"
+                title="My enrolled programs"
+            >
+                <BookOpen class="h-5 w-5" />
+            </Link>
             <ReportProblemButton />
             <NotificationBell />
             <AppearanceMenu />

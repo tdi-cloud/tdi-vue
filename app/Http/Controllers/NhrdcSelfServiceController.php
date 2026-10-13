@@ -20,6 +20,11 @@ use Inertia\Response;
  * account (gated by the `nhrdc` middleware, not `admin`) and can only ever
  * view/rate nominees and manage their own signed copy — never another
  * NHRDC member's rating, and never the Requirements section (admin-only).
+ *
+ * A representative assigned by the FSTP unit uses the same area to rate on
+ * their NHRDC member's behalf (the rating is saved under the member). The
+ * member stays the signatory, so the assessment sheet PDF and signed copy
+ * actions are reserved for the member themselves.
  */
 class NhrdcSelfServiceController extends Controller
 {
@@ -29,19 +34,17 @@ class NhrdcSelfServiceController extends Controller
      * when the user isn't on the NHRDC roster or has no nominees to rate yet,
      * so the banner stays hidden.
      *
-     * @return array{pending: int, rated: int, total: int}|null
+     * @return array{pending: int, rated: int, total: int, representing: string|null}|null
      */
     public static function bannerData(?User $user): ?array
     {
-        if (! $user || empty($user->empcode)) {
+        $member = $user?->actingNhrdcMember();
+
+        if (! $member) {
             return null;
         }
 
-        $empcode = $user->empcode;
-
-        if (! NhrdcMember::where('empcode', $empcode)->exists()) {
-            return null;
-        }
+        $empcode = $member->empcode;
 
         $programs = ForeignProgram::whereHas('nominees')
             ->withCount([
@@ -64,13 +67,15 @@ class NhrdcSelfServiceController extends Controller
             'pending' => $total - $rated,
             'rated' => $rated,
             'total' => $total,
+            'representing' => self::representingPayload($user, $member)['name'] ?? null,
         ];
     }
 
     // GET /nhrdc/programs
     public function index(): Response
     {
-        $empcode = Auth::user()->empcode;
+        $member = $this->actingMember();
+        $empcode = $member->empcode;
 
         $programs = ForeignProgram::whereHas('nominees')
             ->withCount([
@@ -84,13 +89,15 @@ class NhrdcSelfServiceController extends Controller
 
         return Inertia::render('Nhrdc/Programs', [
             'programs' => $programs,
+            'representing' => self::representingPayload(Auth::user(), $member),
         ]);
     }
 
     // GET /nhrdc/programs/{foreignProgram}
     public function show(ForeignProgram $foreignProgram): Response
     {
-        $empcode = Auth::user()->empcode;
+        $member = $this->actingMember();
+        $empcode = $member->empcode;
 
         ForeignNomineeAssessment::ensureDefaultsFor($foreignProgram->nominees()->pluck('id')->all());
 
@@ -106,6 +113,7 @@ class NhrdcSelfServiceController extends Controller
         return Inertia::render('Nhrdc/Assessment', [
             'program' => $foreignProgram->load('sponsor'),
             'nominees' => $nominees,
+            'representing' => self::representingPayload(Auth::user(), $member),
             'hasSignedCopy' => ForeignProgramNhrdcSignature::where('foreign_program_id', $foreignProgram->id)
                 ->where('nhrdc_empcode', $empcode)
                 ->whereNotNull('signed_copy_path')
@@ -114,7 +122,8 @@ class NhrdcSelfServiceController extends Controller
     }
 
     // POST /nhrdc/nominees/{nominee}/rating
-    // The rater is always the authenticated NHRDC user — never client-supplied.
+    // The NHRDC member is always derived from the authenticated user (their own
+    // roster entry, or the member they represent) — never client-supplied.
     public function saveRating(Request $request, ForeignNominee $nominee)
     {
         $rules = [];
@@ -123,13 +132,22 @@ class NhrdcSelfServiceController extends Controller
         }
         $data = $request->validate($rules);
 
-        $empcode = Auth::user()->empcode;
+        $user = Auth::user();
+        $member = $this->actingMember();
+        $empcode = $member->empcode;
         $employee = Employee::where('EMPCODE', $empcode)->firstOrFail();
+        $isRepresentative = $user->empcode !== $empcode;
 
         $data['nhrdc_empcode'] = $empcode;
         $data['nhrdc_name'] = $employee->name;
         $data['nhrdc_position'] = NhrdcMember::roleFor($empcode);
-        $data['rated_by'] = Auth::id();
+        $data['rated_by'] = $user->id;
+        $data['rated_by_name'] = $isRepresentative
+            ? (Employee::where('EMPCODE', $user->empcode)->first()?->name ?? $user->name)
+            : $employee->name;
+        $data['rated_by_role'] = $isRepresentative
+            ? ForeignNomineeInterviewRating::RATED_BY_REPRESENTATIVE
+            : ForeignNomineeInterviewRating::RATED_BY_NHRDC;
         $data['rated_at'] = now();
 
         $rating = ForeignNomineeInterviewRating::updateOrCreate(
@@ -143,7 +161,7 @@ class NhrdcSelfServiceController extends Controller
     // GET /nhrdc/programs/{foreignProgram}/assessment-pdf
     public function pdf(ForeignProgram $foreignProgram)
     {
-        $nhrdcMember = NhrdcMember::where('empcode', Auth::user()->empcode)->firstOrFail();
+        $nhrdcMember = $this->signatoryMember();
 
         return app(ForeignNomineeAssessmentController::class)->nhrdcPdf($foreignProgram, $nhrdcMember);
     }
@@ -151,7 +169,7 @@ class NhrdcSelfServiceController extends Controller
     // POST /nhrdc/programs/{foreignProgram}/signed-copy
     public function uploadSignedCopy(Request $request, ForeignProgram $foreignProgram)
     {
-        $nhrdcMember = NhrdcMember::where('empcode', Auth::user()->empcode)->firstOrFail();
+        $nhrdcMember = $this->signatoryMember();
 
         return app(ForeignNomineeAssessmentController::class)->uploadNhrdcSignedCopy($request, $foreignProgram, $nhrdcMember);
     }
@@ -159,7 +177,7 @@ class NhrdcSelfServiceController extends Controller
     // GET /nhrdc/programs/{foreignProgram}/signed-copy
     public function downloadSignedCopy(ForeignProgram $foreignProgram)
     {
-        $nhrdcMember = NhrdcMember::where('empcode', Auth::user()->empcode)->firstOrFail();
+        $nhrdcMember = $this->signatoryMember();
 
         return app(ForeignNomineeAssessmentController::class)->downloadNhrdcSignedCopy($foreignProgram, $nhrdcMember);
     }
@@ -167,8 +185,44 @@ class NhrdcSelfServiceController extends Controller
     // DELETE /nhrdc/programs/{foreignProgram}/signed-copy
     public function destroySignedCopy(ForeignProgram $foreignProgram)
     {
-        $nhrdcMember = NhrdcMember::where('empcode', Auth::user()->empcode)->firstOrFail();
+        $nhrdcMember = $this->signatoryMember();
 
         return app(ForeignNomineeAssessmentController::class)->destroyNhrdcSignedCopy($foreignProgram, $nhrdcMember);
+    }
+
+    /**
+     * The NHRDC member the authenticated user rates as (own roster entry or the
+     * member they represent). The `nhrdc` middleware guarantees one exists.
+     */
+    private function actingMember(): NhrdcMember
+    {
+        return Auth::user()->actingNhrdcMember() ?? abort(403);
+    }
+
+    /**
+     * The assessment sheet PDF and signed copy belong to the NHRDC member as
+     * signatory — a representative may rate, but never sign or upload.
+     */
+    private function signatoryMember(): NhrdcMember
+    {
+        return NhrdcMember::where('empcode', Auth::user()->empcode)->first()
+            ?? abort(403, 'Only the NHRDC member can generate or upload the signed assessment sheet.');
+    }
+
+    /**
+     * When the user is a representative, who they are rating on behalf of.
+     *
+     * @return array{name: string|null, role: string}|null
+     */
+    private static function representingPayload(User $user, NhrdcMember $member): ?array
+    {
+        if ($user->empcode === $member->empcode) {
+            return null;
+        }
+
+        return [
+            'name' => $member->employee?->name,
+            'role' => NhrdcMember::roleFor($member->empcode),
+        ];
     }
 }

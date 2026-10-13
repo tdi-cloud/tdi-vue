@@ -33,8 +33,16 @@ class ForeignNomineeInterviewRating extends Model
         'emotional_stability',
         'appearance',
         'rated_by',
+        'rated_by_name',
+        'rated_by_role',
         'rated_at',
     ];
+
+    public const RATED_BY_NHRDC = 'NHRDC';
+
+    public const RATED_BY_REPRESENTATIVE = 'Representative';
+
+    public const RATED_BY_FSTP = 'FSTP Unit';
 
     protected $appends = [
         'total',

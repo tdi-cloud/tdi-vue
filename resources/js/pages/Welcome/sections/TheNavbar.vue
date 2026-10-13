@@ -14,10 +14,14 @@
 
             <!-- Desktop Nav Links -->
             <div class="navbar__links">
-                <a href="#about" class="nav-link" @click.prevent="scrollTo('about')">About TDI</a>
-                <a href="#programs" class="nav-link" @click.prevent="scrollTo('programs')">Programs</a>
-                <a href="#foreign-scholarships" class="nav-link" @click.prevent="scrollTo('foreign-scholarships')">FSTP</a>
-                <a href="#resources" class="nav-link" @click.prevent="scrollTo('resources')">Resources</a>
+                <!-- Section links only work on the homepage (they scroll to its sections) -->
+                <template v-if="isHomePage">
+                    <a href="#about" class="nav-link" @click.prevent="scrollTo('about')">About TDI</a>
+                    <a href="#programs" class="nav-link" @click.prevent="scrollTo('programs')">Programs</a>
+                    <a href="#foreign-scholarships" class="nav-link" @click.prevent="scrollTo('foreign-scholarships')">FSTP</a>
+                    <a href="#resources" class="nav-link" @click.prevent="scrollTo('resources')">Resources</a>
+                </template>
+                <Link v-else :href="route('home')" class="nav-link nav-link--home"><House class="h-3.5 w-3.5" /> Home</Link>
                 <Link v-if="isAdmin" :href="route('how-to-videos.index')" class="nav-link">How-to Videos</Link>
                 <Link v-if="auth?.user" :href="route('programs.my-programs')" class="nav-link nav-link--mine">
                     <GraduationCap class="h-3.5 w-3.5" /> My Programs
@@ -76,10 +80,15 @@
             <Link v-if="auth?.user" :href="route('programs.my-programs')" class="nav-link nav-link--mine" @click="mobileMenuOpen = false">
                 <GraduationCap class="h-3.5 w-3.5" /> My Programs
             </Link>
-            <a href="#about" class="nav-link" @click="close('about')">About TDI</a>
-            <a href="#programs" class="nav-link" @click="close('programs')">Programs</a>
-            <a href="#foreign-scholarships" class="nav-link" @click="close('foreign-scholarships')">FSTP</a>
-            <a href="#resources" class="nav-link" @click="close('resources')">Resources</a>
+            <template v-if="isHomePage">
+                <a href="#about" class="nav-link" @click="close('about')">About TDI</a>
+                <a href="#programs" class="nav-link" @click="close('programs')">Programs</a>
+                <a href="#foreign-scholarships" class="nav-link" @click="close('foreign-scholarships')">FSTP</a>
+                <a href="#resources" class="nav-link" @click="close('resources')">Resources</a>
+            </template>
+            <Link v-else :href="route('home')" class="nav-link nav-link--home" @click="mobileMenuOpen = false">
+                <House class="h-3.5 w-3.5" /> Home
+            </Link>
             <Link v-if="isAdmin" :href="route('how-to-videos.index')" class="nav-link" @click="mobileMenuOpen = false">How-to Videos</Link>
 
             <div class="mobile-menu__actions">
@@ -109,7 +118,7 @@ import NotificationBell from '@/components/NotificationBell.vue';
 import ReportProblemButton from '@/components/ReportProblemButton.vue';
 import { useScrollTo } from '@/composables/useScrollTo';
 import { Link, router, usePage } from '@inertiajs/vue3';
-import { ChartPie, ChevronsUpDown, GraduationCap, LogOut, Settings } from 'lucide-vue-next';
+import { ChartPie, ChevronsUpDown, GraduationCap, House, LogOut, Settings } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 defineProps({
@@ -119,6 +128,10 @@ defineProps({
 const { scrollTo } = useScrollTo();
 const page = usePage();
 const auth = computed(() => page.props.auth);
+
+// The navbar is shared with other pages (How-to Videos, My Programs, …) where the
+// homepage section anchors don't exist, so those pages get a Home link instead.
+const isHomePage = computed(() => page.component === 'Welcome/index');
 
 const isScrolled = ref(false);
 const mobileMenuOpen = ref(false);
@@ -235,6 +248,11 @@ onBeforeUnmount(() => {
 }
 .nav-link:hover {
     color: #fff;
+}
+.nav-link--home {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
 }
 
 .nav-link--mine {

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import EditSubmittedAtDialog from '@/components/EditSubmittedAtDialog.vue';
 import FilePreviewModal from '@/components/FilePreviewModal.vue';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -11,6 +12,7 @@ import { router } from '@inertiajs/vue3';
 import {
     AlarmClockMinus,
     CalendarClock,
+    CheckCheck,
     CheckCircle2,
     Clock3,
     Eye,
@@ -287,6 +289,17 @@ const submitAttendance = () => {
     );
 };
 
+/* ===================== EDIT SUBMISSION DATE ===================== */
+
+// Admins can correct the submission date (e.g. to clear a wrong "Late" indication).
+const showEditDate = ref(false);
+const editDateTarget = ref<Submission | null>(null);
+
+const openEditDate = (s: Submission) => {
+    editDateTarget.value = s;
+    showEditDate.value = true;
+};
+
 /* ===================== REVIEW DIALOG ===================== */
 
 const showReview = ref(false);
@@ -324,6 +337,44 @@ const submitReview = () => {
 /* ===================== REMOVE SUBMISSION ===================== */
 
 const { confirmDialog } = useConfirm();
+
+/* ===================== APPROVE ALL ===================== */
+
+// Follows the batch filter: approves the pending submissions of the selected
+// batch, or of the whole program when "All batches" is selected.
+const approveAllPendingCount = computed(
+    () =>
+        props.submissions.filter(
+            (s) => s.status.toLowerCase() === 'pending' && (filterBatch.value === 'all' || String(s.batch_id) === filterBatch.value),
+        ).length,
+);
+const approvingAll = ref(false);
+
+const approveAll = async () => {
+    const count = approveAllPendingCount.value;
+    if (!count) return;
+    const batchLabel =
+        filterBatch.value === 'all'
+            ? 'this program'
+            : (props.program.batches?.find((b) => String(b.id) === filterBatch.value)?.batch ?? 'this batch');
+    const confirmed = await confirmDialog(`Approve all ${count} pending submission(s) of ${batchLabel}? Rejected submissions will not be changed.`, {
+        title: 'Approve all pending submissions?',
+        confirmText: 'Approve all',
+    });
+    if (!confirmed) return;
+
+    approvingAll.value = true;
+    router.post(
+        route('programs.submissions.approve-all', props.program.id),
+        { batch_id: filterBatch.value === 'all' ? null : Number(filterBatch.value) },
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                approvingAll.value = false;
+            },
+        },
+    );
+};
 const removingId = ref<number | null>(null);
 
 // For wrongly uploaded submissions — deletes the record and its uploaded file.
@@ -354,6 +405,24 @@ const removeSubmission = async (s: Submission) => {
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
+                <!-- Approve all pending (follows the batch filter) -->
+                <Button
+                    size="sm"
+                    class="h-8 bg-emerald-600 text-xs text-white hover:bg-emerald-700"
+                    :disabled="!approveAllPendingCount || approvingAll"
+                    @click="approveAll"
+                >
+                    <LoaderCircle v-if="approvingAll" class="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    <CheckCheck v-else class="mr-1.5 h-3.5 w-3.5" />
+                    Approve all
+                    <span
+                        v-if="approveAllPendingCount"
+                        class="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-white/25 px-1 text-[10px] font-bold leading-none"
+                    >
+                        {{ approveAllPendingCount > 99 ? '99+' : approveAllPendingCount }}
+                    </span>
+                </Button>
+
                 <!-- Missing button with badge -->
                 <Button
                     variant="outline"
@@ -520,6 +589,15 @@ const removeSubmission = async (s: Submission) => {
                     <p class="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
                         <CalendarClock class="h-3.5 w-3.5" />
                         Submitted: <span class="font-semibold text-foreground">{{ formatDateTime(s.submitted_at) }}</span>
+                        <button
+                            type="button"
+                            class="rounded p-0.5 text-muted-foreground transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/30"
+                            title="Edit submission date"
+                            aria-label="Edit submission date"
+                            @click="openEditDate(s)"
+                        >
+                            <Pencil class="h-3 w-3" />
+                        </button>
                         <template v-if="s.requirement?.due_date">
                             <span class="mx-1">·</span>
                             Due: {{ formatDate(s.requirement.due_date) }}
@@ -686,6 +764,12 @@ const removeSubmission = async (s: Submission) => {
             :title="previewSubmission ? participantName(previewSubmission) : undefined"
             :description="previewSubmission?.requirement?.title"
             @update:open="showFilePreview = $event"
+        />
+
+        <EditSubmittedAtDialog
+            v-model:open="showEditDate"
+            :submission="editDateTarget"
+            :participant-name="editDateTarget ? participantName(editDateTarget) : undefined"
         />
 
         <!-- ── Missing submissions modal ── -->

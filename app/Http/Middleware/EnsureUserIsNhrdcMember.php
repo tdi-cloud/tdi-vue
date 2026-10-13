@@ -13,7 +13,8 @@ class EnsureUserIsNhrdcMember
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (! $request->user() || ! $request->user()->isNhrdcMember()) {
+        // NHRDC members, and the representatives the FSTP unit assigned to them.
+        if (! $request->user() || ! $request->user()->canRateAsNhrdc()) {
             abort(403, 'You do not have access to this resource.');
         }
 

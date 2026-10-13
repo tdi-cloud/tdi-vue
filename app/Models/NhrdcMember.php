@@ -21,11 +21,20 @@ class NhrdcMember extends Model
 
     public const ROLE_MEMBER = 'Member';
 
-    protected $fillable = ['empcode', 'sort_order'];
+    protected $fillable = ['empcode', 'representative_empcode', 'sort_order'];
 
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class, 'empcode', 'EMPCODE');
+    }
+
+    /**
+     * Standing representative assigned by the FSTP unit. They may rate nominee
+     * interviews on this member's behalf, but this member stays the signatory.
+     */
+    public function representative(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'representative_empcode', 'EMPCODE');
     }
 
     public static function roleForIndex(int $index): string

@@ -13,6 +13,7 @@ import {
     Search,
     SlidersHorizontal,
     Timer,
+    UserCheck,
     Users,
     X,
 } from 'lucide-vue-next';
@@ -32,7 +33,11 @@ interface ForeignProgram {
 
 type RatingStatus = 'not-started' | 'in-progress' | 'complete';
 
-const props = defineProps<{ programs: ForeignProgram[] }>();
+const props = defineProps<{
+    programs: ForeignProgram[];
+    // Set when the user is an FSTP-assigned representative rating on an NHRDC member's behalf.
+    representing: { name: string | null; role: string } | null;
+}>();
 
 const formatDate = (date?: string | null) => {
     if (!date) return '—';
@@ -160,6 +165,16 @@ const fieldClass =
                         <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
                             Review your assigned foreign training programs and complete the interview rating for each nominee. Your ratings are your
                             own — other NHRDC members' scores are never shown or affected.
+                        </p>
+                        <p
+                            v-if="representing"
+                            class="mt-3 inline-flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+                        >
+                            <UserCheck class="mt-px h-3.5 w-3.5 shrink-0" />
+                            <span>
+                                You are the authorized representative of <strong>{{ representing.name }}</strong> ({{ representing.role }}). Ratings
+                                you save are recorded under their name and marked as entered by you.
+                            </span>
                         </p>
                     </div>
 

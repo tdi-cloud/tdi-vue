@@ -100,4 +100,32 @@ class User extends Authenticatable
     {
         return $this->empcode && NhrdcMember::where('empcode', $this->empcode)->exists();
     }
+
+    /**
+     * True if the FSTP unit assigned this user as the representative of an
+     * NHRDC member (authorized to rate nominees on that member's behalf).
+     */
+    public function isNhrdcRepresentative(): bool
+    {
+        return $this->empcode && NhrdcMember::where('representative_empcode', $this->empcode)->exists();
+    }
+
+    /**
+     * The NHRDC member this user rates as: their own roster entry if they are
+     * a member, otherwise the member they represent. Null if neither.
+     */
+    public function actingNhrdcMember(): ?NhrdcMember
+    {
+        if (! $this->empcode) {
+            return null;
+        }
+
+        return NhrdcMember::where('empcode', $this->empcode)->first()
+            ?? NhrdcMember::where('representative_empcode', $this->empcode)->first();
+    }
+
+    public function canRateAsNhrdc(): bool
+    {
+        return $this->actingNhrdcMember() !== null;
+    }
 }

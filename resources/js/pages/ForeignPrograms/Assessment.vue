@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import NhrdcMemberModal from '@/components/NhrdcMemberModal.vue';
 import NhrdcSignedCopyUpload from '@/components/NhrdcSignedCopyUpload.vue';
+import RatingMatrixModal from '@/components/RatingMatrixModal.vue';
 import { useConfirm } from '@/composables/useConfirm';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
@@ -14,6 +15,7 @@ import {
     ClipboardCheck,
     FileText,
     GraduationCap,
+    Grid3x3,
     MessageSquareText,
     Pencil,
     Save,
@@ -52,6 +54,9 @@ interface InterviewRating {
     appearance: number;
     total: number;
     rated_at: string | null;
+    // Who actually entered it: the NHRDC member, their representative, or the FSTP unit.
+    rated_by_name: string | null;
+    rated_by_role: string | null;
 }
 
 interface NhrdcRosterMember {
@@ -213,6 +218,7 @@ async function saveAssessment(nominee: Nominee) {
 
 const nhrdcRoster = ref<NhrdcRosterMember[]>([]);
 const showNhrdcModal = ref(false);
+const showRatingMatrix = ref(false);
 const showSheetsModal = ref(false);
 const signatures = reactive<Record<string, NhrdcSignature>>({ ...props.nhrdcSignatures });
 
@@ -221,6 +227,12 @@ async function fetchNhrdcRoster() {
     nhrdcRoster.value = data;
 }
 onMounted(fetchNhrdcRoster);
+
+// True when the rating was entered by someone other than the NHRDC member
+// themselves (their representative or the FSTP unit).
+function enteredByOther(rating: InterviewRating): boolean {
+    return !!rating.rated_by_name && !!rating.rated_by_role && rating.rated_by_role !== 'NHRDC';
+}
 
 function hasSignedCopy(empcode: string): boolean {
     return !!signatures[empcode];
@@ -408,11 +420,21 @@ function gradeBadgeClass(n: Nominee) {
                 <ArrowLeft class="h-4 w-4" /> Back to Program
             </button>
 
-            <!-- Hero: Assessment Sheet Header -->
-            <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-700 via-blue-700 to-sky-600 p-6 text-white shadow-xl">
+            <!-- Hero: Assessment Sheet Header — teal/emerald with a grid texture so it is
+                 clearly distinct from the blue program details header on the program page. -->
+            <div
+                class="relative overflow-hidden rounded-2xl border-l-4 border-amber-400 bg-gradient-to-br from-emerald-800 via-teal-700 to-cyan-700 p-6 text-white shadow-xl"
+            >
                 <div class="pointer-events-none absolute inset-0 overflow-hidden">
-                    <div class="absolute -right-8 -top-8 h-48 w-48 rounded-full bg-white/5" />
-                    <div class="absolute -bottom-12 -right-4 h-64 w-64 rounded-full bg-white/5" />
+                    <div
+                        class="absolute inset-0 opacity-[0.07]"
+                        style="
+                            background-image: linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px);
+                            background-size: 22px 22px;
+                            mask-image: linear-gradient(to left, black, transparent 65%);
+                        "
+                    />
+                    <ClipboardCheck class="absolute -bottom-6 -right-4 h-40 w-40 rotate-[-12deg] text-white/[0.06]" />
                 </div>
 
                 <div class="relative flex flex-col gap-3">
@@ -436,6 +458,14 @@ function gradeBadgeClass(n: Nominee) {
                                 @click="showNhrdcModal = true"
                             >
                                 <Settings class="h-3.5 w-3.5" /> Manage NHRDC Roster
+                            </button>
+                            <!-- Guide for raters: what each 1–5 score means per criterion -->
+                            <button
+                                type="button"
+                                class="group inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-300 to-amber-400 px-3 py-1.5 text-xs font-bold text-[#0b1a45] shadow-lg shadow-amber-500/30 transition hover:-translate-y-0.5 hover:from-amber-200 hover:to-amber-300"
+                                @click="showRatingMatrix = true"
+                            >
+                                <Grid3x3 class="h-3.5 w-3.5 transition-transform group-hover:rotate-90" /> View Rating Matrix
                             </button>
                         </div>
                     </div>
@@ -594,6 +624,12 @@ function gradeBadgeClass(n: Nominee) {
                                         <div class="min-w-0">
                                             <p class="truncate text-xs font-bold">{{ rating.nhrdc_name }}</p>
                                             <p class="truncate text-[11px] text-muted-foreground">{{ rating.nhrdc_position }}</p>
+                                            <p
+                                                v-if="enteredByOther(rating)"
+                                                class="truncate text-[11px] font-semibold text-amber-600 dark:text-amber-400"
+                                            >
+                                                Rated by {{ rating.rated_by_name }} ({{ rating.rated_by_role }})
+                                            </p>
                                         </div>
                                         <div class="flex shrink-0 items-center gap-2">
                                             <span class="text-xs font-bold text-indigo-700 dark:text-indigo-400"
@@ -705,6 +741,9 @@ function gradeBadgeClass(n: Nominee) {
                                     <div class="min-w-0">
                                         <p class="truncate text-sm font-bold">{{ rating.nhrdc_name }}</p>
                                         <p class="truncate text-[11px] text-white/70">{{ rating.nhrdc_position }}</p>
+                                        <p v-if="enteredByOther(rating)" class="truncate text-[11px] font-semibold text-amber-200">
+                                            Rated by {{ rating.rated_by_name }} ({{ rating.rated_by_role }})
+                                        </p>
                                     </div>
                                     <div class="shrink-0 text-right">
                                         <p class="text-xl font-extrabold leading-none">
@@ -727,6 +766,7 @@ function gradeBadgeClass(n: Nominee) {
         </div>
 
         <Teleport to="body">
+            <RatingMatrixModal v-model:open="showRatingMatrix" />
             <NhrdcMemberModal v-if="showNhrdcModal" @close="showNhrdcModal = false" @select="onNhrdcRosterSelected" @updated="fetchNhrdcRoster" />
         </Teleport>
 
