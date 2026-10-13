@@ -123,6 +123,41 @@ test('training compliance endpoint reports correct global and per-region numbers
     expect($notTrained[$caragaIndex])->toBe(0);
 });
 
+test('training compliance counts Job Order employees (no SG) when JOB ORDER is checked', function () {
+    $admin = trainingCompTestAdmin('EMP-TC-ADM-JO');
+    $batch = trainingCompTestBatch(16);
+
+    // Job Order employees have no salary grade — stored as an empty string.
+    $joTrained = trainingCompTestEmployee('EMP-TC-JO-TRAINED', 'Lopez');
+    $joTrained->forceFill(['PLANTILLA STATUS' => 'JOB ORDER', 'SG' => ''])->save();
+    $joNotTrained = trainingCompTestEmployee('EMP-TC-JO-NOT', 'Garcia');
+    $joNotTrained->forceFill(['PLANTILLA STATUS' => 'JOB ORDER', 'SG' => ''])->save();
+
+    Participant::create([
+        'sort_order' => 1, 'batch_id' => $batch->id, 'empcode' => $joTrained->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+    ]);
+
+    $filters = ['region' => 'ALL', 'office' => 'ALL', 'office_filter' => 'ALL', 'year' => 'ALL'];
+
+    $withJobOrder = $this->actingAs($admin)->getJson(route('dashboard.training-compliance', [...$filters, 'plant_status' => ['JOB ORDER']]));
+    $withJobOrder->assertOk();
+    expect($withJobOrder->json('total'))->toBe(2);
+    expect($withJobOrder->json('trained'))->toBe(1);
+    expect($withJobOrder->json('regions_trained')[array_search('NCR', $withJobOrder->json('regions'))])->toBe(1);
+
+    // The drill-down list (click on "Not trained") includes them too.
+    $list = $this->actingAs($admin)->getJson(route('dashboard.training-compliance.list', [...$filters, 'plant_status' => ['JOB ORDER'], 'type' => 'not_trained']));
+    $list->assertOk();
+    expect($list->json('count'))->toBe(1);
+    expect($list->json('employees.0.EMPCODE'))->toBe($joNotTrained->EMPCODE);
+
+    // Unchecking JOB ORDER leaves them out again.
+    $withoutJobOrder = $this->actingAs($admin)->getJson(route('dashboard.training-compliance', [...$filters, 'plant_status' => ['Permanent']]));
+    expect($withoutJobOrder->json('total'))->toBe(1);
+    expect($withoutJobOrder->json('trained'))->toBe(0);
+});
+
 test('training compliance endpoint excludes General Assembly programs from the trained count', function () {
     $admin = trainingCompTestAdmin('EMP-TC-ADM-GA');
 

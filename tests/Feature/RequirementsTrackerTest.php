@@ -219,6 +219,36 @@ test('requirement_title filter narrows results to the selected requirement', fun
     expect($items->first()['requirement_title'])->toBe('TDOR');
 });
 
+test('office_division filter narrows results to the selected office/division and lists the options', function () {
+    $admin = trackerTestAdmin('EMP-ADM-OD');
+    [$program, $batch] = trackerTestSetup();
+
+    $inDivision = trackerTestEmployee('EMP-OD-01', 'Reyes');
+    $otherDivision = trackerTestEmployee('EMP-OD-02', 'Santos');
+    $otherDivision->forceFill(['OFFICE/DIVISION' => 'Other Division'])->save();
+
+    foreach ([$inDivision, $otherDivision] as $index => $employee) {
+        Participant::create([
+            'sort_order' => $index + 1, 'batch_id' => $batch->id, 'empcode' => $employee->EMPCODE,
+            'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+        ]);
+    }
+
+    $response = $this->actingAs($admin)->get(route('requirements-tracker.index', ['office_division' => ['Other Division']]));
+    $response->assertOk();
+
+    $items = collect($response->inertiaProps('items')['data']);
+    expect($items)->toHaveCount(2);
+    expect($items->pluck('empcode')->unique()->all())->toBe([$otherDivision->EMPCODE]);
+    expect($response->inertiaProps('stats')['total_missing'])->toBe(2);
+    expect($response->inertiaProps('officeDivisions'))->toContain('Test Division', 'Other Division');
+
+    // Multiple offices/divisions can be selected at once
+    $both = $this->actingAs($admin)->get(route('requirements-tracker.index', ['office_division' => ['Other Division', 'Test Division']]));
+    expect(collect($both->inertiaProps('items')['data'])->pluck('empcode')->unique()->sort()->values()->all())
+        ->toBe(collect([$inDivision->EMPCODE, $otherDivision->EMPCODE])->sort()->values()->all());
+});
+
 test('pagination and stats stay consistent with the manually-built paginator across multiple pages', function () {
     $admin = trackerTestAdmin('EMP-ADM-PAGE');
     [$program, $batch, $overdueRequirement, $upcomingRequirement] = trackerTestSetup();

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import MultiSelectFilter from '@/components/MultiSelectFilter.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BulkImportModal from '@/pages/RequirementsTracker/BulkImportModal.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
@@ -51,10 +52,12 @@ interface PaginatedItems {
 const props = defineProps<{
     items: PaginatedItems;
     requirementTitles: string[];
+    officeDivisions: string[];
     stats: { total_missing: number; overdue: number; on_time: number };
     filters: {
         search?: string;
         requirement_title?: string;
+        office_division?: string | string[];
         overdue_only?: string;
     };
 }>();
@@ -63,10 +66,13 @@ const showBulkImport = ref(false);
 
 const search = ref(props.filters.search ?? '');
 const requirementTitle = ref(props.filters.requirement_title ?? '');
+// Multi-select — an empty list means all offices/divisions.
+const toList = (value?: string | string[]) => (Array.isArray(value) ? value : value ? [value] : []);
+const officeDivision = ref<string[]>(toList(props.filters.office_division));
 const overdueOnly = ref(props.filters.overdue_only === '1');
 
 let debounce: ReturnType<typeof setTimeout>;
-watch([search, requirementTitle, overdueOnly], () => {
+watch([search, requirementTitle, officeDivision, overdueOnly], () => {
     clearTimeout(debounce);
     debounce = setTimeout(() => {
         router.get(
@@ -74,6 +80,7 @@ watch([search, requirementTitle, overdueOnly], () => {
             {
                 search: search.value || undefined,
                 requirement_title: requirementTitle.value || undefined,
+                office_division: officeDivision.value.length ? officeDivision.value : undefined,
                 overdue_only: overdueOnly.value ? '1' : undefined,
             },
             { preserveScroll: true, preserveState: true, replace: true },
@@ -84,15 +91,17 @@ watch([search, requirementTitle, overdueOnly], () => {
 const clearFilters = () => {
     search.value = '';
     requirementTitle.value = '';
+    officeDivision.value = [];
     overdueOnly.value = false;
 };
 
-const hasActiveFilters = () => search.value || requirementTitle.value || overdueOnly.value;
+const hasActiveFilters = () => search.value || requirementTitle.value || officeDivision.value.length || overdueOnly.value;
 
 const exportUrl = () =>
     route('requirements-tracker.export', {
         search: search.value || undefined,
         requirement_title: requirementTitle.value || undefined,
+        office_division: officeDivision.value.length ? officeDivision.value : undefined,
         overdue_only: overdueOnly.value ? '1' : undefined,
     });
 
@@ -229,6 +238,12 @@ const initials = (name: string) => {
                             <option value="">All</option>
                             <option v-for="t in requirementTitles" :key="t" :value="t">{{ t }}</option>
                         </select>
+                    </div>
+                    <div class="col-span-2 flex flex-col gap-1">
+                        <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            <Building2 class="h-3 w-3" /> Office/Division
+                        </label>
+                        <MultiSelectFilter v-model="officeDivision" :options="officeDivisions" label="Office/Division" placeholder="All" />
                     </div>
                     <div class="flex flex-col gap-1">
                         <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">

@@ -61,6 +61,17 @@ class DashboardController extends Controller
      * MySQL at SQLite) — ginagamit ng lahat ng compliance card sa
      * Dashboard. 'ALL' o walang laman = walang year filter.
      */
+    /**
+     * Minimum salary grade filter. A minimum of 1 or less means "every
+     * employee", so no SG condition is added — Job Order employees have no SG
+     * (stored as an empty string), and `SG >= 1` would silently drop all of
+     * them even when "JOB ORDER" is checked on the Dashboard.
+     */
+    private function applyMinimumSg($query, $sgMin, string $column = 'SG')
+    {
+        return $query->when((int) $sgMin > 1, fn ($q) => $q->where($column, '>=', $sgMin));
+    }
+
     private function applyYearFilter($query, $year, string $column = 'batches.date_start')
     {
         return $query->when($year && $year !== 'ALL', function ($q) use ($year, $column) {
@@ -259,12 +270,11 @@ class DashboardController extends Controller
         ];
 
         $totalEmployees = $this->applyEmployeeFilters(
-            DB::table('employees')->where('SG', '>=', $sgMin), $region, $statuses, $officeFilter, $office
+            $this->applyMinimumSg(DB::table('employees'), $sgMin), $region, $statuses, $officeFilter, $office
         )->count();
 
         $trainedQuery = $this->applyEmployeeFilters(
-            DB::table('employees')
-                ->where('employees.SG', '>=', $sgMin)
+            $this->applyMinimumSg(DB::table('employees'), $sgMin, 'employees.SG')
                 ->join('participants', 'employees.EMPCODE', '=', 'participants.empcode')
                 ->join('batches', 'participants.batch_id', '=', 'batches.id')
                 ->join('programs', 'batches.program_code', '=', 'programs.program_code'),
@@ -285,18 +295,17 @@ class DashboardController extends Controller
         // hiwalay na query) — ito ang pinaka-malaking dahilan kung bakit
         // mabagal mag-load ang Training Compliance na card sa Dashboard.
         $totalByRegion = $this->applyEmployeeFilters(
-            DB::table('employees')->where('SG', '>=', $sgMin), null, $statuses, $officeFilter, $office
+            $this->applyMinimumSg(DB::table('employees'), $sgMin), null, $statuses, $officeFilter, $office
         )
             ->select('REGION as region', DB::raw('COUNT(*) as total'))
             ->groupBy('REGION')
             ->pluck('total', 'region');
 
         $trainedByRegion = $this->applyEmployeeFilters(
-            DB::table('employees')
+            $this->applyMinimumSg(DB::table('employees'), $sgMin, 'employees.SG')
                 ->join('participants', 'employees.EMPCODE', '=', 'participants.empcode')
                 ->join('batches', 'participants.batch_id', '=', 'batches.id')
-                ->join('programs', 'batches.program_code', '=', 'programs.program_code')
-                ->where('employees.SG', '>=', $sgMin),
+                ->join('programs', 'batches.program_code', '=', 'programs.program_code'),
             null, $statuses, $officeFilter, $office, 'employees.'
         )
             ->where('participants.attendance', '!=', 'Absent')
@@ -354,7 +363,7 @@ class DashboardController extends Controller
         $type = $request->type === 'trained' ? 'trained' : 'not_trained';
 
         $query = $this->applyEmployeeFilters(
-            DB::table('employees')->where('SG', '>=', $sgMin), $region, $statuses, $officeFilter, $office
+            $this->applyMinimumSg(DB::table('employees'), $sgMin), $region, $statuses, $officeFilter, $office
         );
 
         $trainingExists = function ($q) use ($year) {

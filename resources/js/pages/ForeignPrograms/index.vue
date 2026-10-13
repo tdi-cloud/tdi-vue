@@ -544,7 +544,7 @@ function onConfigSaved() {
                             <!-- Dropdown ng sponsors -->
                             <div
                                 v-if="showFormSettingsDropdown"
-                                class="absolute right-0 top-full z-50 mt-1 min-w-48 rounded-xl border bg-background py-1 shadow-lg"
+                                class="absolute right-0 top-full z-50 mt-1 min-w-48 rounded-xl border bg-background py-1 text-foreground shadow-lg"
                             >
                                 <p class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                                     Select Organizing Sponsor

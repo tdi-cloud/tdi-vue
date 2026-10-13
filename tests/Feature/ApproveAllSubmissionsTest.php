@@ -131,6 +131,25 @@ test('approve all leaves rejected submissions untouched', function () {
     expect($rejected->fresh()->status)->toBe('Rejected');
 });
 
+test('approve all only affects pending submissions — already approved ones keep their original review', function () {
+    $admin = approveAllUser('admin');
+    $program = approveAllProgram('Program A');
+    [$batch, $requirement] = approveAllBatch($program, 'Batch 1');
+    $approved = approveAllSubmission($program, $batch, $requirement, 'EMP-AA-A1', 'Approved');
+    $approved->update(['reviewed_by' => 'Original Reviewer', 'reviewed_at' => now()->subDays(3)]);
+    $originalReviewedAt = $approved->fresh()->reviewed_at;
+    $pending = approveAllSubmission($program, $batch, $requirement, 'EMP-AA-A2', 'Pending');
+
+    $this->actingAs($admin)
+        ->post(route('programs.submissions.approve-all', $program))
+        ->assertSessionHas('success', '1 submission(s) approved.');
+
+    expect($approved->fresh()->reviewed_by)->toBe('Original Reviewer');
+    expect($approved->fresh()->reviewed_at->equalTo($originalReviewedAt))->toBeTrue();
+    expect($pending->fresh()->status)->toBe('Approved');
+    expect(SubmissionActivityLog::where('submission_id', $approved->id)->exists())->toBeFalse();
+});
+
 test('approve all can be limited to one batch of a program', function () {
     $admin = approveAllUser('admin');
     $program = approveAllProgram('Program A');

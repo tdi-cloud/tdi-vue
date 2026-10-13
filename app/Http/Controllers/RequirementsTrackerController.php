@@ -59,12 +59,18 @@ class RequirementsTrackerController extends Controller
         return Inertia::render('RequirementsTracker/index', [
             'items' => $items,
             'requirementTitles' => Requirement::query()->select('title')->distinct()->orderBy('title')->pluck('title'),
+            'officeDivisions' => DB::table('employees')
+                ->whereNotNull('OFFICE/DIVISION')
+                ->where('OFFICE/DIVISION', '!=', '')
+                ->distinct()
+                ->orderBy('OFFICE/DIVISION')
+                ->pluck('OFFICE/DIVISION'),
             'stats' => [
                 'total_missing' => $total,
                 'overdue' => $overdue,
                 'on_time' => $total - $overdue,
             ],
-            'filters' => $request->only(['search', 'requirement_title', 'overdue_only']),
+            'filters' => $request->only(['search', 'requirement_title', 'office_division', 'overdue_only']),
         ]);
     }
 
@@ -179,6 +185,12 @@ class RequirementsTrackerController extends Controller
 
         if ($request->filled('requirement_title')) {
             $query->where('r.title', $request->string('requirement_title'));
+        }
+
+        // Multi-select: one or more offices/divisions.
+        $officeDivisions = array_values(array_filter((array) $request->input('office_division', []), 'filled'));
+        if ($officeDivisions) {
+            $query->whereIn('e.OFFICE/DIVISION', $officeDivisions);
         }
 
         return $query;
