@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import EmployeeProgressModal from '@/components/EmployeeProgressModal.vue';
-import { FileText, FileX, Loader2, TrendingUp, Users, X } from 'lucide-vue-next';
+import { Download, FileText, FileX, Loader2, TrendingUp, Users, X } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import VueApexCharts from 'vue3-apexcharts';
 
@@ -33,7 +33,9 @@ interface EmployeeRow {
     office: string;
     region: string;
     plantilla_status: string;
+    program_title: string | null;
     batch_name: string;
+    date_start: string;
     date_end: string;
     due_date: string;
 }
@@ -237,6 +239,67 @@ function formatDate(d: string | null) {
     });
 }
 
+// ─── CSV export ──────────────────────────────────────────────────────────────
+
+// Sorted by region (same order as the chart) then name, so the file can be
+// split and forwarded to each region easily.
+function downloadCsv() {
+    const rows = [...modalEmployees.value].sort((a, b) => {
+        const regionOrder = REGIONS.indexOf(a.region) - REGIONS.indexOf(b.region);
+        return regionOrder !== 0 ? regionOrder : a.name.localeCompare(b.name);
+    });
+    if (!rows.length) return;
+    const escape = (val: unknown) => {
+        const s = String(val ?? '');
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const requirementStatus = modalType.value === 'submitted' ? 'Submitted' : 'Not Yet Submitted';
+    const header = [
+        '#',
+        'REGION',
+        'EMPCODE',
+        'NAME',
+        'POSITION',
+        'OFFICE/DIVISION',
+        'PLANTILLA STATUS',
+        'PROGRAM',
+        'BATCH',
+        'TRAINING START DATE',
+        'TRAINING END DATE',
+        'REQUIREMENT',
+        'DUE DATE',
+        'STATUS',
+    ];
+    const lines = rows.map((e, i) =>
+        [
+            i + 1,
+            e.region,
+            e.empcode,
+            e.name,
+            e.position,
+            e.office_division,
+            e.plantilla_status,
+            e.program_title,
+            e.batch_name,
+            e.date_start,
+            e.date_end,
+            'REAP',
+            e.due_date,
+            requirementStatus,
+        ]
+            .map(escape)
+            .join(','),
+    );
+    const csv = [header.join(','), ...lines].join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `reap-${modalType.value.replace('_', '-')}-${modalRegion.value.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+}
+
 const modalTitle = computed(() => {
     const label = modalType.value === 'submitted' ? 'Submitted' : 'Not Yet Submitted';
     return modalRegion.value === 'ALL' ? `REAP — ${label} (All Regions)` : `REAP — ${label} · ${modalRegion.value}`;
@@ -250,7 +313,7 @@ const modalTitle = computed(() => {
 
         <!-- Header -->
         <div class="flex items-center gap-2">
-            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg tdi-icon-chip">
+            <div class="tdi-icon-chip flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
                 <FileText class="h-4 w-4 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
@@ -269,7 +332,7 @@ const modalTitle = computed(() => {
         <template v-else-if="data">
             <!-- Stat row -->
             <div class="grid grid-cols-3 gap-3">
-                <div class="flex flex-col gap-0.5 tdi-surface rounded-xl p-3">
+                <div class="tdi-surface flex flex-col gap-0.5 rounded-xl p-3">
                     <p class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                         <Users class="h-3 w-3" /> Total Required
                     </p>
@@ -345,9 +408,19 @@ const modalTitle = computed(() => {
                             <p class="text-xs text-muted-foreground">{{ modalLoading ? 'Loading…' : `${modalCount} employee(s)` }}</p>
                         </div>
                     </div>
-                    <button class="rounded-lg p-1 text-muted-foreground hover:text-foreground" @click="modalOpen = false">
-                        <X class="h-4 w-4" />
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <button
+                            type="button"
+                            class="inline-flex items-center gap-1 rounded-full bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+                            :disabled="modalLoading || modalEmployees.length === 0"
+                            @click="downloadCsv"
+                        >
+                            <Download class="h-3.5 w-3.5" /> Download CSV
+                        </button>
+                        <button class="rounded-lg p-1 text-muted-foreground hover:text-foreground" @click="modalOpen = false">
+                            <X class="h-4 w-4" />
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Loading -->
@@ -365,7 +438,7 @@ const modalTitle = computed(() => {
                                 <th class="px-4 py-3 text-left font-semibold">Position</th>
                                 <th class="px-4 py-3 text-left font-semibold">Office/Division</th>
                                 <th class="whitespace-nowrap px-4 py-3 text-left font-semibold">Region</th>
-                                <th class="whitespace-nowrap px-4 py-3 text-left font-semibold">Batch</th>
+                                <th class="whitespace-nowrap px-4 py-3 text-left font-semibold">Batch / Program</th>
                                 <th class="whitespace-nowrap px-4 py-3 text-left font-semibold">Due Date</th>
                             </tr>
                         </thead>
@@ -390,7 +463,16 @@ const modalTitle = computed(() => {
                                         {{ emp.region }}
                                     </span>
                                 </td>
-                                <td class="whitespace-nowrap px-4 py-2.5 text-xs text-muted-foreground">{{ emp.batch_name }}</td>
+                                <td class="px-4 py-2.5 text-xs">
+                                    <p class="whitespace-nowrap text-muted-foreground">{{ emp.batch_name }}</p>
+                                    <p
+                                        v-if="emp.program_title"
+                                        class="max-w-xs truncate text-[11px] text-muted-foreground/80"
+                                        :title="emp.program_title"
+                                    >
+                                        {{ emp.program_title }}
+                                    </p>
+                                </td>
                                 <td class="whitespace-nowrap px-4 py-2.5">
                                     <span
                                         class="text-xs font-semibold"

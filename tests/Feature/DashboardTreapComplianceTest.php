@@ -249,6 +249,8 @@ test('treap compliance list endpoint returns the correct employees per type', fu
     $notSubmittedResponse->assertOk();
     expect($notSubmittedResponse->json('count'))->toBe(1);
     expect($notSubmittedResponse->json('employees.0.empcode'))->toBe($missingEmployee->EMPCODE);
+    expect($notSubmittedResponse->json('employees.0.program_title'))->toBe($program->title);
+    expect($notSubmittedResponse->json('employees.0.date_start'))->toBe($batch->date_start);
 
     $submittedResponse = $this->actingAs($admin)->getJson(route('dashboard.treap-compliance.list', [
         'region' => 'ALL', 'year' => 'ALL', 'office' => 'ALL', 'office_filter' => 'ALL',

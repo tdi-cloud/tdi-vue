@@ -14,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class EnrolledProgramController extends Controller
 {
@@ -30,6 +31,16 @@ class EnrolledProgramController extends Controller
             ->map(fn ($p) => self::transform($p))
             ->values()
             ->toArray();
+    }
+
+    /**
+     * Dedicated "My Programs" page listing every program the user is enrolled in.
+     */
+    public function index(Request $request): Response
+    {
+        return Inertia::render('MyPrograms/Index', [
+            'programs' => self::forUser($request->user()),
+        ]);
     }
 
     public function show(Request $request, Batch $batch)

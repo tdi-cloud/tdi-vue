@@ -446,6 +446,9 @@ Route::middleware(['auth', 'verified', 'nhrdc'])->prefix('nhrdc')->name('nhrdc.'
 // REGULAR USER
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/my-programs', [EnrolledProgramController::class, 'index'])
+        ->name('programs.my-programs');
+
     Route::get('/my-programs/{batch}', [EnrolledProgramController::class, 'show'])
         ->name('programs.my-progress');
 

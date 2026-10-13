@@ -13,7 +13,7 @@
         <!-- Lalabas lang kung NHRDC member at may nominees na dapat i-rate -->
         <NhrdcRatingBanner v-if="nhrdcRating" :data="nhrdcRating" />
 
-        <EnrolledProgramsSection :programs="enrolledPrograms" />
+        <EnrolledProgramsSection :programs="enrolledPrograms" summary-only />
         <ImagePanels :images="siteImages" />
         <AboutSection :image="siteImages.about_photo" />
         <PathwaySection />

@@ -8,7 +8,7 @@
             <div class="ph__bg" :style="{ backgroundImage: program.cover_image ? `url(${program.cover_image})` : 'none' }"></div>
             <div class="ph__overlay"></div>
             <div class="ph__inner">
-                <Link href="/#my-programs" class="ph__back"><ArrowLeft :size="15" /> Back to My Programs</Link>
+                <Link :href="route('programs.my-programs')" class="ph__back"><ArrowLeft :size="15" /> Back to My Programs</Link>
 
                 <div class="ph__top">
                     <div class="ph__title-col">

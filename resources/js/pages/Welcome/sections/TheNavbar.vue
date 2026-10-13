@@ -19,7 +19,7 @@
                 <a href="#foreign-scholarships" class="nav-link" @click.prevent="scrollTo('foreign-scholarships')">FSTP</a>
                 <a href="#resources" class="nav-link" @click.prevent="scrollTo('resources')">Resources</a>
                 <Link v-if="isAdmin" :href="route('how-to-videos.index')" class="nav-link">How-to Videos</Link>
-                <Link v-if="auth?.user" href="/#my-programs" class="nav-link nav-link--mine">
+                <Link v-if="auth?.user" :href="route('programs.my-programs')" class="nav-link nav-link--mine">
                     <GraduationCap class="h-3.5 w-3.5" /> My Programs
                 </Link>
             </div>
@@ -73,7 +73,7 @@
 
         <!-- Mobile Menu -->
         <div class="mobile-menu" :class="{ 'mobile-menu--open': mobileMenuOpen }">
-            <Link v-if="auth?.user" href="/#my-programs" class="nav-link nav-link--mine" @click="mobileMenuOpen = false">
+            <Link v-if="auth?.user" :href="route('programs.my-programs')" class="nav-link nav-link--mine" @click="mobileMenuOpen = false">
                 <GraduationCap class="h-3.5 w-3.5" /> My Programs
             </Link>
             <a href="#about" class="nav-link" @click="close('about')">About TDI</a>

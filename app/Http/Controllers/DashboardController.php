@@ -756,6 +756,7 @@ class DashboardController extends Controller
         }
 
         $employees = $query
+            ->leftJoin('programs', 'batches.program_code', '=', 'programs.program_code')
             ->select(
                 'employees.EMPCODE as empcode',
                 'employees.LASTNAME as lastname',
@@ -766,7 +767,9 @@ class DashboardController extends Controller
                 'employees.OFFICE as office',
                 'employees.REGION as region',
                 DB::raw('employees.`PLANTILLA STATUS` as plantilla_status'),
+                'programs.title as program_title',
                 'batches.batch as batch_name',
+                'batches.date_start as date_start',
                 'batches.date_end as date_end',
                 'requirements.due_date as due_date',
             )
@@ -786,7 +789,9 @@ class DashboardController extends Controller
                     'office' => $e->office,
                     'region' => $e->region,
                     'plantilla_status' => $e->plantilla_status,
+                    'program_title' => $e->program_title,
                     'batch_name' => $e->batch_name,
+                    'date_start' => $e->date_start,
                     'date_end' => $e->date_end,
                     'due_date' => $e->due_date,
                 ];
@@ -897,6 +902,7 @@ class DashboardController extends Controller
         }
 
         $employees = $query
+            ->leftJoin('programs', 'batches.program_code', '=', 'programs.program_code')
             ->select(
                 'employees.EMPCODE as empcode',
                 'employees.LASTNAME as lastname',
@@ -907,7 +913,9 @@ class DashboardController extends Controller
                 'employees.OFFICE as office',
                 'employees.REGION as region',
                 DB::raw('employees.`PLANTILLA STATUS` as plantilla_status'),
+                'programs.title as program_title',
                 'batches.batch as batch_name',
+                'batches.date_start as date_start',
                 'batches.date_end as date_end',
                 'requirements.due_date as due_date',
             )
@@ -927,7 +935,9 @@ class DashboardController extends Controller
                     'office' => $e->office,
                     'region' => $e->region,
                     'plantilla_status' => $e->plantilla_status,
+                    'program_title' => $e->program_title,
                     'batch_name' => $e->batch_name,
+                    'date_start' => $e->date_start,
                     'date_end' => $e->date_end,
                     'due_date' => $e->due_date,
                 ];
@@ -1038,6 +1048,7 @@ class DashboardController extends Controller
         }
 
         $employees = $query
+            ->leftJoin('programs', 'batches.program_code', '=', 'programs.program_code')
             ->select(
                 'employees.EMPCODE as empcode',
                 'employees.LASTNAME as lastname',
@@ -1048,7 +1059,9 @@ class DashboardController extends Controller
                 'employees.OFFICE as office',
                 'employees.REGION as region',
                 DB::raw('employees.`PLANTILLA STATUS` as plantilla_status'),
+                'programs.title as program_title',
                 'batches.batch as batch_name',
+                'batches.date_start as date_start',
                 'batches.date_end as date_end',
                 'requirements.due_date as due_date',
             )
@@ -1068,7 +1081,9 @@ class DashboardController extends Controller
                     'office' => $e->office,
                     'region' => $e->region,
                     'plantilla_status' => $e->plantilla_status,
+                    'program_title' => $e->program_title,
                     'batch_name' => $e->batch_name,
+                    'date_start' => $e->date_start,
                     'date_end' => $e->date_end,
                     'due_date' => $e->due_date,
                 ];
