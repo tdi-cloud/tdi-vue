@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\TutorialVideo;
 use App\Models\TutorialVideoStep;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -32,6 +33,7 @@ class TutorialVideoController extends Controller
 
         return TutorialVideo::query()
             ->withCount('steps')
+            ->withViewCounts()
             ->latest()
             ->limit($limit)
             ->get()
@@ -43,7 +45,7 @@ class TutorialVideoController extends Controller
     public function index(Request $request): Response
     {
         return Inertia::render('HowToVideos/index', [
-            'videos' => TutorialVideo::query()->with('steps')->latest()->get()->map->toCard(),
+            'videos' => TutorialVideo::query()->with('steps')->withViewCounts()->latest()->get()->map->toCard(),
             'canManage' => $request->user()->isSuperAdmin(),
             'maxVideoMb' => self::effectiveMaxVideoMb(),
         ]);
@@ -55,6 +57,22 @@ class TutorialVideoController extends Controller
         return Inertia::render('HowToVideos/Documentation', [
             'video' => $tutorialVideo->load('steps')->toCard(),
             'canManage' => $request->user()->isSuperAdmin(),
+        ]);
+    }
+
+    /**
+     * POST /how-to-videos/{tutorialVideo}/view — called when someone plays the video.
+     * Returns the updated counts so the card can refresh without a page reload.
+     */
+    public function recordView(Request $request, TutorialVideo $tutorialVideo): JsonResponse
+    {
+        $tutorialVideo->recordViewBy($request->user());
+
+        $counted = TutorialVideo::query()->withViewCounts()->findOrFail($tutorialVideo->id);
+
+        return response()->json([
+            'views_count' => (int) $counted->views_count,
+            'viewers_count' => (int) $counted->viewers_count,
         ]);
     }
 

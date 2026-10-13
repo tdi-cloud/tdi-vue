@@ -280,3 +280,58 @@ test('deleting a video also removes its documentation screenshots', function () 
     expect(TutorialVideoStep::count())->toBe(0);
     Storage::disk('public')->assertMissing($shot);
 });
+
+test('playing a video records a view and returns the counts', function () {
+    $video = TutorialVideo::factory()->create();
+    $admin = tutorialUser('EMP-TV-20', 'admin');
+
+    $this->actingAs($admin)
+        ->postJson(route('how-to-videos.view', $video))
+        ->assertSuccessful()
+        ->assertExactJson(['views_count' => 1, 'viewers_count' => 1]);
+
+    expect($video->views()->where('user_id', $admin->id)->count())->toBe(1);
+});
+
+test('replaying within the cooldown does not count again', function () {
+    $video = TutorialVideo::factory()->create();
+    $admin = tutorialUser('EMP-TV-21', 'admin');
+
+    $this->actingAs($admin)->postJson(route('how-to-videos.view', $video));
+    $this->actingAs($admin)
+        ->postJson(route('how-to-videos.view', $video))
+        ->assertExactJson(['views_count' => 1, 'viewers_count' => 1]);
+
+    $this->travel(TutorialVideo::VIEW_COOLDOWN_MINUTES + 1)->minutes();
+
+    $this->actingAs($admin)
+        ->postJson(route('how-to-videos.view', $video))
+        ->assertExactJson(['views_count' => 2, 'viewers_count' => 1]);
+});
+
+test('views and distinct viewers are shown on the video list', function () {
+    $video = TutorialVideo::factory()->create();
+    $first = tutorialUser('EMP-TV-22', 'admin');
+    $second = tutorialUser('EMP-TV-23', 'superadmin');
+
+    $video->recordViewBy($first);
+    $this->travel(TutorialVideo::VIEW_COOLDOWN_MINUTES + 1)->minutes();
+    $video->recordViewBy($first);
+    $video->recordViewBy($second);
+
+    $this->actingAs($first)
+        ->get(route('how-to-videos.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('videos.0.views_count', 3)
+            ->where('videos.0.viewers_count', 2));
+});
+
+test('regular users cannot record a view', function () {
+    $video = TutorialVideo::factory()->create();
+
+    $this->actingAs(tutorialUser('EMP-TV-24', 'user'))
+        ->postJson(route('how-to-videos.view', $video))
+        ->assertForbidden();
+
+    expect($video->views()->count())->toBe(0);
+});

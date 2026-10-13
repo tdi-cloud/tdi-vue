@@ -24,8 +24,9 @@
 </template>
 
 <script setup lang="ts">
+import axios from 'axios';
 import { X } from 'lucide-vue-next';
-import { onBeforeUnmount, onMounted } from 'vue';
+import { onBeforeUnmount, onMounted, watch } from 'vue';
 
 export interface HowToDocStep {
     id: number;
@@ -42,12 +43,35 @@ export interface HowToVideo {
     thumbnail_url: string | null;
     created_at: string | null;
     steps_count: number;
+    views_count: number;
+    viewers_count: number;
     documentation_url: string;
     steps?: HowToDocStep[];
 }
 
+export interface HowToViewCounts {
+    views_count: number;
+    viewers_count: number;
+}
+
 const props = defineProps<{ video: HowToVideo | null }>();
-const emit = defineEmits<{ close: [] }>();
+const emit = defineEmits<{ close: []; viewed: [counts: HowToViewCounts] }>();
+
+// Each time a video opens, record the view and pass the fresh counts up.
+// Counting is best-effort: a failed request never blocks watching.
+watch(
+    () => props.video?.id,
+    async (videoId) => {
+        if (!videoId) return;
+        try {
+            const { data } = await axios.post<HowToViewCounts>(route('how-to-videos.view', videoId));
+            if (props.video?.id === videoId) emit('viewed', data);
+        } catch {
+            // Ignore; the counts just stay as they were.
+        }
+    },
+    { immediate: true },
+);
 
 const onKeydown = (event: KeyboardEvent) => {
     if (event.key === 'Escape' && props.video) emit('close');

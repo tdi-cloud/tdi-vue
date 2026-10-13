@@ -135,6 +135,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     // HOW-TO VIDEOS — admins watch; uploading is superadmin only (see below)
     Route::get('/how-to-videos', [TutorialVideoController::class, 'index'])->name('how-to-videos.index');
     Route::get('/how-to-videos/{tutorialVideo}/documentation', [TutorialVideoController::class, 'documentation'])->name('how-to-videos.documentation');
+    Route::post('/how-to-videos/{tutorialVideo}/view', [TutorialVideoController::class, 'recordView'])->name('how-to-videos.view');
 
     // PROGRAM REQUIREMENTS
     Route::post('programs/{program}/requirements', [RequirementController::class, 'store'])

@@ -125,7 +125,7 @@
 
         <TheFooter />
 
-        <HowToVideoPlayer :video="playing" @close="playing = null" />
+        <HowToVideoPlayer :video="playing" @close="playing = null" @viewed="updateViewCounts" />
         <HowToDocModal
             :video="docVideo"
             :can-manage="canManage"
@@ -226,7 +226,7 @@
 <script setup lang="ts">
 import HowToDocModal from '@/components/HowToDocModal.vue';
 import HowToVideoCard from '@/components/HowToVideoCard.vue';
-import HowToVideoPlayer, { type HowToVideo } from '@/components/HowToVideoPlayer.vue';
+import HowToVideoPlayer, { type HowToVideo, type HowToViewCounts } from '@/components/HowToVideoPlayer.vue';
 import { useConfirm } from '@/composables/useConfirm';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import {
@@ -273,6 +273,13 @@ const clearSearch = () => {
 };
 
 const playing = ref<HowToVideo | null>(null);
+
+// The player records the view; copy the fresh counts onto the card.
+const updateViewCounts = (counts: HowToViewCounts) => {
+    if (!playing.value) return;
+    playing.value.views_count = counts.views_count;
+    playing.value.viewers_count = counts.viewers_count;
+};
 
 /* ---- Written documentation (modal) ---- */
 const docVideoId = ref<number | null>(null);

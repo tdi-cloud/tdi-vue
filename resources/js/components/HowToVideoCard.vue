@@ -11,7 +11,10 @@
             <span class="vcard__body">
                 <span class="vcard__title" :title="video.title">{{ video.title }}</span>
                 <span v-if="video.description" class="vcard__desc" :title="video.description">{{ video.description }}</span>
-                <span v-if="addedOn" class="vcard__meta"><CalendarDays :size="13" /> Added {{ addedOn }}</span>
+                <span class="vcard__meta">
+                    <span class="vcard__stat" :title="viewersLabel"><Eye :size="13" /> {{ viewsLabel }}</span>
+                    <span v-if="addedOn" class="vcard__stat"><CalendarDays :size="13" /> Added {{ addedOn }}</span>
+                </span>
             </span>
         </button>
         <div v-if="$slots.actions" class="vcard__actions"><slot name="actions" /></div>
@@ -19,12 +22,21 @@
 </template>
 
 <script setup lang="ts">
-import { CalendarDays, Film, Play } from 'lucide-vue-next';
+import { CalendarDays, Eye, Film, Play } from 'lucide-vue-next';
 import { computed } from 'vue';
 import type { HowToVideo } from './HowToVideoPlayer.vue';
 
 const props = defineProps<{ video: HowToVideo }>();
 const emit = defineEmits<{ play: [] }>();
+
+const viewsLabel = computed(() => {
+    const views = props.video.views_count ?? 0;
+    return `${views.toLocaleString('en-US')} ${views === 1 ? 'view' : 'views'}`;
+});
+const viewersLabel = computed(() => {
+    const viewers = props.video.viewers_count ?? 0;
+    return `Watched by ${viewers.toLocaleString('en-US')} ${viewers === 1 ? 'person' : 'people'}`;
+});
 
 const addedOn = computed(() => {
     if (!props.video.created_at) return '';
@@ -169,14 +181,20 @@ const addedOn = computed(() => {
     overflow-wrap: anywhere;
 }
 .vcard__meta {
-    display: inline-flex;
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.35rem 0.9rem;
     margin-top: auto;
     padding-top: 0.35rem;
     font-size: 0.75rem;
     font-weight: 500;
     color: var(--vc-muted, #8a93a8);
+}
+.vcard__stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
 }
 .vcard__actions {
     display: flex;
