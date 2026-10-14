@@ -25,11 +25,13 @@ class FasdAssigned extends Notification
      */
     public function toArray(object $notifiable): array
     {
-        $fasdName = $this->assessment->supervisor_form['fasd_name'] ?? 'A FASD signatory';
+        $form = $this->assessment->supervisor_form ?? [];
+        $preparedName = $form['fasd_name'] ?? 'A FASD signatory';
+        $notedName = $form['noted_name'] ?? $form['name'] ?? $this->assessment->supervisor_name;
 
         return [
-            'title' => 'FASD Signatory Updated',
-            'message' => "{$fasdName} has been assigned as the \"Noted by\" signatory on your TNA Result.",
+            'title' => 'TNA Result Signatories Updated',
+            'message' => "{$preparedName} has been assigned as the \"Prepared by\" and {$notedName} as the \"Noted by\" signatory on your TNA Result.",
             'url' => route('tna.result.show', $this->assessment->id),
         ];
     }

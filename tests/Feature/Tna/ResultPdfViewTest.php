@@ -35,7 +35,7 @@ function resultPdfViewHtml(array $extra = []): string
         ],
     ]);
 
-    $form = ['name' => 'Maria Supervisor', 'office' => 'Central Office'];
+    $form = ['name' => 'Maria Supervisor'];
     $priority = collect();
 
     return view('pdf.tna-result', array_merge([
@@ -43,20 +43,21 @@ function resultPdfViewHtml(array $extra = []): string
         'form' => $form,
         'units' => $units,
         'priority' => $priority,
+        'prepared' => ['name' => 'Pedro FASD', 'position' => 'Chief Admin Officer', 'office' => 'FASD'],
+        'noted' => ['name' => 'Maria Supervisor', 'position' => 'HRMO', 'office' => 'ODDG-PO', 'signature' => null],
     ], $extra))->render();
 }
 
-test('tna result pdf view shows the noted by office from office/division', function () {
-    $html = resultPdfViewHtml(['notedOffice' => 'ODDG-PO']);
-
-    expect($html)->toContain('HRMO, ODDG-PO');
-    expect($html)->not->toContain('HRMO, Central Office');
-});
-
-test('tna result pdf view falls back to the stored office when no office/division is given', function () {
+test('tna result pdf view puts the fasd under prepared by and the supervisor under noted by', function () {
     $html = resultPdfViewHtml();
 
-    expect($html)->toContain('HRMO, Central Office');
+    $preparedAt = strpos($html, 'Prepared by:');
+    $notedAt = strpos($html, 'Noted by:');
+
+    expect($preparedAt)->toBeLessThan($notedAt);
+    expect(strpos($html, 'Pedro FASD'))->toBeGreaterThan($preparedAt)->toBeLessThan($notedAt);
+    expect(strpos($html, 'Chief Admin Officer, FASD'))->toBeGreaterThan($preparedAt)->toBeLessThan($notedAt);
+    expect(strpos($html, 'HRMO, ODDG-PO'))->toBeGreaterThan($notedAt);
 });
 
 test('tna result pdf view merges the unit of competency cell into one row per unit', function () {

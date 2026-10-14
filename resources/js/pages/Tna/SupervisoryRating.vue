@@ -3,11 +3,13 @@ import SignaturePad from '@/components/ui/signature-pad/SignaturePad.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed, reactive, ref, watch } from 'vue';
 import BackToTop from './BackToTop.vue';
+import SignatoryPicker from './SignatoryPicker.vue';
 import TnaBackdrop from './TnaBackdrop.vue';
 
 const props = defineProps({
     assessment: { type: Object, required: true }, // { id, period, subordinate_name, subordinate_position }
     supervisor: { type: Object, required: true }, // { name, office, division }
+    notedDefault: { type: Object, default: null }, // { empcode, name, position, office }
     coreUnits: { type: Array, default: () => [] },
     electiveUnits: { type: Array, default: () => [] },
 });
@@ -55,57 +57,23 @@ const doneCount = computed(
 );
 const donePct = computed(() => (requiredIds.length ? Math.round((doneCount.value / requiredIds.length) * 100) : 100));
 
-/* FASD search (Noted by signatory sa TNA Result) */
-const fasdQuery = ref('');
-const fasdResults = ref([]);
-const fasdLoading = ref(false);
-const fasdOpen = ref(false);
-const selectedFasd = ref(null);
-let fasdTimer = null;
+/* TNA Result signatories: Prepared by = FASD, Noted by = supervisor (default) */
+const preparedBy = ref(null);
+const notedBy = ref(null);
 
-watch(fasdQuery, (val) => {
-    clearTimeout(fasdTimer);
-    if (val.trim().length < 2) {
-        fasdResults.value = [];
-        fasdOpen.value = false;
-        return;
-    }
-    fasdTimer = setTimeout(runFasdSearch, 300);
+watch(preparedBy, (s) => {
+    form.fasd_empcode = s?.empcode ?? '';
+    form.fasd_name = s?.name ?? '';
+    form.fasd_position = s?.position ?? '';
+    form.fasd_office = s?.office ?? '';
 });
 
-async function runFasdSearch() {
-    fasdLoading.value = true;
-    fasdOpen.value = true;
-    try {
-        const res = await fetch(route('tna.fasd.search') + '?q=' + encodeURIComponent(fasdQuery.value), { headers: { Accept: 'application/json' } });
-        fasdResults.value = res.ok ? await res.json() : [];
-    } catch {
-        fasdResults.value = [];
-    } finally {
-        fasdLoading.value = false;
-    }
-}
-
-function pickFasd(f) {
-    selectedFasd.value = f;
-    fasdQuery.value = '';
-    fasdResults.value = [];
-    fasdOpen.value = false;
-    form.fasd_empcode = f.empcode;
-    form.fasd_name = f.name;
-    form.fasd_position = f.position ?? '';
-    form.fasd_office = f.office ?? '';
-}
-
-function clearFasd() {
-    selectedFasd.value = null;
-    fasdQuery.value = '';
-    fasdResults.value = [];
-    form.fasd_empcode = '';
-    form.fasd_name = '';
-    form.fasd_position = '';
-    form.fasd_office = '';
-}
+watch(notedBy, (s) => {
+    form.noted_empcode = s?.empcode ?? '';
+    form.noted_name = s?.name ?? '';
+    form.noted_position = s?.position ?? '';
+    form.noted_office = s?.office ?? '';
+});
 
 const form = useForm({
     name: props.supervisor.name ?? '',
@@ -118,6 +86,10 @@ const form = useForm({
     fasd_name: '',
     fasd_position: '',
     fasd_office: '',
+    noted_empcode: '',
+    noted_name: '',
+    noted_position: '',
+    noted_office: '',
     ratings: [],
 });
 
@@ -407,60 +379,21 @@ const submit = () => {
                 </section>
             </div>
 
-            <!-- FASD SIGNATORY (Noted by, TNA Result) -->
-            <div class="rounded-2xl bg-white p-8 shadow-xl">
-                <h2 class="text-lg font-bold text-gray-900">FASD Signatory for TNA Result</h2>
-                <p class="mb-4 text-sm text-gray-500">
-                    Select the employee who will be the "Noted by" signatory on the TNA Result. This is required before you can submit.
-                </p>
-
-                <div class="relative max-w-xl">
-                    <input
-                        v-model="fasdQuery"
-                        type="text"
-                        placeholder="Search by name or empcode…"
-                        autocomplete="off"
-                        class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                        @focus="fasdResults.length && (fasdOpen = true)"
-                    />
-
-                    <!-- Dropdown -->
-                    <div
-                        v-if="fasdOpen && (fasdLoading || fasdResults.length)"
-                        class="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg"
-                    >
-                        <div v-if="fasdLoading" class="px-4 py-3 text-sm text-gray-400">Searching…</div>
-                        <button
-                            v-for="f in fasdResults"
-                            :key="f.empcode"
-                            type="button"
-                            class="flex w-full flex-col items-start border-b border-gray-50 px-4 py-2.5 text-left last:border-0 hover:bg-blue-50"
-                            @click="pickFasd(f)"
-                        >
-                            <span class="text-sm font-semibold text-gray-900">{{ f.name }}</span>
-                            <span class="text-xs text-gray-500">{{ f.position }} · {{ f.office }}</span>
-                        </button>
-                    </div>
-                    <div
-                        v-else-if="fasdOpen && !fasdLoading && fasdQuery.length >= 2"
-                        class="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-400 shadow-lg"
-                    >
-                        No matching results found.
-                    </div>
-                </div>
-
-                <!-- Selected chip -->
-                <div v-if="selectedFasd" class="mt-4 flex items-center justify-between rounded-xl border border-green-200 bg-green-50 px-4 py-3">
-                    <div>
-                        <p class="text-xs font-medium uppercase tracking-wide text-green-700">Selected FASD</p>
-                        <p class="text-sm font-semibold text-gray-900">{{ selectedFasd.name }}</p>
-                        <p class="text-xs text-gray-500">{{ selectedFasd.position }} · {{ selectedFasd.office }}</p>
-                    </div>
-                    <button type="button" class="text-xs font-semibold text-red-600 hover:underline" @click="clearFasd">Change</button>
-                </div>
-                <p v-if="form.errors.fasd_empcode" class="mt-2 text-xs text-red-600">
-                    {{ form.errors.fasd_empcode }}
-                </p>
+            <!-- TNA RESULT SIGNATORIES -->
+            <div class="space-y-8 rounded-2xl bg-white p-8 shadow-xl">
+                <SignatoryPicker
+                    v-model="preparedBy"
+                    title="Prepared by (TNA Result)"
+                    description="Select the FASD who will be the &quot;Prepared by&quot; signatory on the TNA Result. This is required before you can submit."
+                    :error="form.errors.fasd_empcode"
+                />
+                <SignatoryPicker
+                    v-model="notedBy"
+                    title="Noted by (TNA Result)"
+                    description="You are the &quot;Noted by&quot; signatory by default. Change it only if someone else will sign."
+                    :default-signatory="notedDefault"
+                    :error="form.errors.noted_name"
+                />
             </div>
 
             <!-- SIGNATURE + SUBMIT -->
@@ -484,7 +417,7 @@ const submit = () => {
                         {{ form.processing ? 'Submitting…' : 'Submit Supervisor Rating' }}
                     </button>
                     <span v-if="donePct < 100" class="text-xs text-gray-500"> {{ requiredIds.length - doneCount }} more element(s) to answer. </span>
-                    <span v-else-if="!form.fasd_empcode" class="text-xs text-gray-500"> Please select the FASD signatory above. </span>
+                    <span v-else-if="!form.fasd_empcode" class="text-xs text-gray-500"> Please select the "Prepared by" signatory above. </span>
                 </div>
             </div>
 

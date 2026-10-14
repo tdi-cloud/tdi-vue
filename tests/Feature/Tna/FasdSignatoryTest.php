@@ -207,6 +207,95 @@ test('supervisor can change the fasd signatory after the assessment is already r
     expect($supervisorForm['name'] ?? null)->toBe('Maria Supervisor');
 });
 
+test('noted by defaults to the supervisor and can be changed and reset', function () {
+    $position = 'Test Officer FASD 6';
+    $employee = fasdTestEmployee('EMP-121', $position, 'NCR');
+    $supervisorEmployee = fasdTestEmployee('EMP-122', 'Supervisor', 'NCR', 'Garcia');
+    $supervisorEmployee->forceFill(['OFFICE/DIVISION' => 'ODDG-PO'])->save();
+    $fasd = fasdTestEmployee('EMP-123', 'FASD', 'NCR', 'Santos');
+    $noter = fasdTestEmployee('EMP-124', 'Director', 'NCR', 'Lopez');
+    $subordinateUser = User::factory()->create(['empcode' => $employee->EMPCODE]);
+    $supervisorUser = User::factory()->create(['empcode' => $supervisorEmployee->EMPCODE]);
+
+    $assessment = TnaAssessment::create([
+        'user_id' => $subordinateUser->id,
+        'position' => $position,
+        'period' => config('tna.period'),
+        'name' => 'Juan D. Dela Cruz',
+        'supervisor_empcode' => $supervisorEmployee->EMPCODE,
+        'supervisor_name' => 'Maria Supervisor',
+        'supervisor_position' => 'Supervisor',
+        'signature' => null,
+        'submitted_at' => now(),
+        'supervisor_reviewed_at' => now(),
+        'supervisor_form' => [
+            'name' => 'Maria Supervisor',
+            'fasd_empcode' => $fasd->EMPCODE,
+            'fasd_name' => 'Juan D. Santos',
+        ],
+    ]);
+
+    $edit = $this->actingAs($supervisorUser)->get(route('tna.supervisory.fasd.edit', $assessment));
+    $edit->assertOk();
+    expect($edit->inertiaProps('noted.empcode'))->toBe($supervisorEmployee->EMPCODE);
+    expect($edit->inertiaProps('noted.office'))->toBe('ODDG-PO');
+
+    $this->actingAs($supervisorUser)->patch(route('tna.supervisory.fasd.update', $assessment), [
+        'fasd_empcode' => $fasd->EMPCODE,
+        'fasd_name' => 'Juan D. Santos',
+        'noted_empcode' => $noter->EMPCODE,
+        'noted_name' => 'Juan D. Lopez',
+        'noted_position' => 'Director',
+        'noted_office' => 'Test Office',
+    ])->assertSessionDoesntHaveErrors();
+
+    $supervisorForm = $assessment->fresh()->supervisor_form;
+    expect($supervisorForm['noted_empcode'])->toBe($noter->EMPCODE);
+    expect($supervisorForm['noted_name'])->toBe('Juan D. Lopez');
+
+    // Leaving the noted by fields empty falls back to the supervisor again
+    $this->actingAs($supervisorUser)->patch(route('tna.supervisory.fasd.update', $assessment), [
+        'fasd_empcode' => $fasd->EMPCODE,
+        'fasd_name' => 'Juan D. Santos',
+    ])->assertSessionDoesntHaveErrors();
+
+    expect($assessment->fresh()->supervisor_form['noted_empcode'])->toBeNull();
+    $edit = $this->actingAs($supervisorUser)->get(route('tna.supervisory.fasd.edit', $assessment));
+    expect($edit->inertiaProps('noted.empcode'))->toBe($supervisorEmployee->EMPCODE);
+});
+
+test('the tna result pdf renders with a custom noted by signatory', function () {
+    $position = 'Test Officer FASD 7';
+    $employee = fasdTestEmployee('EMP-125', $position, 'NCR');
+    $supervisorEmployee = fasdTestEmployee('EMP-126', 'Supervisor', 'NCR');
+    $user = User::factory()->create(['empcode' => $employee->EMPCODE]);
+
+    $assessment = TnaAssessment::create([
+        'user_id' => $user->id,
+        'position' => $position,
+        'period' => config('tna.period'),
+        'name' => 'Juan D. Dela Cruz',
+        'supervisor_empcode' => $supervisorEmployee->EMPCODE,
+        'supervisor_name' => 'Maria Supervisor',
+        'signature' => null,
+        'submitted_at' => now(),
+        'supervisor_reviewed_at' => now(),
+        'supervisor_form' => [
+            'name' => 'Maria Supervisor',
+            'fasd_empcode' => 'EMP-999',
+            'fasd_name' => 'Juan D. Santos',
+            'noted_empcode' => 'EMP-998',
+            'noted_name' => 'Juan D. Lopez',
+            'noted_position' => 'Director',
+            'noted_office' => 'Test Office',
+        ],
+    ]);
+
+    $this->actingAs($user)->get(route('tna.result.pdf', $assessment))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf');
+});
+
 test('updating the fasd signatory is blocked before the assessment is reviewed', function () {
     $position = 'Test Officer FASD 4';
     $employee = fasdTestEmployee('EMP-114', $position, 'NCR');

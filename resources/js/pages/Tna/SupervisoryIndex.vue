@@ -103,7 +103,7 @@ async function redoRating(id) {
                                     :href="route('tna.supervisory.fasd.edit', a.id)"
                                     class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
                                 >
-                                    Change FASD
+                                    Change Signatories
                                 </Link>
                                 <button
                                     type="button"

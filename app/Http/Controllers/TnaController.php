@@ -167,6 +167,7 @@ class TnaController extends Controller
                 'office' => $supEmployee?->OFFICE,
                 'division' => $this->divisionLabel($supEmployee),
             ],
+            'notedDefault' => $this->supervisorSignatory($assessment),
             'coreUnits' => $toUnits('core'),
             'electiveUnits' => $toUnits('elective'),
         ]);
@@ -197,13 +198,14 @@ class TnaController extends Controller
             'fasd_name' => ['required', 'string', 'max:255'],
             'fasd_position' => ['nullable', 'string', 'max:255'],
             'fasd_office' => ['nullable', 'string', 'max:255'],
+            ...$this->notedSignatoryRules(),
             'ratings' => ['required', 'array', 'min:1'],
             'ratings.*.competency_id' => ['required', 'integer'],
             'ratings.*.criticality' => ['required', 'integer', 'between:1,3'],
             'ratings.*.competence' => ['required', 'integer', 'between:0,4'],
             'ratings.*.frequency' => ['required', 'integer', 'between:1,3'],
         ], [
-            'fasd_empcode.required' => 'Please select the FASD signatory before submitting.',
+            'fasd_empcode.required' => 'Please select the "Prepared by" signatory before submitting.',
         ]);
 
         $ratingRows = $assessment->ratings()->get()->keyBy('competency_id');
@@ -241,6 +243,10 @@ class TnaController extends Controller
                     'fasd_name' => $data['fasd_name'] ?? null,
                     'fasd_position' => $data['fasd_position'] ?? null,
                     'fasd_office' => $data['fasd_office'] ?? null,
+                    'noted_empcode' => $data['noted_empcode'] ?? null,
+                    'noted_name' => $data['noted_name'] ?? null,
+                    'noted_position' => $data['noted_position'] ?? null,
+                    'noted_office' => $data['noted_office'] ?? null,
                 ],
                 'supervisor_reviewed_at' => now(),
             ]);
@@ -310,6 +316,8 @@ class TnaController extends Controller
                 'position' => $form['fasd_position'] ?? null,
                 'office' => $form['fasd_office'] ?? null,
             ],
+            'noted' => $this->notedSignatory($assessment),
+            'notedDefault' => $this->supervisorSignatory($assessment),
         ]);
     }
 
@@ -327,9 +335,17 @@ class TnaController extends Controller
             'fasd_name' => ['required', 'string', 'max:255'],
             'fasd_position' => ['nullable', 'string', 'max:255'],
             'fasd_office' => ['nullable', 'string', 'max:255'],
+            ...$this->notedSignatoryRules(),
         ], [
-            'fasd_empcode.required' => 'Please select the FASD signatory.',
+            'fasd_empcode.required' => 'Please select the "Prepared by" signatory.',
         ]);
+
+        $data += [
+            'noted_empcode' => null,
+            'noted_name' => null,
+            'noted_position' => null,
+            'noted_office' => null,
+        ];
 
         $assessment->update([
             'supervisor_form' => array_merge($assessment->supervisor_form ?? [], $data),
@@ -339,7 +355,22 @@ class TnaController extends Controller
 
         return redirect()
             ->route('tna.supervisory.index')
-            ->with('success', 'FASD signatory updated.');
+            ->with('success', 'TNA Result signatories updated.');
+    }
+
+    /**
+     * Optional "Noted by" signatory fields; leaving them empty keeps the supervisor as the default.
+     *
+     * @return array<string, array<int, string>>
+     */
+    protected function notedSignatoryRules(): array
+    {
+        return [
+            'noted_empcode' => ['nullable', 'string', 'max:255'],
+            'noted_name' => ['nullable', 'required_with:noted_empcode', 'string', 'max:255'],
+            'noted_position' => ['nullable', 'string', 'max:255'],
+            'noted_office' => ['nullable', 'string', 'max:255'],
+        ];
     }
 
     public function supervisoryPdf(TnaAssessment $assessment)
@@ -609,12 +640,20 @@ class TnaController extends Controller
 
         $result = $this->buildResult($assessment);
         $form = $assessment->supervisor_form ?? [];
-        $supEmployee = Employee::where('EMPCODE', $assessment->supervisor_empcode)->first();
+        $noted = $this->notedSignatory($assessment);
 
         $pdf = Pdf::loadView('pdf.tna-result', [
             'a' => $assessment,
             'form' => $form,
-            'notedOffice' => $supEmployee?->{'OFFICE/DIVISION'} ?: ($form['office'] ?? null),
+            'prepared' => [
+                'name' => $form['fasd_name'] ?? null,
+                'position' => $form['fasd_position'] ?? null,
+                'office' => $form['fasd_office'] ?? null,
+            ],
+            // The e-signature belongs to the supervisor, so only show it while they are still the "Noted by"
+            'noted' => $noted + [
+                'signature' => $noted['empcode'] === $assessment->supervisor_empcode ? ($form['signature'] ?? null) : null,
+            ],
             'units' => $result['units'],
             'priority' => $result['priority'],
         ])->setPaper('a4', 'portrait')->setOption('isRemoteEnabled', true);
@@ -1104,6 +1143,45 @@ class TnaController extends Controller
         return trim(preg_replace('/\s+/', ' ',
             "{$e->FIRSTNAME} {$mi} {$e->LASTNAME}"
         ));
+    }
+
+    /**
+     * Default "Noted by" signatory of the TNA Result: the assigned supervisor.
+     *
+     * @return array{empcode: ?string, name: ?string, position: ?string, office: ?string}
+     */
+    protected function supervisorSignatory(TnaAssessment $assessment): array
+    {
+        $form = $assessment->supervisor_form ?? [];
+        $supEmployee = Employee::where('EMPCODE', $assessment->supervisor_empcode)->first();
+
+        return [
+            'empcode' => $assessment->supervisor_empcode,
+            'name' => $form['name'] ?? ($supEmployee ? $this->fullName($supEmployee) : $assessment->supervisor_name),
+            'position' => $assessment->supervisor_position ?: $supEmployee?->POSITION,
+            'office' => $supEmployee?->{'OFFICE/DIVISION'} ?: ($form['office'] ?? null),
+        ];
+    }
+
+    /**
+     * "Noted by" signatory of the TNA Result, falling back to the supervisor when none was chosen.
+     *
+     * @return array{empcode: ?string, name: ?string, position: ?string, office: ?string}
+     */
+    protected function notedSignatory(TnaAssessment $assessment): array
+    {
+        $form = $assessment->supervisor_form ?? [];
+
+        if (empty($form['noted_empcode'])) {
+            return $this->supervisorSignatory($assessment);
+        }
+
+        return [
+            'empcode' => $form['noted_empcode'],
+            'name' => $form['noted_name'] ?? null,
+            'position' => $form['noted_position'] ?? null,
+            'office' => $form['noted_office'] ?? null,
+        ];
     }
 
     protected function divisionLabel(?Employee $e): ?string
