@@ -224,7 +224,7 @@
         <td style="width:50%">
             <div class="sign-label">Prepared by:</div>
             <div class="sign-name no-img">{{ $form['fasd_name'] ?? '' }}</div>
-            <div class="sign-pos">{{ $a->supervisor_position }}{{ ($form['office'] ?? null) ? ', ' . $form['office'] : '' }}</div>
+            <div class="sign-pos">{{ $form['fasd_position'] ?? '' }}{{ ($form['fasd_office'] ?? null) ? ', ' . $form['fasd_office'] : '' }}</div>
         </td>
         <td style="width:50%">
             <div class="sign-label">Noted by:</div>
@@ -232,7 +232,7 @@
                 <div class="sign-img-wrap"><img src="{{ $form['signature'] }}"></div>
             @endif
             <div class="sign-name @if (! ($form['signature'] ?? null)) no-img @endif">{{ $form['name'] ?? $a->supervisor_name }}</div>
-            <div class="sign-pos">{{ $form['fasd_position'] ?? '' }}{{ ($form['fasd_office'] ?? null) ? ', ' . $form['fasd_office'] : '' }}</div>
+            <div class="sign-pos">{{ $a->supervisor_position }}{{ ($form['office'] ?? null) ? ', ' . $form['office'] : '' }}</div>
         </td>
     </tr>
 </table>
