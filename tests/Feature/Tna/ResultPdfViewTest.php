@@ -1,6 +1,6 @@
 <?php
 
-function resultPdfViewHtml(): string
+function resultPdfViewHtml(array $extra = []): string
 {
     $assessment = (object) [
         'name' => 'Juan D. Dela Cruz',
@@ -35,16 +35,29 @@ function resultPdfViewHtml(): string
         ],
     ]);
 
-    $form = ['name' => 'Maria Supervisor'];
+    $form = ['name' => 'Maria Supervisor', 'office' => 'Central Office'];
     $priority = collect();
 
-    return view('pdf.tna-result', [
+    return view('pdf.tna-result', array_merge([
         'a' => $assessment,
         'form' => $form,
         'units' => $units,
         'priority' => $priority,
-    ])->render();
+    ], $extra))->render();
 }
+
+test('tna result pdf view shows the noted by office from office/division', function () {
+    $html = resultPdfViewHtml(['notedOffice' => 'ODDG-PO']);
+
+    expect($html)->toContain('HRMO, ODDG-PO');
+    expect($html)->not->toContain('HRMO, Central Office');
+});
+
+test('tna result pdf view falls back to the stored office when no office/division is given', function () {
+    $html = resultPdfViewHtml();
+
+    expect($html)->toContain('HRMO, Central Office');
+});
 
 test('tna result pdf view merges the unit of competency cell into one row per unit', function () {
     $html = resultPdfViewHtml();

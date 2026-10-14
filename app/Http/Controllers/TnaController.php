@@ -609,10 +609,12 @@ class TnaController extends Controller
 
         $result = $this->buildResult($assessment);
         $form = $assessment->supervisor_form ?? [];
+        $supEmployee = Employee::where('EMPCODE', $assessment->supervisor_empcode)->first();
 
         $pdf = Pdf::loadView('pdf.tna-result', [
             'a' => $assessment,
             'form' => $form,
+            'notedOffice' => $supEmployee?->{'OFFICE/DIVISION'} ?: ($form['office'] ?? null),
             'units' => $result['units'],
             'priority' => $result['priority'],
         ])->setPaper('a4', 'portrait')->setOption('isRemoteEnabled', true);

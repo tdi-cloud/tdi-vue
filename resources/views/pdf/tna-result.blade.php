@@ -232,7 +232,8 @@
                 <div class="sign-img-wrap"><img src="{{ $form['signature'] }}"></div>
             @endif
             <div class="sign-name @if (! ($form['signature'] ?? null)) no-img @endif">{{ $form['name'] ?? $a->supervisor_name }}</div>
-            <div class="sign-pos">{{ $a->supervisor_position }}{{ ($form['office'] ?? null) ? ', ' . $form['office'] : '' }}</div>
+            @php($notedOffice = $notedOffice ?? ($form['office'] ?? null))
+            <div class="sign-pos">{{ $a->supervisor_position }}{{ $notedOffice ? ', ' . $notedOffice : '' }}</div>
         </td>
     </tr>
 </table>
