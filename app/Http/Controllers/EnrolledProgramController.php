@@ -183,6 +183,66 @@ class EnrolledProgramController extends Controller
         return back()->with('success', 'Submission deleted.');
     }
 
+    /**
+     * POST /my-programs/{batch}/documents
+     *
+     * Lets a participant hand in a document for a batch that has no
+     * requirements set (e.g. a conducted program without a requirements list).
+     */
+    public function submitOtherDocument(Request $request, Batch $batch)
+    {
+        $participant = $this->ownParticipant($request, $batch);
+
+        abort_if($batch->requirements()->exists(), 403, 'This program has requirements. Please submit under the matching requirement.');
+
+        $validated = $request->validate([
+            'document_title' => ['required', 'string', 'max:255'],
+            'file' => ['required', 'mimes:pdf', 'max:20480'],
+            'notes' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $file = $request->file('file');
+        $path = $file->storeAs('submissions', time().'_'.$this->sanitizeFilename($file->getClientOriginalName()), 'public');
+
+        $saved = Submission::create([
+            'participant_id' => $participant->id,
+            'program_code' => $batch->program_code,
+            'batch_id' => $batch->id,
+            'requirement_id' => null,
+            'document_title' => $validated['document_title'],
+            'status' => 'Pending',
+            'file_path' => $path,
+            'notes' => $validated['notes'] ?? null,
+            'submitted_at' => now(),
+            'added_by' => $request->user()?->empcode,
+        ]);
+
+        if ($batch->program?->added_by && $batch->program->added_by !== $participant->empcode) {
+            PendingNotification::notifyOrQueue($batch->program->added_by, new RequirementSubmitted($saved));
+        }
+
+        return back()->with('success', 'Document submitted successfully. Awaiting review.');
+    }
+
+    /**
+     * DELETE /my-programs/{batch}/documents/{submission}
+     */
+    public function destroyOtherDocument(Request $request, Batch $batch, Submission $submission)
+    {
+        $participant = $this->ownParticipant($request, $batch);
+
+        abort_unless($submission->participant_id === $participant->id && $submission->requirement_id === null, 404);
+        abort_if($submission->status === 'Approved', 403, 'Approved submissions cannot be deleted.');
+
+        if ($submission->file_path) {
+            Storage::disk('public')->delete($submission->file_path);
+        }
+
+        $submission->delete();
+
+        return back()->with('success', 'Submission deleted.');
+    }
+
     // POST /my-programs/{batch}/absent-justification
     // Lets a participant self-report a non-attendance/failure justification at
     // any time — independent of requirement submission progress. Uploading it
@@ -288,6 +348,23 @@ class EnrolledProgramController extends Controller
 
         if ($withRequirements) {
             $data['requirements'] = $reqList->values();
+
+            // Documents not tied to a requirement: handed in for a batch without
+            // requirements, or kept after their requirement was deleted.
+            $data['can_submit_other_documents'] = $requirements->isEmpty();
+            $data['other_documents'] = $participant->submissions
+                ->whereNull('requirement_id')
+                ->sortByDesc('submitted_at')
+                ->map(fn ($sub) => [
+                    'id' => $sub->id,
+                    'title' => $sub->document_title ?? 'Other Document',
+                    'status' => $sub->status,
+                    'submitted_at' => $sub->submitted_at,
+                    'remarks' => $sub->remarks,
+                    'notes' => $sub->notes,
+                    'file_url' => $sub->file_path ? '/storage/'.$sub->file_path : null,
+                    'file_name' => $sub->file_path ? basename($sub->file_path) : null,
+                ])->values();
 
             $data['justification'] = $participant->justification ? [
                 'id' => $participant->justification->id,

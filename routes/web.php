@@ -473,6 +473,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('programs.my-progress.destroy');
 
     // ABSENCE JUSTIFICATION
+    Route::post('/my-programs/{batch}/documents', [EnrolledProgramController::class, 'submitOtherDocument'])
+        ->name('programs.my-progress.documents.submit');
+
+    Route::delete('/my-programs/{batch}/documents/{submission}', [EnrolledProgramController::class, 'destroyOtherDocument'])
+        ->name('programs.my-progress.documents.destroy');
+
     Route::post('/my-programs/{batch}/absent-justification', [EnrolledProgramController::class, 'submitJustification'])
         ->name('programs.my-progress.justification.submit');
 

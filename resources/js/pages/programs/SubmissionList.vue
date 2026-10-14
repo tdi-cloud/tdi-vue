@@ -73,7 +73,8 @@ interface Submission {
     participant_id: number;
     program_code: string;
     batch_id: number;
-    requirement_id: number;
+    requirement_id: number | null;
+    document_title: string | null;
     status: string;
     file_path: string | null;
     notes: string | null;
@@ -141,6 +142,9 @@ const participantName = (s: Submission): string => {
     return emp.FULLNAME ?? emp.fullname ?? emp.name ?? (combined || null) ?? s.participant?.empcode ?? '—';
 };
 
+// Requirement title, or the stored title when it has no (or a deleted) requirement
+const docTitle = (s: Submission | null | undefined): string => s?.requirement?.title ?? s?.document_title ?? 'Other Document';
+
 const isLate = (s: Submission): boolean => {
     if (!s.submitted_at || !s.requirement?.due_date) return false;
     const due = new Date(s.requirement.due_date);
@@ -161,7 +165,7 @@ const filteredSubmissions = computed(() => {
         if (filterBatch.value !== 'all' && String(s.batch_id) !== filterBatch.value) return false;
         if (filterStatus.value !== 'all' && s.status.toLowerCase() !== filterStatus.value.toLowerCase()) return false;
         if (q) {
-            const hay = [participantName(s), s.participant?.empcode ?? '', s.requirement?.title ?? '', s.requirement?.name ?? '']
+            const hay = [participantName(s), s.participant?.empcode ?? '', docTitle(s), s.requirement?.name ?? '']
                 .join(' ')
                 .toLowerCase();
             if (!hay.includes(q)) return false;
@@ -380,7 +384,7 @@ const removingId = ref<number | null>(null);
 // For wrongly uploaded submissions — deletes the record and its uploaded file.
 const removeSubmission = async (s: Submission) => {
     const confirmed = await confirmDialog(
-        `Remove the "${s.requirement?.title ?? 'requirement'}" submission of ${participantName(s)}? The uploaded file will also be deleted.`,
+        `Remove the "${docTitle(s)}" submission of ${participantName(s)}? The uploaded file will also be deleted.`,
         { title: 'Remove submission?', confirmText: 'Remove' },
     );
     if (!confirmed) return;
@@ -581,7 +585,7 @@ const removeSubmission = async (s: Submission) => {
                     </p>
                     <p class="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
                         <FileText class="h-3.5 w-3.5" />
-                        <span class="font-semibold text-foreground">{{ s.requirement?.title }}</span>
+                        <span class="font-semibold text-foreground">{{ docTitle(s) }}</span>
                         <span v-if="s.requirement?.name">— {{ s.requirement?.name }}</span>
                         <span class="mx-1">·</span>
                         <span>{{ s.batch?.batch }}</span>
@@ -723,7 +727,7 @@ const removeSubmission = async (s: Submission) => {
                 <DialogHeader>
                     <DialogTitle class="flex items-center gap-2"> <Pencil class="h-5 w-5 text-blue-600" /> Review Submission </DialogTitle>
                     <DialogDescription class="text-xs text-muted-foreground">
-                        {{ reviewTarget ? participantName(reviewTarget) : '' }} — {{ reviewTarget?.requirement?.title }}
+                        {{ reviewTarget ? participantName(reviewTarget) : '' }} — {{ docTitle(reviewTarget) }}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -762,7 +766,7 @@ const removeSubmission = async (s: Submission) => {
             :open="showFilePreview"
             :file-url="previewSubmission ? fileUrl(previewSubmission) : null"
             :title="previewSubmission ? participantName(previewSubmission) : undefined"
-            :description="previewSubmission?.requirement?.title"
+            :description="previewSubmission ? docTitle(previewSubmission) : undefined"
             @update:open="showFilePreview = $event"
         />
 

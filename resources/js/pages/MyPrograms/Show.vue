@@ -346,6 +346,66 @@
                         <div v-if="!program.requirements.length" class="reqs__empty">
                             <CheckCircle2 :size="18" /> No requirements have been set for this batch yet.
                         </div>
+
+                        <!-- Other documents: for batches without requirements, or kept after a requirement was removed -->
+                        <div v-if="program.can_submit_other_documents && program.attendance !== 'Absent'" class="req-card">
+                            <div class="req-card__top">
+                                <UploadCloud :size="22" class="req-card__icon" />
+                                <div class="req-card__main">
+                                    <div class="req-card__title">Submit a Document</div>
+                                    <div class="req-card__meta">You may still hand in documents for this program (PDF, max 20MB).</div>
+                                </div>
+                            </div>
+                            <div class="req-card__expand">
+                                <input v-model="otherDocTitle" type="text" class="doc-title-input" placeholder="Document title (e.g. Certificate of Attendance)" />
+                                <form class="req-row__upload" @submit.prevent="submitOtherDocument">
+                                    <label class="upload-input">
+                                        <UploadCloud :size="14" />
+                                        <span>{{ otherDocFile?.name || 'Choose PDF file' }}</span>
+                                        <input type="file" accept="application/pdf" @change="onOtherDocFileChange" />
+                                    </label>
+                                    <button type="submit" class="upload-btn" :disabled="!otherDocFile || !otherDocTitle.trim() || uploadingOtherDoc">
+                                        {{ uploadingOtherDoc ? 'Saving…' : 'Submit' }}
+                                    </button>
+                                </form>
+                                <div class="req-row__notes">
+                                    <textarea v-model="otherDocNotes" placeholder="Add a note for the reviewer (optional)…" rows="2"></textarea>
+                                </div>
+                                <div v-if="otherDocError" class="req-row__error">{{ otherDocError }}</div>
+                            </div>
+                        </div>
+
+                        <div v-for="d in program.other_documents" :key="`doc-${d.id}`" class="req-card">
+                            <div class="req-card__top">
+                                <component :is="reqIcon(d.status)" :size="22" :class="reqIconClass(d.status)" class="req-card__icon" />
+                                <div class="req-card__main">
+                                    <div class="req-card__title">{{ d.title }}</div>
+                                    <div class="req-card__meta">Other document</div>
+                                </div>
+                                <span class="req-badge" :class="reqBadgeClass(d.status)">{{ statusLabel(d.status) }}</span>
+                            </div>
+                            <div v-if="d.status === 'Rejected' && d.remarks" class="req-row__remarks"><strong>Reviewer note:</strong> {{ d.remarks }}</div>
+                            <div v-if="d.notes" class="req-row__notes-readonly"><strong>Your note:</strong> {{ d.notes }}</div>
+                            <div class="req-card__bottom">
+                                <div v-if="d.file_url" class="req-card__file">
+                                    <FileText :size="14" />
+                                    <span>{{ d.file_name }}</span>
+                                    <span v-if="d.submitted_at" class="req-card__submitted">Submitted {{ formatDate(d.submitted_at) }}</span>
+                                </div>
+                                <div class="req-card__actions">
+                                    <a v-if="d.file_url" :href="d.file_url" target="_blank" rel="noopener" class="req-btn req-btn--ghost">View Submission</a>
+                                    <button
+                                        v-if="d.status !== 'Approved'"
+                                        type="button"
+                                        class="delete-btn"
+                                        :disabled="deletingOtherDocId === d.id"
+                                        @click="confirmDeleteOtherDocument(d)"
+                                    >
+                                        <Trash2 :size="13" /> {{ deletingOtherDocId === d.id ? 'Deleting…' : 'Delete' }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
@@ -821,6 +881,65 @@ async function confirmDelete(requirement) {
         preserveScroll: true,
         onFinish: () => {
             deletingId.value = null;
+        },
+    });
+}
+
+/* ---- Other documents (no requirement) ---- */
+const otherDocTitle = ref('');
+const otherDocNotes = ref('');
+const otherDocFile = ref(null);
+const otherDocError = ref('');
+const uploadingOtherDoc = ref(false);
+const deletingOtherDocId = ref(null);
+
+function onOtherDocFileChange(event) {
+    otherDocError.value = '';
+    const file = event.target.files[0];
+    if (!file) return;
+    if (file.type !== 'application/pdf') {
+        otherDocError.value = 'Only PDF files are accepted.';
+        otherDocFile.value = null;
+        return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+        otherDocError.value = 'File must not exceed 20MB.';
+        otherDocFile.value = null;
+        return;
+    }
+    otherDocFile.value = file;
+}
+
+function submitOtherDocument() {
+    uploadingOtherDoc.value = true;
+    const formData = new FormData();
+    formData.append('document_title', otherDocTitle.value);
+    formData.append('file', otherDocFile.value);
+    formData.append('notes', otherDocNotes.value);
+    router.post(route('programs.my-progress.documents.submit', { batch: props.program.batch_id }), formData, {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            otherDocTitle.value = '';
+            otherDocNotes.value = '';
+            otherDocFile.value = null;
+        },
+        onError: (errors) => {
+            otherDocError.value = errors.document_title || errors.file || 'Upload failed. Please try again.';
+        },
+        onFinish: () => {
+            uploadingOtherDoc.value = false;
+        },
+    });
+}
+
+async function confirmDeleteOtherDocument(doc) {
+    if (!(await confirmDialog(`Delete your "${doc.title}" submission?`))) return;
+    deletingOtherDocId.value = doc.id;
+    router.delete(route('programs.my-progress.documents.destroy', { batch: props.program.batch_id, submission: doc.id }), {
+        preserveScroll: true,
+        onFinish: () => {
+            deletingOtherDocId.value = null;
         },
     });
 }
@@ -2071,6 +2190,22 @@ async function confirmDeleteCert(cert) {
     font-size: 0.74rem;
     color: var(--tdi-red-text);
     margin-top: 0.6rem;
+}
+.doc-title-input {
+    width: 100%;
+    border: 1.5px solid var(--tdi-border);
+    border-radius: 8px;
+    padding: 0.5rem 0.7rem;
+    margin-bottom: 0.6rem;
+    font-size: 0.8rem;
+    font-family: inherit;
+    background: #fff;
+    color: #374151;
+    color-scheme: light;
+}
+.doc-title-input:focus {
+    outline: none;
+    border-color: var(--tdi-blue);
 }
 
 /* Absence Justification */

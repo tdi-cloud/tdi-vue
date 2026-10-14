@@ -29,7 +29,7 @@ class RequirementSubmitted extends Notification
             ?? $this->submission->participant?->empcode
             ?? 'An employee';
 
-        $requirementTitle = $this->submission->requirement?->title ?? 'a requirement';
+        $requirementTitle = $this->submission->requirement?->title ?? $this->submission->document_title ?? 'a document';
         $programTitle = $this->submission->program?->title ?? $this->submission->program_code;
 
         return [

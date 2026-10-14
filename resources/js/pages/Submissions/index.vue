@@ -71,7 +71,8 @@ interface Submission {
     participant_id: number;
     program_code: string;
     batch_id: number;
-    requirement_id: number;
+    requirement_id: number | null;
+    document_title: string | null;
     status: string;
     file_path: string | null;
     notes: string | null;
@@ -140,6 +141,9 @@ watch([search, filterProgram, filterStatus], () => {
 /* ===================== DISPLAY HELPERS ===================== */
 
 const participantName = (s: Submission): string => s.participant?.employee?.name ?? s.participant?.empcode ?? '—';
+
+// Requirement title, or the stored title when it has no (or a deleted) requirement
+const docTitle = (s: Submission | null | undefined): string => s?.requirement?.title ?? s?.document_title ?? 'Other Document';
 
 const isLate = (s: Submission): boolean => {
     if (!s.submitted_at || !s.requirement?.due_date) return false;
@@ -282,7 +286,7 @@ const removingId = ref<number | null>(null);
 // For wrongly uploaded submissions — deletes the record and its uploaded file.
 const removeSubmission = async (s: Submission) => {
     const confirmed = await confirmDialog(
-        `Remove the "${s.requirement?.title ?? 'requirement'}" submission of ${participantName(s)}? The uploaded file will also be deleted.`,
+        `Remove the "${docTitle(s)}" submission of ${participantName(s)}? The uploaded file will also be deleted.`,
         { title: 'Remove submission?', confirmText: 'Remove' },
     );
     if (!confirmed) return;
@@ -557,7 +561,7 @@ onMounted(() => {
                             <p class="flex items-start gap-1.5 text-sm font-semibold text-slate-800 dark:text-slate-100">
                                 <FileText class="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
                                 <span class="min-w-0 break-words">
-                                    {{ s.requirement?.title }}
+                                    {{ docTitle(s) }}
                                     <span v-if="s.requirement?.name" class="font-normal text-muted-foreground">— {{ s.requirement?.name }}</span>
                                 </span>
                             </p>
@@ -695,7 +699,7 @@ onMounted(() => {
                 <DialogHeader>
                     <DialogTitle class="flex items-center gap-2"> <Pencil class="h-5 w-5 text-blue-600" /> Review Submission </DialogTitle>
                     <DialogDescription class="text-xs text-muted-foreground">
-                        {{ reviewTarget ? participantName(reviewTarget) : '' }} — {{ reviewTarget?.requirement?.title }}
+                        {{ reviewTarget ? participantName(reviewTarget) : '' }} — {{ docTitle(reviewTarget) }}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -800,7 +804,7 @@ onMounted(() => {
             :open="showFilePreview"
             :file-url="previewSubmission ? fileUrl(previewSubmission) : null"
             :title="previewSubmission ? participantName(previewSubmission) : undefined"
-            :description="previewSubmission?.requirement?.title"
+            :description="previewSubmission ? docTitle(previewSubmission) : undefined"
             @update:open="showFilePreview = $event"
         />
     </AppLayout>

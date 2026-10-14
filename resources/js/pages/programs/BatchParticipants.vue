@@ -326,6 +326,72 @@ const deleteSubmission = async (submissionId: number) => {
     });
 };
 
+/* ---------- Other documents (submissions without a requirement) ---------- */
+const otherDocs = computed(() => (submissionsTarget.value?.submissions ?? []).filter((s: any) => !s.requirement_id));
+
+// Only submissions tied to a requirement count toward the X/Y progress badge
+const requirementSubmissionCount = (p: any) => (p.submissions ?? []).filter((s: any) => s.requirement_id).length;
+
+const docFormOpen = ref(false);
+const docEditingId = ref<number | null>(null);
+const docTitle = ref('');
+const docStatus = ref<'Pending' | 'Approved' | 'Rejected'>('Approved');
+const docRemarks = ref('');
+const docFile = ref<File | null>(null);
+const docProcessing = ref(false);
+const docErrors = ref<{ document_title?: string; file?: string }>({});
+
+const openDocForm = (doc: any = null) => {
+    docEditingId.value = doc?.id ?? null;
+    docTitle.value = doc?.document_title ?? '';
+    docStatus.value = normalizeStatus(doc?.status);
+    docRemarks.value = doc?.remarks ?? '';
+    docFile.value = null;
+    docErrors.value = {};
+    docFormOpen.value = true;
+};
+
+const closeDocForm = () => {
+    docFormOpen.value = false;
+    docEditingId.value = null;
+    docFile.value = null;
+    docErrors.value = {};
+};
+
+const onDocFileChange = (e: Event) => {
+    docFile.value = (e.target as HTMLInputElement).files?.[0] ?? null;
+};
+
+const saveOtherDoc = () => {
+    if (!submissionsTarget.value || !props.batch) return;
+
+    docProcessing.value = true;
+    router.post(
+        route('submissions.store'),
+        {
+            participant_id: submissionsTarget.value.id,
+            batch_id: props.batch.id,
+            program_code: props.batch.program_code,
+            submission_id: docEditingId.value,
+            document_title: docTitle.value,
+            status: docStatus.value,
+            file: docFile.value,
+            remarks: docRemarks.value,
+        },
+        {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: () => closeDocForm(),
+            onError: (errors) => {
+                docErrors.value = errors as any;
+            },
+            onFinish: () => {
+                docProcessing.value = false;
+            },
+        },
+    );
+};
+
 /* ---------- Helpers ---------- */
 const attendanceColor = (status: string) => {
     switch (status) {
@@ -1029,13 +1095,13 @@ const submissionSummary = computed(() => {
                                                 variant="outline"
                                                 class="flex cursor-pointer items-center gap-1 text-[10px] font-bold"
                                                 :class="
-                                                    (p.submissions?.length ?? 0) === requirements.length && requirements.length > 0
+                                                    requirementSubmissionCount(p) === requirements.length && requirements.length > 0
                                                         ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400'
                                                         : ''
                                                 "
                                             >
                                                 <ClipboardList class="h-3 w-3" />
-                                                {{ p.submissions?.length ?? 0 }}/{{ requirements.length }}
+                                                {{ requirementSubmissionCount(p) }}/{{ requirements.length }}
                                             </Badge>
                                         </button>
                                     </div>
@@ -1279,7 +1345,7 @@ const submissionSummary = computed(() => {
                             </svg>
                             <p class="text-sm font-bold text-slate-500">No requirements set</p>
                             <p class="max-w-xs text-xs text-slate-400">
-                                Add requirements to this batch in the Requirements tab to track participant submissions here.
+                                Add requirements to this batch in the Requirements tab, or add the participant's documents under Other Documents below.
                             </p>
                         </div>
 
@@ -1417,6 +1483,122 @@ const submissionSummary = computed(() => {
                                             <LoaderCircle v-if="subProcessing" class="mr-1 h-3 w-3 animate-spin" />
                                             <Save v-else class="mr-1 h-3.5 w-3.5" />
                                             Save
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Other documents: no requirement, or their requirement was deleted -->
+                        <div class="mt-5">
+                            <div class="mb-2 flex items-center justify-between">
+                                <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Other Documents</p>
+                                <Button
+                                    v-if="!docFormOpen"
+                                    variant="ghost"
+                                    size="sm"
+                                    class="h-7 px-2 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-950/30"
+                                    @click="openDocForm()"
+                                >
+                                    <Upload class="mr-1 h-3 w-3" /> Add Document
+                                </Button>
+                            </div>
+
+                            <div v-if="docFormOpen" class="mb-2.5 grid gap-2 rounded-xl border bg-blue-50/50 p-3 shadow-md dark:bg-blue-950/20">
+                                <div class="grid gap-1">
+                                    <Label class="flex items-center gap-1 text-xs"><FileText class="h-3 w-3 text-slate-400" /> Document Title</Label>
+                                    <Input v-model="docTitle" class="h-8 bg-white text-xs dark:bg-slate-900" placeholder="e.g. Certificate of Attendance" />
+                                    <p class="text-xs text-red-500">{{ docErrors.document_title }}</p>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div class="grid gap-1">
+                                        <Label class="flex items-center gap-1 text-xs"><ClipboardCheck class="h-3 w-3 text-slate-400" /> Status</Label>
+                                        <Select v-model="docStatus">
+                                            <SelectTrigger class="h-8 bg-white text-xs dark:bg-slate-900"><SelectValue placeholder="Select status" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem class="text-xs" value="Pending">Pending</SelectItem>
+                                                <SelectItem class="text-xs" value="Approved">Approved</SelectItem>
+                                                <SelectItem class="text-xs" value="Rejected">Rejected</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div class="grid gap-1">
+                                        <Label class="flex items-center gap-1 text-xs"><FileText class="h-3 w-3 text-slate-400" /> File (PDF)</Label>
+                                        <input
+                                            type="file"
+                                            accept=".pdf"
+                                            class="cursor-pointer text-xs file:mr-2 file:rounded-md file:border-0 file:bg-blue-600 file:px-2.5 file:py-1.5 file:text-[11px] file:font-bold file:text-white hover:file:bg-blue-500"
+                                            @change="onDocFileChange"
+                                        />
+                                        <p v-if="docEditingId && !docFile" class="text-[11px] text-slate-500">Leave empty to keep the current file.</p>
+                                        <p class="text-xs text-red-500">{{ docErrors.file }}</p>
+                                    </div>
+                                </div>
+                                <div class="grid gap-1">
+                                    <Label class="flex items-center gap-1 text-xs"><ListFilter class="h-3 w-3 text-slate-400" /> Remarks</Label>
+                                    <Input v-model="docRemarks" class="h-8 bg-white text-xs dark:bg-slate-900" />
+                                </div>
+                                <div class="flex justify-end gap-2 pt-1">
+                                    <Button variant="outline" size="sm" @click="closeDocForm">Cancel</Button>
+                                    <Button
+                                        class="bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md shadow-blue-500/25 hover:from-blue-700 hover:to-blue-600"
+                                        size="sm"
+                                        :disabled="docProcessing || !docTitle.trim()"
+                                        @click="saveOtherDoc"
+                                    >
+                                        <LoaderCircle v-if="docProcessing" class="mr-1 h-3 w-3 animate-spin" />
+                                        <Save v-else class="mr-1 h-3.5 w-3.5" />
+                                        Save
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <p v-if="!otherDocs.length && !docFormOpen" class="text-[11px] text-slate-400">No other documents.</p>
+
+                            <div class="flex flex-col gap-2.5">
+                                <div
+                                    v-for="doc in otherDocs"
+                                    :key="doc.id"
+                                    class="flex items-center justify-between gap-2 rounded-xl border bg-card p-3 shadow-md"
+                                    :class="statusMeta(doc.status, true).ring"
+                                >
+                                    <div class="flex min-w-0 items-start gap-3">
+                                        <div class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" :class="statusMeta(doc.status, true).badge">
+                                            <component :is="statusMeta(doc.status, true).icon" class="h-4 w-4" />
+                                        </div>
+                                        <div class="min-w-0">
+                                            <p class="truncate text-xs font-bold leading-4">{{ doc.document_title ?? 'Other Document' }}</p>
+                                            <p v-if="doc.remarks" class="mt-0.5 text-[11px] italic text-slate-500">"{{ doc.remarks }}"</p>
+                                            <button
+                                                v-if="doc.file_path"
+                                                type="button"
+                                                class="mt-0.5 inline-flex items-center gap-0.5 text-[11px] font-semibold text-blue-600 hover:underline"
+                                                @click="openFilePreview(doc.file_path, doc.document_title ?? 'Other Document')"
+                                            >
+                                                <FileText class="h-3 w-3" /> View file
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="flex shrink-0 items-center gap-2">
+                                        <Badge :class="statusMeta(doc.status, true).badge" class="gap-1 border-0 text-[10px] font-bold">
+                                            <component :is="statusMeta(doc.status, true).icon" class="h-3 w-3" />
+                                            {{ statusMeta(doc.status, true).label }}
+                                        </Badge>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            class="h-7 px-2 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-950/30"
+                                            @click="openDocForm(doc)"
+                                        >
+                                            <Upload class="mr-1 h-3 w-3" /> Set
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            class="h-7 w-7 p-0 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
+                                            @click="deleteSubmission(doc.id)"
+                                        >
+                                            <Trash2 class="h-3.5 w-3.5" />
                                         </Button>
                                     </div>
                                 </div>

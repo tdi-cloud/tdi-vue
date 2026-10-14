@@ -48,7 +48,10 @@ class SubmissionController extends Controller
             'participant_id' => 'required|exists:participants,id',
             'program_code' => 'required',
             'batch_id' => 'required|exists:batches,id',
-            'requirement_id' => 'required|exists:requirements,id',
+            // Without a requirement it is an "other document", which needs its own title
+            'requirement_id' => 'nullable|exists:requirements,id',
+            'document_title' => 'nullable|required_without:requirement_id|string|max:255',
+            'submission_id' => 'nullable|integer',
             'status' => 'nullable|in:Pending,Approved,Rejected',
             'notes' => 'nullable|string',
             'remarks' => 'nullable|string|max:2000',
@@ -56,9 +59,17 @@ class SubmissionController extends Controller
         ]);
 
         // Hanapin kung may existing na submission para sa participant+requirement
-        $submission = Submission::where('participant_id', $request->participant_id)
-            ->where('requirement_id', $request->requirement_id)
-            ->first();
+        $submission = $request->filled('requirement_id')
+            ? Submission::where('participant_id', $request->participant_id)
+                ->where('requirement_id', $request->requirement_id)
+                ->first()
+            : Submission::where('participant_id', $request->participant_id)
+                ->whereNull('requirement_id')
+                ->find($request->submission_id);
+
+        if (! $request->filled('requirement_id') && ! $submission && ! $request->hasFile('file')) {
+            return back()->withErrors(['file' => 'Please attach a PDF file.']);
+        }
 
         $path = $submission?->file_path;
 
@@ -76,6 +87,7 @@ class SubmissionController extends Controller
             'program_code' => $request->program_code,
             'batch_id' => $request->batch_id,
             'requirement_id' => $request->requirement_id,
+            'document_title' => $request->filled('requirement_id') ? $submission?->document_title : $request->document_title,
             'status' => $request->status ?? ($submission->status ?? 'Pending'),
             'file_path' => $path,
             'notes' => $request->notes ?? $submission?->notes ?? '',
@@ -209,7 +221,8 @@ class SubmissionController extends Controller
                         $e->where('FIRSTNAME', 'like', "%{$search}%")
                             ->orWhere('LASTNAME', 'like', "%{$search}%")
                             ->orWhere('EMPCODE', 'like', "%{$search}%");
-                    })->orWhereHas('requirement', fn ($r) => $r->where('title', 'like', "%{$search}%"));
+                    })->orWhereHas('requirement', fn ($r) => $r->where('title', 'like', "%{$search}%"))
+                        ->orWhere('document_title', 'like', "%{$search}%");
                 });
             });
     }
@@ -280,7 +293,7 @@ class SubmissionController extends Controller
         SubmissionActivityLog::create([
             'submission_id' => $submission->id,
             'participant_name' => $submission->participant?->employee?->name,
-            'requirement_name' => $submission->requirement?->name,
+            'requirement_name' => $submission->requirement?->name ?? $submission->document_title,
             'program_code' => $submission->program_code,
             'batch_label' => $submission->batch?->batch,
             'action' => $action,
