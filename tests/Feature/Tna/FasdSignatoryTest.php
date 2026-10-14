@@ -47,7 +47,19 @@ test('fasd search returns employees of any position and region except job orders
     expect($empcodes)->not->toContain($jobOrderCandidate->EMPCODE);
 });
 
-test('fasd search excludes the searching supervisor themselves', function () {
+test('fasd search includes employees with a blank plantilla status', function () {
+    $supervisorEmployee = fasdTestEmployee('EMP-127', 'Supervisor', 'NCR');
+    $blankStatusCandidate = fasdTestEmployee('EMP-129', 'Clerk', 'R5', 'Anipan', '');
+    $supervisorUser = User::factory()->create(['empcode' => $supervisorEmployee->EMPCODE]);
+
+    $response = $this->actingAs($supervisorUser)
+        ->getJson(route('tna.fasd.search').'?q=Anipan');
+
+    $response->assertOk();
+    expect(collect($response->json())->pluck('empcode'))->toContain($blankStatusCandidate->EMPCODE);
+});
+
+test('fasd search includes the searching supervisor so they can sign themselves', function () {
     $supervisorEmployee = fasdTestEmployee('EMP-104', 'Supervisor', 'NCR', 'Reyes');
     $supervisorUser = User::factory()->create(['empcode' => $supervisorEmployee->EMPCODE]);
 
@@ -55,7 +67,7 @@ test('fasd search excludes the searching supervisor themselves', function () {
         ->getJson(route('tna.fasd.search').'?q=Reyes');
 
     $response->assertOk();
-    expect(collect($response->json())->pluck('empcode'))->not->toContain($supervisorEmployee->EMPCODE);
+    expect(collect($response->json())->pluck('empcode'))->toContain($supervisorEmployee->EMPCODE);
 });
 
 test('supervisory store saves the selected fasd signatory', function () {

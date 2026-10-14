@@ -902,12 +902,11 @@ class TnaController extends Controller
             return response()->json([]);
         }
 
-        $me = $this->resolveEmployee(auth()->user());
         $words = preg_split('/\s+/', $q, -1, PREG_SPLIT_NO_EMPTY);
 
         $results = Employee::query()
-            ->where('PLANTILLA STATUS', '!=', 'JOB ORDER')
-            ->when($me, fn ($query) => $query->where('EMPCODE', '!=', $me->EMPCODE))
+            // NULL-safe: a plain != would silently drop employees with no plantilla status
+            ->where(fn ($query) => $query->whereNull('PLANTILLA STATUS')->orWhere('PLANTILLA STATUS', '!=', 'JOB ORDER'))
             ->where(function ($query) use ($q, $words) {
                 $query->where('FIRSTNAME', 'like', "%{$q}%")
                     ->orWhere('LASTNAME', 'like', "%{$q}%")
