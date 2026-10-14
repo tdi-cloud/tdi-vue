@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import axios from 'axios';
 import { Gauge, TrendingUp, Users2, X } from 'lucide-vue-next';
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import VueApexCharts from 'vue3-apexcharts';
 
 const props = defineProps<{
@@ -75,6 +75,61 @@ const barOptions = ref<any>({
 });
 const barSeries = ref<number[]>([]);
 
+// ── Chart colors per theme ──────────────────────────────────────────────────
+// ApexCharts draws its own text (legends, axis labels, center values) in a dark
+// grey by default, which disappears on the dark background. Follow the `dark`
+// class on <html> (set from the system or user preference) and recolor the charts.
+const isDark = ref(document.documentElement.classList.contains('dark'));
+let themeObserver: MutationObserver | null = null;
+
+const chartTheme = computed(() =>
+    isDark.value
+        ? { text: '#cbd5e1', strongText: '#f1f5f9', muted: '#94a3b8', grid: '#334155', surface: '#0a0a0a', tooltip: 'dark' as const }
+        : { text: '#475569', strongText: '#1e293b', muted: '#6b7280', grid: '#f1f5f9', surface: '#ffffff', tooltip: 'light' as const },
+);
+
+// Theme-aware copy of the donut options: text, slice borders and center labels follow light/dark mode.
+const donutChartOptions = computed(() => {
+    const t = chartTheme.value;
+    const base = donutOptions.value;
+    return {
+        ...base,
+        chart: { ...base.chart, foreColor: t.text },
+        legend: { ...base.legend, labels: { colors: t.text } },
+        stroke: { ...base.stroke, colors: [t.surface] },
+        tooltip: { theme: t.tooltip },
+        plotOptions: {
+            ...base.plotOptions,
+            pie: {
+                ...base.plotOptions.pie,
+                donut: {
+                    ...base.plotOptions.pie.donut,
+                    labels: {
+                        ...base.plotOptions.pie.donut.labels,
+                        name: { color: t.text },
+                        value: { ...base.plotOptions.pie.donut.labels.value, color: t.strongText },
+                        total: { ...base.plotOptions.pie.donut.labels.total, color: t.muted },
+                    },
+                },
+            },
+        },
+    };
+});
+
+// Theme-aware copy of the bar options: axis labels, data labels and grid lines follow light/dark mode.
+const barChartOptions = computed(() => {
+    const t = chartTheme.value;
+    const base = barOptions.value;
+    return {
+        ...base,
+        chart: { ...base.chart, foreColor: t.text },
+        xaxis: { ...base.xaxis, labels: { style: { colors: t.text } } },
+        yaxis: { labels: { style: { colors: t.text } } },
+        grid: { ...base.grid, borderColor: t.grid },
+        tooltip: { theme: t.tooltip },
+    };
+});
+
 let activeController: AbortController | null = null;
 
 const fetchDashboard = async () => {
@@ -113,8 +168,15 @@ const fetchDashboard = async () => {
 
 watch(() => props.filters, fetchDashboard, { deep: true });
 
-onMounted(fetchDashboard);
+onMounted(() => {
+    fetchDashboard();
+    themeObserver = new MutationObserver(() => {
+        isDark.value = document.documentElement.classList.contains('dark');
+    });
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+});
 onBeforeUnmount(() => {
+    themeObserver?.disconnect();
     if (activeController) {
         activeController.abort();
         activeController = null;
@@ -166,13 +228,18 @@ onBeforeUnmount(() => {
                                 <p class="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                                     <span class="h-2 w-2 rounded-full bg-red-500"></span> Competency Band Distribution
                                 </p>
-                                <VueApexCharts type="donut" height="300" :options="donutOptions" :series="donutSeries" />
+                                <VueApexCharts type="donut" height="300" :options="donutChartOptions" :series="donutSeries" />
                             </div>
                             <div class="anim-in rounded-xl border p-4" style="animation-delay: 160ms">
                                 <p class="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                                     <TrendingUp class="h-3.5 w-3.5 text-indigo-500" /> Top 5 Training Priorities (Org-wide)
                                 </p>
-                                <VueApexCharts type="bar" height="300" :options="barOptions" :series="[{ name: 'Employees', data: barSeries }]" />
+                                <VueApexCharts
+                                    type="bar"
+                                    height="300"
+                                    :options="barChartOptions"
+                                    :series="[{ name: 'Employees', data: barSeries }]"
+                                />
                             </div>
                         </div>
 
