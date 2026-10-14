@@ -1,16 +1,22 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import BackToTop from './BackToTop.vue';
 import SignatoryPicker from './SignatoryPicker.vue';
 import TnaBackdrop from './TnaBackdrop.vue';
 
 const props = defineProps({
+    backUrl: { type: String, required: true },
+    isSupervisor: { type: Boolean, default: true },
     assessment: { type: Object, required: true }, // { id, subordinate_name, subordinate_position }
     fasd: { type: Object, default: () => ({}) }, // { empcode, name, position, office }
     noted: { type: Object, default: null }, // { empcode, name, position, office }
     notedDefault: { type: Object, default: null }, // the supervisor
 });
+
+const notedDescription = computed(
+    () => `${props.isSupervisor ? 'You are' : 'The supervisor is'} the "Noted by" signatory by default. Change it only if someone else will sign.`,
+);
 
 const preparedBy = ref(props.fasd?.empcode ? props.fasd : null);
 // null means "use the default" (the supervisor, with their current position)
@@ -54,14 +60,11 @@ const submit = () => {
     <div class="tna-page relative min-h-screen px-4 py-8">
         <TnaBackdrop />
         <div class="relative z-10 mx-auto max-w-2xl space-y-6">
-            <Link
-                :href="route('tna.supervisory.index')"
-                class="inline-flex items-center gap-1.5 text-sm font-medium text-white/80 transition hover:text-white"
-            >
+            <Link :href="backUrl" class="inline-flex items-center gap-1.5 text-sm font-medium text-white/80 transition hover:text-white">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
                 </svg>
-                Back to list
+                {{ isSupervisor ? 'Back to list' : 'Back to TNA Result' }}
             </Link>
 
             <div class="rounded-2xl bg-white p-8 shadow-xl">
@@ -81,7 +84,7 @@ const submit = () => {
                     <SignatoryPicker
                         v-model="notedBy"
                         title="Noted by"
-                        description="You are the &quot;Noted by&quot; signatory by default. Change it only if someone else will sign."
+                        :description="notedDescription"
                         :default-signatory="notedDefault"
                         :error="form.errors.noted_name"
                     />

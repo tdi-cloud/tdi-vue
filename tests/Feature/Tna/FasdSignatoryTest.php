@@ -276,6 +276,71 @@ test('noted by defaults to the supervisor and can be changed and reset', functio
     expect($edit->inertiaProps('noted.empcode'))->toBe($supervisorEmployee->EMPCODE);
 });
 
+test('admins can edit the tna result signatories and return to the result page', function () {
+    $position = 'Test Officer FASD 9';
+    $employee = fasdTestEmployee('EMP-133', $position, 'NCR');
+    $supervisorEmployee = fasdTestEmployee('EMP-134', 'Supervisor', 'NCR');
+    $newFasd = fasdTestEmployee('EMP-135', 'Administrative Officer V', 'R5', 'Anipan');
+    $subordinateUser = User::factory()->create(['empcode' => $employee->EMPCODE]);
+    $admin = User::factory()->create(['access' => 'admin', 'empcode' => 'EMP-ADMIN']);
+
+    $assessment = TnaAssessment::create([
+        'user_id' => $subordinateUser->id,
+        'position' => $position,
+        'period' => config('tna.period'),
+        'name' => 'Juan D. Dela Cruz',
+        'supervisor_empcode' => $supervisorEmployee->EMPCODE,
+        'supervisor_name' => 'Maria Supervisor',
+        'signature' => null,
+        'submitted_at' => now(),
+        'supervisor_reviewed_at' => now(),
+        'supervisor_form' => ['name' => 'Maria Supervisor', 'fasd_empcode' => 'EMP-OLD', 'fasd_name' => 'Old FASD'],
+    ]);
+
+    $this->actingAs($admin)->get(route('tna.result.show', $assessment))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('assessment.can_edit_signatories', true));
+
+    $this->actingAs($admin)->get(route('tna.supervisory.fasd.edit', $assessment))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('isSupervisor', false)
+            ->where('backUrl', route('tna.result.show', $assessment)));
+
+    $this->actingAs($admin)->patch(route('tna.supervisory.fasd.update', $assessment), [
+        'fasd_empcode' => $newFasd->EMPCODE,
+        'fasd_name' => 'Juan D. Anipan',
+        'fasd_position' => 'Administrative Officer V',
+    ])->assertSessionDoesntHaveErrors()
+        ->assertRedirect(route('tna.result.show', $assessment));
+
+    expect($assessment->fresh()->supervisor_form['fasd_empcode'])->toBe($newFasd->EMPCODE);
+});
+
+test('the subordinate cannot edit the tna result signatories', function () {
+    $position = 'Test Officer FASD 10';
+    $employee = fasdTestEmployee('EMP-136', $position, 'NCR');
+    $supervisorEmployee = fasdTestEmployee('EMP-137', 'Supervisor', 'NCR');
+    $subordinateUser = User::factory()->create(['empcode' => $employee->EMPCODE]);
+
+    $assessment = TnaAssessment::create([
+        'user_id' => $subordinateUser->id,
+        'position' => $position,
+        'period' => config('tna.period'),
+        'name' => 'Juan D. Dela Cruz',
+        'supervisor_empcode' => $supervisorEmployee->EMPCODE,
+        'supervisor_name' => 'Maria Supervisor',
+        'signature' => null,
+        'submitted_at' => now(),
+        'supervisor_reviewed_at' => now(),
+        'supervisor_form' => ['name' => 'Maria Supervisor'],
+    ]);
+
+    $this->actingAs($subordinateUser)->get(route('tna.result.show', $assessment))
+        ->assertInertia(fn ($page) => $page->where('assessment.can_edit_signatories', false));
+    $this->actingAs($subordinateUser)->get(route('tna.supervisory.fasd.edit', $assessment))->assertForbidden();
+});
+
 test('signatory positions can be edited and default to the current record', function () {
     $position = 'Test Officer FASD 8';
     $employee = fasdTestEmployee('EMP-130', $position, 'NCR');

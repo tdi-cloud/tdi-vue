@@ -295,16 +295,14 @@ class TnaController extends Controller
 
     public function editFasd(TnaAssessment $assessment)
     {
-        $user = auth()->user();
-        abort_unless(
-            ! empty($user->empcode) && $assessment->supervisor_empcode === $user->empcode,
-            403
-        );
+        abort_unless($this->canEditSignatories($assessment), 403);
         abort_if($assessment->supervisor_reviewed_at === null, 404);
 
         $form = $assessment->supervisor_form ?? [];
 
         return Inertia::render('Tna/EditFasd', [
+            'backUrl' => $this->signatoriesReturnUrl($assessment),
+            'isSupervisor' => $this->isAssignedSupervisor($assessment),
             'assessment' => [
                 'id' => $assessment->id,
                 'subordinate_name' => $form['subordinate_name'] ?? $assessment->name,
@@ -323,11 +321,7 @@ class TnaController extends Controller
 
     public function updateFasd(Request $request, TnaAssessment $assessment)
     {
-        $user = auth()->user();
-        abort_unless(
-            ! empty($user->empcode) && $assessment->supervisor_empcode === $user->empcode,
-            403
-        );
+        abort_unless($this->canEditSignatories($assessment), 403);
         abort_if($assessment->supervisor_reviewed_at === null, 404);
 
         $data = $request->validate([
@@ -353,9 +347,33 @@ class TnaController extends Controller
 
         $assessment->user?->notify(new FasdAssigned($assessment));
 
-        return redirect()
-            ->route('tna.supervisory.index')
+        return redirect($this->signatoriesReturnUrl($assessment))
             ->with('success', 'TNA Result signatories updated.');
+    }
+
+    protected function isAssignedSupervisor(TnaAssessment $assessment): bool
+    {
+        $user = auth()->user();
+
+        return ! empty($user?->empcode) && $assessment->supervisor_empcode === $user->empcode;
+    }
+
+    /**
+     * The assigned supervisor and admins may change the TNA Result signatories.
+     */
+    protected function canEditSignatories(TnaAssessment $assessment): bool
+    {
+        return $this->isAssignedSupervisor($assessment) || (bool) auth()->user()?->isAdmin();
+    }
+
+    /**
+     * Supervisors return to their rating list; admins return to the TNA Result they came from.
+     */
+    protected function signatoriesReturnUrl(TnaAssessment $assessment): string
+    {
+        return $this->isAssignedSupervisor($assessment)
+            ? route('tna.supervisory.index')
+            : route('tna.result.show', $assessment);
     }
 
     /**
@@ -620,6 +638,7 @@ class TnaController extends Controller
                 'reviewed_at' => $assessment->supervisor_reviewed_at->format('M d, Y g:i A'),
                 'is_owner' => $assessment->user_id === $user->id,
                 'is_supervisor' => ! empty($user->empcode) && $assessment->supervisor_empcode === $user->empcode,
+                'can_edit_signatories' => $this->canEditSignatories($assessment),
                 'result_scan_subordinate_uploaded' => (bool) $assessment->result_scan_subordinate_path,
                 'result_scan_supervisor_uploaded' => (bool) $assessment->result_scan_supervisor_path,
             ],
