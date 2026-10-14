@@ -73,7 +73,7 @@ const submit = () => {
                     <SignatoryPicker
                         v-model="preparedBy"
                         title="Prepared by"
-                        description="The FASD who prepares the TNA Result."
+                        description="The employee who prepares the TNA Result (usually the FASD)."
                         :error="form.errors.fasd_empcode"
                     />
                     <SignatoryPicker
