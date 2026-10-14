@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import EmployeeProgressModal from '@/components/EmployeeProgressModal.vue';
-import { Download, FileCheck, FileX, Loader2, Search, TrendingUp, Users, X } from 'lucide-vue-next';
+import { Award, ClipboardCheck, Download, FileCheck, FileX, Loader2, Medal, Search, TrendingUp, Trophy, Users, X } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import VueApexCharts from 'vue3-apexcharts';
 
@@ -240,6 +240,48 @@ const barSeries = computed(() => [
     { name: 'Not Submitted', data: data.value?.regions_not_submitted ?? Array(18).fill(0) },
 ]);
 
+// ─── Top 3 regional compliance ───────────────────────────────────────────────
+
+// Rank 1 emerald, rank 2 blue, rank 3 neutral — each with its own icon.
+const RANK_BADGES = [
+    {
+        icon: Trophy,
+        classes: 'bg-emerald-100 text-emerald-700 ring-emerald-300/60 dark:bg-emerald-900/40 dark:text-emerald-300 dark:ring-emerald-500/30',
+    },
+    { icon: Medal, classes: 'bg-blue-100 text-blue-700 ring-blue-300/60 dark:bg-blue-900/40 dark:text-blue-300 dark:ring-blue-500/30' },
+    { icon: Award, classes: 'bg-slate-200 text-slate-600 ring-slate-300/70 dark:bg-slate-700/60 dark:text-slate-300 dark:ring-slate-500/30' },
+];
+
+function toCount(value: unknown): number {
+    const n = Number(value);
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+}
+
+// The backend computes regions_not_submitted as (regional total − submitted)
+// from the same filtered, per-obligation query as the charts, so
+// submitted + not_submitted is exactly the regional total required. Regions
+// outside the region filter come back as 0 / 0 and drop out via total > 0.
+const topRegions = computed(() => {
+    const d = data.value;
+    if (!d || !Array.isArray(d.regions)) return [];
+
+    return d.regions
+        .map((region, order) => {
+            const submitted = toCount(d.regions_submitted?.[order]);
+            const total = submitted + toCount(d.regions_not_submitted?.[order]);
+            return { region, submitted, total, order };
+        })
+        .filter((r) => r.region && r.total > 0)
+        .sort(
+            (a, b) =>
+                // Exact rate comparison via cross-multiplication, then more
+                // submissions, then the canonical region order.
+                b.submitted * a.total - a.submitted * b.total || b.submitted - a.submitted || a.order - b.order,
+        )
+        .slice(0, 3)
+        .map((r) => ({ region: r.region, rate: Math.round((r.submitted / r.total) * 1000) / 10 }));
+});
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatDate(d: string | null) {
@@ -372,10 +414,54 @@ const modalTitle = computed(() => {
 
             <!-- Charts row -->
             <div class="grid grid-cols-1 items-start gap-5 md:grid-cols-[220px_1fr]">
-                <!-- Donut -->
-                <div class="flex flex-col items-center">
-                    <p class="mb-1 text-xs font-semibold text-muted-foreground">Overall Rate</p>
-                    <VueApexCharts type="donut" height="220" :options="donutOptions" :series="donutSeries" />
+                <!-- Left column: donut + top 3 regional compliance -->
+                <div class="flex min-w-0 flex-col gap-4">
+                    <!-- Donut -->
+                    <div class="flex flex-col items-center">
+                        <p class="mb-1 text-xs font-semibold text-muted-foreground">Overall Rate</p>
+                        <VueApexCharts type="donut" height="220" :options="donutOptions" :series="donutSeries" />
+                    </div>
+
+                    <!-- Top 3 regional compliance -->
+                    <section aria-labelledby="treap-regional-monitoring-heading" class="tdi-surface rounded-xl p-3">
+                        <div class="mb-2 flex items-start gap-1.5">
+                            <ClipboardCheck class="mt-px h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                            <div class="min-w-0">
+                                <h3
+                                    id="treap-regional-monitoring-heading"
+                                    class="text-[11px] font-bold uppercase leading-tight tracking-wide text-emerald-700 dark:text-emerald-400"
+                                >
+                                    Top Regions
+                                </h3>
+                                <p class="text-[10px] leading-snug text-muted-foreground">Top 3 by compliance rate</p>
+                            </div>
+                        </div>
+
+                        <ol v-if="topRegions.length" class="flex flex-col gap-1">
+                            <li v-for="(entry, index) in topRegions" :key="entry.region">
+                                <button
+                                    type="button"
+                                    class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 motion-reduce:transition-none"
+                                    :aria-label="`Rank ${index + 1}: ${entry.region}, ${entry.rate}% compliance. View submitted employees.`"
+                                    @click="fetchList('submitted', entry.region)"
+                                >
+                                    <span
+                                        class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full ring-1"
+                                        :class="RANK_BADGES[index].classes"
+                                        aria-hidden="true"
+                                    >
+                                        <component :is="RANK_BADGES[index].icon" class="h-3.5 w-3.5" />
+                                    </span>
+                                    <span class="min-w-0 flex-1 truncate text-xs font-semibold">{{ entry.region }}</span>
+                                    <span class="shrink-0 text-xs font-bold tabular-nums text-emerald-700 dark:text-emerald-400"
+                                        >{{ entry.rate }}%</span
+                                    >
+                                </button>
+                            </li>
+                        </ol>
+
+                        <p v-else class="py-2 text-center text-[11px] text-muted-foreground">No regional data for the current filters.</p>
+                    </section>
                 </div>
 
                 <!-- Bar -->

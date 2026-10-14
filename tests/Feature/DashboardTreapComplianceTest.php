@@ -304,6 +304,60 @@ test('treap compliance endpoint scopes the total/submitted counts to the selecte
     expect($allResponse->json('submitted'))->toBe(1);
 });
 
+test('treap compliance per-region counts add up to each regional total for the top 3 regional monitoring', function () {
+    $admin = treapTestAdmin('EMP-TREAP-ADM-REG');
+    [$program, $batch, $requirement] = treapTestSetup();
+
+    // NCR: 2 of 3 submitted · R1: 1 of 1 submitted · R2: 0 of 1 submitted.
+    $employees = [
+        ['EMP-TREAP-NCR-1', 'NCR', true],
+        ['EMP-TREAP-NCR-2', 'NCR', true],
+        ['EMP-TREAP-NCR-3', 'NCR', false],
+        ['EMP-TREAP-R1-1', 'R1', true],
+        ['EMP-TREAP-R2-1', 'R2', false],
+    ];
+
+    foreach ($employees as $i => [$empcode, $region, $hasSubmitted]) {
+        $employee = treapTestEmployee($empcode, 'Region'.$i, $region);
+        $participant = Participant::create([
+            'sort_order' => $i + 1, 'batch_id' => $batch->id, 'empcode' => $employee->EMPCODE,
+            'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+        ]);
+
+        if ($hasSubmitted) {
+            Submission::create([
+                'participant_id' => $participant->id,
+                'program_code' => $program->program_code,
+                'batch_id' => $batch->id,
+                'requirement_id' => $requirement->id,
+                'status' => 'Pending',
+                'submitted_at' => now(),
+            ]);
+        }
+    }
+
+    $response = $this->actingAs($admin)->getJson(route('dashboard.treap-compliance', [
+        'region' => 'ALL', 'year' => 'ALL', 'office' => 'ALL', 'office_filter' => 'ALL',
+    ]));
+
+    $response->assertOk();
+    $regions = $response->json('regions');
+
+    expect(array_combine($regions, $response->json('regions_submitted')))->toMatchArray(['NCR' => 2, 'R1' => 1, 'R2' => 0, 'R3' => 0])
+        ->and(array_combine($regions, $response->json('regions_not_submitted')))->toMatchArray(['NCR' => 1, 'R1' => 0, 'R2' => 1, 'R3' => 0])
+        ->and(array_sum($response->json('regions_submitted')) + array_sum($response->json('regions_not_submitted')))
+        ->toBe($response->json('total'));
+
+    $filteredResponse = $this->actingAs($admin)->getJson(route('dashboard.treap-compliance', [
+        'region' => 'NCR', 'year' => 'ALL', 'office' => 'ALL', 'office_filter' => 'ALL',
+    ]));
+
+    $filteredResponse->assertOk();
+    $filteredRegions = $filteredResponse->json('regions');
+    expect(array_combine($filteredRegions, $filteredResponse->json('regions_submitted')))->toMatchArray(['NCR' => 2, 'R1' => 0])
+        ->and(array_combine($filteredRegions, $filteredResponse->json('regions_not_submitted')))->toMatchArray(['NCR' => 1, 'R1' => 0]);
+});
+
 test('non-admin users cannot access the treap compliance endpoints', function () {
     $employee = treapTestEmployee('EMP-TREAP-REG-01', 'Reyes');
     $user = User::factory()->create(['empcode' => $employee->EMPCODE, 'access' => 'user']);
