@@ -864,14 +864,11 @@ class TnaController extends Controller
         }
 
         $me = $this->resolveEmployee(auth()->user());
-        if (! $me) {
-            return response()->json([]);
-        }
         $words = preg_split('/\s+/', $q, -1, PREG_SPLIT_NO_EMPTY);
 
         $results = Employee::query()
-            ->where('REGION', $me->REGION)
-            ->where('EMPCODE', '!=', $me->EMPCODE)
+            ->where('PLANTILLA STATUS', '!=', 'JOB ORDER')
+            ->when($me, fn ($query) => $query->where('EMPCODE', '!=', $me->EMPCODE))
             ->where(function ($query) use ($q, $words) {
                 $query->where('FIRSTNAME', 'like', "%{$q}%")
                     ->orWhere('LASTNAME', 'like', "%{$q}%")

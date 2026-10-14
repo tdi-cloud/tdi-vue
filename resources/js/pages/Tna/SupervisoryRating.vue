@@ -411,7 +411,7 @@ const submit = () => {
             <div class="rounded-2xl bg-white p-8 shadow-xl">
                 <h2 class="text-lg font-bold text-gray-900">FASD Signatory for TNA Result</h2>
                 <p class="mb-4 text-sm text-gray-500">
-                    Select the FASD of your region who will be the "Noted by" signatory on the TNA Result. This is required before you can submit.
+                    Select the employee who will be the "Noted by" signatory on the TNA Result. This is required before you can submit.
                 </p>
 
                 <div class="relative max-w-xl">

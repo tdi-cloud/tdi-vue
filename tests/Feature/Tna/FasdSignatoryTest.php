@@ -5,7 +5,7 @@ use App\Models\Employee;
 use App\Models\TnaAssessment;
 use App\Models\User;
 
-function fasdTestEmployee(string $empcode, string $position, string $region = 'NCR', string $lastname = 'Dela Cruz'): Employee
+function fasdTestEmployee(string $empcode, string $position, string $region = 'NCR', string $lastname = 'Dela Cruz', string $plantillaStatus = 'PERMANENT'): Employee
 {
     $employee = new Employee;
     $employee->forceFill([
@@ -16,7 +16,7 @@ function fasdTestEmployee(string $empcode, string $position, string $region = 'N
         'MI' => 'D',
         'POSITION' => $position,
         'SG' => '10',
-        'PLANTILLA STATUS' => 'Permanent',
+        'PLANTILLA STATUS' => $plantillaStatus,
         'SEX' => 'M',
         'REGION' => $region,
         'OFFICE' => 'Test Office',
@@ -28,10 +28,12 @@ function fasdTestEmployee(string $empcode, string $position, string $region = 'N
     return $employee;
 }
 
-test('fasd search only returns employees in the supervisor\'s own region', function () {
+test('fasd search returns employees of any position and region except job orders', function () {
     $supervisorEmployee = fasdTestEmployee('EMP-101', 'Supervisor', 'NCR');
     $sameRegionCandidate = fasdTestEmployee('EMP-102', 'FASD', 'NCR', 'Santos');
-    $otherRegionCandidate = fasdTestEmployee('EMP-103', 'FASD', 'Region IV-A', 'Santos');
+    $otherRegionCandidate = fasdTestEmployee('EMP-103', 'Administrative Officer', 'Region IV-A', 'Santos');
+    $contractualCandidate = fasdTestEmployee('EMP-105', 'Clerk', 'NCR', 'Santos', 'CONTRACTUAL');
+    $jobOrderCandidate = fasdTestEmployee('EMP-106', 'Clerk', 'NCR', 'Santos', 'JOB ORDER');
     $supervisorUser = User::factory()->create(['empcode' => $supervisorEmployee->EMPCODE]);
 
     $response = $this->actingAs($supervisorUser)
@@ -40,7 +42,9 @@ test('fasd search only returns employees in the supervisor\'s own region', funct
     $response->assertOk();
     $empcodes = collect($response->json())->pluck('empcode');
     expect($empcodes)->toContain($sameRegionCandidate->EMPCODE);
-    expect($empcodes)->not->toContain($otherRegionCandidate->EMPCODE);
+    expect($empcodes)->toContain($otherRegionCandidate->EMPCODE);
+    expect($empcodes)->toContain($contractualCandidate->EMPCODE);
+    expect($empcodes)->not->toContain($jobOrderCandidate->EMPCODE);
 });
 
 test('fasd search excludes the searching supervisor themselves', function () {
