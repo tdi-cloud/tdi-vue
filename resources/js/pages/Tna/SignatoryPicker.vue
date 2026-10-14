@@ -52,6 +52,11 @@ function pick(s) {
     searching.value = false;
 }
 
+// Editing the position turns the shown signatory (even the default) into an explicit pick
+function updatePosition(event) {
+    emit('update:modelValue', { ...shown.value, position: event.target.value });
+}
+
 function change() {
     searching.value = true;
 }
@@ -90,6 +95,16 @@ function useDefault() {
                 </button>
                 <button type="button" class="text-xs font-semibold text-red-600 hover:underline" @click="change">Change</button>
             </div>
+        </div>
+
+        <div v-if="shown && !searching" class="mt-3 max-w-xl">
+            <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500">Position (as shown on the TNA Result)</label>
+            <input
+                :value="shown.position"
+                type="text"
+                class="mt-1.5 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                @input="updatePosition"
+            />
         </div>
 
         <template v-else>

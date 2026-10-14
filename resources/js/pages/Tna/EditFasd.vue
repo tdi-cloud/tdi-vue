@@ -13,8 +13,10 @@ const props = defineProps({
 });
 
 const preparedBy = ref(props.fasd?.empcode ? props.fasd : null);
-// null means "use the default" (the supervisor)
-const notedBy = ref(props.noted?.empcode && props.noted.empcode !== props.notedDefault?.empcode ? props.noted : null);
+// null means "use the default" (the supervisor, with their current position)
+const isCustomNoted =
+    !!props.noted?.empcode && (props.noted.empcode !== props.notedDefault?.empcode || props.noted.position !== props.notedDefault?.position);
+const notedBy = ref(isCustomNoted ? props.noted : null);
 
 const form = useForm({
     fasd_empcode: props.fasd?.empcode ?? '',

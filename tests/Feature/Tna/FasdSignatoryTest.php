@@ -276,6 +276,45 @@ test('noted by defaults to the supervisor and can be changed and reset', functio
     expect($edit->inertiaProps('noted.empcode'))->toBe($supervisorEmployee->EMPCODE);
 });
 
+test('signatory positions can be edited and default to the current record', function () {
+    $position = 'Test Officer FASD 8';
+    $employee = fasdTestEmployee('EMP-130', $position, 'NCR');
+    $supervisorEmployee = fasdTestEmployee('EMP-131', 'Supervising TESD Specialist', 'NCR', 'Garcia');
+    $fasd = fasdTestEmployee('EMP-132', 'Administrative Officer V', 'NCR', 'Santos');
+    $subordinateUser = User::factory()->create(['empcode' => $employee->EMPCODE]);
+    $supervisorUser = User::factory()->create(['empcode' => $supervisorEmployee->EMPCODE]);
+
+    $assessment = TnaAssessment::create([
+        'user_id' => $subordinateUser->id,
+        'position' => $position,
+        'period' => config('tna.period'),
+        'name' => 'Juan D. Dela Cruz',
+        'supervisor_empcode' => $supervisorEmployee->EMPCODE,
+        'supervisor_name' => 'Maria Supervisor',
+        'signature' => null,
+        'submitted_at' => now(),
+        'supervisor_reviewed_at' => now(),
+        'supervisor_form' => ['name' => 'Maria Supervisor', 'fasd_empcode' => $fasd->EMPCODE, 'fasd_name' => 'Juan D. Santos'],
+    ]);
+
+    // Default noted by position comes from the supervisor's employee record
+    $edit = $this->actingAs($supervisorUser)->get(route('tna.supervisory.fasd.edit', $assessment));
+    expect($edit->inertiaProps('notedDefault.position'))->toBe('Supervising TESD Specialist');
+
+    $this->actingAs($supervisorUser)->patch(route('tna.supervisory.fasd.update', $assessment), [
+        'fasd_empcode' => $fasd->EMPCODE,
+        'fasd_name' => 'Juan D. Santos',
+        'fasd_position' => 'OIC, Finance and Administrative Services Division',
+        'noted_empcode' => $supervisorEmployee->EMPCODE,
+        'noted_name' => 'Maria Supervisor',
+        'noted_position' => 'OIC, Training Division',
+    ])->assertSessionDoesntHaveErrors();
+
+    $edit = $this->actingAs($supervisorUser)->get(route('tna.supervisory.fasd.edit', $assessment));
+    expect($edit->inertiaProps('fasd.position'))->toBe('OIC, Finance and Administrative Services Division');
+    expect($edit->inertiaProps('noted.position'))->toBe('OIC, Training Division');
+});
+
 test('the tna result pdf renders with a custom noted by signatory', function () {
     $position = 'Test Officer FASD 7';
     $employee = fasdTestEmployee('EMP-125', $position, 'NCR');
