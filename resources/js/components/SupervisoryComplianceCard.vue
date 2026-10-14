@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import axios from 'axios';
 import { BriefcaseBusiness, CircleCheckBig, CircleDashed, Download, LoaderCircle, Search, Timer, Users } from 'lucide-vue-next';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import VueApexCharts from 'vue3-apexcharts';
 
 /* ===================== PROPS — filters come from dashboard ===================== */
@@ -51,6 +51,12 @@ const stats = ref<SupervisoryStats>({
 
 /* ===================== COUNT-UP ANIMATION ===================== */
 
+const COUNT_UP_DURATION = 1100;
+// Delay before the first count-up so it lines up with the staggered stat/chart reveal.
+const FIRST_REVEAL_DELAY = 520;
+
+const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
 const animatedCompleted = ref(0);
 const animatedInProgress = ref(0);
 const animatedNotStarted = ref(0);
@@ -58,20 +64,63 @@ const animatedTotal = ref(0);
 const animatedPercent = ref(0);
 const animatedInProgressPct = ref(0);
 const animatedNotStartedPct = ref(0);
+// Ring values — set together with the count-ups so each ring lands on its center label.
+const chartCompletedPct = ref(0);
+const chartInProgressPct = ref(0);
 
-const animateNumber = (targetRef: { value: number }, to: number, duration = 1000) => {
+// Bumped on every data reveal so the ring glow element remounts and replays.
+const revealCount = ref(0);
+
+const activeFrames = new Map<{ value: number }, number>();
+let mountedAt = 0;
+let hasRevealed = false;
+let revealTimer: ReturnType<typeof setTimeout> | undefined;
+let requestId = 0;
+
+const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+
+const animateNumber = (targetRef: { value: number }, to: number, duration = COUNT_UP_DURATION) => {
+    const pending = activeFrames.get(targetRef);
+    if (pending !== undefined) cancelAnimationFrame(pending);
+
+    if (prefersReducedMotion || targetRef.value === to) {
+        activeFrames.delete(targetRef);
+        targetRef.value = to;
+        return;
+    }
+
     const from = targetRef.value;
     const start = performance.now();
-    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
     const step = (now: number) => {
         const progress = Math.min((now - start) / duration, 1);
-        targetRef.value = Math.round(from + (to - from) * easeOutCubic(progress));
-        if (progress < 1) requestAnimationFrame(step);
+        targetRef.value = progress < 1 ? Math.round(from + (to - from) * easeOutCubic(progress)) : to;
+        if (progress < 1) {
+            activeFrames.set(targetRef, requestAnimationFrame(step));
+        } else {
+            activeFrames.delete(targetRef);
+        }
     };
-    requestAnimationFrame(step);
+    activeFrames.set(targetRef, requestAnimationFrame(step));
+};
+
+/** Starts both rings and all count-ups together so they read as one visualization. */
+const revealStats = (data: SupervisoryStats) => {
+    const completedPct = Math.round(data.completed_pct);
+    const inProgressPct = Math.round(data.in_progress_pct);
+    chartCompletedPct.value = completedPct;
+    chartInProgressPct.value = inProgressPct;
+    revealCount.value++;
+    animateNumber(animatedCompleted, data.completed);
+    animateNumber(animatedInProgress, data.in_progress);
+    animateNumber(animatedNotStarted, data.not_started);
+    animateNumber(animatedTotal, data.total);
+    animateNumber(animatedPercent, completedPct);
+    animateNumber(animatedInProgressPct, inProgressPct);
+    animateNumber(animatedNotStartedPct, Math.round(data.not_started_pct));
 };
 
 const fetchStats = async () => {
+    const currentRequest = ++requestId;
     loading.value = true;
     try {
         const { data } = await axios.get(route('dashboard.supervisory-compliance'), {
@@ -84,23 +133,35 @@ const fetchStats = async () => {
                 year: props.year,
             },
         });
+        // Ignore responses superseded by a newer filter or SG change.
+        if (currentRequest !== requestId) return;
         stats.value = data;
-        const pct = Math.round(data.completed_pct);
-        animateNumber(animatedCompleted, data.completed);
-        animateNumber(animatedInProgress, data.in_progress);
-        animateNumber(animatedNotStarted, data.not_started);
-        animateNumber(animatedTotal, data.total);
-        animateNumber(animatedPercent, pct);
-        animateNumber(animatedInProgressPct, Math.round(data.in_progress_pct));
-        animateNumber(animatedNotStartedPct, Math.round(data.not_started_pct));
+
+        clearTimeout(revealTimer);
+        const waitForEntrance = hasRevealed || prefersReducedMotion ? 0 : Math.max(0, FIRST_REVEAL_DELAY - (performance.now() - mountedAt));
+        hasRevealed = true;
+        if (waitForEntrance > 0) {
+            revealTimer = setTimeout(() => revealStats(data), waitForEntrance);
+        } else {
+            revealStats(data);
+        }
     } catch (e) {
         console.error('Failed to load supervisory compliance stats:', e);
     } finally {
-        loading.value = false;
+        if (currentRequest === requestId) loading.value = false;
     }
 };
 
-onMounted(fetchStats);
+onMounted(() => {
+    mountedAt = performance.now();
+    fetchStats();
+});
+
+onBeforeUnmount(() => {
+    clearTimeout(revealTimer);
+    activeFrames.forEach((frame) => cancelAnimationFrame(frame));
+    activeFrames.clear();
+});
 // Re-fetch kapag nagbago ang shared props O ang local sgMin
 watch(() => [props.target, props.region, props.selectedStatuses, sgMin.value, props.office, props.year], fetchStats, { deep: true });
 
@@ -189,17 +250,23 @@ const downloadCsv = () => {
 
 /* ===================== APEXCHART — triple radial bar ===================== */
 
-const series = computed(() => [Math.round(stats.value.completed_pct), Math.round(stats.value.in_progress_pct)]);
+const series = computed(() => [chartCompletedPct.value, chartInProgressPct.value]);
 
-const chartOptions = computed(() => ({
+const chartOptions = {
     chart: {
-        type: 'radialBar',
+        type: 'radialBar' as const,
         fontFamily: 'inherit',
-        animations: { enabled: true, speed: 1000, dynamicAnimation: { enabled: true, speed: 1000 } },
+        // Same duration as the count-ups so both rings and their center percentages settle together.
+        animations: {
+            enabled: !prefersReducedMotion,
+            speed: COUNT_UP_DURATION,
+            animateGradually: { enabled: false },
+            dynamicAnimation: { enabled: !prefersReducedMotion, speed: COUNT_UP_DURATION },
+        },
         sparkline: { enabled: true },
     },
     colors: ['#10B981', '#38BDF8'],
-    stroke: { lineCap: 'round' },
+    stroke: { lineCap: 'round' as const },
     plotOptions: {
         radialBar: {
             startAngle: 0,
@@ -209,18 +276,24 @@ const chartOptions = computed(() => ({
             dataLabels: { name: { show: false }, value: { show: false } },
         },
     },
-}));
+};
 </script>
 
 <template>
-    <div class="tdi-card tdi-accent-violet tdi-accent-to-royal relative isolate overflow-hidden rounded-2xl border">
+    <div class="scc-card tdi-card tdi-accent-violet tdi-accent-to-royal relative isolate overflow-hidden rounded-2xl border">
+        <!-- Ambient motion layers — purely visual, behind content, never interactive -->
+        <div class="pointer-events-none absolute inset-0 z-[-1] overflow-hidden" aria-hidden="true">
+            <div class="scc-ambient"></div>
+            <span v-for="n in 4" :key="n" class="scc-mote" :class="`scc-mote--${n}`"></span>
+            <div class="scc-sweep"></div>
+        </div>
         <!-- Decorative background texture — purely visual, sits behind existing content via negative z-index -->
         <div class="tdi-texture-development pointer-events-none absolute inset-0 z-[-1] opacity-[0.025] dark:opacity-[0.04]" aria-hidden="true"></div>
 
         <!-- HEADER -->
         <div class="flex flex-wrap items-center gap-2 border-b border-border/80 px-5 py-3">
-            <h2 class="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide text-[#0B4F8A] dark:text-sky-300">
-                <BriefcaseBusiness class="h-4 w-4" /> Supervisory / Managerial Training
+            <h2 class="scc-reveal-x flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide text-[#0B4F8A] dark:text-sky-300">
+                <span class="scc-icon relative inline-flex"><BriefcaseBusiness class="h-4 w-4" /></span> Supervisory / Managerial Training
                 <LoaderCircle v-if="loading" class="h-3.5 w-3.5 animate-spin text-blue-500" />
             </h2>
         </div>
@@ -232,39 +305,55 @@ const chartOptions = computed(() => ({
                 <div class="flex flex-row items-center gap-8 sm:flex-col sm:items-start sm:gap-6">
                     <button
                         type="button"
-                        class="group -mx-2 -my-1 cursor-pointer rounded-xl px-2 py-1 text-left transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                        class="scc-reveal scc-stat group -mx-2 -my-1 cursor-pointer rounded-xl px-2 py-1 text-left ring-1 ring-transparent transition-[background-color,box-shadow,transform] duration-300 ease-out hover:-translate-y-0.5 hover:bg-emerald-50 hover:ring-emerald-200/80 focus-visible:-translate-y-0.5 focus-visible:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 dark:hover:bg-emerald-950/40 dark:hover:ring-emerald-800/60 dark:focus-visible:bg-emerald-950/40"
+                        style="--scc-delay: 280ms"
                         @click="openList('completed')"
                     >
                         <span
-                            class="mb-1 block w-fit rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-500 opacity-0 transition-opacity group-hover:opacity-100 dark:bg-emerald-950/60"
+                            class="mb-1 block w-fit translate-y-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-500 opacity-0 transition-[opacity,transform] duration-300 ease-out group-hover:translate-y-0 group-hover:opacity-100 group-focus-visible:translate-y-0 group-focus-visible:opacity-100 dark:bg-emerald-950/60"
                             >view</span
                         >
                         <p class="text-3xl font-extrabold tabular-nums leading-none text-emerald-500">
                             {{ animatedCompleted.toLocaleString() }}
                             <span class="text-lg font-bold text-emerald-400">· {{ animatedPercent }}%</span>
                         </p>
-                        <p class="mt-1 flex items-center gap-1.5 text-sm font-bold text-emerald-600"><CircleCheckBig class="h-4 w-4" /> Completed</p>
+                        <p class="mt-1 flex items-center gap-1.5 text-sm font-bold text-emerald-600">
+                            <CircleCheckBig
+                                class="h-4 w-4 transition-transform duration-300 ease-out group-hover:scale-110 group-focus-visible:scale-110"
+                            />
+                            Completed
+                        </p>
                     </button>
 
                     <button
                         type="button"
-                        class="group -mx-2 -my-1 cursor-pointer rounded-xl px-2 py-1 text-left transition-colors hover:bg-sky-50 dark:hover:bg-sky-950/40"
+                        class="scc-reveal scc-stat group -mx-2 -my-1 cursor-pointer rounded-xl px-2 py-1 text-left ring-1 ring-transparent transition-[background-color,box-shadow,transform] duration-300 ease-out hover:-translate-y-0.5 hover:bg-sky-50 hover:ring-sky-200/80 focus-visible:-translate-y-0.5 focus-visible:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 dark:hover:bg-sky-950/40 dark:hover:ring-sky-800/60 dark:focus-visible:bg-sky-950/40"
+                        style="--scc-delay: 400ms"
                         @click="openList('in_progress')"
                     >
                         <span
-                            class="mb-1 block w-fit rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-500 opacity-0 transition-opacity group-hover:opacity-100 dark:bg-sky-950/60"
+                            class="mb-1 block w-fit translate-y-1 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-500 opacity-0 transition-[opacity,transform] duration-300 ease-out group-hover:translate-y-0 group-hover:opacity-100 group-focus-visible:translate-y-0 group-focus-visible:opacity-100 dark:bg-sky-950/60"
                             >view</span
                         >
                         <p class="text-3xl font-extrabold tabular-nums leading-none text-sky-500">
                             {{ animatedInProgress.toLocaleString() }}
                             <span class="text-lg font-bold text-sky-400">· {{ animatedInProgressPct }}%</span>
                         </p>
-                        <p class="mt-1 flex items-center gap-1.5 text-sm font-bold text-sky-600"><Timer class="h-4 w-4" /> In Progress</p>
+                        <p class="mt-1 flex items-center gap-1.5 text-sm font-bold text-sky-600">
+                            <Timer class="h-4 w-4 transition-transform duration-300 ease-out group-hover:scale-110 group-focus-visible:scale-110" />
+                            In Progress
+                        </p>
                     </button>
                 </div>
 
                 <!-- CENTER: chart -->
-                <div class="relative">
+                <div class="scc-reveal relative isolate" style="--scc-delay: 520ms">
+                    <div
+                        v-if="revealCount"
+                        :key="revealCount"
+                        class="scc-ring-glow pointer-events-none absolute inset-0 z-[-1]"
+                        aria-hidden="true"
+                    ></div>
                     <VueApexCharts type="radialBar" width="230" height="230" :options="chartOptions" :series="series" />
                     <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
                         <p class="text-xl font-extrabold tabular-nums leading-none text-emerald-500">{{ animatedPercent }}%</p>
@@ -279,7 +368,8 @@ const chartOptions = computed(() => ({
                 <div class="flex flex-col items-center gap-2 sm:items-start">
                     <button
                         type="button"
-                        class="group -mx-2 -my-1 cursor-pointer rounded-xl px-2 py-1 text-left transition-colors hover:bg-slate-100 dark:hover:bg-slate-800/60"
+                        class="scc-reveal scc-stat group -mx-2 -my-1 cursor-pointer rounded-xl px-2 py-1 text-left ring-1 ring-transparent transition-[background-color,box-shadow,transform] duration-300 ease-out hover:-translate-y-0.5 hover:bg-slate-100 hover:ring-slate-200 focus-visible:-translate-y-0.5 focus-visible:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/70 dark:hover:bg-slate-800/60 dark:hover:ring-slate-700/70 dark:focus-visible:bg-slate-800/60"
+                        style="--scc-delay: 640ms"
                         @click="openList('not_started')"
                     >
                         <p class="text-lg font-extrabold tabular-nums leading-none text-slate-400">
@@ -287,23 +377,33 @@ const chartOptions = computed(() => ({
                             <span class="text-xs font-bold text-slate-400 dark:text-slate-500">· {{ animatedNotStartedPct }}%</span>
                         </p>
                         <p class="mt-1 flex items-center gap-1.5 text-xs font-bold text-slate-500">
-                            <CircleDashed class="h-3.5 w-3.5" /> Not Started
+                            <CircleDashed
+                                class="h-3.5 w-3.5 transition-transform duration-300 ease-out group-hover:scale-110 group-focus-visible:scale-110"
+                            />
+                            Not Started
                             <span
-                                class="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-500 opacity-0 transition-opacity group-hover:opacity-100 dark:bg-slate-800"
+                                class="-translate-x-1 rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-500 opacity-0 transition-[opacity,transform] duration-300 ease-out group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100 dark:bg-slate-800"
                                 >view</span
                             >
                         </p>
                     </button>
 
-                    <p class="text-3xl font-extrabold tabular-nums leading-none text-[#172033] dark:text-slate-50">
+                    <p
+                        class="scc-reveal text-3xl font-extrabold tabular-nums leading-none text-[#172033] dark:text-slate-50"
+                        style="--scc-delay: 760ms"
+                    >
                         {{ animatedTotal.toLocaleString() }}
                     </p>
-                    <p class="flex items-center gap-1.5 text-sm font-bold text-muted-foreground"><Users class="h-4 w-4" /> Employees</p>
+                    <p class="scc-reveal flex items-center gap-1.5 text-sm font-bold text-muted-foreground" style="--scc-delay: 760ms">
+                        <Users class="h-4 w-4" /> Employees
+                    </p>
                     <!-- SG filter — dito lang siya, hindi sa shared filter bar -->
-                    <div class="mt-1 flex items-center gap-1.5">
+                    <div class="scc-reveal mt-1 flex items-center gap-1.5" style="--scc-delay: 820ms">
                         <span class="text-[11px] font-bold tracking-wide text-muted-foreground">SG ≥</span>
                         <Select v-model="sgMin">
-                            <SelectTrigger class="h-7 w-16 px-2 text-xs font-semibold">
+                            <SelectTrigger
+                                class="h-7 w-16 px-2 text-xs font-semibold transition-[border-color,box-shadow,background-color] duration-200 ease-out hover:border-violet-300 hover:bg-violet-50/60 focus:ring-violet-400/60 data-[state=open]:border-violet-400 dark:hover:border-violet-700 dark:hover:bg-violet-950/30 dark:data-[state=open]:border-violet-600"
+                            >
                                 <SelectValue>{{ sgMin }}</SelectValue>
                             </SelectTrigger>
                             <SelectContent>
@@ -313,12 +413,12 @@ const chartOptions = computed(() => ({
                             </SelectContent>
                         </Select>
                     </div>
-                    <p class="text-[11px] text-muted-foreground">40 hrs target</p>
+                    <p class="scc-reveal text-[11px] text-muted-foreground" style="--scc-delay: 820ms">40 hrs target</p>
                 </div>
             </div>
 
             <!-- Legend -->
-            <div class="mt-2 flex items-center justify-center gap-5">
+            <div class="scc-reveal mt-2 flex items-center justify-center gap-5" style="--scc-delay: 940ms">
                 <span class="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
                     <span class="h-2.5 w-2.5 rounded-full bg-emerald-400"></span> Completed (≥ 40 hrs)
                 </span>
@@ -330,7 +430,9 @@ const chartOptions = computed(() => ({
 
         <!-- MODAL -->
         <Dialog :open="showListModal" @update:open="showListModal = $event">
-            <DialogContent class="flex max-h-[85vh] !max-w-4xl flex-col gap-3 overflow-hidden !rounded-2xl">
+            <DialogContent
+                class="flex max-h-[85vh] !max-w-4xl flex-col gap-3 overflow-hidden !rounded-2xl data-[state=open]:duration-300 data-[state=open]:ease-out motion-reduce:!animate-none"
+            >
                 <DialogHeader class="shrink-0">
                     <DialogTitle class="text-lg font-extrabold">
                         <span
@@ -438,5 +540,268 @@ const chartOptions = computed(() => ({
     background-size: 26px 26px;
     -webkit-mask-image: radial-gradient(ellipse 240px 200px at 100% 100%, black 0%, transparent 75%);
     mask-image: radial-gradient(ellipse 240px 200px at 100% 100%, black 0%, transparent 75%);
+    animation: scc-fade-in 1200ms ease-out 200ms backwards;
+}
+
+/* ===================== ENTRANCE ===================== */
+
+/* All entrance animations use `backwards` fill so content falls back to its
+   normal, fully visible state if animations don't run, and hover transforms
+   are not overridden once the sequence completes. */
+.scc-card {
+    --scc-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --scc-glow: 124 58 237;
+    --scc-glow-2: 37 99 235;
+    animation: scc-card-in 700ms var(--scc-ease) backwards;
+}
+
+:global(.dark) .scc-card {
+    --scc-glow: 167 139 250;
+    --scc-glow-2: 96 165 250;
+}
+
+/* Soft violet → royal-blue border glow that fades after the entrance */
+.scc-card::after {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: inherit;
+    box-shadow:
+        inset 0 0 0 1px rgb(var(--scc-glow) / 0.5),
+        inset 0 0 28px rgb(var(--scc-glow-2) / 0.1);
+    content: '';
+    opacity: 0;
+    pointer-events: none;
+    animation: scc-glow-fade 1500ms ease-out 150ms;
+}
+
+.scc-reveal {
+    animation: scc-rise 600ms var(--scc-ease) var(--scc-delay, 0ms) backwards;
+}
+
+.scc-reveal-x {
+    animation: scc-slide-x 600ms var(--scc-ease) 140ms backwards;
+}
+
+/* Brief violet highlight behind the briefcase icon */
+.scc-icon::after {
+    position: absolute;
+    inset: -6px;
+    border-radius: 9999px;
+    background: radial-gradient(circle, rgb(var(--scc-glow) / 0.4), transparent 70%);
+    content: '';
+    opacity: 0;
+    pointer-events: none;
+    animation: scc-pulse 1100ms ease-out 380ms;
+}
+
+/* Dual-tone halo behind the rings — remounted on each data reveal */
+.scc-ring-glow {
+    border-radius: 9999px;
+    background:
+        radial-gradient(circle, transparent 46%, rgb(16 185 129 / 0.18) 58%, transparent 70%),
+        radial-gradient(circle, transparent 60%, rgb(56 189 248 / 0.16) 68%, transparent 76%);
+    opacity: 0;
+    animation: scc-ring-glow 1300ms ease-out;
+}
+
+/* ===================== AMBIENT MOTION ===================== */
+
+/* Slow violet → royal-blue light drift (transform-only, compositor friendly) */
+.scc-ambient {
+    position: absolute;
+    inset: -25%;
+    background:
+        radial-gradient(circle at 22% 28%, rgb(var(--scc-glow) / 0.06), transparent 40%),
+        radial-gradient(circle at 78% 72%, rgb(var(--scc-glow-2) / 0.06), transparent 40%);
+    will-change: transform;
+    animation:
+        scc-fade-in 1400ms ease-out 300ms backwards,
+        scc-drift 24s ease-in-out 1.5s infinite alternate;
+}
+
+/* One-time light sweep across the surface during the entrance */
+.scc-sweep {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -45%;
+    width: 40%;
+    background: linear-gradient(100deg, transparent, rgb(var(--scc-glow) / 0.07) 45%, rgb(var(--scc-glow-2) / 0.06) 55%, transparent);
+    opacity: 0;
+    animation: scc-sweep 1300ms var(--scc-ease) 350ms;
+}
+
+/* A few faint drifting highlights */
+.scc-mote {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    border-radius: 9999px;
+    background: rgb(var(--scc-glow) / 0.45);
+    opacity: 0;
+    animation: scc-float 12s ease-in-out infinite;
+}
+
+.scc-mote--1 {
+    top: 72%;
+    left: 10%;
+    animation-delay: 1.6s;
+}
+
+.scc-mote--2 {
+    top: 30%;
+    left: 34%;
+    background: rgb(var(--scc-glow-2) / 0.45);
+    animation-duration: 14s;
+    animation-delay: 4.5s;
+}
+
+.scc-mote--3 {
+    top: 78%;
+    left: 66%;
+    animation-duration: 11s;
+    animation-delay: 3s;
+}
+
+.scc-mote--4 {
+    top: 40%;
+    left: 90%;
+    background: rgb(var(--scc-glow-2) / 0.45);
+    animation-duration: 15s;
+    animation-delay: 7s;
+}
+
+/* ===================== KEYFRAMES ===================== */
+
+@keyframes scc-card-in {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.98);
+    }
+}
+
+@keyframes scc-rise {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+}
+
+@keyframes scc-slide-x {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+}
+
+@keyframes scc-fade-in {
+    from {
+        opacity: 0;
+    }
+}
+
+@keyframes scc-glow-fade {
+    0% {
+        opacity: 0;
+    }
+    30% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes scc-pulse {
+    0% {
+        opacity: 0;
+        transform: scale(0.6);
+    }
+    40% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1.4);
+    }
+}
+
+@keyframes scc-ring-glow {
+    0% {
+        opacity: 0;
+        transform: scale(0.96);
+    }
+    45% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1.02);
+    }
+}
+
+@keyframes scc-sweep {
+    0% {
+        opacity: 0;
+        transform: translateX(0);
+    }
+    20% {
+        opacity: 1;
+    }
+    80% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(375%);
+    }
+}
+
+@keyframes scc-drift {
+    from {
+        transform: translate3d(-3%, -2%, 0);
+    }
+    to {
+        transform: translate3d(3%, 2%, 0);
+    }
+}
+
+@keyframes scc-float {
+    0%,
+    100% {
+        opacity: 0;
+        transform: translate3d(0, 0, 0);
+    }
+    20%,
+    70% {
+        opacity: 0.6;
+    }
+    50% {
+        transform: translate3d(6px, -28px, 0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .scc-card,
+    .scc-card::after,
+    .scc-reveal,
+    .scc-reveal-x,
+    .scc-icon::after,
+    .scc-ring-glow,
+    .scc-ambient,
+    .tdi-texture-development {
+        animation: none;
+    }
+
+    .scc-sweep,
+    .scc-mote {
+        display: none;
+    }
+
+    .scc-stat,
+    .scc-stat * {
+        transition-duration: 0s !important;
+    }
 }
 </style>

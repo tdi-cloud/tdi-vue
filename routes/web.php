@@ -493,6 +493,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index'])
         ->name('notifications.index');
 
+    // Dedicated notifications page (the route above is the JSON feed for the bell dropdown)
+    Route::get('/notifications/all', [NotificationController::class, 'page'])
+        ->name('notifications.page');
+
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead'])
         ->name('notifications.read');
 

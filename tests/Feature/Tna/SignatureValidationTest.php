@@ -296,3 +296,34 @@ test('supervisory store accepts a blank signature', function () {
     $response->assertRedirect(route('tna.supervisory.index'));
     expect($assessment->fresh()->supervisor_form['signature'] ?? null)->toBeNull();
 });
+
+test('supervisory index lists submitted assessments without loading heavy columns', function () {
+    $employee = tnaMakeEmployee('EMP-301', 'Test Officer 30');
+    $supervisorEmployee = tnaMakeEmployee('EMP-302', 'Supervisor');
+    $subordinateUser = User::factory()->create(['empcode' => $employee->EMPCODE]);
+    $supervisorUser = User::factory()->create(['empcode' => $supervisorEmployee->EMPCODE]);
+
+    TnaAssessment::create([
+        'user_id' => $subordinateUser->id,
+        'position' => 'Test Officer 30',
+        'period' => config('tna.period'),
+        'name' => 'Juan D. Dela Cruz',
+        'office' => 'Test Office',
+        'division' => 'Test Section',
+        'supervisor_empcode' => $supervisorEmployee->EMPCODE,
+        'supervisor_name' => 'Maria Supervisor',
+        'supervisor_position' => 'Supervisor',
+        'signature' => tnaValidSignature(),
+        'submitted_at' => now(),
+    ]);
+
+    $this->actingAs($supervisorUser)
+        ->get(route('tna.supervisory.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Tna/SupervisoryIndex')
+            ->has('assessments', 1)
+            ->where('assessments.0.name', 'Juan D. Dela Cruz')
+            ->where('assessments.0.reviewed', false)
+            ->where('pendingCount', 1));
+});

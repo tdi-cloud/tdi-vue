@@ -31,6 +31,11 @@ defineProps({
     min-height: 100vh;
     overflow-x: hidden;
 }
+/* Follows the app's light/dark mode (the `dark` class on <html>). */
+.dark .my-programs-page {
+    color: #e6ecf7;
+    background: #0b1020;
+}
 /* This page can be opened directly, so it can't rely on the homepage's global reset.
    Fully wrapped in :where() (zero specificity) so it never overrides the section's own margins. */
 :where(.my-programs-page) :where(*, *::before, *::after) {

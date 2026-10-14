@@ -89,7 +89,12 @@ class TnaController extends Controller
         $user = auth()->user();
         abort_if(empty($user->empcode), 403);
 
-        $assessments = TnaAssessment::where('supervisor_empcode', $user->empcode)
+        $assessments = TnaAssessment::query()
+            ->select([
+                'id', 'name', 'position', 'office', 'division', 'period',
+                'submitted_at', 'supervisor_reviewed_at', 'supervisor_rating_scan_path',
+            ])
+            ->where('supervisor_empcode', $user->empcode)
             ->whereNotNull('submitted_at')
             ->orderByRaw('supervisor_reviewed_at IS NULL DESC')
             ->orderByDesc('submitted_at')

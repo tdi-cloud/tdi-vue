@@ -85,7 +85,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
 .player {
     position: fixed;
     inset: 0;
-    z-index: 100;
+    z-index: 220; /* above the site navbar and the documentation modal */
     display: grid;
     place-items: center;
     padding: 1rem;

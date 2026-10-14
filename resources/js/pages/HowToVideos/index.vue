@@ -940,7 +940,7 @@ const remove = async (video: HowToVideo) => {
 .modal {
     position: fixed;
     inset: 0;
-    z-index: 90;
+    z-index: 200; /* above the fixed site navbar (z-index 100) */
     display: grid;
     place-items: center;
     padding: 1rem;

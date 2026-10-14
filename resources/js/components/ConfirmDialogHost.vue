@@ -14,7 +14,7 @@ const { state, respond } = useConfirmDialogState();
         -->
         <div
             v-if="state.open"
-            class="pointer-events-auto fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4"
+            class="pointer-events-auto fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4"
             @click.self="respond(false)"
             @pointerdown.stop
             @focusin.stop

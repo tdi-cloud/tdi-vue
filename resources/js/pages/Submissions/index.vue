@@ -11,6 +11,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
 import {
     AlarmClockMinus,
+    Building2,
     CalendarClock,
     CheckCheck,
     CheckCircle2,
@@ -18,6 +19,7 @@ import {
     Eye,
     FileText,
     Inbox,
+    Layers,
     LoaderCircle,
     MessageSquareText,
     Pencil,
@@ -29,7 +31,7 @@ import {
     UserPlus,
     XCircle,
 } from 'lucide-vue-next';
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 interface Employee {
     name?: string;
@@ -162,13 +164,25 @@ const formatDateTime = (d: string | null) =>
 const statusClass = (status: string) => {
     switch (status.toLowerCase()) {
         case 'approved':
-            return 'bg-emerald-600/10 text-emerald-600 dark:text-emerald-400';
+            return 'bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20';
         case 'rejected':
-            return 'bg-red-600/10 text-red-600 dark:text-red-400';
+            return 'bg-red-50 text-red-700 ring-red-600/20 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-400/20';
         default:
-            return 'bg-amber-500/10 text-amber-600 dark:text-amber-400';
+            return 'bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-400/20';
     }
 };
+
+const statCards = computed(() => [
+    { label: 'Total', value: props.stats.total, icon: FileText, tone: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' },
+    { label: 'Pending', value: props.stats.pending, icon: Clock3, tone: 'bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400' },
+    {
+        label: 'Approved',
+        value: props.stats.approved,
+        icon: CheckCircle2,
+        tone: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400',
+    },
+    { label: 'Rejected', value: props.stats.rejected, icon: XCircle, tone: 'bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400' },
+]);
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 const fileUrl = (s: Submission) => (s.file_path ? `/storage/${s.file_path}` : null);
@@ -295,11 +309,11 @@ const attErrors = ref<{ hours?: string; justification?: string }>({});
 const attendanceClass = (attendance: string) => {
     switch (attendance) {
         case 'Complete':
-            return 'bg-emerald-600/10 text-emerald-600 dark:text-emerald-400';
+            return 'bg-emerald-50 text-emerald-700 ring-emerald-600/20 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20 dark:hover:bg-emerald-500/20';
         case 'Absent':
-            return 'bg-red-600/10 text-red-600 dark:text-red-400';
+            return 'bg-red-50 text-red-700 ring-red-600/20 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-400/20 dark:hover:bg-red-500/20';
         default:
-            return 'bg-amber-500/10 text-amber-600 dark:text-amber-400';
+            return 'bg-amber-50 text-amber-700 ring-amber-600/20 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-400/20 dark:hover:bg-amber-500/20';
     }
 };
 
@@ -379,50 +393,62 @@ onMounted(() => {
     <Head title="Submissions" />
 
     <AppLayout>
-        <div class="flex h-full flex-1 flex-col gap-4 p-4">
-            <!-- Header -->
-            <div class="flex flex-wrap items-center justify-between gap-2">
-                <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 shadow-md">
-                        <Inbox class="h-5 w-5 text-white" />
+        <div class="flex h-full flex-1 flex-col gap-5 p-4 sm:p-6">
+            <!-- Header + toolbar -->
+            <section class="flex flex-col gap-4">
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex min-w-0 items-center gap-3.5">
+                        <div
+                            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 shadow-md shadow-blue-600/20 ring-1 ring-inset ring-white/10"
+                        >
+                            <Inbox class="h-5 w-5 text-white" />
+                        </div>
+                        <div class="min-w-0">
+                            <h1 class="text-xl font-bold leading-tight tracking-tight text-slate-900 dark:text-slate-50 sm:text-2xl">Submissions</h1>
+                            <p class="mt-0.5 text-sm text-muted-foreground">
+                                All requirement submissions across every program — review and set status here.
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <h1 class="text-xl font-bold leading-none">Submissions</h1>
-                        <p class="mt-1 text-sm text-muted-foreground">
-                            All requirement submissions across every program — review and set status here.
-                        </p>
-                    </div>
-                </div>
 
-                <div class="flex flex-wrap items-center gap-2">
                     <!-- Approve all pending (superadmin only; follows the program + search filters) -->
                     <Button
                         v-if="canApproveAll"
-                        class="h-9 bg-emerald-600 text-xs text-white hover:bg-emerald-700"
+                        class="h-10 w-full shrink-0 bg-emerald-600 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 focus-visible:ring-emerald-500 dark:bg-emerald-600/90 dark:hover:bg-emerald-600 sm:w-auto"
                         :disabled="!approvablePendingCount || approvingAll"
                         @click="approveAll"
                     >
-                        <LoaderCircle v-if="approvingAll" class="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                        <CheckCheck v-else class="mr-1.5 h-3.5 w-3.5" />
+                        <LoaderCircle v-if="approvingAll" class="mr-1.5 h-4 w-4 animate-spin" />
+                        <CheckCheck v-else class="mr-1.5 h-4 w-4" />
                         Approve all
                         <span
                             v-if="approvablePendingCount"
-                            class="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-white/25 px-1 text-[10px] font-bold leading-none"
+                            class="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white/25 px-1.5 text-[11px] font-bold leading-none"
                         >
                             {{ approvablePendingCount > 999 ? '999+' : approvablePendingCount }}
                         </span>
                     </Button>
+                </div>
 
+                <!-- Filters -->
+                <div
+                    class="grid grid-cols-1 gap-2.5 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_16rem_11rem]"
+                >
                     <!-- Search -->
-                    <div class="relative">
-                        <Search class="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                        <Input v-model="search" class="h-9 w-56 pl-7 text-xs" placeholder="Search name, empcode, or requirement..." />
+                    <div class="relative sm:col-span-2 lg:col-span-1">
+                        <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            v-model="search"
+                            class="h-10 w-full pl-9 text-sm"
+                            placeholder="Search name, empcode, or requirement..."
+                            aria-label="Search submissions"
+                        />
                     </div>
 
                     <!-- Program filter -->
                     <Select v-model="filterProgram">
-                        <SelectTrigger class="h-9 w-48 text-xs">
-                            <SelectValue placeholder="All programs" />
+                        <SelectTrigger class="h-10 w-full min-w-0 text-sm" aria-label="Filter by program">
+                            <SelectValue placeholder="All programs" class="truncate" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem class="text-xs" value="all">All programs</SelectItem>
@@ -434,7 +460,7 @@ onMounted(() => {
 
                     <!-- Status filter -->
                     <Select v-model="filterStatus">
-                        <SelectTrigger class="h-9 w-32 text-xs">
+                        <SelectTrigger class="h-10 w-full text-sm" aria-label="Filter by status">
                             <SelectValue placeholder="All status" />
                         </SelectTrigger>
                         <SelectContent>
@@ -443,177 +469,229 @@ onMounted(() => {
                         </SelectContent>
                     </Select>
                 </div>
-            </div>
+            </section>
 
             <!-- Stats -->
-            <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <div class="flex items-center gap-2.5 rounded-2xl border p-3">
-                    <div class="rounded-full bg-slate-100 p-2 dark:bg-slate-800">
-                        <FileText class="h-4 w-4 text-slate-500" />
+            <section class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <div
+                    v-for="card in statCards"
+                    :key="card.label"
+                    class="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-slate-800 dark:bg-slate-900/60 dark:hover:shadow-black/20"
+                >
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" :class="card.tone">
+                        <component :is="card.icon" class="h-5 w-5" />
                     </div>
-                    <div>
-                        <p class="text-lg font-extrabold leading-none">{{ stats.total }}</p>
-                        <p class="text-[11px] text-muted-foreground">Total</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2.5 rounded-2xl border p-3">
-                    <div class="rounded-full bg-amber-100 p-2 dark:bg-amber-900/40">
-                        <Clock3 class="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                    </div>
-                    <div>
-                        <p class="text-lg font-extrabold leading-none">{{ stats.pending }}</p>
-                        <p class="text-[11px] text-muted-foreground">Pending</p>
+                    <div class="min-w-0">
+                        <p class="text-2xl font-bold tabular-nums leading-none tracking-tight text-slate-900 dark:text-slate-50">
+                            {{ card.value }}
+                        </p>
+                        <p class="mt-1 text-xs font-medium text-muted-foreground">{{ card.label }}</p>
                     </div>
                 </div>
-                <div class="flex items-center gap-2.5 rounded-2xl border p-3">
-                    <div class="rounded-full bg-emerald-100 p-2 dark:bg-emerald-900/40">
-                        <CheckCircle2 class="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                    </div>
-                    <div>
-                        <p class="text-lg font-extrabold leading-none">{{ stats.approved }}</p>
-                        <p class="text-[11px] text-muted-foreground">Approved</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2.5 rounded-2xl border p-3">
-                    <div class="rounded-full bg-red-100 p-2 dark:bg-red-900/40">
-                        <XCircle class="h-4 w-4 text-red-600 dark:text-red-400" />
-                    </div>
-                    <div>
-                        <p class="text-lg font-extrabold leading-none">{{ stats.rejected }}</p>
-                        <p class="text-[11px] text-muted-foreground">Rejected</p>
-                    </div>
-                </div>
-            </div>
+            </section>
 
             <!-- Empty -->
-            <div v-if="!submissions.data.length" class="flex flex-col items-center justify-center gap-3 rounded-2xl border px-6 py-16 text-center">
-                <Inbox class="h-12 w-12 text-muted-foreground/40" />
-                <p class="text-sm font-bold text-slate-500">No submissions found</p>
-                <p class="max-w-xs text-xs text-slate-400">Try a different search term, program, or status filter.</p>
+            <div
+                v-if="!submissions.data.length"
+                class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center dark:border-slate-700 dark:bg-slate-900/40"
+            >
+                <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800">
+                    <Inbox class="h-7 w-7 text-slate-400 dark:text-slate-500" />
+                </div>
+                <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">No submissions found</p>
+                <p class="max-w-xs text-xs text-muted-foreground">Try a different search term, program, or status filter.</p>
             </div>
 
             <!-- List -->
-            <div v-else class="flex flex-col gap-2">
-                <p class="text-[11px] text-muted-foreground">
-                    Showing {{ submissions.from ?? 0 }}–{{ submissions.to ?? 0 }} of {{ submissions.total }} submission(s)
+            <section v-else class="flex flex-col gap-3">
+                <p class="text-xs text-muted-foreground">
+                    Showing <span class="font-semibold text-foreground">{{ submissions.from ?? 0 }}–{{ submissions.to ?? 0 }}</span> of
+                    <span class="font-semibold text-foreground">{{ submissions.total }}</span> submission(s)
                 </p>
 
-                <div v-for="s in submissions.data" :key="s.id" class="flex items-start justify-between gap-3 rounded-2xl border px-4 py-3 shadow-sm">
-                    <div class="flex min-w-0 flex-1 flex-col gap-1">
-                        <p class="text-sm font-bold leading-snug">
-                            {{ participantName(s) }}
-                            <span class="text-xs font-normal text-muted-foreground">({{ s.participant?.empcode }})</span>
-                        </p>
-                        <p class="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
-                            <FileText class="h-3.5 w-3.5" />
-                            <span class="font-semibold text-foreground">{{ s.requirement?.title }}</span>
-                            <span v-if="s.requirement?.name">— {{ s.requirement?.name }}</span>
-                            <span class="mx-1">·</span>
-                            <span class="font-semibold text-blue-600">{{ s.program?.title }}</span>
-                            <span class="mx-1">·</span>
-                            <span>{{ s.batch?.batch }}</span>
-                        </p>
-                        <p class="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
-                            <CalendarClock class="h-3.5 w-3.5" />
-                            Submitted: <span class="font-semibold text-foreground">{{ formatDateTime(s.submitted_at) }}</span>
-                            <button
-                                type="button"
-                                class="rounded p-0.5 text-muted-foreground transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/30"
-                                title="Edit submission date"
-                                aria-label="Edit submission date"
-                                @click="openEditDate(s)"
-                            >
-                                <Pencil class="h-3 w-3" />
-                            </button>
-                            <template v-if="s.requirement?.due_date">
-                                <span class="mx-1">·</span>
-                                Due: {{ formatDate(s.requirement.due_date) }}
-                            </template>
-                            <template v-if="s.added_by">
-                                <span class="mx-1">·</span>
-                                <UserPlus class="h-3.5 w-3.5" />
-                                Added by <span class="font-semibold text-foreground">{{ s.added_by }}</span>
-                            </template>
-                        </p>
-                        <p v-if="s.notes" class="mt-0.5 flex items-start gap-1 text-xs text-muted-foreground">
-                            <StickyNote class="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                            <span class="leading-snug">{{ s.notes }}</span>
-                        </p>
-                        <p v-if="s.remarks" class="mt-0.5 flex items-start gap-1 text-xs text-muted-foreground">
-                            <MessageSquareText class="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                            <span class="leading-snug">
-                                <span class="font-semibold">Remarks:</span> {{ s.remarks }}
-                                <span v-if="s.reviewed_by"> — {{ s.reviewed_by }}</span>
+                <article
+                    v-for="s in submissions.data"
+                    :key="s.id"
+                    class="flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-colors hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-slate-700 lg:flex-row lg:items-start lg:justify-between"
+                >
+                    <div class="flex min-w-0 flex-1 flex-col gap-3">
+                        <!-- Employee + status badges -->
+                        <div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+                            <div class="min-w-0">
+                                <p class="break-words text-[15px] font-semibold leading-snug text-slate-900 dark:text-slate-50">
+                                    {{ participantName(s) }}
+                                </p>
+                                <p class="mt-0.5 font-mono text-xs text-muted-foreground">{{ s.participant?.empcode }}</p>
+                            </div>
+
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                <span
+                                    class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset"
+                                    :class="statusClass(s.status)"
+                                >
+                                    {{ capitalize(s.status) }}
+                                </span>
+                                <span
+                                    v-if="isLate(s)"
+                                    class="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-0.5 text-[11px] font-semibold text-red-700 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-400/20"
+                                >
+                                    <AlarmClockMinus class="h-3 w-3" /> Late
+                                </span>
+                                <button
+                                    type="button"
+                                    class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                    :class="attendanceClass(s.participant?.attendance ?? 'Pending')"
+                                    title="Edit attendance"
+                                    :aria-label="`Attendance: ${s.participant?.attendance ?? 'Pending'}. Edit attendance`"
+                                    @click="openAttendance(s)"
+                                >
+                                    <UserCog class="h-3 w-3" />
+                                    {{ s.participant?.attendance ?? 'Pending' }}
+                                    <Pencil class="h-2.5 w-2.5 opacity-70" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Requirement + program -->
+                        <div class="min-w-0">
+                            <p class="flex items-start gap-1.5 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                                <FileText class="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                                <span class="min-w-0 break-words">
+                                    {{ s.requirement?.title }}
+                                    <span v-if="s.requirement?.name" class="font-normal text-muted-foreground">— {{ s.requirement?.name }}</span>
+                                </span>
+                            </p>
+                            <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 pl-[22px] text-xs text-muted-foreground">
+                                <span v-if="s.program?.title" class="inline-flex min-w-0 items-start gap-1">
+                                    <Building2 class="mt-px h-3.5 w-3.5 shrink-0" />
+                                    <span class="break-words font-medium text-blue-700 dark:text-blue-400">{{ s.program?.title }}</span>
+                                </span>
+                                <span v-if="s.batch?.batch" class="inline-flex items-center gap-1">
+                                    <Layers class="h-3.5 w-3.5 shrink-0" />
+                                    {{ s.batch?.batch }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Submission meta -->
+                        <div
+                            class="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl bg-slate-50 px-3 py-2 text-xs text-muted-foreground dark:bg-slate-800/50"
+                        >
+                            <span class="inline-flex items-center gap-1">
+                                <CalendarClock class="h-3.5 w-3.5 shrink-0" />
+                                Submitted:
+                                <span class="font-semibold text-foreground">{{ formatDateTime(s.submitted_at) }}</span>
+                                <button
+                                    type="button"
+                                    class="ml-0.5 inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-blue-100 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-blue-500/15 dark:hover:text-blue-300"
+                                    title="Edit submission date"
+                                    aria-label="Edit submission date"
+                                    @click="openEditDate(s)"
+                                >
+                                    <Pencil class="h-3 w-3" />
+                                </button>
                             </span>
-                        </p>
+                            <span v-if="s.requirement?.due_date" class="inline-flex items-center gap-1">
+                                <Clock3 class="h-3.5 w-3.5 shrink-0" />
+                                Due: <span class="font-medium text-foreground">{{ formatDate(s.requirement.due_date) }}</span>
+                            </span>
+                            <span v-if="s.added_by" class="inline-flex min-w-0 items-center gap-1">
+                                <UserPlus class="h-3.5 w-3.5 shrink-0" />
+                                Added by <span class="break-words font-medium text-foreground">{{ s.added_by }}</span>
+                            </span>
+                        </div>
+
+                        <!-- Notes / remarks -->
+                        <div v-if="s.notes || s.remarks" class="flex flex-col gap-1.5">
+                            <p v-if="s.notes" class="flex items-start gap-1.5 text-xs text-muted-foreground">
+                                <StickyNote class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                <span class="min-w-0 whitespace-pre-line break-words leading-relaxed">{{ s.notes }}</span>
+                            </p>
+                            <p
+                                v-if="s.remarks"
+                                class="flex items-start gap-1.5 rounded-lg border-l-2 border-blue-500/60 bg-blue-50/60 px-2.5 py-1.5 text-xs text-slate-700 dark:border-blue-400/50 dark:bg-blue-500/10 dark:text-slate-300"
+                            >
+                                <MessageSquareText class="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400" />
+                                <span class="min-w-0 break-words leading-relaxed">
+                                    <span class="font-semibold">Remarks:</span> {{ s.remarks }}
+                                    <span v-if="s.reviewed_by" class="text-muted-foreground"> — {{ s.reviewed_by }}</span>
+                                </span>
+                            </p>
+                        </div>
                     </div>
 
-                    <div class="flex shrink-0 items-center gap-2">
-                        <span
-                            v-if="isLate(s)"
-                            class="inline-flex items-center gap-1 rounded-full bg-red-600/10 px-2 py-0.5 text-[11px] font-bold text-red-600 dark:text-red-400"
-                        >
-                            <AlarmClockMinus class="h-3 w-3" /> Late
-                        </span>
-                        <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold" :class="statusClass(s.status)">
-                            {{ capitalize(s.status) }}
-                        </span>
-                        <button
-                            type="button"
-                            class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold transition-opacity hover:opacity-80"
-                            :class="attendanceClass(s.participant?.attendance ?? 'Pending')"
-                            title="Edit attendance"
-                            @click="openAttendance(s)"
-                        >
-                            {{ s.participant?.attendance ?? 'Pending' }}
-                            <Pencil class="h-2.5 w-2.5" />
-                        </button>
-                        <Button v-if="fileUrl(s)" variant="outline" size="sm" class="h-7 text-xs" @click="openFilePreview(s)">
-                            <Eye class="mr-1 h-3.5 w-3.5" /> View PDF
-                        </Button>
-                        <Button variant="outline" size="sm" class="h-7 text-xs" @click="openReview(s)">
-                            <Pencil class="mr-1 h-3.5 w-3.5" /> Review
-                        </Button>
+                    <!-- Actions -->
+                    <div
+                        class="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 dark:border-slate-800 lg:shrink-0 lg:flex-col lg:items-stretch lg:border-0 lg:pt-0"
+                    >
                         <Button
+                            v-if="fileUrl(s)"
                             variant="outline"
                             size="sm"
-                            class="h-7 border-red-200 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900/60 dark:text-red-400 dark:hover:bg-red-950/40"
+                            class="h-9 flex-1 text-xs sm:flex-none lg:w-32"
+                            @click="openFilePreview(s)"
+                        >
+                            <Eye class="mr-1.5 h-3.5 w-3.5" /> View PDF
+                        </Button>
+                        <Button
+                            size="sm"
+                            class="h-9 flex-1 bg-blue-600 text-xs text-white hover:bg-blue-700 dark:bg-blue-600/90 dark:hover:bg-blue-600 sm:flex-none lg:w-32"
+                            @click="openReview(s)"
+                        >
+                            <Pencil class="mr-1.5 h-3.5 w-3.5" /> Review
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            class="h-9 flex-1 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:text-red-300 sm:flex-none lg:w-32"
                             :disabled="removingId === s.id"
                             title="Remove submission"
                             @click="removeSubmission(s)"
                         >
-                            <LoaderCircle v-if="removingId === s.id" class="mr-1 h-3.5 w-3.5 animate-spin" />
-                            <Trash2 v-else class="mr-1 h-3.5 w-3.5" /> Remove
+                            <LoaderCircle v-if="removingId === s.id" class="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                            <Trash2 v-else class="mr-1.5 h-3.5 w-3.5" /> Remove
                         </Button>
                     </div>
-                </div>
+                </article>
 
                 <!-- Pagination -->
-                <div v-if="submissions.last_page > 1" class="mt-2 flex items-center justify-between text-sm">
-                    <p class="text-xs text-muted-foreground">Page {{ submissions.current_page }} of {{ submissions.last_page }}</p>
-                    <div class="flex items-center gap-1">
+                <nav
+                    v-if="submissions.last_page > 1"
+                    class="mt-1 flex flex-col items-center gap-3 sm:flex-row sm:justify-between"
+                    aria-label="Submissions pagination"
+                >
+                    <p class="text-xs text-muted-foreground">
+                        Page <span class="font-semibold text-foreground">{{ submissions.current_page }}</span> of
+                        <span class="font-semibold text-foreground">{{ submissions.last_page }}</span>
+                    </p>
+                    <div class="flex max-w-full flex-wrap items-center justify-center gap-1">
                         <template v-for="link in submissions.links" :key="link.label">
                             <a
                                 v-if="link.url"
                                 :href="link.url"
-                                class="inline-flex h-8 min-w-8 items-center justify-center rounded-lg border px-2 text-xs transition-colors"
-                                :class="link.active ? 'border-blue-600 bg-blue-600 text-white' : 'text-muted-foreground hover:bg-muted'"
+                                class="inline-flex h-9 min-w-9 items-center justify-center rounded-lg border px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                :class="
+                                    link.active
+                                        ? 'border-blue-600 bg-blue-600 text-white shadow-sm dark:border-blue-500 dark:bg-blue-600'
+                                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-50'
+                                "
+                                :aria-current="link.active ? 'page' : undefined"
                                 v-html="link.label"
                             />
                             <span
                                 v-else
-                                class="inline-flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-xs text-muted-foreground opacity-40"
+                                class="inline-flex h-9 min-w-9 items-center justify-center rounded-lg px-2.5 text-xs text-muted-foreground opacity-40"
                                 v-html="link.label"
                             />
                         </template>
                     </div>
-                </div>
-            </div>
+                </nav>
+            </section>
         </div>
 
         <!-- Review dialog -->
         <Dialog :open="showReview" @update:open="showReview = $event">
-            <DialogContent class="max-w-sm !rounded-2xl">
+            <DialogContent class="max-w-[calc(100vw-2rem)] !rounded-2xl sm:max-w-sm">
                 <DialogHeader>
                     <DialogTitle class="flex items-center gap-2"> <Pencil class="h-5 w-5 text-blue-600" /> Review Submission </DialogTitle>
                     <DialogDescription class="text-xs text-muted-foreground">
@@ -640,7 +718,7 @@ onMounted(() => {
                     </div>
                 </div>
 
-                <div class="flex justify-end gap-2 pt-2">
+                <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
                     <Button variant="outline" size="sm" @click="showReview = false">Cancel</Button>
                     <Button class="bg-blue-600 hover:bg-blue-700 dark:text-white" size="sm" :disabled="reviewProcessing" @click="submitReview">
                         <LoaderCircle v-if="reviewProcessing" class="mr-1 h-3 w-3 animate-spin" />
@@ -653,7 +731,7 @@ onMounted(() => {
 
         <!-- Attendance dialog -->
         <Dialog :open="showAttendance" @update:open="showAttendance = $event">
-            <DialogContent class="max-w-sm !rounded-2xl">
+            <DialogContent class="max-w-[calc(100vw-2rem)] !rounded-2xl sm:max-w-sm">
                 <DialogHeader>
                     <DialogTitle class="flex items-center gap-2"> <UserCog class="h-5 w-5 text-blue-600" /> Edit Attendance </DialogTitle>
                     <DialogDescription class="text-xs text-muted-foreground">
@@ -679,7 +757,7 @@ onMounted(() => {
                     <div v-if="attStatus === 'Complete'" class="grid gap-1">
                         <Label class="text-xs">Completed Hours <span class="text-red-500">*</span></Label>
                         <Input class="h-8 text-xs" type="number" step="0.5" min="0.5" v-model="attHours" />
-                        <p v-if="attErrors.hours" class="text-xs text-red-500">{{ attErrors.hours }}</p>
+                        <p v-if="attErrors.hours" class="text-xs text-red-600 dark:text-red-400">{{ attErrors.hours }}</p>
                     </div>
 
                     <div v-if="attStatus === 'Absent'" class="grid gap-1">
@@ -693,14 +771,14 @@ onMounted(() => {
                         <input
                             type="file"
                             accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                            class="text-xs file:mr-2 file:rounded-md file:border-0 file:bg-muted file:px-2 file:py-1 file:text-xs"
+                            class="w-full min-w-0 rounded-md border border-input bg-background p-1 text-xs text-muted-foreground file:mr-2 file:cursor-pointer file:rounded-md file:border-0 file:bg-muted file:px-2.5 file:py-1 file:text-xs file:font-medium file:text-foreground hover:file:bg-muted/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             @change="onAttFileChange"
                         />
-                        <p v-if="attErrors.justification" class="text-xs text-red-500">{{ attErrors.justification }}</p>
+                        <p v-if="attErrors.justification" class="text-xs text-red-600 dark:text-red-400">{{ attErrors.justification }}</p>
                     </div>
                 </div>
 
-                <div class="flex justify-end gap-2 pt-2">
+                <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
                     <Button variant="outline" size="sm" @click="showAttendance = false">Cancel</Button>
                     <Button class="bg-blue-600 hover:bg-blue-700 dark:text-white" size="sm" :disabled="attProcessing" @click="submitAttendance">
                         <LoaderCircle v-if="attProcessing" class="mr-1 h-3 w-3 animate-spin" />

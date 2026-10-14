@@ -352,7 +352,7 @@ onBeforeUnmount(() => {
 
     position: fixed;
     inset: 0;
-    z-index: 95;
+    z-index: 210; /* above the fixed site navbar (z-index 100) */
     display: grid;
     place-items: center;
     padding: 1rem;

@@ -59,6 +59,35 @@ const statusGaugeColors: Record<string, [string, string]> = {
     cancelled: ['#9ca3af', '#4b5563'],
 };
 
+// ── Chart colors per theme ──────────────────────────────────────────────────
+// ApexCharts draws its own text (legends, axis labels, center values) in a dark
+// grey by default, which disappears on the dark background. Follow the `dark`
+// class on <html> (set from the system or user preference) and recolor the charts.
+const isDark = ref(document.documentElement.classList.contains('dark'));
+let themeObserver: MutationObserver | null = null;
+
+const chartTheme = computed(() =>
+    isDark.value
+        ? {
+              text: '#cbd5e1',
+              strongText: '#f1f5f9',
+              muted: '#94a3b8',
+              grid: '#334155',
+              track: '#1e293b',
+              surface: '#0a0a0a',
+              tooltip: 'dark' as const,
+          }
+        : {
+              text: '#475569',
+              strongText: '#1e293b',
+              muted: '#6b7280',
+              grid: '#f1f5f9',
+              track: '#eef2f7',
+              surface: '#ffffff',
+              tooltip: 'light' as const,
+          },
+);
+
 const filterStatus = ref('accepted');
 const filterAgency = ref('TESDA');
 const filterYear = ref('');
@@ -78,6 +107,7 @@ const gaugeOptions = computed(() => {
     return {
         chart: {
             type: 'radialBar',
+            foreColor: chartTheme.value.text,
             animations: {
                 enabled: true,
                 easing: 'easeinout',
@@ -89,18 +119,19 @@ const gaugeOptions = computed(() => {
         plotOptions: {
             radialBar: {
                 hollow: { size: '62%' },
-                track: { background: '#eef2f7', strokeWidth: '100%' },
+                track: { background: chartTheme.value.track, strokeWidth: '100%' },
                 dataLabels: {
                     name: {
                         fontSize: '11px',
                         fontWeight: 700,
-                        color: '#6b7280',
+                        color: chartTheme.value.muted,
                         offsetY: 22,
                         formatter: () => statusOptions[filterStatus.value]?.toUpperCase() ?? '',
                     },
                     value: {
                         fontSize: '30px',
                         fontWeight: 800,
+                        color: chartTheme.value.strongText,
                         offsetY: -8,
                         formatter: (val: number) => val + '%',
                     },
@@ -167,6 +198,34 @@ const donutOptions = ref<any>({
     },
 });
 
+// Theme-aware copy of the donut options: text, slice borders and center labels follow light/dark mode.
+const donutChartOptions = computed(() => {
+    const t = chartTheme.value;
+    const base = donutOptions.value;
+    return {
+        ...base,
+        chart: { ...base.chart, foreColor: t.text },
+        legend: { ...base.legend, labels: { colors: t.text } },
+        stroke: { ...base.stroke, colors: [t.surface] },
+        tooltip: { theme: t.tooltip },
+        plotOptions: {
+            ...base.plotOptions,
+            pie: {
+                ...base.plotOptions.pie,
+                donut: {
+                    ...base.plotOptions.pie.donut,
+                    labels: {
+                        ...base.plotOptions.pie.donut.labels,
+                        name: { color: t.text },
+                        value: { ...base.plotOptions.pie.donut.labels.value, color: t.strongText },
+                        total: { ...base.plotOptions.pie.donut.labels.total, color: t.muted },
+                    },
+                },
+            },
+        },
+    };
+});
+
 const barReceived = ref<number[]>([]);
 const barDisseminated = ref<number[]>([]);
 const barOptions = ref<any>({
@@ -201,6 +260,21 @@ const barOptions = ref<any>({
     colors: ['#3b82f6', '#10b981'],
     legend: { position: 'top' },
     grid: { borderColor: '#f1f5f9' },
+});
+
+// Theme-aware copy of the bar options: axis labels, legend and grid lines follow light/dark mode.
+const barChartOptions = computed(() => {
+    const t = chartTheme.value;
+    const base = barOptions.value;
+    return {
+        ...base,
+        chart: { ...base.chart, foreColor: t.text },
+        xaxis: { ...base.xaxis, labels: { ...base.xaxis.labels, style: { ...base.xaxis.labels.style, colors: t.text } } },
+        yaxis: { labels: { style: { colors: t.text } } },
+        legend: { ...base.legend, labels: { colors: t.text } },
+        grid: { ...base.grid, borderColor: t.grid },
+        tooltip: { theme: t.tooltip },
+    };
 });
 
 let activeController: AbortController | null = null;
@@ -250,8 +324,15 @@ watch([filterStatus, filterAgency, filterYear], () => {
     debounce = setTimeout(fetchDashboard, 250);
 });
 
-onMounted(fetchDashboard);
+onMounted(() => {
+    fetchDashboard();
+    themeObserver = new MutationObserver(() => {
+        isDark.value = document.documentElement.classList.contains('dark');
+    });
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+});
 onBeforeUnmount(() => {
+    themeObserver?.disconnect();
     clearTimeout(debounce);
     if (activeController) {
         activeController.abort();
@@ -459,7 +540,7 @@ function onPanelSearchInput() {
                                     </span>
                                     <span class="text-[10px] font-normal normal-case text-muted-foreground/70">Click a slice for details</span>
                                 </p>
-                                <VueApexCharts type="donut" height="300" :options="donutOptions" :series="donutSeries" class="cursor-pointer" />
+                                <VueApexCharts type="donut" height="300" :options="donutChartOptions" :series="donutSeries" class="cursor-pointer" />
                             </div>
                             <div class="anim-in rounded-xl border p-4" style="animation-delay: 440ms">
                                 <p
@@ -473,7 +554,7 @@ function onPanelSearchInput() {
                                 <VueApexCharts
                                     type="bar"
                                     height="300"
-                                    :options="barOptions"
+                                    :options="barChartOptions"
                                     class="cursor-pointer"
                                     :series="[
                                         { name: 'Received', data: barReceived },
