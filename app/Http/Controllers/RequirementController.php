@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Program;
 use App\Models\Requirement;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -49,6 +50,27 @@ class RequirementController extends Controller
                 'note' => $validated['note'] ?? null,
             ]);
         }
+
+        return back();
+    }
+
+    /**
+     * Update a single requirement record (per batch).
+     */
+    public function update(Request $request, Program $program, Requirement $requirement): RedirectResponse
+    {
+        abort_unless(
+            $requirement->batch && $requirement->batch->program_code === $program->program_code,
+            404
+        );
+
+        $validated = $request->validate([
+            'due_date' => ['required', 'date'],
+            'is_required' => ['required', 'boolean'],
+            'note' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $requirement->update($validated);
 
         return back();
     }

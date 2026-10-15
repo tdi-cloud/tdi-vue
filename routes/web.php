@@ -140,6 +140,8 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     // PROGRAM REQUIREMENTS
     Route::post('programs/{program}/requirements', [RequirementController::class, 'store'])
         ->name('programs.requirements.store');
+    Route::put('programs/{program}/requirements/{requirement}', [RequirementController::class, 'update'])
+        ->name('programs.requirements.update');
     Route::delete('programs/{program}/requirements/{requirement}', [RequirementController::class, 'destroy'])
         ->name('programs.requirements.destroy');
 

@@ -2,12 +2,13 @@
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useConfirm } from '@/composables/useConfirm';
 import { router, useForm } from '@inertiajs/vue3';
-import { BadgeCheck, CalendarClock, ClipboardList, LoaderCircle, Plus, Save, StickyNote, Trash2 } from 'lucide-vue-next';
+import { BadgeCheck, CalendarClock, ClipboardList, LoaderCircle, Pencil, Plus, Save, StickyNote, Trash2 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 const { confirmDialog } = useConfirm();
@@ -146,6 +147,39 @@ const submit = () => {
     });
 };
 
+// Edit an existing requirement record (per batch)
+const showEditModal = ref(false);
+const editingRequirement = ref<Requirement | null>(null);
+
+const editForm = useForm({
+    due_date: '',
+    is_required: true as boolean,
+    note: '',
+});
+
+const openEditModal = (requirement: Requirement) => {
+    editingRequirement.value = requirement;
+    editForm.clearErrors();
+    editForm.due_date = requirement.due_date?.slice(0, 10) ?? '';
+    editForm.is_required = Boolean(requirement.is_required);
+    editForm.note = requirement.note ?? '';
+    showEditModal.value = true;
+};
+
+const submitEdit = () => {
+    if (!editingRequirement.value) return;
+
+    editForm.put(route('programs.requirements.update', [props.program.id, editingRequirement.value.id]), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showEditModal.value = false;
+            editingRequirement.value = null;
+        },
+    });
+};
+
+const editingBatchName = computed(() => batches.value.find((b) => b.id === editingRequirement.value?.batch_id)?.batch ?? '');
+
 const removeRequirement = async (requirement: Requirement) => {
     if (await confirmDialog('Remove this requirement from the batch?', { confirmText: 'Remove' })) {
         router.delete(route('programs.requirements.destroy', [props.program.id, requirement.id]), {
@@ -215,13 +249,24 @@ const removeRequirement = async (requirement: Requirement) => {
                             class="group relative flex flex-col gap-2 rounded-xl border p-3.5 shadow-md transition-shadow hover:shadow-lg"
                             :class="r.is_required ? 'border-blue-200 bg-blue-50/40 dark:border-blue-800/40 dark:bg-blue-950/10' : 'bg-card'"
                         >
-                            <button
-                                type="button"
-                                class="absolute right-2.5 top-2.5 text-muted-foreground opacity-0 transition-all hover:text-red-500 group-hover:opacity-100"
-                                @click="removeRequirement(r)"
-                            >
-                                <Trash2 class="h-3.5 w-3.5" />
-                            </button>
+                            <div class="absolute right-2.5 top-2.5 flex items-center gap-2 opacity-0 transition-all group-hover:opacity-100">
+                                <button
+                                    type="button"
+                                    title="Edit requirement"
+                                    class="text-muted-foreground hover:text-blue-500"
+                                    @click="openEditModal(r)"
+                                >
+                                    <Pencil class="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                    type="button"
+                                    title="Remove requirement"
+                                    class="text-muted-foreground hover:text-red-500"
+                                    @click="removeRequirement(r)"
+                                >
+                                    <Trash2 class="h-3.5 w-3.5" />
+                                </button>
+                            </div>
 
                             <span
                                 v-if="r.is_required"
@@ -236,7 +281,7 @@ const removeRequirement = async (requirement: Requirement) => {
                                 Optional
                             </span>
 
-                            <div class="pr-4">
+                            <div class="pr-10">
                                 <p class="text-sm font-bold leading-snug">{{ r.title }}</p>
                                 <p class="text-xs leading-snug text-muted-foreground">{{ r.name }}</p>
                             </div>
@@ -396,6 +441,72 @@ const removeRequirement = async (requirement: Requirement) => {
                         >
                             <LoaderCircle v-if="form.processing" class="mr-1 h-3 w-3 animate-spin" />
                             <Save class="h-4 w-4" /> Save Requirement
+                        </Button>
+                    </div>
+                </form>
+            </DialogContent>
+        </Dialog>
+
+        <!-- Edit Requirement Modal -->
+        <Dialog :open="showEditModal" @update:open="showEditModal = $event">
+            <DialogContent class="max-w-lg !rounded-2xl">
+                <DialogHeader>
+                    <DialogTitle>
+                        <span class="flex items-center gap-2"> <Pencil class="h-5 w-5" /> Edit Requirement </span>
+                    </DialogTitle>
+                    <DialogDescription class="text-xs text-muted-foreground">
+                        Changes apply only to
+                        <span class="font-semibold">{{ editingRequirement?.title }}</span>
+                        of <span class="font-semibold">{{ editingBatchName }}</span>.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <form @submit.prevent="submitEdit" class="flex flex-col gap-4 pt-1">
+                    <!-- Requirement (read-only) -->
+                    <div class="grid gap-1">
+                        <Label class="text-xs">Requirement</Label>
+                        <p class="rounded-md border bg-muted/40 px-3 py-1.5 text-xs">
+                            {{ editingRequirement?.title }} — {{ editingRequirement?.name }}
+                        </p>
+                    </div>
+
+                    <!-- Due date -->
+                    <div class="grid gap-1">
+                        <Label for="edit_due_date" class="text-xs">Due Date <span class="text-red-500">*</span></Label>
+                        <Input id="edit_due_date" type="date" class="h-8 text-xs" v-model="editForm.due_date" />
+                        <p class="text-xs text-red-500">{{ editForm.errors.due_date }}</p>
+                    </div>
+
+                    <!-- Required checkbox -->
+                    <div class="flex items-center gap-2">
+                        <Checkbox id="edit_is_required" v-model:checked="editForm.is_required" />
+                        <Label for="edit_is_required" class="cursor-pointer text-xs">
+                            This requirement is <span class="font-bold">required</span> for participants
+                        </Label>
+                    </div>
+
+                    <!-- Note -->
+                    <div class="grid gap-1">
+                        <Label class="text-xs">Note</Label>
+                        <Textarea
+                            class="min-h-[80px] resize-y text-xs"
+                            v-model="editForm.note"
+                            placeholder="Note for participants (e.g. where or how to submit this requirement)..."
+                        />
+                        <p class="text-xs text-red-500">{{ editForm.errors.note }}</p>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="flex justify-end gap-2 border-t pt-2">
+                        <Button type="button" variant="outline" size="sm" @click="showEditModal = false">Cancel</Button>
+                        <Button
+                            type="submit"
+                            size="sm"
+                            class="bg-blue-600 hover:bg-blue-700 dark:text-white"
+                            :disabled="editForm.processing || !editForm.due_date"
+                        >
+                            <LoaderCircle v-if="editForm.processing" class="mr-1 h-3 w-3 animate-spin" />
+                            <Save class="h-4 w-4" /> Save Changes
                         </Button>
                     </div>
                 </form>
