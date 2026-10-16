@@ -1,6 +1,21 @@
 <script setup lang="ts">
 import EmployeeProgressModal from '@/components/EmployeeProgressModal.vue';
-import { Award, ClipboardCheck, Download, FileCheck, FileX, Loader2, Medal, Search, TrendingUp, Trophy, Users, X } from 'lucide-vue-next';
+import RegionalRankingModal, { type RankedRegion } from '@/components/RegionalRankingModal.vue';
+import {
+    Award,
+    ChevronRight,
+    ClipboardCheck,
+    Download,
+    FileCheck,
+    FileX,
+    Loader2,
+    Medal,
+    Search,
+    TrendingUp,
+    Trophy,
+    Users,
+    X,
+} from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import VueApexCharts from 'vue3-apexcharts';
 
@@ -261,7 +276,7 @@ function toCount(value: unknown): number {
 // from the same filtered, per-obligation query as the charts, so
 // submitted + not_submitted is exactly the regional total required. Regions
 // outside the region filter come back as 0 / 0 and drop out via total > 0.
-const topRegions = computed(() => {
+const rankedRegions = computed<RankedRegion[]>(() => {
     const d = data.value;
     if (!d || !Array.isArray(d.regions)) return [];
 
@@ -278,9 +293,19 @@ const topRegions = computed(() => {
                 // submissions, then the canonical region order.
                 b.submitted * a.total - a.submitted * b.total || b.submitted - a.submitted || a.order - b.order,
         )
-        .slice(0, 3)
-        .map((r) => ({ region: r.region, rate: Math.round((r.submitted / r.total) * 1000) / 10 }));
+        .map((r) => ({ region: r.region, submitted: r.submitted, total: r.total, rate: Math.round((r.submitted / r.total) * 1000) / 10 }));
 });
+
+const topRegions = computed(() => rankedRegions.value.slice(0, 3));
+
+// ─── Regional ranking modal ──────────────────────────────────────────────────
+
+const rankingOpen = ref(false);
+
+// Drill-down opened from the ranking modal stacks on top of it.
+function onRankingRegionSelect(region: string) {
+    fetchList('submitted', region);
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -426,7 +451,7 @@ const modalTitle = computed(() => {
                     <section aria-labelledby="treap-regional-monitoring-heading" class="tdi-surface rounded-xl p-3">
                         <div class="mb-2 flex items-start gap-1.5">
                             <ClipboardCheck class="mt-px h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-                            <div class="min-w-0">
+                            <div class="min-w-0 flex-1">
                                 <h3
                                     id="treap-regional-monitoring-heading"
                                     class="text-[11px] font-bold uppercase leading-tight tracking-wide text-emerald-700 dark:text-emerald-400"
@@ -435,6 +460,20 @@ const modalTitle = computed(() => {
                                 </h3>
                                 <p class="text-[10px] leading-snug text-muted-foreground">Top 3 by compliance rate</p>
                             </div>
+                            <button
+                                v-if="rankedRegions.length"
+                                type="button"
+                                class="group inline-flex shrink-0 items-center rounded-md px-1 text-[10px] font-semibold text-cyan-700 transition-colors hover:text-cyan-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 dark:text-cyan-400 dark:hover:text-cyan-300"
+                                aria-haspopup="dialog"
+                                aria-label="View the full regional compliance ranking"
+                                @click="rankingOpen = true"
+                            >
+                                View all
+                                <ChevronRight
+                                    class="h-3 w-3 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none"
+                                    aria-hidden="true"
+                                />
+                            </button>
                         </div>
 
                         <ol v-if="topRegions.length" class="flex flex-col gap-1">
@@ -478,6 +517,15 @@ const modalTitle = computed(() => {
             <p class="text-sm">No TREAP data available.</p>
         </div>
     </div>
+
+    <RegionalRankingModal
+        :open="rankingOpen"
+        :regions="rankedRegions"
+        :year="year"
+        :paused="modalOpen || selectedEmpcode !== null"
+        @close="rankingOpen = false"
+        @select-region="onRankingRegionSelect"
+    />
 
     <!-- ══════════════════════════════════════════════════════════ -->
     <!-- Drill-down Modal                                           -->
