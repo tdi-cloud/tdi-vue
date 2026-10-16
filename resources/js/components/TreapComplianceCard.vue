@@ -448,7 +448,62 @@ const modalTitle = computed(() => {
                     </div>
 
                     <!-- Top 3 regional compliance -->
-                    <section aria-labelledby="treap-regional-monitoring-heading" class="tdi-surface rounded-xl p-3">
+                    <section aria-labelledby="treap-regional-monitoring-heading" class="tdi-surface relative isolate overflow-hidden rounded-xl p-3">
+                        <!-- Decorative trophy watermark — behind all content, never interactive -->
+                        <div class="pointer-events-none absolute inset-0 -z-10 select-none" aria-hidden="true">
+                            <div class="treap-trophy-glow absolute -bottom-12 -right-10 h-52 w-52 rounded-full" />
+                            <svg
+                                class="absolute -bottom-4 -right-3 h-40 w-36 -rotate-[8deg] opacity-[0.08] dark:opacity-[0.11]"
+                                viewBox="0 0 120 140"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <defs>
+                                    <linearGradient id="treap-trophy-gold" x1="0" y1="0" x2="1" y2="0">
+                                        <stop offset="0" stop-color="#6b4c14" />
+                                        <stop offset="0.28" stop-color="#e2be5c" />
+                                        <stop offset="0.42" stop-color="#fff3c4" />
+                                        <stop offset="0.6" stop-color="#d1a237" />
+                                        <stop offset="1" stop-color="#7c5a1b" />
+                                    </linearGradient>
+                                    <linearGradient id="treap-trophy-rim" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0" stop-color="#fff6d6" />
+                                        <stop offset="1" stop-color="#b8892c" />
+                                    </linearGradient>
+                                    <linearGradient id="treap-trophy-base" x1="0" y1="0" x2="1" y2="1">
+                                        <stop offset="0" stop-color="#a77a2a" />
+                                        <stop offset="0.45" stop-color="#e8c873" />
+                                        <stop offset="1" stop-color="#5e4212" />
+                                    </linearGradient>
+                                    <radialGradient id="treap-trophy-shadow" cx="0.5" cy="0.5" r="0.5">
+                                        <stop offset="0" stop-color="#000" stop-opacity="0.5" />
+                                        <stop offset="1" stop-color="#000" stop-opacity="0" />
+                                    </radialGradient>
+                                </defs>
+                                <ellipse cx="60" cy="132" rx="34" ry="5" fill="url(#treap-trophy-shadow)" />
+                                <!-- Handles -->
+                                <path d="M30 28C14 28 11 52 32 60" stroke="url(#treap-trophy-base)" stroke-width="6" stroke-linecap="round" />
+                                <path d="M90 28C106 28 109 52 88 60" stroke="url(#treap-trophy-base)" stroke-width="6" stroke-linecap="round" />
+                                <!-- Cup -->
+                                <path d="M28 18H92V40C92 66 78 82 60 84C42 82 28 66 28 40Z" fill="url(#treap-trophy-gold)" />
+                                <ellipse cx="60" cy="18" rx="32" ry="5" fill="url(#treap-trophy-rim)" />
+                                <ellipse cx="60" cy="18.5" rx="27" ry="3" fill="#6b4c14" fill-opacity="0.45" />
+                                <!-- Specular highlight -->
+                                <path d="M37 26C36 48 43 66 52 77C45 64 41 46 42 26Z" fill="#fff" fill-opacity="0.55" />
+                                <!-- Star emblem -->
+                                <path
+                                    d="M60 34L63.5 41.1L71.4 42.3L65.7 47.8L67 55.6L60 51.9L53 55.6L54.3 47.8L48.6 42.3L56.5 41.1Z"
+                                    fill="#fff8dc"
+                                    fill-opacity="0.7"
+                                />
+                                <!-- Stem, collar and base -->
+                                <path d="M54 83H66L64 99H56Z" fill="url(#treap-trophy-gold)" />
+                                <rect x="47" y="98" width="26" height="5" rx="2" fill="url(#treap-trophy-rim)" />
+                                <rect x="43" y="103" width="34" height="10" rx="2" fill="url(#treap-trophy-base)" />
+                                <path d="M40 113H80L85 129H35Z" fill="url(#treap-trophy-gold)" />
+                                <rect x="51" y="117" width="18" height="6" rx="1" fill="#fff6d6" fill-opacity="0.35" />
+                            </svg>
+                        </div>
                         <div class="mb-2 flex items-start gap-1.5">
                             <ClipboardCheck class="mt-px h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
                             <div class="min-w-0 flex-1">
@@ -686,5 +741,14 @@ const modalTitle = computed(() => {
     mask-image:
         radial-gradient(ellipse 200px 200px at 0% 0%, black 0%, transparent 70%),
         radial-gradient(ellipse 200px 200px at 100% 100%, black 0%, transparent 70%);
+}
+
+/* Soft champagne-gold / emerald glow behind the Top Regions trophy watermark. */
+.treap-trophy-glow {
+    background: radial-gradient(circle at 50% 50%, rgba(234, 200, 120, 0.22) 0%, rgba(16, 185, 129, 0.08) 45%, transparent 70%);
+}
+
+:global(.dark) .treap-trophy-glow {
+    background: radial-gradient(circle at 50% 50%, rgba(212, 167, 72, 0.12) 0%, rgba(16, 185, 129, 0.06) 45%, transparent 70%);
 }
 </style>
