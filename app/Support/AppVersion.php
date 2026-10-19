@@ -2,34 +2,83 @@
 
 namespace App\Support;
 
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Process;
+
 /**
- * Builds the system version label shown in the UI, e.g. "v1.0.0 (1e05267)".
+ * Builds the system version label shown in the UI, e.g. "v1.0.0 build 3 (1e05267)".
  *
- * The release number comes from config('app.version'); the short commit hash
- * is read from a REVISION file written at deploy time, or from the .git
- * folder when the app runs from a git checkout.
+ * The release number comes from config('app.version'). The build number is the
+ * count of commits since the latest "v*" release tag, and the short commit hash
+ * identifies the exact code running. Both are read from a REVISION file written
+ * at deploy time (`git describe --tags --long --match "v*" > REVISION`), or from
+ * the .git folder when the app runs from a git checkout.
  */
 final class AppVersion
 {
+    private const DESCRIBE_PATTERN = '/^v.+-(?<build>\d+)-g(?<hash>[0-9a-f]{7,40})$/i';
+
     public static function label(?string $basePath = null): string
     {
-        $version = 'v'.config('app.version');
+        $label = 'v'.config('app.version');
+        $build = self::buildNumber($basePath);
         $commit = self::commit($basePath);
 
-        return $commit === null ? $version : "{$version} ({$commit})";
+        if ($build !== null) {
+            $label .= " build {$build}";
+        }
+
+        return $commit === null ? $label : "{$label} ({$commit})";
     }
 
     public static function commit(?string $basePath = null): ?string
     {
         $basePath ??= base_path();
 
-        $hash = self::readFile($basePath.'/REVISION') ?? self::readGitHead($basePath.'/.git');
+        $revision = self::readFile($basePath.'/REVISION');
+
+        if ($revision !== null && preg_match(self::DESCRIBE_PATTERN, $revision, $matches)) {
+            return substr($matches['hash'], 0, 7);
+        }
+
+        $hash = $revision ?? self::readGitHead($basePath.'/.git');
 
         if ($hash === null || ! preg_match('/^[0-9a-f]{7,40}$/i', $hash)) {
             return null;
         }
 
         return substr($hash, 0, 7);
+    }
+
+    /**
+     * Number of commits since the latest release tag; cached per commit so git
+     * runs only once after each new commit or deploy.
+     */
+    public static function buildNumber(?string $basePath = null): ?int
+    {
+        $basePath ??= base_path();
+
+        $revision = self::readFile($basePath.'/REVISION');
+
+        if ($revision !== null) {
+            return preg_match(self::DESCRIBE_PATTERN, $revision, $matches) ? (int) $matches['build'] : null;
+        }
+
+        $commit = self::commit($basePath);
+
+        if ($commit === null) {
+            return null;
+        }
+
+        return Cache::rememberForever("app-version:build:{$commit}", function () use ($basePath): ?int {
+            $result = Process::path($basePath)->run(['git', 'describe', '--tags', '--long', '--match', 'v*']);
+
+            if ($result->failed() || ! preg_match(self::DESCRIBE_PATTERN, trim($result->output()), $matches)) {
+                return null;
+            }
+
+            return (int) $matches['build'];
+        });
     }
 
     private static function readGitHead(string $gitPath): ?string
