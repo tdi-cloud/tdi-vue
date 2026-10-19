@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\SiteImage;
+use App\Support\AppVersion;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -42,7 +43,7 @@ class HandleInertiaRequests extends Middleware
         return array_merge(parent::share($request), [
             ...parent::share($request),
             'name' => config('app.name'),
-            'appVersion' => config('app.version'),
+            'appVersion' => AppVersion::label(),
             'quote' => ['message' => trim($message), 'author' => trim($author)],
             'auth' => [
                 'user' => $request->user(),
