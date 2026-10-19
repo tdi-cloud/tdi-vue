@@ -9,12 +9,18 @@ test('guests are redirected to the login page', function () {
     $response->assertRedirect('/login');
 });
 
-test('authenticated users can visit the dashboard', function () {
-    $user = User::factory()->create();
-    $this->actingAs($user);
+test('admins can visit the dashboard', function () {
+    $this->actingAs(User::factory()->create(['access' => 'admin']));
 
     $response = $this->get('/dashboard');
     $response->assertStatus(200);
+});
+
+test('non-admin users cannot visit the dashboard', function () {
+    $this->actingAs(User::factory()->create());
+
+    $response = $this->get('/dashboard');
+    $response->assertForbidden();
 });
 
 test('the dashboard greets the admin by their full first name from the employee record', function () {
