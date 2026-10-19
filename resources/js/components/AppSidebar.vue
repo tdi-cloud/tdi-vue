@@ -205,6 +205,7 @@ const mainNavItems = computed<NavItem[]>(() => {
         <SidebarFooter>
             <!-- <NavFooter :items="footerNavItems" /> -->
             <!-- <NavUser /> -->
+            <p class="px-2 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">TDI v{{ page.props.appVersion }}</p>
         </SidebarFooter>
     </Sidebar>
     <slot />
