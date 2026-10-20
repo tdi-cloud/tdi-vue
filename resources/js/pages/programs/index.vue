@@ -68,6 +68,8 @@ interface ProgramListItem {
     date_end: string | null;
     batch_statuses: string[];
     months: string[];
+    added_by: string | null;
+    can_delete: boolean;
 }
 
 const INITIATED_OPTIONS = [

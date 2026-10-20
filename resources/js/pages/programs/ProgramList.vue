@@ -24,6 +24,7 @@ interface Program {
     months: string[];
     cover_page: { image_url: string | null } | null;
     added_by: string | null;
+    can_delete: boolean;
 }
 
 const props = defineProps<{
@@ -271,6 +272,7 @@ const dateRange = (program: Program) => {
 
                         <!-- Actions -->
                         <Button
+                            v-if="program.can_delete"
                             variant="ghost"
                             size="icon"
                             class="program-row__delete h-7 w-7 shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"

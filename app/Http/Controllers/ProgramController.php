@@ -110,6 +110,8 @@ class ProgramController extends Controller
 
                 unset($program->batches);
 
+                $program->can_delete = $program->canBeDeletedBy(auth()->user());
+
                 return $program;
             });
 
@@ -191,6 +193,7 @@ class ProgramController extends Controller
         return Inertia::render('programs/show', [
             'program' => $program,
             'submissions' => $submissions,
+            'canDelete' => $program->canBeDeletedBy(auth()->user()),
         ]);
     }
 
@@ -227,6 +230,8 @@ class ProgramController extends Controller
 
     public function destroy(Program $program)
     {
+        abort_unless($program->canBeDeletedBy(auth()->user()), 403, 'Only the admin who added this program or a superadmin can delete it.');
+
         // Kasama nang mabubura ang mga batches nito (tingnan ang Program::booted()).
         $program->delete();
 

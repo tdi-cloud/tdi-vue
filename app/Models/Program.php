@@ -71,6 +71,19 @@ class Program extends Model
         });
     }
 
+    /**
+     * Only the admin who added the program, or a superadmin, may delete it.
+     * Programs without a recorded creator can only be deleted by a superadmin.
+     */
+    public function canBeDeletedBy(User $user): bool
+    {
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        return $this->added_by !== null && $this->added_by === $user->empcode;
+    }
+
     public function batches()
     {
         return $this->hasMany(Batch::class, 'program_code', 'program_code');

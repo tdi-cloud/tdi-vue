@@ -143,6 +143,7 @@ interface Program {
 const props = defineProps<{
     program: Program;
     submissions: any[];
+    canDelete: boolean;
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -402,7 +403,7 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
                             >
                                 <Link :href="route('programs.edit', program.id)"> <Pencil class="h-4 w-4" /> Edit </Link>
                             </Button>
-                            <Button variant="destructive" size="sm" class="shrink-0 shadow-none" @click="deleteProgram">
+                            <Button v-if="canDelete" variant="destructive" size="sm" class="shrink-0 shadow-none" @click="deleteProgram">
                                 <Trash2 class="h-4 w-4" /> Delete
                             </Button>
                         </div>
