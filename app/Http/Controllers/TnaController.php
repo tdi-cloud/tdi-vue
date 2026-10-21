@@ -732,20 +732,30 @@ class TnaController extends Controller
             $query->whereIn('tna_assessments.id', $matchingIds);
         }
 
+        // Sort and paginate on light columns only: sorting full rows (with the large
+        // rating/form columns) overflows MySQL's sort buffer. The full records are
+        // then loaded for just the current page.
         $assessments = $query
             ->select(
-                'tna_assessments.*',
+                'tna_assessments.id',
+                'tna_assessments.name',
+                'tna_assessments.position',
+                'tna_assessments.period',
+                'tna_assessments.supervisor_reviewed_at',
                 'users.empcode as user_empcode',
                 'employees.REGION as region',
                 'employees.OFFICE as office',
                 DB::raw('employees.`OFFICE/DIVISION` as office_division')
             )
             ->orderBy('tna_assessments.name')
+            ->orderBy('tna_assessments.id')
             ->paginate($request->get('per_page', 10))
             ->withQueryString();
 
-        $assessments->through(function (TnaAssessment $row) {
-            $priority = $this->buildResult($row)['priority'];
+        $fullAssessments = TnaAssessment::whereIn('id', $assessments->pluck('id'))->get()->keyBy('id');
+
+        $assessments->through(function (TnaAssessment $row) use ($fullAssessments) {
+            $priority = $this->buildResult($fullAssessments[$row->id])['priority'];
 
             return [
                 'id' => $row->id,

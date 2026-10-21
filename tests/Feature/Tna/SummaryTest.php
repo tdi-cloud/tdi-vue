@@ -4,6 +4,7 @@ use App\Models\Competency;
 use App\Models\Employee;
 use App\Models\TnaAssessment;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 function summaryTestEmployee(string $empcode, string $position, string $region = 'NCR', string $office = 'Test Office'): Employee
 {
@@ -315,4 +316,25 @@ test('an admin can view any employees tna result page even without being the own
     $response = $this->actingAs($admin)->get(route('tna.result.show', $assessment));
 
     $response->assertOk();
+});
+
+test('tna summary sorts and paginates without selecting full assessment rows', function () {
+    $admin = summaryTestAdmin('EMP-TSUM-ADM9');
+    $finalized = summaryTestFinalizedAssessment('EMP-TSUM-90', 'Test Officer Z');
+
+    DB::enableQueryLog();
+
+    $response = $this->actingAs($admin)->get(route('tna-summary.index'));
+    $response->assertOk();
+
+    $sortedQueries = collect(DB::getQueryLog())
+        ->pluck('query')
+        ->filter(fn (string $sql) => str_contains($sql, 'order by "tna_assessments"."name"'));
+
+    expect($sortedQueries)->not->toBeEmpty();
+    $sortedQueries->each(fn (string $sql) => expect($sql)->not->toContain('"tna_assessments".*'));
+
+    $rows = collect($response->inertiaProps('assessments')['data']);
+    expect($rows->pluck('id'))->toContain($finalized->id);
+    expect($rows->first()['top_priorities'][0]['unit'])->toBe('Unit Needing Training - EMP-TSUM-90');
 });
