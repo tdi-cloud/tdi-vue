@@ -45,8 +45,9 @@
     table.sign { width: 100%; border-collapse: collapse; margin-top: -1px; page-break-inside: avoid; }
     table.sign td { border: 1px solid #000; padding: 4px 6px; font-size: 10pt; width: 50%; vertical-align: top; }
     table.sign td.head { font-weight: bold; }
-    table.sign td.name { text-align: center; font-weight: bold; padding-top: 22px; border-bottom: 0; }
-    table.sign td.caption { text-align: center; border-top: 0; font-size: 9.5pt; }
+    /* Blank room above the name for a wet signature; name sits right on the caption */
+    table.sign td.name { text-align: center; font-weight: bold; padding: 40px 6px 0; border-bottom: 0; line-height: 1.1; }
+    table.sign td.caption { text-align: center; border-top: 0; font-size: 9.5pt; padding: 1px 6px 5px; }
 </style>
 </head>
 <body>
