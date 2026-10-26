@@ -40,7 +40,7 @@
             </div>
         </section>
 
-        <main class="relative mx-auto -mt-12 w-[min(100%-2rem,960px)] pb-16">
+        <main class="report-form relative mx-auto -mt-12 w-[min(100%-2rem,960px)] pb-16">
             <!-- Current submission status -->
             <div
                 v-if="submission"
@@ -887,6 +887,20 @@ function formatDate(value: string | null | undefined) {
 </script>
 
 <style scoped>
+/* This page is designed light-only. The global input styles in app.css follow the
+   theme variables, so pin them to the light theme inside the form area; otherwise
+   inputs turn black in dark mode. */
+.report-form {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --muted-foreground: 0 0% 45.1%;
+    --border: 0 0% 92.8%;
+    --input: 0 0% 89.8%;
+    color-scheme: light;
+}
+.report-form input[type='date']::-webkit-calendar-picker-indicator {
+    filter: none;
+}
 .field-input {
     width: 100%;
     border-radius: 0.6rem;
