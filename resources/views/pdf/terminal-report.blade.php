@@ -39,7 +39,7 @@
     table.box td, table.box th { border: 1px solid #000; padding: 4px 6px; font-size: 10pt; vertical-align: top; }
     table.box .box-head { font-weight: bold; border-bottom: 0; }
     table.box .box-body { border-top: 0; min-height: 30px; padding-bottom: 8px; }
-    table.box th { font-weight: bold; text-align: center; text-decoration: underline; vertical-align: middle; }
+    table.box th { font-weight: bold; text-align: center; vertical-align: middle; }
     table.box tr { page-break-inside: avoid; }
 
     table.sign { width: 100%; border-collapse: collapse; margin-top: -1px; page-break-inside: avoid; }
