@@ -36,6 +36,7 @@ use App\Http\Controllers\SiteImageController;
 use App\Http\Controllers\SubmissionActivityController;
 use App\Http\Controllers\SubmissionController;
 use App\Http\Controllers\SupportingDocumentController;
+use App\Http\Controllers\TerminalReportController;
 use App\Http\Controllers\TesdaOrderController;
 use App\Http\Controllers\TnaController;
 use App\Http\Controllers\TPMRController;
@@ -473,6 +474,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::delete('/my-programs/{batch}/requirements/{requirement}/submission', [EnrolledProgramController::class, 'destroySubmission'])
         ->name('programs.my-progress.destroy');
+
+    // TREAP / REAP REPORT FORM — fills out the form, then generates and submits the PDF
+    Route::get('/my-programs/{batch}/requirements/{requirement}/terminal-report', [TerminalReportController::class, 'edit'])
+        ->name('programs.terminal-report.edit');
+
+    Route::put('/my-programs/{batch}/requirements/{requirement}/terminal-report', [TerminalReportController::class, 'update'])
+        ->name('programs.terminal-report.update');
 
     // ABSENCE JUSTIFICATION
     Route::post('/my-programs/{batch}/documents', [EnrolledProgramController::class, 'submitOtherDocument'])

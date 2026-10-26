@@ -28,9 +28,7 @@
                         <div class="ph__status" :class="`tone-${heroStatus.tone}`">
                             <component :is="heroStatus.icon" :size="15" /> {{ heroStatus.label.toUpperCase() }}
                         </div>
-                        <p class="ph__progress-line">
-                            {{ program.hours_completed }} of {{ program.total_hours || '—' }} learning hours completed
-                        </p>
+                        <p class="ph__progress-line">{{ program.hours_completed }} of {{ program.total_hours || '—' }} learning hours completed</p>
                         <div class="ph__progress-bar">
                             <div class="ph__progress-fill" :style="{ width: hoursPercent + '%' }"></div>
                         </div>
@@ -100,7 +98,15 @@
                         </p>
                         <p v-else>This requirement has not yet been submitted.</p>
                         <p class="next-action__due"><CalendarDays :size="13" /> Due: {{ formatDate(nextActionRequirement.due_date) }}</p>
-                        <button type="button" class="next-action__btn" @click="switchToRequirement(nextActionRequirement)">
+                        <Link
+                            v-if="usesReportForm(nextActionRequirement) && program.attendance !== 'Absent'"
+                            :href="route('programs.terminal-report.edit', { batch: program.batch_id, requirement: nextActionRequirement.id })"
+                            class="next-action__btn"
+                        >
+                            {{ nextActionRequirement.status === 'Rejected' ? 'Update Form' : 'Fill Out Form' }}
+                            <ArrowRight :size="14" />
+                        </Link>
+                        <button v-else type="button" class="next-action__btn" @click="switchToRequirement(nextActionRequirement)">
                             {{ nextActionRequirement.status === 'Rejected' ? 'Replace File' : 'Submit Requirement' }}
                             <ArrowRight :size="14" />
                         </button>
@@ -182,7 +188,12 @@
                     </div>
 
                     <div v-if="secondaryTabs.length" class="tab-more">
-                        <button type="button" class="tab-btn tab-btn--more" :class="{ 'tab-btn--active': isSecondaryActive }" @click="moreOpen = !moreOpen">
+                        <button
+                            type="button"
+                            class="tab-btn tab-btn--more"
+                            :class="{ 'tab-btn--active': isSecondaryActive }"
+                            @click="moreOpen = !moreOpen"
+                        >
                             {{ moreButtonLabel }} <ChevronDown :size="14" :class="{ 'rotate-180': moreOpen }" />
                         </button>
                         <div v-if="moreOpen" class="tab-more__backdrop" @click="moreOpen = false"></div>
@@ -282,6 +293,22 @@
                                 <span class="req-badge" :class="reqBadgeClass(r.status)">{{ statusLabel(r.status) }}</span>
                             </div>
 
+                            <Link
+                                v-if="usesReportForm(r) && r.status !== 'Approved' && program.attendance !== 'Absent'"
+                                :href="route('programs.terminal-report.edit', { batch: program.batch_id, requirement: r.id })"
+                                class="report-form-cta"
+                            >
+                                <span class="report-form-cta__icon"><ClipboardPen :size="20" /></span>
+                                <span class="report-form-cta__text">
+                                    <strong>{{ r.file_url ? 'Update your Terminal Report' : 'Submit your Terminal Report' }}</strong>
+                                    <span>
+                                        Fill out the {{ r.title }} form online — program details are already filled in, and we'll generate and submit
+                                        the PDF for you.
+                                    </span>
+                                </span>
+                                <span class="report-form-cta__btn">{{ r.file_url ? 'Update Form' : 'Fill Out Form' }} <ArrowRight :size="14" /></span>
+                            </Link>
+
                             <div v-if="r.status === 'Rejected' && r.remarks" class="req-row__remarks">
                                 <strong>Reviewer note:</strong> {{ r.remarks }}
                             </div>
@@ -304,10 +331,11 @@
                                     <button
                                         v-if="r.status !== 'Approved' && program.attendance !== 'Absent'"
                                         type="button"
-                                        class="req-btn req-btn--primary"
+                                        class="req-btn"
+                                        :class="usesReportForm(r) ? 'req-btn--ghost' : 'req-btn--primary'"
                                         @click="toggleRequirementExpand(r.id)"
                                     >
-                                        {{ r.file_url ? 'Replace File' : 'Submit Requirement' }}
+                                        {{ usesReportForm(r) ? 'Upload a file instead' : r.file_url ? 'Replace File' : 'Submit Requirement' }}
                                         <ChevronDown :size="14" :class="{ 'rotate-180': expandedRequirement === r.id }" />
                                     </button>
                                 </div>
@@ -318,7 +346,9 @@
                                 class="req-card__expand"
                             >
                                 <div v-if="r.file_url" class="req-row__file">
-                                    <a :href="r.file_url" target="_blank" rel="noopener" class="file-link"><FileText :size="14" /> {{ r.file_name }}</a>
+                                    <a :href="r.file_url" target="_blank" rel="noopener" class="file-link"
+                                        ><FileText :size="14" /> {{ r.file_name }}</a
+                                    >
                                     <button type="button" class="delete-btn" :disabled="deletingId === r.id" @click="confirmDelete(r)">
                                         <Trash2 :size="13" /> {{ deletingId === r.id ? 'Deleting…' : 'Delete' }}
                                     </button>
@@ -357,7 +387,12 @@
                                 </div>
                             </div>
                             <div class="req-card__expand">
-                                <input v-model="otherDocTitle" type="text" class="doc-title-input" placeholder="Document title (e.g. Certificate of Attendance)" />
+                                <input
+                                    v-model="otherDocTitle"
+                                    type="text"
+                                    class="doc-title-input"
+                                    placeholder="Document title (e.g. Certificate of Attendance)"
+                                />
                                 <form class="req-row__upload" @submit.prevent="submitOtherDocument">
                                     <label class="upload-input">
                                         <UploadCloud :size="14" />
@@ -384,7 +419,9 @@
                                 </div>
                                 <span class="req-badge" :class="reqBadgeClass(d.status)">{{ statusLabel(d.status) }}</span>
                             </div>
-                            <div v-if="d.status === 'Rejected' && d.remarks" class="req-row__remarks"><strong>Reviewer note:</strong> {{ d.remarks }}</div>
+                            <div v-if="d.status === 'Rejected' && d.remarks" class="req-row__remarks">
+                                <strong>Reviewer note:</strong> {{ d.remarks }}
+                            </div>
                             <div v-if="d.notes" class="req-row__notes-readonly"><strong>Your note:</strong> {{ d.notes }}</div>
                             <div class="req-card__bottom">
                                 <div v-if="d.file_url" class="req-card__file">
@@ -393,7 +430,9 @@
                                     <span v-if="d.submitted_at" class="req-card__submitted">Submitted {{ formatDate(d.submitted_at) }}</span>
                                 </div>
                                 <div class="req-card__actions">
-                                    <a v-if="d.file_url" :href="d.file_url" target="_blank" rel="noopener" class="req-btn req-btn--ghost">View Submission</a>
+                                    <a v-if="d.file_url" :href="d.file_url" target="_blank" rel="noopener" class="req-btn req-btn--ghost"
+                                        >View Submission</a
+                                    >
                                     <button
                                         v-if="d.status !== 'Approved'"
                                         type="button"
@@ -610,6 +649,7 @@ import {
     ChevronDown,
     CircleDashed,
     ClipboardCheck,
+    ClipboardPen,
     Clock,
     ExternalLink,
     FileText,
@@ -623,7 +663,6 @@ import {
     Milestone,
     Sparkles,
     Star,
-    Tag,
     Trash2,
     Trophy,
     UploadCloud,
@@ -789,6 +828,9 @@ const lastUpdatedLabel = computed(() => {
 });
 
 /* ---- Requirement helpers ---- */
+// TREAP and REAP are completed by filling out the online report form, which generates the PDF.
+const usesReportForm = (requirement) => ['TREAP', 'REAP'].includes(requirement.title);
+
 function reqIcon(status) {
     if (status === 'Approved') return CheckCircle2;
     if (status === 'Rejected') return XCircle;
@@ -1501,6 +1543,9 @@ async function confirmDeleteCert(cert) {
 .next-action__btn:hover {
     background: #1535a8;
 }
+a.next-action__btn {
+    text-decoration: none;
+}
 
 .journey-card,
 .attend-card,
@@ -2046,6 +2091,74 @@ async function confirmDeleteCert(cert) {
 }
 .req-btn--primary:hover {
     background: #1535a8;
+}
+/* TREAP / REAP online form call-to-action */
+.report-form-cta {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    margin-top: 0.9rem;
+    padding: 0.9rem 1rem;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #eef1fc 0%, #f5f0ff 100%);
+    border: 1px solid #dde4fb;
+    color: var(--tdi-navy);
+    text-decoration: none;
+    transition:
+        border-color 0.15s,
+        box-shadow 0.15s,
+        transform 0.15s;
+}
+.report-form-cta:hover {
+    border-color: var(--tdi-blue);
+    box-shadow: 0 6px 18px rgba(29, 63, 196, 0.12);
+    transform: translateY(-1px);
+}
+.report-form-cta__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    border-radius: 11px;
+    background: var(--tdi-blue);
+    color: #fff;
+}
+.report-form-cta__text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+    flex: 1;
+    font-size: 0.82rem;
+    color: #4b5563;
+}
+.report-form-cta__text strong {
+    font-size: 0.92rem;
+    color: var(--tdi-navy);
+}
+.report-form-cta__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex-shrink: 0;
+    padding: 0.5rem 0.9rem;
+    border-radius: 8px;
+    background: var(--tdi-blue);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+@media (max-width: 640px) {
+    .report-form-cta {
+        flex-wrap: wrap;
+    }
+    .report-form-cta__btn {
+        width: 100%;
+        justify-content: center;
+    }
 }
 .req-card__expand {
     margin-top: 0.9rem;

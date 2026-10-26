@@ -7,6 +7,7 @@ const props = defineProps({
     modelValue: { type: Object, default: null }, // { empcode, name, position, office }
     defaultSignatory: { type: Object, default: null }, // shown when nothing is picked; can be restored
     error: { type: String, default: '' },
+    positionLabel: { type: String, default: 'Position (as shown on the TNA Result)' },
 });
 
 const emit = defineEmits(['update:modelValue']);
@@ -78,11 +79,11 @@ function useDefault() {
         <!-- Selected chip -->
         <div v-if="shown && !searching" class="flex items-center justify-between rounded-xl border border-green-200 bg-green-50 px-4 py-3">
             <div>
-                <p class="text-xs font-medium uppercase tracking-wide text-green-700">
-                    Selected{{ isDefault ? ' (default)' : '' }}
-                </p>
+                <p class="text-xs font-medium uppercase tracking-wide text-green-700">Selected{{ isDefault ? ' (default)' : '' }}</p>
                 <p class="text-sm font-semibold text-gray-900">{{ shown.name }}</p>
-                <p class="text-xs text-gray-500">{{ shown.position }}<span v-if="shown.office"> · {{ shown.office }}</span></p>
+                <p class="text-xs text-gray-500">
+                    {{ shown.position }}<span v-if="shown.office"> · {{ shown.office }}</span>
+                </p>
             </div>
             <div class="flex shrink-0 items-center gap-3">
                 <button
@@ -98,7 +99,7 @@ function useDefault() {
         </div>
 
         <div v-if="shown && !searching" class="mt-3 max-w-xl">
-            <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500">Position (as shown on the TNA Result)</label>
+            <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500">{{ positionLabel }}</label>
             <input
                 :value="shown.position"
                 type="text"
@@ -142,7 +143,12 @@ function useDefault() {
                     No matching results found.
                 </div>
             </div>
-            <button v-if="searching && shown" type="button" class="mt-2 text-xs font-semibold text-gray-600 hover:underline" @click="searching = false">
+            <button
+                v-if="searching && shown"
+                type="button"
+                class="mt-2 text-xs font-semibold text-gray-600 hover:underline"
+                @click="searching = false"
+            >
                 Cancel
             </button>
             <p v-else-if="!shown" class="mt-2 text-xs text-gray-500">No signatory selected yet.</p>
