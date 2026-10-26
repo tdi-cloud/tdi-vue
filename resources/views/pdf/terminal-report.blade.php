@@ -26,7 +26,7 @@
 
     /* I. Program Description: label : underlined value */
     table.desc { width: 100%; border-collapse: collapse; }
-    table.desc td { padding: 5px 0 3px; vertical-align: bottom; font-size: 10pt; }
+    table.desc td { padding: 5px 0 3px; vertical-align: top; font-size: 10pt; }
     table.desc td.label { width: 25%; font-weight: bold; padding-right: 6px; }
     table.desc td.colon { width: 3%; font-weight: bold; text-align: center; }
     table.desc td.value { border-bottom: 1px solid #000; padding-left: 6px; }
