@@ -28,7 +28,7 @@
                     </span>
                 </div>
                 <h1 class="mt-3 text-2xl font-extrabold text-white sm:text-3xl">
-                    {{ includesReentryPlan ? 'Terminal Report & Re-Entry Action Plan' : 'Terminal Report' }}
+                    {{ reentryPlanRequired ? 'Terminal Report & Re-Entry Action Plan' : 'Terminal Report' }}
                 </h1>
                 <p class="mt-2 max-w-2xl text-sm text-white/75">
                     {{ program.title }} <span v-if="program.batch_label">· {{ program.batch_label }}</span>
@@ -220,10 +220,75 @@
                     </div>
                 </section>
 
-                <!-- STEP: Re-Entry Action Plan (REAP only) -->
-                <section v-if="includesReentryPlan" v-show="currentKey === 'reap'" class="space-y-5">
-                    <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-7">
-                        <header class="mb-6 flex items-start gap-3">
+                <!-- STEP: Re-Entry Action Plan (required for REAP, optional for TREAP) -->
+                <section v-show="currentKey === 'reap'" class="space-y-5">
+                    <!-- TREAP: ask whether to fill out Part II -->
+                    <div v-if="!reentryPlanRequired" class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-7">
+                        <header class="mb-5 flex items-start gap-3">
+                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+                                <Rocket :size="20" />
+                            </span>
+                            <div>
+                                <h2 class="text-lg font-extrabold">II. Re-Entry Action Plan (REAP)</h2>
+                                <p class="text-sm text-gray-500">Part II is optional for a Terminal Report. Would you like to fill it out?</p>
+                            </div>
+                        </header>
+
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <button
+                                type="button"
+                                class="flex items-start gap-3 rounded-xl border-2 p-4 text-left transition"
+                                :class="
+                                    fillReentryPlan === true
+                                        ? 'border-violet-500 bg-violet-50 shadow-md shadow-violet-100'
+                                        : 'border-gray-200 hover:border-violet-300 hover:bg-violet-50/40'
+                                "
+                                @click="chooseReentryPlan(true)"
+                            >
+                                <span
+                                    class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2"
+                                    :class="fillReentryPlan === true ? 'border-violet-600 bg-violet-600 text-white' : 'border-gray-300'"
+                                >
+                                    <Check v-if="fillReentryPlan === true" :size="12" />
+                                </span>
+                                <span>
+                                    <span class="block text-sm font-bold text-gray-900">Yes, I'll fill it out</span>
+                                    <span class="mt-0.5 block text-xs text-gray-500">
+                                        Share what you learned and your action plan for applying it at work.
+                                    </span>
+                                </span>
+                            </button>
+                            <button
+                                type="button"
+                                class="flex items-start gap-3 rounded-xl border-2 p-4 text-left transition"
+                                :class="
+                                    fillReentryPlan === false
+                                        ? 'border-gray-500 bg-gray-50 shadow-md shadow-gray-100'
+                                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                "
+                                @click="chooseReentryPlan(false)"
+                            >
+                                <span
+                                    class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2"
+                                    :class="fillReentryPlan === false ? 'border-gray-600 bg-gray-600 text-white' : 'border-gray-300'"
+                                >
+                                    <Check v-if="fillReentryPlan === false" :size="12" />
+                                </span>
+                                <span>
+                                    <span class="block text-sm font-bold text-gray-900">No, skip this part</span>
+                                    <span class="mt-0.5 block text-xs text-gray-500">Part II will still appear on the PDF, marked "N/A".</span>
+                                </span>
+                            </button>
+                        </div>
+
+                        <div v-if="fillReentryPlan === false" class="mt-4 flex items-start gap-3 rounded-xl bg-gray-50 p-4 text-sm text-gray-600">
+                            <Info :size="18" class="mt-0.5 shrink-0 text-gray-500" />
+                            <p>All Part II fields and the action plan table will show <strong>N/A</strong> on your generated PDF.</p>
+                        </div>
+                    </div>
+
+                    <div v-if="fillReentryPlan" class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-7">
+                        <header v-if="reentryPlanRequired" class="mb-6 flex items-start gap-3">
                             <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600"
                                 ><Rocket :size="20"
                             /></span>
@@ -264,7 +329,7 @@
                         </div>
                     </div>
 
-                    <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-7">
+                    <div v-if="fillReentryPlan" class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-7">
                         <header class="mb-5 flex flex-wrap items-start justify-between gap-3">
                             <div>
                                 <h3 class="flex items-center gap-2 text-base font-extrabold">
@@ -426,9 +491,17 @@
                             </div>
                         </dl>
 
-                        <template v-if="includesReentryPlan">
+                        <template>
                             <div class="mt-6 flex items-center justify-between">
-                                <h3 class="text-sm font-bold">II. Re-Entry Action Plan (REAP)</h3>
+                                <h3 class="text-sm font-bold">
+                                    II. Re-Entry Action Plan (REAP)
+                                    <span
+                                        v-if="!fillReentryPlan"
+                                        class="ml-1 rounded bg-gray-100 px-1.5 py-0.5 text-[11px] font-semibold text-gray-500"
+                                    >
+                                        Skipped — shown as N/A
+                                    </span>
+                                </h3>
                                 <button type="button" class="text-xs font-semibold text-[#1d3fc4] hover:underline" @click="goToKey('reap')">
                                     Edit
                                 </button>
@@ -451,7 +524,10 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr v-for="row in form.action_plan" :key="row.key">
+                                        <tr v-if="!fillReentryPlan" class="text-gray-500">
+                                            <td v-for="column in 5" :key="column" class="border border-gray-200 px-2 py-1.5">N/A</td>
+                                        </tr>
+                                        <tr v-for="row in fillReentryPlan ? form.action_plan : []" :key="row.key">
                                             <td class="whitespace-pre-line border border-gray-200 px-2 py-1.5">{{ row.activity }}</td>
                                             <td class="whitespace-pre-line border border-gray-200 px-2 py-1.5">{{ row.expected_output }}</td>
                                             <td class="border border-gray-200 px-2 py-1.5">{{ row.schedule }}</td>
@@ -590,7 +666,7 @@ const props = defineProps<{
     batchId: number;
     requirement: { id: number; title: string; name: string; due_date: string | null };
     program: { title: string | null; batch_label: string | null };
-    includesReentryPlan: boolean;
+    reentryPlanRequired: boolean;
     autoFilled: Record<string, string | null>;
     report: Record<string, any> | null;
     defaultPreparedBy: Signatory;
@@ -653,6 +729,14 @@ const savedApprover = props.report?.approved_by as Signatory | undefined;
 const approver = ref<Signatory | null>(savedApprover ? { ...savedApprover } : null);
 const approvedDate = ref<string>(savedApprover?.date ?? '');
 
+// Part II: always filled out for REAP; for TREAP the participant chooses (null = not chosen yet).
+const fillReentryPlan = ref<boolean | null>(props.reentryPlanRequired ? true : props.report ? !!props.report.has_reentry_plan : null);
+
+function chooseReentryPlan(fill: boolean) {
+    fillReentryPlan.value = fill;
+    stepError.value = '';
+}
+
 const isAutoFilled = (field: string) => !!props.autoFilled[field] && form.program_description[field] === props.autoFilled[field];
 
 const designedForSuggestions = ['TESDA employees', 'TESDA trainers and assessors', 'Supervisors and managers', 'Administrative staff'];
@@ -668,7 +752,7 @@ function removeActivity(index: number) {
 /* ---- Steps ---- */
 const steps = computed(() => [
     { key: 'program', label: 'Program Details', icon: BookOpen },
-    ...(props.includesReentryPlan ? [{ key: 'reap', label: 'Re-Entry Plan', icon: Rocket }] : []),
+    { key: 'reap', label: props.reentryPlanRequired ? 'Re-Entry Plan' : 'Re-Entry Plan (optional)', icon: Rocket },
     { key: 'signoff', label: 'Sign-off', icon: PenLine },
     { key: 'review', label: 'Review & Submit', icon: ClipboardCheck },
 ]);
@@ -688,6 +772,12 @@ function stepProblem(key: string): string {
         }
     }
     if (key === 'reap') {
+        if (fillReentryPlan.value === null) {
+            return 'Please choose whether to fill out Part II.';
+        }
+        if (!fillReentryPlan.value) {
+            return '';
+        }
         if (!filled(form.competencies_gained) || !filled(form.reap_summary) || !filled(form.reap_objectives)) {
             return 'Please answer items 1 to 3 of the Re-Entry Action Plan.';
         }
@@ -754,9 +844,9 @@ const descriptionPreview = computed(() => {
 });
 
 const reapPreview = computed(() => [
-    { label: 'Competency/ies Achieved / Learning Gained', value: form.competencies_gained },
-    { label: 'Summary of the REAP', value: form.reap_summary },
-    { label: 'Objectives', value: form.reap_objectives },
+    { label: 'Competency/ies Achieved / Learning Gained', value: fillReentryPlan.value ? form.competencies_gained : 'N/A' },
+    { label: 'Summary of the REAP', value: fillReentryPlan.value ? form.reap_summary : 'N/A' },
+    { label: 'Objectives', value: fillReentryPlan.value ? form.reap_objectives : 'N/A' },
 ]);
 
 const hasServerErrors = computed(() => Object.keys(form.errors).length > 0);
@@ -772,7 +862,8 @@ function submit() {
 
     form.transform((data) => ({
         ...data,
-        action_plan: props.includesReentryPlan
+        include_reentry_plan: !!fillReentryPlan.value,
+        action_plan: fillReentryPlan.value
             ? data.action_plan.map((row) => ({
                   activity: row.activity,
                   expected_output: row.expected_output,

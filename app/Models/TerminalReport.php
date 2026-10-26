@@ -7,8 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * A participant's filled-out Terminal and Re-Entry Action Plan Report Form
- * (TESDA-OP-AS-01-F07). TREAP reports only carry the Program Description;
- * REAP reports also carry the Re-Entry Action Plan.
+ * (TESDA-OP-AS-01-F07). REAP reports must include the Re-Entry Action Plan
+ * (Part II); for TREAP reports it is optional.
  */
 class TerminalReport extends Model
 {
@@ -46,9 +46,13 @@ class TerminalReport extends Model
         return in_array($requirement->title, self::REPORT_TYPES, true);
     }
 
-    public function includesReentryPlan(): bool
+    /**
+     * Whether Part II was filled out. Always true for REAP; a TREAP report
+     * may skip it, and the PDF then shows Part II as "N/A".
+     */
+    public function hasReentryPlan(): bool
     {
-        return $this->report_type === 'REAP';
+        return ! empty($this->action_plan);
     }
 
     public function participant(): BelongsTo

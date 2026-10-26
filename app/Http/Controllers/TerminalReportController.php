@@ -48,7 +48,8 @@ class TerminalReportController extends Controller
                 'title' => $batch->program?->title,
                 'batch_label' => $batch->batch,
             ],
-            'includesReentryPlan' => $requirement->title === 'REAP',
+            // REAP must include Part II; for TREAP it is the participant's choice.
+            'reentryPlanRequired' => $requirement->title === 'REAP',
             'autoFilled' => $this->programDescriptionDefaults($batch),
             'report' => $report ? [
                 'program_description' => $report->program_description,
@@ -56,6 +57,7 @@ class TerminalReportController extends Controller
                 'reap_summary' => $report->reap_summary,
                 'reap_objectives' => $report->reap_objectives,
                 'action_plan' => $report->action_plan,
+                'has_reentry_plan' => $report->hasReentryPlan(),
                 'prepared_by' => $report->prepared_by,
                 'approved_by' => $report->approved_by,
                 'generated_at' => $report->generated_at?->toIso8601String(),
@@ -72,7 +74,9 @@ class TerminalReportController extends Controller
     public function update(Request $request, Batch $batch, Requirement $requirement): RedirectResponse
     {
         $participant = $this->ownParticipant($request, $batch, $requirement);
-        $includesReentryPlan = $requirement->title === 'REAP';
+        // REAP always includes Part II. For TREAP the participant may skip it,
+        // in which case the PDF shows Part II filled with "N/A".
+        $includesReentryPlan = $requirement->title === 'REAP' || $request->boolean('include_reentry_plan');
 
         $validated = $request->validate($this->rules($includesReentryPlan), [], $this->attributeNames());
 
@@ -225,6 +229,8 @@ class TerminalReportController extends Controller
     private function rules(bool $includesReentryPlan): array
     {
         $rules = [
+            'include_reentry_plan' => ['sometimes', 'boolean'],
+
             'program_description' => ['required', 'array'],
             'program_description.title' => ['required', 'string', 'max:500'],
             'program_description.date_duration' => ['required', 'string', 'max:255'],

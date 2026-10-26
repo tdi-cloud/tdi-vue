@@ -4,6 +4,9 @@
     $approved = $report->approved_by ?? [];
     $text = fn ($value) => nl2br(e(trim((string) $value)));
     $date = fn ($value) => $value ? \Carbon\Carbon::parse($value)->format('F j, Y') : '';
+    // Part II is always printed; when a TREAP participant skips it, every field reads "N/A".
+    $hasPlan = $report->hasReentryPlan();
+    $planText = fn ($value) => $hasPlan ? $text($value) : 'N/A';
 @endphp
 <!DOCTYPE html>
 <html>
@@ -73,16 +76,15 @@
         <tr><td class="label">List of Resource Speakers / Facilitators</td><td class="colon">:</td><td class="value" colspan="4">{!! $text($pd['resource_speakers'] ?? '') !!}</td></tr>
     </table>
 
-    @if ($report->includesReentryPlan())
     <div class="section-title" style="margin-top: 14px;">II.&nbsp;&nbsp;&nbsp;&nbsp;Re-Entry Action Plan (REAP)</div>
 
     <table class="box">
         <tr><td class="box-head" colspan="5">I.&nbsp;&nbsp;Competency/ies Achieved / Learning Gained</td></tr>
-        <tr><td class="box-body" colspan="5">{!! $text($report->competencies_gained) !!}&nbsp;</td></tr>
+        <tr><td class="box-body" colspan="5">{!! $planText($report->competencies_gained) !!}&nbsp;</td></tr>
         <tr><td class="box-head" colspan="5">II.&nbsp;&nbsp;Summary of the REAP</td></tr>
-        <tr><td class="box-body" colspan="5">{!! $text($report->reap_summary) !!}&nbsp;</td></tr>
+        <tr><td class="box-body" colspan="5">{!! $planText($report->reap_summary) !!}&nbsp;</td></tr>
         <tr><td class="box-head" colspan="5">III.&nbsp;&nbsp;Objectives</td></tr>
-        <tr><td class="box-body" colspan="5">{!! $text($report->reap_objectives) !!}&nbsp;</td></tr>
+        <tr><td class="box-body" colspan="5">{!! $planText($report->reap_objectives) !!}&nbsp;</td></tr>
         <tr><td class="box-head" colspan="5" style="border-bottom: 1px solid #000;">IV.&nbsp;&nbsp;Details of the Action Plan</td></tr>
         <tr>
             <th style="width: 24%;">Activities</th>
@@ -100,13 +102,11 @@
                 <td>{!! $text($row['remarks'] ?? '') !!}</td>
             </tr>
         @empty
-            <tr><td style="height: 50px;"></td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td></tr>
         @endforelse
     </table>
 
-    @endif
-
-    <table class="sign"@unless ($report->includesReentryPlan()) style="margin-top: 22px;"@endunless>
+    <table class="sign">
         <tr>
             <td class="head">Prepared by:</td>
             <td class="head" style="text-align: center;">Discussed with and Approved by:</td>

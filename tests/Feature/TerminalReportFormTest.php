@@ -142,7 +142,7 @@ test('the form page auto-fills the program description from the program and batc
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('MyPrograms/TerminalReport')
-            ->where('includesReentryPlan', false)
+            ->where('reentryPlanRequired', false)
             ->where('autoFilled.title', 'Leadership Development Program')
             ->where('autoFilled.date_duration', 'March 3–7, 2026')
             ->where('autoFilled.hours', '40')
@@ -155,16 +155,16 @@ test('the form page auto-fills the program description from the program and batc
         );
 });
 
-test('a REAP requirement asks for the re-entry action plan', function () {
+test('a REAP requirement requires the re-entry action plan', function () {
     ['user' => $user, 'batch' => $batch] = terminalReportSetup('EMP-TR-02');
     $requirement = terminalReportRequirement($batch, 'REAP');
 
     $this->actingAs($user)
         ->get(route('programs.terminal-report.edit', [$batch, $requirement]))
-        ->assertInertia(fn (Assert $page) => $page->where('includesReentryPlan', true));
+        ->assertInertia(fn (Assert $page) => $page->where('reentryPlanRequired', true));
 });
 
-test('submitting a TREAP form generates the PDF and submits it for review without the re-entry plan', function () {
+test('submitting a TREAP form generates the PDF and submits it for review when part II is skipped', function () {
     ['user' => $user, 'batch' => $batch, 'participant' => $participant] = terminalReportSetup('EMP-TR-03');
     $requirement = terminalReportRequirement($batch, 'TREAP');
 
@@ -193,6 +193,58 @@ test('a REAP form requires the re-entry action plan', function () {
         ->assertSessionHasErrors(['competencies_gained', 'reap_summary', 'reap_objectives', 'action_plan']);
 
     expect(TerminalReport::count())->toBe(0);
+});
+
+test('a TREAP participant who chooses to fill out part II must complete it', function () {
+    ['user' => $user, 'batch' => $batch] = terminalReportSetup('EMP-TR-11');
+    $requirement = terminalReportRequirement($batch, 'TREAP');
+
+    $this->actingAs($user)
+        ->put(route('programs.terminal-report.update', [$batch, $requirement]), terminalReportPayload(['include_reentry_plan' => true]))
+        ->assertSessionHasErrors(['competencies_gained', 'reap_summary', 'reap_objectives', 'action_plan']);
+
+    expect(TerminalReport::count())->toBe(0);
+});
+
+test('a TREAP participant can fill out part II and it is saved', function () {
+    ['user' => $user, 'batch' => $batch, 'participant' => $participant] = terminalReportSetup('EMP-TR-12');
+    $requirement = terminalReportRequirement($batch, 'TREAP');
+
+    $this->actingAs($user)
+        ->put(route('programs.terminal-report.update', [$batch, $requirement]), terminalReportPayload(['include_reentry_plan' => true] + reentryPlanPayload()))
+        ->assertSessionHasNoErrors();
+
+    $report = TerminalReport::where('participant_id', $participant->id)->first();
+    expect($report->report_type)->toBe('TREAP')
+        ->and($report->hasReentryPlan())->toBeTrue()
+        ->and($report->reap_summary)->toBe('Echo the training to my unit and apply coaching sessions.');
+});
+
+test('the PDF always shows part II and marks it N/A when a TREAP participant skips it', function () {
+    ['user' => $user, 'batch' => $batch, 'participant' => $participant] = terminalReportSetup('EMP-TR-13');
+    $requirement = terminalReportRequirement($batch, 'TREAP');
+
+    $this->actingAs($user)->put(route('programs.terminal-report.update', [$batch, $requirement]), terminalReportPayload(['include_reentry_plan' => false]));
+
+    $report = TerminalReport::where('participant_id', $participant->id)->first();
+    expect($report->hasReentryPlan())->toBeFalse();
+
+    $html = view('pdf.terminal-report', ['report' => $report])->render();
+    expect($html)->toContain('Re-Entry Action Plan (REAP)')
+        ->toContain('Details of the Action Plan')
+        ->and(substr_count($html, 'N/A'))->toBe(8);
+});
+
+test('the PDF shows the filled part II instead of N/A', function () {
+    ['user' => $user, 'batch' => $batch, 'participant' => $participant] = terminalReportSetup('EMP-TR-14');
+    $requirement = terminalReportRequirement($batch, 'REAP');
+
+    $this->actingAs($user)->put(route('programs.terminal-report.update', [$batch, $requirement]), terminalReportPayload(reentryPlanPayload()));
+
+    $html = view('pdf.terminal-report', ['report' => TerminalReport::where('participant_id', $participant->id)->first()])->render();
+    expect($html)->toContain('Coaching and delegation skills.')
+        ->toContain('Echo training')
+        ->not->toContain('N/A');
 });
 
 test('submitting a complete REAP form saves the action plan and submits the PDF', function () {
