@@ -24,7 +24,9 @@ return new class extends Migration
             $table->text('remarks')->nullable(); // reviewer's note
             $table->string('reviewed_by')->nullable();
             $table->timestamp('reviewed_at')->nullable();
-            $table->timestamp('submitted_at');
+            // Nullable only because MySQL strict mode rejects a NOT NULL timestamp without a default;
+            // the app always sets it on submit.
+            $table->timestamp('submitted_at')->nullable();
             $table->timestamps();
 
             $table->index('status');
