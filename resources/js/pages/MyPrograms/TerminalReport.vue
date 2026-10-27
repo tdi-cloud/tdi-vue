@@ -541,7 +541,7 @@
                             </div>
                         </dl>
 
-                        <template>
+                        <div>
                             <div class="mt-6 flex items-center justify-between">
                                 <h3 class="text-sm font-bold">
                                     II. Re-Entry Action Plan (REAP)
@@ -587,7 +587,7 @@
                                     </tbody>
                                 </table>
                             </div>
-                        </template>
+                        </div>
 
                         <div class="mt-6 flex items-center justify-between">
                             <h3 class="text-sm font-bold">Sign-off</h3>
