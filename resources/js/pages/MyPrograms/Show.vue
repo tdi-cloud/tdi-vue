@@ -448,6 +448,15 @@
                     </div>
                 </section>
 
+                <!-- My Action Plan: monitored REAP activities and their implementation reports -->
+                <section v-if="program.action_plan?.length || program.can_add_action_plan_activity" v-show="activeTab === 'action-plan'">
+                    <ActionPlanTracker
+                        :batch-id="program.batch_id"
+                        :activities="program.action_plan"
+                        :can-add="program.can_add_action_plan_activity && program.attendance !== 'Absent'"
+                    />
+                </section>
+
                 <!-- Absence Justification -->
                 <section v-show="activeTab === 'justification'" class="justification">
                     <div v-if="program.attendance === 'Absent' && program.justification" class="justification__banner">
@@ -634,6 +643,7 @@
 </template>
 
 <script setup lang="ts">
+import ActionPlanTracker from '@/components/ActionPlanTracker.vue';
 import { useConfirm } from '@/composables/useConfirm';
 import { Head, Link, router } from '@inertiajs/vue3';
 import {
@@ -663,6 +673,7 @@ import {
     Milestone,
     Sparkles,
     Star,
+    Target,
     Trash2,
     Trophy,
     UploadCloud,
@@ -690,6 +701,10 @@ const TABS = computed(() => {
         icon: ClipboardCheck,
         badge: props.program.requirements_missing > 0 ? props.program.requirements_missing : null,
     });
+    if (props.program.action_plan?.length || props.program.can_add_action_plan_activity) {
+        const overdue = props.program.action_plan.filter((activity) => activity.status === 'Overdue').length;
+        tabs.push({ key: 'action-plan', label: 'My Action Plan', icon: Target, badge: overdue > 0 ? overdue : null });
+    }
     tabs.push({ key: 'justification', label: 'Non-Attendance', icon: AlertCircle });
     tabs.push({ key: 'certificates', label: 'Certificates', icon: Award });
     if (props.program.resource_speakers?.length) {
@@ -704,7 +719,7 @@ const TABS = computed(() => {
 const activeTab = ref('requirements');
 
 /* ---- Primary vs. secondary tab grouping for the redesigned tab bar ---- */
-const PRIMARY_TAB_ORDER = ['about', 'requirements', 'certificates'];
+const PRIMARY_TAB_ORDER = ['about', 'requirements', 'action-plan', 'certificates'];
 const primaryTabs = computed(() => PRIMARY_TAB_ORDER.map((key) => TABS.value.find((t) => t.key === key)).filter(Boolean));
 const secondaryTabs = computed(() => TABS.value.filter((t) => !PRIMARY_TAB_ORDER.includes(t.key)));
 const moreOpen = ref(false);

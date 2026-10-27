@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActionPlanActivity;
 use App\Models\Batch;
 use App\Models\Participant;
 use App\Models\PendingNotification;
@@ -13,6 +14,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -56,7 +58,17 @@ class TerminalReportController extends Controller
                 'competencies_gained' => $report->competencies_gained,
                 'reap_summary' => $report->reap_summary,
                 'reap_objectives' => $report->reap_objectives,
-                'action_plan' => $report->action_plan,
+                'action_plan' => $report->activities()->with('implementationReport')->get()->map(fn (ActionPlanActivity $activity) => [
+                    'id' => $activity->id,
+                    'activity' => $activity->activity,
+                    'expected_output' => $activity->expected_output,
+                    'start_date' => $activity->start_date?->toDateString(),
+                    'target_date' => $activity->target_date?->toDateString(),
+                    'budget' => $activity->budget,
+                    'remarks' => $activity->remarks,
+                    // Activities with an implementation report under review or approved can't be changed here.
+                    'locked' => $activity->isLocked(),
+                ])->values(),
                 'has_reentry_plan' => $report->hasReentryPlan(),
                 'prepared_by' => $report->prepared_by,
                 'approved_by' => $report->approved_by,
@@ -80,21 +92,34 @@ class TerminalReportController extends Controller
 
         $validated = $request->validate($this->rules($includesReentryPlan), [], $this->attributeNames());
 
-        $report = TerminalReport::updateOrCreate(
-            ['participant_id' => $participant->id, 'requirement_id' => $requirement->id],
-            [
-                'batch_id' => $batch->id,
-                'report_type' => $requirement->title,
-                'program_description' => $validated['program_description'],
-                'competencies_gained' => $includesReentryPlan ? $validated['competencies_gained'] : null,
-                'reap_summary' => $includesReentryPlan ? $validated['reap_summary'] : null,
-                'reap_objectives' => $includesReentryPlan ? $validated['reap_objectives'] : null,
-                'action_plan' => $includesReentryPlan ? array_values($validated['action_plan']) : null,
-                'prepared_by' => $validated['prepared_by'],
-                'approved_by' => $validated['approved_by'],
-                'generated_at' => now(),
-            ]
-        );
+        $existingReport = $this->existingReport($participant, $requirement);
+
+        if (! $includesReentryPlan && $existingReport?->activities()->get()->contains(fn (ActionPlanActivity $activity) => $activity->isLocked())) {
+            return back()->withErrors([
+                'include_reentry_plan' => 'Part II can no longer be skipped because some of your activities already have implementation reports.',
+            ]);
+        }
+
+        $report = DB::transaction(function () use ($participant, $requirement, $batch, $validated, $includesReentryPlan) {
+            $report = TerminalReport::updateOrCreate(
+                ['participant_id' => $participant->id, 'requirement_id' => $requirement->id],
+                [
+                    'batch_id' => $batch->id,
+                    'report_type' => $requirement->title,
+                    'program_description' => $validated['program_description'],
+                    'competencies_gained' => $includesReentryPlan ? $validated['competencies_gained'] : null,
+                    'reap_summary' => $includesReentryPlan ? $validated['reap_summary'] : null,
+                    'reap_objectives' => $includesReentryPlan ? $validated['reap_objectives'] : null,
+                    'prepared_by' => $validated['prepared_by'],
+                    'approved_by' => $validated['approved_by'],
+                    'generated_at' => now(),
+                ]
+            );
+
+            $this->syncActivities($report, $includesReentryPlan ? array_values($validated['action_plan']) : []);
+
+            return $report;
+        });
 
         $submission = $this->submitGeneratedPdf($request, $batch, $requirement, $participant, $report);
 
@@ -102,9 +127,64 @@ class TerminalReportController extends Controller
             PendingNotification::notifyOrQueue($batch->program->added_by, new RequirementSubmitted($submission));
         }
 
-        return redirect()
-            ->route('programs.my-progress', $batch)
-            ->with('success', "Your {$requirement->title} report was generated and submitted. Awaiting review.");
+        $message = "Your {$requirement->title} report was generated and submitted. Awaiting review.";
+
+        if ($includesReentryPlan) {
+            $message .= ' Remember to submit an implementation report for each activity on or before its target date.';
+        }
+
+        return redirect()->route('programs.my-progress', $batch)->with('success', $message);
+    }
+
+    /**
+     * Save the submitted action plan rows as activity records: update the ones
+     * that already exist, add new ones, and remove rows the participant deleted.
+     * Activities with an implementation report under review or approved are
+     * left untouched.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     */
+    private function syncActivities(TerminalReport $report, array $rows): void
+    {
+        $existing = $report->activities()->with('implementationReport')->get()->keyBy('id');
+        $keptIds = [];
+
+        foreach ($rows as $index => $row) {
+            $activity = isset($row['id']) ? $existing->get((int) $row['id']) : null;
+
+            if ($activity?->isLocked()) {
+                $keptIds[] = $activity->id;
+
+                continue;
+            }
+
+            $attributes = [
+                'sort_order' => $index,
+                'activity' => $row['activity'],
+                'expected_output' => $row['expected_output'],
+                'start_date' => $row['start_date'],
+                'target_date' => $row['target_date'],
+                'budget' => $row['budget'] ?? null,
+                'remarks' => $row['remarks'] ?? null,
+            ];
+
+            if ($activity) {
+                $activity->update($attributes);
+                $keptIds[] = $activity->id;
+            } else {
+                $keptIds[] = $report->activities()->create($attributes + [
+                    'participant_id' => $report->participant_id,
+                    'batch_id' => $report->batch_id,
+                ])->id;
+            }
+        }
+
+        $existing
+            ->reject(fn (ActionPlanActivity $activity) => in_array($activity->id, $keptIds, true) || $activity->isLocked())
+            ->each(function (ActionPlanActivity $activity) {
+                $activity->implementationReport?->delete();
+                $activity->delete();
+            });
     }
 
     /**
@@ -265,12 +345,15 @@ class TerminalReportController extends Controller
                 'reap_summary' => ['required', 'string', 'max:5000'],
                 'reap_objectives' => ['required', 'string', 'max:5000'],
                 'action_plan' => ['required', 'array', 'min:1', 'max:20'],
-                'action_plan.*.activity' => ['required', 'string', 'max:1000'],
-                'action_plan.*.expected_output' => ['required', 'string', 'max:1000'],
-                'action_plan.*.schedule' => ['required', 'string', 'max:255'],
-                'action_plan.*.budget' => ['nullable', 'string', 'max:255'],
-                'action_plan.*.remarks' => ['nullable', 'string', 'max:1000'],
+                'action_plan.*.id' => ['nullable', 'integer'],
             ];
+
+            foreach (ActionPlanActivity::fieldRules() as $field => $fieldRules) {
+                $rules["action_plan.*.{$field}"] = $fieldRules;
+            }
+
+            // after_or_equal needs the sibling field's full path inside the array.
+            $rules['action_plan.*.target_date'][] = 'after_or_equal:action_plan.*.start_date';
         }
 
         return $rules;
@@ -296,7 +379,9 @@ class TerminalReportController extends Controller
             'action_plan' => 'action plan',
             'action_plan.*.activity' => 'activity',
             'action_plan.*.expected_output' => 'expected output',
-            'action_plan.*.schedule' => 'schedule of implementation',
+            'action_plan.*.start_date' => 'start date',
+            'action_plan.*.target_date' => 'target date',
+            'action_plan.*.budget' => 'budget',
         ];
     }
 

@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\ActionPlanController;
+use App\Http\Controllers\ActionPlanMonitoringController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\BatchController;
 use App\Http\Controllers\CalendarController;
@@ -311,6 +313,11 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('/requirements-tracker/search', [RequirementsTrackerController::class, 'search'])
         ->name('requirements-tracker.search');
 
+    // ACTION PLAN MONITORING — every REAP activity against its schedule; any admin reviews implementation reports
+    Route::get('/action-plan-monitoring', [ActionPlanMonitoringController::class, 'index'])->name('action-plan-monitoring.index');
+    Route::patch('/action-plan-monitoring/reports/{implementationReport}/review', [ActionPlanMonitoringController::class, 'review'])
+        ->name('action-plan-monitoring.review');
+
     // TNA SUMMARY
     Route::get('/tna-summary', [TnaController::class, 'summaryIndex'])->name('tna-summary.index');
     Route::get('/tna-summary/dashboard-data', [TnaController::class, 'summaryDashboardData'])
@@ -481,6 +488,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::put('/my-programs/{batch}/requirements/{requirement}/terminal-report', [TerminalReportController::class, 'update'])
         ->name('programs.terminal-report.update');
+
+    // ACTION PLAN — add activities and submit an implementation report per activity
+    Route::post('/my-programs/{batch}/action-plan/activities', [ActionPlanController::class, 'storeActivity'])
+        ->name('programs.action-plan.activities.store');
+
+    Route::delete('/my-programs/{batch}/action-plan/activities/{activity}', [ActionPlanController::class, 'destroyActivity'])
+        ->name('programs.action-plan.activities.destroy');
+
+    Route::post('/my-programs/{batch}/action-plan/activities/{activity}/implementation-report', [ActionPlanController::class, 'submitReport'])
+        ->name('programs.action-plan.report.submit');
 
     // ABSENCE JUSTIFICATION
     Route::post('/my-programs/{batch}/documents', [EnrolledProgramController::class, 'submitOtherDocument'])

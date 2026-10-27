@@ -23,6 +23,7 @@ import {
     MessageSquareWarning,
     PlayCircle,
     ShieldCheck,
+    Target,
     Users,
 } from 'lucide-vue-next';
 import { computed } from 'vue';
@@ -72,6 +73,13 @@ const allNavItems: NavItem[] = [
         url: '/requirements-tracker',
         icon: ClipboardList,
         color: 'text-rose-500',
+        group: 'Monitoring',
+    },
+    {
+        title: 'Action Plan Monitoring',
+        url: '/action-plan-monitoring',
+        icon: Target,
+        color: 'text-violet-600',
         group: 'Monitoring',
     },
     {

@@ -127,7 +127,7 @@ function reentryPlanPayload(): array
         'reap_summary' => 'Echo the training to my unit and apply coaching sessions.',
         'reap_objectives' => 'Improve team performance.',
         'action_plan' => [
-            ['activity' => 'Echo training', 'expected_output' => '10 staff oriented', 'schedule' => 'Q2 2026', 'budget' => 'None', 'remarks' => null],
+            ['activity' => 'Echo training', 'expected_output' => '10 staff oriented', 'start_date' => '2026-04-01', 'target_date' => '2026-06-30', 'budget' => '5000', 'remarks' => null],
         ],
     ];
 }
@@ -176,7 +176,7 @@ test('submitting a TREAP form generates the PDF and submits it for review when p
     $report = TerminalReport::where('participant_id', $participant->id)->first();
     expect($report->report_type)->toBe('TREAP')
         ->and($report->program_description['designed_for'])->toBe('TESDA supervisors')
-        ->and($report->action_plan)->toBeNull();
+        ->and($report->activities)->toBeEmpty();
 
     $submission = Submission::where('participant_id', $participant->id)->where('requirement_id', $requirement->id)->first();
     expect($submission->status)->toBe('Pending');
@@ -257,8 +257,8 @@ test('submitting a complete REAP form saves the action plan and submits the PDF'
 
     $report = TerminalReport::where('participant_id', $participant->id)->first();
     expect($report->report_type)->toBe('REAP')
-        ->and($report->action_plan)->toHaveCount(1)
-        ->and($report->action_plan[0]['activity'])->toBe('Echo training');
+        ->and($report->activities)->toHaveCount(1)
+        ->and($report->activities->first()->activity)->toBe('Echo training');
 
     expect(Submission::where('requirement_id', $requirement->id)->value('status'))->toBe('Pending');
 });

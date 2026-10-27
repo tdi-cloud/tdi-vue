@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActionPlanActivity;
 use App\Models\Batch;
 use App\Models\Certificate;
 use App\Models\DefaultProgramCover;
@@ -9,6 +10,7 @@ use App\Models\Participant;
 use App\Models\PendingNotification;
 use App\Models\Requirement;
 use App\Models\Submission;
+use App\Models\TerminalReport;
 use App\Notifications\RequirementSubmitted;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -84,9 +86,55 @@ class EnrolledProgramController extends Controller
         return Inertia::render('MyPrograms/Show', [
             'program' => array_merge(
                 self::transform($participant, withRequirements: true),
-                ['certificates' => $certificates]
+                ['certificates' => $certificates],
+                $this->actionPlanData($participant),
             ),
         ]);
+    }
+
+    /**
+     * The participant's Re-Entry Action Plan activities for the tracker, and
+     * whether they can add more (only once a plan has been submitted).
+     *
+     * @return array{action_plan: array<int, array<string, mixed>>, can_add_action_plan_activity: bool}
+     */
+    protected function actionPlanData(Participant $participant): array
+    {
+        $activities = ActionPlanActivity::with('implementationReport')
+            ->where('participant_id', $participant->id)
+            ->orderBy('target_date')
+            ->orderBy('id')
+            ->get();
+
+        return [
+            'action_plan' => $activities->map(fn (ActionPlanActivity $activity) => [
+                'id' => $activity->id,
+                'activity' => $activity->activity,
+                'expected_output' => $activity->expected_output,
+                'start_date' => $activity->start_date?->toDateString(),
+                'target_date' => $activity->target_date?->toDateString(),
+                'schedule' => $activity->scheduleLabel(),
+                'budget' => $activity->budget,
+                'remarks' => $activity->remarks,
+                'status' => $activity->monitoringStatus(),
+                'added_after_submission' => $activity->added_after_submission,
+                'locked' => $activity->isLocked(),
+                'report' => $activity->implementationReport ? [
+                    'accomplishment' => $activity->implementationReport->accomplishment,
+                    'actual_output' => $activity->implementationReport->actual_output,
+                    'date_completed' => $activity->implementationReport->date_completed?->toDateString(),
+                    'actual_cost' => $activity->implementationReport->actual_cost,
+                    'file_url' => $activity->implementationReport->fileUrl(),
+                    'status' => $activity->implementationReport->status,
+                    'remarks' => $activity->implementationReport->remarks,
+                    'submitted_at' => $activity->implementationReport->submitted_at?->toDateString(),
+                ] : null,
+            ])->values()->all(),
+            'can_add_action_plan_activity' => TerminalReport::where('participant_id', $participant->id)
+                ->where('batch_id', $participant->batch_id)
+                ->whereNotNull('reap_summary')
+                ->exists(),
+        ];
     }
 
     protected function ownParticipant(Request $request, Batch $batch): Participant

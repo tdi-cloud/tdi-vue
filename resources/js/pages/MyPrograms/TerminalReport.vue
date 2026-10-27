@@ -344,18 +344,38 @@
                             </span>
                         </header>
 
+                        <!-- Monitoring notice: every activity needs an implementation report by its target date -->
+                        <div class="mb-5 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                            <CalendarCheck :size="20" class="mt-0.5 shrink-0 text-amber-600" />
+                            <div>
+                                <p class="font-bold">Your action plan will be monitored</p>
+                                <p class="mt-0.5 leading-relaxed">
+                                    For <strong>each activity</strong>, you will need to submit an <strong>Implementation Report</strong> on or before
+                                    its <strong>target date</strong>, based on the schedule of implementation you set here. You'll find your
+                                    activities and submit their reports under <strong>My Action Plan</strong> on your program page.
+                                </p>
+                            </div>
+                        </div>
+
                         <p v-if="form.errors.action_plan" class="mb-3 text-sm text-red-600">{{ form.errors.action_plan }}</p>
 
                         <TransitionGroup tag="div" name="plan" class="space-y-4">
                             <div
                                 v-for="(row, index) in form.action_plan"
                                 :key="row.key"
-                                class="relative rounded-xl border border-gray-200 bg-gray-50/60 p-4 sm:p-5"
+                                class="relative rounded-xl border p-4 sm:p-5"
+                                :class="row.locked ? 'border-emerald-200 bg-emerald-50/50' : 'border-gray-200 bg-gray-50/60'"
                             >
                                 <div class="mb-3 flex items-center justify-between">
                                     <span class="text-xs font-bold uppercase tracking-wider text-violet-700">Activity {{ index + 1 }}</span>
+                                    <span
+                                        v-if="row.locked"
+                                        class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700"
+                                    >
+                                        <Lock :size="11" /> Implementation report submitted — can't be changed
+                                    </span>
                                     <button
-                                        v-if="form.action_plan.length > 1"
+                                        v-else-if="form.action_plan.length > 1"
                                         type="button"
                                         class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-gray-500 hover:bg-red-50 hover:text-red-600"
                                         @click="removeActivity(index)"
@@ -363,7 +383,7 @@
                                         <Trash2 :size="13" /> Remove
                                     </button>
                                 </div>
-                                <div class="grid gap-4 sm:grid-cols-2">
+                                <fieldset :disabled="row.locked" class="grid gap-4 sm:grid-cols-2">
                                     <FieldBlock label="Activity" required :error="form.errors[`action_plan.${index}.activity`]">
                                         <textarea
                                             v-model="row.activity"
@@ -380,16 +400,48 @@
                                             placeholder="e.g. 10 staff oriented"
                                         ></textarea>
                                     </FieldBlock>
-                                    <FieldBlock label="Schedule of Implementation" required :error="form.errors[`action_plan.${index}.schedule`]">
-                                        <input v-model="row.schedule" type="text" class="field-input" placeholder="e.g. 2nd quarter 2026" />
+                                    <FieldBlock
+                                        class="sm:col-span-2"
+                                        label="Schedule of Implementation"
+                                        required
+                                        hint="When will you start, and by when will it be done? Your implementation report is due on the target date."
+                                        :error="form.errors[`action_plan.${index}.start_date`] || form.errors[`action_plan.${index}.target_date`]"
+                                    >
+                                        <div class="grid gap-3 sm:grid-cols-2">
+                                            <label class="block">
+                                                <span class="mb-1 block text-xs font-semibold text-gray-500">Start date</span>
+                                                <input v-model="row.start_date" type="date" class="field-input" />
+                                            </label>
+                                            <label class="block">
+                                                <span class="mb-1 block text-xs font-semibold text-gray-500">Target date (report due)</span>
+                                                <input v-model="row.target_date" type="date" :min="row.start_date || undefined" class="field-input" />
+                                            </label>
+                                        </div>
                                     </FieldBlock>
-                                    <FieldBlock label="Budget">
-                                        <input v-model="row.budget" type="text" class="field-input" placeholder="e.g. ₱5,000 or None" />
+                                    <FieldBlock
+                                        label="Budget"
+                                        hint="Leave blank if no budget is needed"
+                                        :error="form.errors[`action_plan.${index}.budget`]"
+                                    >
+                                        <div class="relative">
+                                            <span
+                                                class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-400"
+                                                >₱</span
+                                            >
+                                            <input
+                                                v-model="row.budget"
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                class="field-input !pl-7"
+                                                placeholder="0.00"
+                                            />
+                                        </div>
                                     </FieldBlock>
-                                    <FieldBlock class="sm:col-span-2" label="Remarks">
+                                    <FieldBlock label="Remarks">
                                         <input v-model="row.remarks" type="text" class="field-input" />
                                     </FieldBlock>
-                                </div>
+                                </fieldset>
                             </div>
                         </TransitionGroup>
 
@@ -528,8 +580,8 @@
                                         <tr v-for="row in fillReentryPlan ? form.action_plan : []" :key="row.key">
                                             <td class="whitespace-pre-line border border-gray-200 px-2 py-1.5">{{ row.activity }}</td>
                                             <td class="whitespace-pre-line border border-gray-200 px-2 py-1.5">{{ row.expected_output }}</td>
-                                            <td class="border border-gray-200 px-2 py-1.5">{{ row.schedule }}</td>
-                                            <td class="border border-gray-200 px-2 py-1.5">{{ row.budget }}</td>
+                                            <td class="border border-gray-200 px-2 py-1.5">{{ formatSchedule(row.start_date, row.target_date) }}</td>
+                                            <td class="border border-gray-200 px-2 py-1.5">{{ formatBudget(row.budget) }}</td>
                                             <td class="border border-gray-200 px-2 py-1.5">{{ row.remarks }}</td>
                                         </tr>
                                     </tbody>
@@ -625,6 +677,7 @@ import {
     ArrowLeft,
     ArrowRight,
     BookOpen,
+    CalendarCheck,
     CalendarDays,
     Check,
     ClipboardCheck,
@@ -633,6 +686,7 @@ import {
     FileText,
     Info,
     Loader2,
+    Lock,
     PenLine,
     Plus,
     Rocket,
@@ -653,11 +707,14 @@ interface Signatory {
 
 interface ActionPlanRow {
     key: number;
+    id: number | null;
     activity: string;
     expected_output: string;
-    schedule: string;
-    budget: string;
-    remarks: string;
+    start_date: string;
+    target_date: string;
+    budget: string | number | null;
+    remarks: string | null;
+    locked: boolean;
 }
 
 const props = defineProps<{
@@ -709,7 +766,17 @@ const FieldBlock = defineComponent({
 
 /* ---- Form state ---- */
 let rowKey = 0;
-const blankActivity = (): ActionPlanRow => ({ key: ++rowKey, activity: '', expected_output: '', schedule: '', budget: '', remarks: '' });
+const blankActivity = (): ActionPlanRow => ({
+    key: ++rowKey,
+    id: null,
+    activity: '',
+    expected_output: '',
+    start_date: '',
+    target_date: '',
+    budget: null,
+    remarks: '',
+    locked: false,
+});
 
 const savedPlan = (props.report?.action_plan ?? []) as Omit<ActionPlanRow, 'key'>[];
 
@@ -779,8 +846,11 @@ function stepProblem(key: string): string {
         if (!filled(form.competencies_gained) || !filled(form.reap_summary) || !filled(form.reap_objectives)) {
             return 'Please answer items 1 to 3 of the Re-Entry Action Plan.';
         }
-        if (form.action_plan.some((row) => !filled(row.activity) || !filled(row.expected_output) || !filled(row.schedule))) {
-            return 'Each activity needs an activity, expected output and schedule.';
+        if (form.action_plan.some((row) => !filled(row.activity) || !filled(row.expected_output) || !row.start_date || !row.target_date)) {
+            return 'Each activity needs an activity, expected output, start date and target date.';
+        }
+        if (form.action_plan.some((row) => row.target_date < row.start_date)) {
+            return "An activity's target date can't be earlier than its start date.";
         }
     }
     if (key === 'signoff') {
@@ -863,10 +933,12 @@ function submit() {
         include_reentry_plan: !!fillReentryPlan.value,
         action_plan: fillReentryPlan.value
             ? data.action_plan.map((row) => ({
+                  id: row.id,
                   activity: row.activity,
                   expected_output: row.expected_output,
-                  schedule: row.schedule,
-                  budget: row.budget,
+                  start_date: row.start_date,
+                  target_date: row.target_date,
+                  budget: row.budget === '' ? null : row.budget,
                   remarks: row.remarks,
               }))
             : [],
@@ -881,6 +953,20 @@ function formatDate(value: string | null | undefined) {
         return '';
     }
     return new Date(value).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+function formatSchedule(start: string, target: string) {
+    if (!start || !target) {
+        return formatDate(start || target);
+    }
+    return start === target ? formatDate(start) : `${formatDate(start)} – ${formatDate(target)}`;
+}
+
+function formatBudget(budget: string | number | null) {
+    if (budget === null || budget === '') {
+        return 'None';
+    }
+    return '₱' + Number(budget).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 </script>
 

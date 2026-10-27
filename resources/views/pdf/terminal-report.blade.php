@@ -94,13 +94,14 @@
             <th style="width: 14%;">Budget</th>
             <th style="width: 20%;">Remarks</th>
         </tr>
-        @forelse ($report->action_plan ?? [] as $row)
+        @forelse ($hasPlan ? $report->activities : [] as $activity)
             <tr>
-                <td>{!! $text($row['activity'] ?? '') !!}</td>
-                <td>{!! $text($row['expected_output'] ?? '') !!}</td>
-                <td>{!! $text($row['schedule'] ?? '') !!}</td>
-                <td>{!! $text($row['budget'] ?? '') !!}</td>
-                <td>{!! $text($row['remarks'] ?? '') !!}</td>
+                <td>{!! $text($activity->activity) !!}</td>
+                <td>{!! $text($activity->expected_output) !!}</td>
+                <td>{{ $activity->scheduleLabel() }}</td>
+                {{-- "PHP" instead of the peso sign: the PDF font has no ₱ glyph --}}
+                <td>{{ $activity->budget !== null ? 'PHP '.number_format((float) $activity->budget, 2) : 'None' }}</td>
+                <td>{!! $text($activity->remarks) !!}</td>
             </tr>
         @empty
             <tr><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td></tr>

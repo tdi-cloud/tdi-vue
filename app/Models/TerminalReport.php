@@ -4,11 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A participant's filled-out Terminal and Re-Entry Action Plan Report Form
  * (TESDA-OP-AS-01-F07). REAP reports must include the Re-Entry Action Plan
- * (Part II); for TREAP reports it is optional.
+ * (Part II); for TREAP reports it is optional. The action plan's activities
+ * are stored as ActionPlanActivity records so they can be monitored.
  */
 class TerminalReport extends Model
 {
@@ -24,7 +26,6 @@ class TerminalReport extends Model
         'competencies_gained',
         'reap_summary',
         'reap_objectives',
-        'action_plan',
         'prepared_by',
         'approved_by',
         'generated_at',
@@ -34,7 +35,6 @@ class TerminalReport extends Model
     {
         return [
             'program_description' => 'array',
-            'action_plan' => 'array',
             'prepared_by' => 'array',
             'approved_by' => 'array',
             'generated_at' => 'datetime',
@@ -52,7 +52,7 @@ class TerminalReport extends Model
      */
     public function hasReentryPlan(): bool
     {
-        return ! empty($this->action_plan);
+        return filled($this->reap_summary);
     }
 
     public function participant(): BelongsTo
@@ -68,5 +68,10 @@ class TerminalReport extends Model
     public function requirement(): BelongsTo
     {
         return $this->belongsTo(Requirement::class);
+    }
+
+    public function activities(): HasMany
+    {
+        return $this->hasMany(ActionPlanActivity::class)->orderBy('sort_order')->orderBy('id');
     }
 }
