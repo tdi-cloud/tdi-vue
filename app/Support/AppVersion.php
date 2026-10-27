@@ -31,6 +31,17 @@ final class AppVersion
         return $commit === null ? $label : "{$label} ({$commit})";
     }
 
+    /**
+     * Compact form for tight spaces like the sidebar, e.g. "v2.0.0 b3".
+     */
+    public static function shortLabel(?string $basePath = null): string
+    {
+        $label = 'v'.config('app.version');
+        $build = self::buildNumber($basePath);
+
+        return $build === null ? $label : "{$label} b{$build}";
+    }
+
     public static function commit(?string $basePath = null): ?string
     {
         $basePath ??= base_path();

@@ -27,8 +27,22 @@ test('the application version label is shared with every page', function () {
     $this->actingAs(User::factory()->create(['empcode' => 'EMP-VERSION-01']));
 
     $this->get('/settings/profile')->assertInertia(fn (Assert $page) => $page
-        ->where('appVersion', AppVersion::label())
+        ->where('appVersion.short', AppVersion::shortLabel())
+        ->where('appVersion.full', 'TDI '.AppVersion::label())
     );
+});
+
+test('the short label shows only the version and build number', function () {
+    writeGitBranch($this->fakeBasePath, '51ee70fa9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e');
+    Process::fake(['*' => Process::result('v2.0.0-3-g51ee70f')]);
+
+    expect(AppVersion::shortLabel($this->fakeBasePath))->toBe('v'.config('app.version').' b3');
+});
+
+test('the short label is just the version when there is no build number', function () {
+    File::deleteDirectory($this->fakeBasePath.'/.git');
+
+    expect(AppVersion::shortLabel($this->fakeBasePath))->toBe('v'.config('app.version'));
 });
 
 test('the label shows the build count since the last release tag and the commit hash', function () {
