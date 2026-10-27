@@ -892,7 +892,8 @@ function formatDate(value: string | null | undefined) {
     --background: 0 0% 100%;
     --foreground: 0 0% 3.9%;
     --muted-foreground: 0 0% 45.1%;
-    --border: 0 0% 92.8%;
+    /* Darker than the theme's default hairline so input borders stay visible */
+    --border: 0 0% 80%;
     --input: 0 0% 89.8%;
     color-scheme: light;
 }
@@ -902,19 +903,33 @@ function formatDate(value: string | null | undefined) {
 .field-input {
     width: 100%;
     border-radius: 0.6rem;
-    border: 1px solid #d1d5db;
+    border: 1px solid #cbd5e1;
     background: #fff;
     padding: 0.6rem 0.85rem;
     font-size: 0.875rem;
     color: #111827;
+    box-shadow:
+        0 1px 2px rgba(15, 23, 42, 0.08),
+        inset 0 1px 2px rgba(15, 23, 42, 0.04);
     transition:
         border-color 0.15s,
         box-shadow 0.15s;
 }
+.field-input:hover {
+    box-shadow:
+        0 2px 6px rgba(15, 23, 42, 0.1),
+        inset 0 1px 2px rgba(15, 23, 42, 0.04);
+}
 .field-input:focus {
     outline: none;
     border-color: #1d3fc4;
-    box-shadow: 0 0 0 3px rgba(29, 63, 196, 0.15);
+    box-shadow:
+        0 0 0 3px rgba(29, 63, 196, 0.15),
+        0 2px 6px rgba(29, 63, 196, 0.12);
+}
+/* Approver search box (inside the signatory picker) gets the same input look */
+.report-form :deep(input[type='text']:not(.field-input)) {
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
 }
 textarea.field-input {
     resize: vertical;
