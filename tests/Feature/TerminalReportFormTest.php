@@ -170,7 +170,7 @@ test('submitting a TREAP form generates the PDF and submits it for review when p
 
     $this->actingAs($user)
         ->put(route('programs.terminal-report.update', [$batch, $requirement]), terminalReportPayload())
-        ->assertRedirect(route('programs.my-progress', $batch))
+        ->assertRedirect(route('programs.terminal-report.submitted', [$batch, $requirement]))
         ->assertSessionHasNoErrors();
 
     $report = TerminalReport::where('participant_id', $participant->id)->first();
@@ -318,4 +318,44 @@ test('absent participants cannot submit the report', function () {
     $requirement = terminalReportRequirement($batch, 'TREAP');
 
     $this->actingAs($user)->get(route('programs.terminal-report.edit', [$batch, $requirement]))->assertForbidden();
+});
+
+test('after submitting, the confirmation page shows the generated PDF', function () {
+    ['user' => $user, 'batch' => $batch, 'participant' => $participant] = terminalReportSetup('EMP-TR-15');
+    $requirement = terminalReportRequirement($batch, 'REAP');
+
+    $this->actingAs($user)->put(route('programs.terminal-report.update', [$batch, $requirement]), terminalReportPayload(reentryPlanPayload()));
+    $submission = Submission::where('participant_id', $participant->id)->first();
+
+    $this->actingAs($user)
+        ->get(route('programs.terminal-report.submitted', [$batch, $requirement]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('MyPrograms/TerminalReportSubmitted')
+            ->where('pdfUrl', '/storage/'.$submission->file_path)
+            ->where('status', 'Pending')
+            ->where('activitiesCount', 1)
+            ->where('canEdit', true)
+        );
+});
+
+test('the confirmation page sends participants to the form when nothing was submitted yet', function () {
+    ['user' => $user, 'batch' => $batch] = terminalReportSetup('EMP-TR-16');
+    $requirement = terminalReportRequirement($batch, 'TREAP');
+
+    $this->actingAs($user)
+        ->get(route('programs.terminal-report.submitted', [$batch, $requirement]))
+        ->assertRedirect(route('programs.terminal-report.edit', [$batch, $requirement]));
+});
+
+test('an approved report can still be viewed on the confirmation page but not edited', function () {
+    ['user' => $user, 'batch' => $batch, 'participant' => $participant] = terminalReportSetup('EMP-TR-17');
+    $requirement = terminalReportRequirement($batch, 'TREAP');
+    $this->actingAs($user)->put(route('programs.terminal-report.update', [$batch, $requirement]), terminalReportPayload());
+    Submission::where('participant_id', $participant->id)->update(['status' => 'Approved']);
+
+    $this->actingAs($user)
+        ->get(route('programs.terminal-report.submitted', [$batch, $requirement]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where('canEdit', false));
 });

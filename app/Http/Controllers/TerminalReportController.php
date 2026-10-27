@@ -133,7 +133,38 @@ class TerminalReportController extends Controller
             $message .= ' Remember to submit an implementation report for each activity on or before its target date.';
         }
 
-        return redirect()->route('programs.my-progress', $batch)->with('success', $message);
+        return redirect()
+            ->route('programs.terminal-report.submitted', [$batch, $requirement])
+            ->with('success', $message);
+    }
+
+    /**
+     * GET .../terminal-report/submitted
+     *
+     * Confirmation page shown right after Generate & Submit, with the
+     * generated PDF displayed so the participant can check it immediately.
+     */
+    public function submitted(Request $request, Batch $batch, Requirement $requirement): Response|RedirectResponse
+    {
+        $participant = $this->ownParticipant($request, $batch, $requirement, forEditing: false);
+        $report = $this->existingReport($participant, $requirement);
+        $submission = $this->existingSubmission($participant, $requirement);
+
+        if (! $report || ! $submission?->file_path) {
+            return redirect()->route('programs.terminal-report.edit', [$batch, $requirement]);
+        }
+
+        return Inertia::render('MyPrograms/TerminalReportSubmitted', [
+            'batchId' => $batch->id,
+            'requirement' => ['id' => $requirement->id, 'title' => $requirement->title, 'name' => $requirement->name],
+            'program' => ['title' => $batch->program?->title, 'batch_label' => $batch->batch],
+            'pdfUrl' => '/storage/'.$submission->file_path,
+            'pdfName' => basename($submission->file_path),
+            'status' => $submission->status,
+            'submittedAt' => $submission->submitted_at?->toIso8601String(),
+            'activitiesCount' => $report->activities()->count(),
+            'canEdit' => $submission->status !== 'Approved' && $participant->attendance !== 'Absent',
+        ]);
     }
 
     /**
@@ -189,9 +220,10 @@ class TerminalReportController extends Controller
 
     /**
      * The participant record of the signed-in user, after checking that the
-     * requirement belongs to this batch, uses this form, and can still be edited.
+     * requirement belongs to this batch and uses this form — and, when
+     * $forEditing, that the report can still be edited.
      */
-    private function ownParticipant(Request $request, Batch $batch, Requirement $requirement): Participant
+    private function ownParticipant(Request $request, Batch $batch, Requirement $requirement, bool $forEditing = true): Participant
     {
         abort_unless($requirement->batch_id === $batch->id, 404);
         abort_unless(TerminalReport::supportsRequirement($requirement), 404);
@@ -203,6 +235,10 @@ class TerminalReportController extends Controller
             ->where('empcode', $user->empcode)
             ->where('batch_id', $batch->id)
             ->firstOrFail();
+
+        if (! $forEditing) {
+            return $participant;
+        }
 
         abort_if($participant->attendance === 'Absent', 403, 'You were marked Absent for this program, so this report is no longer required.');
         abort_if(

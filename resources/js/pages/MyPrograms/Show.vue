@@ -735,7 +735,9 @@ const TABS = computed(() => {
     return tabs;
 });
 
-const activeTab = ref('requirements');
+// Links can open a specific tab, e.g. ?tab=action-plan from the report confirmation page.
+const requestedTab = new URLSearchParams(window.location.search).get('tab');
+const activeTab = ref(TABS.value.some((tab) => tab.key === requestedTab) ? requestedTab : 'requirements');
 
 /* ---- Primary vs. secondary tab grouping for the redesigned tab bar ---- */
 const PRIMARY_TAB_ORDER = ['about', 'requirements', 'action-plan', 'certificates'];
