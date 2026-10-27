@@ -22,10 +22,11 @@ return [
     |
     | The current release of the system, following semantic versioning
     | (MAJOR.MINOR.PATCH). Bump this value and tag the commit on release.
+    | v1 was the original pure-PHP system; v2 is the Laravel + Vue rebuild.
     |
     */
 
-    'version' => '1.0.0',
+    'version' => '2.0.0',
 
     /*
     |--------------------------------------------------------------------------
