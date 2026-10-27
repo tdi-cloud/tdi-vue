@@ -489,8 +489,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/my-programs/{batch}/requirements/{requirement}/terminal-report', [TerminalReportController::class, 'update'])
         ->name('programs.terminal-report.update');
 
-    Route::get('/my-programs/{batch}/requirements/{requirement}/terminal-report/submitted', [TerminalReportController::class, 'submitted'])
-        ->name('programs.terminal-report.submitted');
+    Route::get('/my-programs/{batch}/requirements/{requirement}/terminal-report/generated', [TerminalReportController::class, 'generated'])
+        ->name('programs.terminal-report.generated');
 
     // ACTION PLAN — add activities and submit an implementation report per activity
     Route::post('/my-programs/{batch}/action-plan/activities', [ActionPlanController::class, 'storeActivity'])

@@ -36,6 +36,11 @@ class Participant extends Model
         return $this->hasMany(Submission::class);
     }
 
+    public function terminalReports()
+    {
+        return $this->hasMany(TerminalReport::class);
+    }
+
     public function certificates()
     {
         return $this->hasMany(Certificate::class);

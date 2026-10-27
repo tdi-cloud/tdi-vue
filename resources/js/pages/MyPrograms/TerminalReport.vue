@@ -32,8 +32,8 @@
                     {{ program.title }} <span v-if="program.batch_label">· {{ program.batch_label }}</span>
                 </p>
                 <p class="mt-4 max-w-2xl text-sm leading-relaxed text-white/85">
-                    Fill out the form below. We've already filled in the program details for you — just check them, complete what's missing, and we'll
-                    generate the official PDF and submit it for you.
+                    Fill out the form below. We've already filled in the program details for you — just check them and complete what's missing. We'll
+                    generate the official PDF for you to print and sign; your report is submitted once you upload the signed copy.
                 </p>
             </div>
         </section>
@@ -54,12 +54,16 @@
                     />
                     <div>
                         <p class="text-sm font-bold">
-                            {{ submission.status === 'Rejected' ? 'Your report needs revision' : 'Your report is submitted and awaiting review' }}
+                            {{
+                                submission.status === 'Rejected'
+                                    ? 'Your report needs revision'
+                                    : 'Your signed report is submitted and awaiting review'
+                            }}
                         </p>
                         <p v-if="submission.status === 'Rejected' && submission.remarks" class="mt-0.5 text-sm text-red-800">
                             <strong>Reviewer note:</strong> {{ submission.remarks }}
                         </p>
-                        <p v-else class="mt-0.5 text-sm text-gray-500">You can still update the form — submitting again replaces the PDF.</p>
+                        <p v-else class="mt-0.5 text-sm text-gray-500">If you change the form, generate it again and upload a newly signed copy.</p>
                     </div>
                 </div>
                 <a
@@ -621,8 +625,8 @@
                     <div class="mt-5 flex items-start gap-3 rounded-xl bg-blue-50 p-4 text-sm text-[#1a2744]">
                         <Info :size="18" class="mt-0.5 shrink-0 text-[#1d3fc4]" />
                         <p>
-                            Clicking <strong>Generate &amp; Submit</strong> creates the PDF and submits it as your {{ requirement.title }} requirement
-                            for review. You can come back and update it until it's approved.
+                            Clicking <strong>Generate PDF</strong> creates your report for printing. It is <strong>not submitted yet</strong>: print
+                            it, sign it, have your approver sign it, then upload the signed copy to submit your {{ requirement.title }} requirement.
                         </p>
                     </div>
 
@@ -659,7 +663,7 @@
                     >
                         <Loader2 v-if="form.processing" :size="16" class="animate-spin" />
                         <FileCheck2 v-else :size="16" />
-                        {{ form.processing ? 'Generating PDF…' : 'Generate & Submit' }}
+                        {{ form.processing ? 'Generating PDF…' : 'Generate PDF' }}
                     </button>
                 </div>
                 <p v-if="stepError" class="mt-3 text-right text-sm font-semibold text-red-600">{{ stepError }}</p>

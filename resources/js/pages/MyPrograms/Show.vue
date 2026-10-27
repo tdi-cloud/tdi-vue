@@ -100,10 +100,10 @@
                         <p class="next-action__due"><CalendarDays :size="13" /> Due: {{ formatDate(nextActionRequirement.due_date) }}</p>
                         <Link
                             v-if="usesReportForm(nextActionRequirement) && program.attendance !== 'Absent'"
-                            :href="route('programs.terminal-report.edit', { batch: program.batch_id, requirement: nextActionRequirement.id })"
+                            :href="reportFormStage(nextActionRequirement).href"
                             class="next-action__btn"
                         >
-                            {{ nextActionRequirement.status === 'Rejected' ? 'Update Form' : 'Fill Out Form' }}
+                            {{ reportFormStage(nextActionRequirement).button }}
                             <ArrowRight :size="14" />
                         </Link>
                         <button v-else type="button" class="next-action__btn" @click="switchToRequirement(nextActionRequirement)">
@@ -278,7 +278,7 @@
                             <!-- TREAP / REAP: the online form gets its own card, separate from the PDF submission below -->
                             <Link
                                 v-if="usesReportForm(r) && r.status !== 'Approved' && program.attendance !== 'Absent'"
-                                :href="route('programs.terminal-report.edit', { batch: program.batch_id, requirement: r.id })"
+                                :href="reportFormStage(r).href"
                                 class="form-card"
                             >
                                 <span class="form-card__glow form-card__glow--one"></span>
@@ -288,28 +288,29 @@
                                     <span class="form-card__eyebrow">
                                         <Sparkles :size="13" /> {{ r.title }} &middot; Online Form
                                         <span v-if="r.status === 'Rejected'" class="form-card__flag">Revision needed</span>
+                                        <span v-else-if="reportFormStage(r).key === 'sign'" class="form-card__flag">Not yet submitted</span>
                                     </span>
-                                    <span class="form-card__title">
-                                        {{ r.file_url ? 'Update your Terminal Report' : 'Fill out your Terminal Report' }}
-                                    </span>
-                                    <span class="form-card__text">
-                                        No need to prepare the document yourself — answer a few guided steps and we'll generate the official
-                                        TESDA-OP-AS-01-F07 PDF and submit it for you.
-                                    </span>
+                                    <span class="form-card__title">{{ reportFormStage(r).title }}</span>
+                                    <span class="form-card__text">{{ reportFormStage(r).text }}</span>
 
                                     <span class="form-card__steps">
-                                        <span class="form-card__step"><CheckCircle2 :size="14" /> Program details auto-filled</span>
-                                        <span class="form-card__step"
-                                            ><CheckCircle2 :size="14" />
-                                            {{ r.title === 'REAP' ? 'Re-Entry Action Plan' : 'Optional Re-Entry Plan' }}</span
-                                        >
-                                        <span class="form-card__step"><CheckCircle2 :size="14" /> PDF generated &amp; submitted</span>
+                                        <span class="form-card__step" :class="{ 'form-card__step--done': reportFormStage(r).key !== 'fill' }">
+                                            <CheckCircle2 :size="14" /> Fill out the form
+                                        </span>
+                                        <span class="form-card__step" :class="{ 'form-card__step--done': reportFormStage(r).key !== 'fill' }">
+                                            <CheckCircle2 :size="14" /> PDF generated
+                                        </span>
+                                        <span class="form-card__step" :class="{ 'form-card__step--done': reportFormStage(r).key === 'update' }">
+                                            <CheckCircle2 :size="14" /> Signed copy uploaded
+                                        </span>
                                     </span>
                                 </span>
 
                                 <span class="form-card__side">
-                                    <span class="form-card__icon"><ClipboardPen :size="30" /></span>
-                                    <span class="form-card__btn">{{ r.file_url ? 'Update Form' : 'Fill Out Form' }} <ArrowRight :size="16" /></span>
+                                    <span class="form-card__icon">
+                                        <component :is="reportFormStage(r).key === 'sign' ? PenLine : ClipboardPen" :size="30" />
+                                    </span>
+                                    <span class="form-card__btn">{{ reportFormStage(r).button }} <ArrowRight :size="16" /></span>
                                     <span class="form-card__due"><CalendarDays :size="12" /> Due {{ formatDate(r.due_date) }}</span>
                                 </span>
                             </Link>
@@ -353,7 +354,7 @@
                                             :class="usesReportForm(r) ? 'req-btn--ghost' : 'req-btn--primary'"
                                             @click="toggleRequirementExpand(r.id)"
                                         >
-                                            {{ usesReportForm(r) ? 'Upload a file instead' : r.file_url ? 'Replace File' : 'Submit Requirement' }}
+                                            {{ usesReportForm(r) ? 'Upload signed copy' : r.file_url ? 'Replace File' : 'Submit Requirement' }}
                                             <ChevronDown :size="14" :class="{ 'rotate-180': expandedRequirement === r.id }" />
                                         </button>
                                     </div>
@@ -690,6 +691,7 @@ import {
     Medal,
     Mic2,
     Milestone,
+    PenLine,
     Sparkles,
     Star,
     Target,
@@ -866,6 +868,40 @@ const lastUpdatedLabel = computed(() => {
 /* ---- Requirement helpers ---- */
 // TREAP and REAP are completed by filling out the online report form, which generates the PDF.
 const usesReportForm = (requirement) => ['TREAP', 'REAP'].includes(requirement.title);
+
+/**
+ * Where the participant is in the report form flow: fill out → (generated, unsigned) sign & upload → update.
+ * Only the uploaded signed copy counts as the submission.
+ */
+function reportFormStage(requirement) {
+    const params = { batch: props.program.batch_id, requirement: requirement.id };
+
+    if (requirement.file_url) {
+        return {
+            key: 'update',
+            title: 'Update your Terminal Report',
+            text: 'Need to change something? Edit the form, generate a new PDF, then upload the newly signed copy.',
+            button: 'Update Form',
+            href: route('programs.terminal-report.edit', params),
+        };
+    }
+    if (requirement.report_generated) {
+        return {
+            key: 'sign',
+            title: 'Sign & upload your Terminal Report',
+            text: 'Your report is generated but not yet submitted. Print it, have it signed, then upload the signed copy.',
+            button: 'Upload Signed Copy',
+            href: route('programs.terminal-report.generated', params),
+        };
+    }
+    return {
+        key: 'fill',
+        title: 'Fill out your Terminal Report',
+        text: "Answer a few guided steps and we'll generate the official TESDA-OP-AS-01-F07 PDF for you to print, sign and upload.",
+        button: 'Fill Out Form',
+        href: route('programs.terminal-report.edit', params),
+    };
+}
 
 function reqIcon(status) {
     if (status === 'Approved') return CheckCircle2;
@@ -2231,6 +2267,9 @@ a.next-action__btn {
     backdrop-filter: blur(4px);
 }
 .form-card__step svg {
+    color: rgba(255, 255, 255, 0.35);
+}
+.form-card__step--done svg {
     color: #6ee7b7;
 }
 .form-card__side {

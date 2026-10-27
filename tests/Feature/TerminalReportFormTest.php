@@ -9,6 +9,7 @@ use App\Models\ResourceSpeaker;
 use App\Models\Submission;
 use App\Models\TerminalReport;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -164,13 +165,13 @@ test('a REAP requirement requires the re-entry action plan', function () {
         ->assertInertia(fn (Assert $page) => $page->where('reentryPlanRequired', true));
 });
 
-test('submitting a TREAP form generates the PDF and submits it for review when part II is skipped', function () {
+test('generating a TREAP form creates the unsigned PDF but does not submit the requirement', function () {
     ['user' => $user, 'batch' => $batch, 'participant' => $participant] = terminalReportSetup('EMP-TR-03');
     $requirement = terminalReportRequirement($batch, 'TREAP');
 
     $this->actingAs($user)
         ->put(route('programs.terminal-report.update', [$batch, $requirement]), terminalReportPayload())
-        ->assertRedirect(route('programs.terminal-report.submitted', [$batch, $requirement]))
+        ->assertRedirect(route('programs.terminal-report.generated', [$batch, $requirement]))
         ->assertSessionHasNoErrors();
 
     $report = TerminalReport::where('participant_id', $participant->id)->first();
@@ -178,10 +179,32 @@ test('submitting a TREAP form generates the PDF and submits it for review when p
         ->and($report->program_description['designed_for'])->toBe('TESDA supervisors')
         ->and($report->activities)->toBeEmpty();
 
+    Storage::disk('public')->assertExists($report->generated_pdf_path);
+    expect(Storage::disk('public')->get($report->generated_pdf_path))->toStartWith('%PDF')
+        ->and(Submission::where('requirement_id', $requirement->id)->exists())->toBeFalse();
+});
+
+test('uploading the signed copy is what submits the requirement for review', function () {
+    ['user' => $user, 'batch' => $batch, 'participant' => $participant] = terminalReportSetup('EMP-TR-18');
+    $requirement = terminalReportRequirement($batch, 'TREAP');
+    $this->actingAs($user)->put(route('programs.terminal-report.update', [$batch, $requirement]), terminalReportPayload());
+
+    $this->actingAs($user)
+        ->post(route('programs.my-progress.submit', [$batch, $requirement]), [
+            'file' => UploadedFile::fake()->create('signed-treap.pdf', 200, 'application/pdf'),
+        ])
+        ->assertSessionHasNoErrors();
+
     $submission = Submission::where('participant_id', $participant->id)->where('requirement_id', $requirement->id)->first();
     expect($submission->status)->toBe('Pending');
-    Storage::disk('public')->assertExists($submission->file_path);
-    expect(Storage::disk('public')->get($submission->file_path))->toStartWith('%PDF');
+
+    $this->actingAs($user)
+        ->get(route('programs.terminal-report.generated', [$batch, $requirement]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('signedCopy.status', 'Pending')
+            ->where('signedCopy.file_url', '/storage/'.$submission->file_path)
+            ->where('signedCopy.older_than_draft', false)
+        );
 });
 
 test('a REAP form requires the re-entry action plan', function () {
@@ -247,7 +270,7 @@ test('the PDF shows the filled part II instead of N/A', function () {
         ->not->toContain('N/A');
 });
 
-test('submitting a complete REAP form saves the action plan and submits the PDF', function () {
+test('generating a complete REAP form saves the action plan', function () {
     ['user' => $user, 'batch' => $batch, 'participant' => $participant] = terminalReportSetup('EMP-TR-05');
     $requirement = terminalReportRequirement($batch, 'REAP');
 
@@ -259,30 +282,36 @@ test('submitting a complete REAP form saves the action plan and submits the PDF'
     expect($report->report_type)->toBe('REAP')
         ->and($report->activities)->toHaveCount(1)
         ->and($report->activities->first()->activity)->toBe('Echo training');
-
-    expect(Submission::where('requirement_id', $requirement->id)->value('status'))->toBe('Pending');
 });
 
-test('resubmitting the form replaces the previous PDF and sends a rejected report back for review', function () {
+test('regenerating the form replaces the unsigned PDF and leaves the signed copy untouched', function () {
     ['user' => $user, 'batch' => $batch, 'participant' => $participant] = terminalReportSetup('EMP-TR-06');
     $requirement = terminalReportRequirement($batch, 'TREAP');
 
     $this->actingAs($user)->put(route('programs.terminal-report.update', [$batch, $requirement]), terminalReportPayload());
-    $submission = Submission::where('participant_id', $participant->id)->first();
-    $firstPath = $submission->file_path;
-    $submission->update(['status' => 'Rejected', 'remarks' => 'Please fix the venue.']);
+    $firstDraft = TerminalReport::first()->generated_pdf_path;
+    $signedCopy = Submission::create([
+        'participant_id' => $participant->id, 'program_code' => $batch->program_code, 'batch_id' => $batch->id,
+        'requirement_id' => $requirement->id, 'status' => 'Rejected', 'remarks' => 'Please fix the venue.',
+        'file_path' => 'submissions/signed.pdf', 'submitted_at' => now(),
+    ]);
 
     $this->travel(2)->seconds();
     $this->actingAs($user)->put(route('programs.terminal-report.update', [$batch, $requirement]), terminalReportPayload([
         'program_description' => ['venue' => 'TESDA Complex, Taguig'],
     ]));
 
-    $submission->refresh();
-    expect($submission->status)->toBe('Pending')
-        ->and($submission->file_path)->not->toBe($firstPath)
-        ->and(TerminalReport::count())->toBe(1)
-        ->and(TerminalReport::first()->program_description['venue'])->toBe('TESDA Complex, Taguig');
-    Storage::disk('public')->assertMissing($firstPath);
+    $report = TerminalReport::first();
+    expect(TerminalReport::count())->toBe(1)
+        ->and($report->program_description['venue'])->toBe('TESDA Complex, Taguig')
+        ->and($report->generated_pdf_path)->not->toBe($firstDraft)
+        ->and($signedCopy->fresh()->status)->toBe('Rejected')
+        ->and($signedCopy->fresh()->file_path)->toBe('submissions/signed.pdf');
+    Storage::disk('public')->assertMissing($firstDraft);
+
+    $this->actingAs($user)
+        ->get(route('programs.terminal-report.generated', [$batch, $requirement]))
+        ->assertInertia(fn (Assert $page) => $page->where('signedCopy.older_than_draft', true));
 });
 
 test('an approved report can no longer be edited', function () {
@@ -320,42 +349,58 @@ test('absent participants cannot submit the report', function () {
     $this->actingAs($user)->get(route('programs.terminal-report.edit', [$batch, $requirement]))->assertForbidden();
 });
 
-test('after submitting, the confirmation page shows the generated PDF', function () {
+test('after generating, the page shows the unsigned PDF and asks for the signed copy', function () {
     ['user' => $user, 'batch' => $batch, 'participant' => $participant] = terminalReportSetup('EMP-TR-15');
     $requirement = terminalReportRequirement($batch, 'REAP');
 
     $this->actingAs($user)->put(route('programs.terminal-report.update', [$batch, $requirement]), terminalReportPayload(reentryPlanPayload()));
-    $submission = Submission::where('participant_id', $participant->id)->first();
+    $report = TerminalReport::where('participant_id', $participant->id)->first();
 
     $this->actingAs($user)
-        ->get(route('programs.terminal-report.submitted', [$batch, $requirement]))
+        ->get(route('programs.terminal-report.generated', [$batch, $requirement]))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('MyPrograms/TerminalReportSubmitted')
-            ->where('pdfUrl', '/storage/'.$submission->file_path)
-            ->where('status', 'Pending')
+            ->component('MyPrograms/TerminalReportGenerated')
+            ->where('pdfUrl', '/storage/'.$report->generated_pdf_path)
+            ->where('signedCopy', null)
             ->where('activitiesCount', 1)
             ->where('canEdit', true)
         );
 });
 
-test('the confirmation page sends participants to the form when nothing was submitted yet', function () {
+test('the generated page sends participants to the form when nothing was generated yet', function () {
     ['user' => $user, 'batch' => $batch] = terminalReportSetup('EMP-TR-16');
     $requirement = terminalReportRequirement($batch, 'TREAP');
 
     $this->actingAs($user)
-        ->get(route('programs.terminal-report.submitted', [$batch, $requirement]))
+        ->get(route('programs.terminal-report.generated', [$batch, $requirement]))
         ->assertRedirect(route('programs.terminal-report.edit', [$batch, $requirement]));
 });
 
-test('an approved report can still be viewed on the confirmation page but not edited', function () {
+test('an approved report can still be viewed on the generated page but not edited', function () {
     ['user' => $user, 'batch' => $batch, 'participant' => $participant] = terminalReportSetup('EMP-TR-17');
     $requirement = terminalReportRequirement($batch, 'TREAP');
     $this->actingAs($user)->put(route('programs.terminal-report.update', [$batch, $requirement]), terminalReportPayload());
-    Submission::where('participant_id', $participant->id)->update(['status' => 'Approved']);
+    Submission::create([
+        'participant_id' => $participant->id, 'program_code' => $batch->program_code, 'batch_id' => $batch->id,
+        'requirement_id' => $requirement->id, 'status' => 'Approved', 'file_path' => 'submissions/signed.pdf', 'submitted_at' => now(),
+    ]);
 
     $this->actingAs($user)
-        ->get(route('programs.terminal-report.submitted', [$batch, $requirement]))
+        ->get(route('programs.terminal-report.generated', [$batch, $requirement]))
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->where('canEdit', false));
+        ->assertInertia(fn (Assert $page) => $page->where('canEdit', false)->where('signedCopy.status', 'Approved'));
+});
+
+test('the program page tells participants to sign and upload a generated report', function () {
+    ['user' => $user, 'batch' => $batch] = terminalReportSetup('EMP-TR-19');
+    $requirement = terminalReportRequirement($batch, 'TREAP');
+    $this->actingAs($user)->put(route('programs.terminal-report.update', [$batch, $requirement]), terminalReportPayload());
+
+    $this->actingAs($user)
+        ->get(route('programs.my-progress', $batch))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('program.requirements.0.report_generated', true)
+            ->where('program.requirements.0.status', null)
+        );
 });

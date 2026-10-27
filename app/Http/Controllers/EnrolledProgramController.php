@@ -344,11 +344,16 @@ class EnrolledProgramController extends Controller
         $program = $batch->program;
         $requirements = $batch->requirements;
         $submissions = $participant->submissions->keyBy('requirement_id');
+        // TREAP / REAP reports generated from the online form (unsigned until the signed copy is uploaded).
+        $generatedReports = $withRequirements
+            ? $participant->terminalReports->whereNotNull('generated_pdf_path')->keyBy('requirement_id')
+            : collect();
 
-        $reqList = $requirements->map(function ($req) use ($submissions) {
+        $reqList = $requirements->map(function ($req) use ($submissions, $generatedReports) {
             $sub = $submissions->get($req->id);
 
             return [
+                'report_generated' => $generatedReports->has($req->id),
                 'id' => $req->id,
                 'title' => $req->title,
                 'name' => $req->name,

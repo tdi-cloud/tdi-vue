@@ -28,6 +28,7 @@ class TerminalReport extends Model
         'reap_objectives',
         'prepared_by',
         'approved_by',
+        'generated_pdf_path',
         'generated_at',
     ];
 

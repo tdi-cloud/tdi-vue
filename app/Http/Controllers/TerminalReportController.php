@@ -5,11 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\ActionPlanActivity;
 use App\Models\Batch;
 use App\Models\Participant;
-use App\Models\PendingNotification;
 use App\Models\Requirement;
 use App\Models\Submission;
 use App\Models\TerminalReport;
-use App\Notifications\RequirementSubmitted;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -23,7 +21,8 @@ use Inertia\Response;
 /**
  * Lets a participant fill out the Terminal and Re-Entry Action Plan Report
  * Form (TESDA-OP-AS-01-F07) for a TREAP or REAP requirement. Saving the form
- * generates the PDF and submits it as the requirement's file.
+ * generates an unsigned PDF to print and sign; the requirement is only
+ * submitted once the participant uploads the signed copy.
  */
 class TerminalReportController extends Controller
 {
@@ -121,49 +120,49 @@ class TerminalReportController extends Controller
             return $report;
         });
 
-        $submission = $this->submitGeneratedPdf($request, $batch, $requirement, $participant, $report);
-
-        if ($batch->program?->added_by && $batch->program->added_by !== $participant->empcode) {
-            PendingNotification::notifyOrQueue($batch->program->added_by, new RequirementSubmitted($submission));
-        }
-
-        $message = "Your {$requirement->title} report was generated and submitted. Awaiting review.";
-
-        if ($includesReentryPlan) {
-            $message .= ' Remember to submit an implementation report for each activity on or before its target date.';
-        }
+        // The generated PDF is an unsigned draft. It only becomes the requirement
+        // submission once the participant uploads the signed copy.
+        $this->storeGeneratedPdf($report, $participant);
 
         return redirect()
-            ->route('programs.terminal-report.submitted', [$batch, $requirement])
-            ->with('success', $message);
+            ->route('programs.terminal-report.generated', [$batch, $requirement])
+            ->with('success', "Your {$requirement->title} report was generated. Print it, have it signed, then upload the signed copy to submit it.");
     }
 
     /**
-     * GET .../terminal-report/submitted
+     * GET .../terminal-report/generated
      *
-     * Confirmation page shown right after Generate & Submit, with the
-     * generated PDF displayed so the participant can check it immediately.
+     * Shown right after generating: the unsigned PDF to print and sign, and
+     * the place to upload the signed copy, which is what gets submitted.
      */
-    public function submitted(Request $request, Batch $batch, Requirement $requirement): Response|RedirectResponse
+    public function generated(Request $request, Batch $batch, Requirement $requirement): Response|RedirectResponse
     {
         $participant = $this->ownParticipant($request, $batch, $requirement, forEditing: false);
         $report = $this->existingReport($participant, $requirement);
-        $submission = $this->existingSubmission($participant, $requirement);
 
-        if (! $report || ! $submission?->file_path) {
+        if (! $report?->generated_pdf_path) {
             return redirect()->route('programs.terminal-report.edit', [$batch, $requirement]);
         }
 
-        return Inertia::render('MyPrograms/TerminalReportSubmitted', [
+        $signedCopy = $this->existingSubmission($participant, $requirement);
+
+        return Inertia::render('MyPrograms/TerminalReportGenerated', [
             'batchId' => $batch->id,
             'requirement' => ['id' => $requirement->id, 'title' => $requirement->title, 'name' => $requirement->name],
             'program' => ['title' => $batch->program?->title, 'batch_label' => $batch->batch],
-            'pdfUrl' => '/storage/'.$submission->file_path,
-            'pdfName' => basename($submission->file_path),
-            'status' => $submission->status,
-            'submittedAt' => $submission->submitted_at?->toIso8601String(),
+            'pdfUrl' => '/storage/'.$report->generated_pdf_path,
+            'pdfName' => basename($report->generated_pdf_path),
+            'generatedAt' => $report->generated_at?->toIso8601String(),
+            'signedCopy' => $signedCopy?->file_path ? [
+                'status' => $signedCopy->status,
+                'remarks' => $signedCopy->remarks,
+                'file_url' => '/storage/'.$signedCopy->file_path,
+                'submitted_at' => $signedCopy->submitted_at?->toIso8601String(),
+                // Uploaded before the latest regeneration, so it may not match the current form.
+                'older_than_draft' => $report->generated_at && $signedCopy->submitted_at?->lt($report->generated_at),
+            ] : null,
             'activitiesCount' => $report->activities()->count(),
-            'canEdit' => $submission->status !== 'Approved' && $participant->attendance !== 'Absent',
+            'canEdit' => $signedCopy?->status !== 'Approved' && $participant->attendance !== 'Absent',
         ]);
     }
 
@@ -422,35 +421,22 @@ class TerminalReportController extends Controller
     }
 
     /**
-     * Render the form as a PDF and store it as the requirement's submission,
-     * replacing any earlier file and sending it back for review.
+     * Render the form as an unsigned PDF and keep it on the report, replacing
+     * the previous draft. It is not a submission: the participant prints it,
+     * has it signed, and uploads the signed copy as the requirement.
      */
-    private function submitGeneratedPdf(Request $request, Batch $batch, Requirement $requirement, Participant $participant, TerminalReport $report): Submission
+    private function storeGeneratedPdf(TerminalReport $report, Participant $participant): void
     {
         $pdf = Pdf::loadView('pdf.terminal-report', ['report' => $report])->setPaper('a4', 'portrait');
 
-        $filename = now()->timestamp.'_'.$requirement->title.'_'.Str::slug($report->prepared_by['name'] ?? $participant->empcode, '_').'.pdf';
-        $path = 'submissions/'.$filename;
+        $filename = now()->timestamp.'_'.$report->report_type.'_'.Str::slug($report->prepared_by['name'] ?? $participant->empcode, '_').'_unsigned.pdf';
+        $path = 'terminal-reports/'.$filename;
         Storage::disk('public')->put($path, $pdf->output());
 
-        $existing = $this->existingSubmission($participant, $requirement);
-
-        if ($existing?->file_path && $existing->file_path !== $path) {
-            Storage::disk('public')->delete($existing->file_path);
+        if ($report->generated_pdf_path && $report->generated_pdf_path !== $path) {
+            Storage::disk('public')->delete($report->generated_pdf_path);
         }
 
-        return Submission::updateOrCreate(
-            ['participant_id' => $participant->id, 'requirement_id' => $requirement->id],
-            [
-                'program_code' => $batch->program_code,
-                'batch_id' => $batch->id,
-                'status' => 'Pending',
-                'file_path' => $path,
-                'submitted_at' => now(),
-                'reviewed_at' => null,
-                'reviewed_by' => null,
-                'added_by' => $existing?->added_by ?? $request->user()?->empcode,
-            ]
-        );
+        $report->update(['generated_pdf_path' => $path]);
     }
 }
