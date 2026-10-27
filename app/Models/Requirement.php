@@ -14,6 +14,7 @@ class Requirement extends Model
         'due_date',
         'is_required',
         'note',
+        'added_by',
     ];
 
     protected $casts = [

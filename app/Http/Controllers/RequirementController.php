@@ -48,6 +48,7 @@ class RequirementController extends Controller
                 'due_date' => Requirement::dueDateFor($validated['title'], $batch->date_end),
                 'is_required' => $validated['is_required'] ?? true,
                 'note' => $validated['note'] ?? null,
+                'added_by' => $request->user()->empcode,
             ]);
         }
 

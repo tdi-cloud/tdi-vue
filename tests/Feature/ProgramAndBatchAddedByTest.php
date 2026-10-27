@@ -2,6 +2,7 @@
 
 use App\Models\Batch;
 use App\Models\Program;
+use App\Models\Requirement;
 use App\Models\User;
 
 function addedByTestAdmin(string $empcode): User
@@ -56,4 +57,27 @@ test('creating a batch records the empcode of the admin who added it', function 
 
     $batch = Batch::where('program_code', $program->program_code)->firstOrFail();
     expect($batch->added_by)->toBe('EMP-ADDEDBY-02');
+});
+
+test('adding a requirement records the empcode of the admin who added it', function () {
+    $admin = addedByTestAdmin('EMP-ADDEDBY-03');
+    $program = Program::create(addedByProgramPayload(['added_by' => 'EMP-ADDEDBY-03']));
+    $batch = Batch::create([
+        'program_code' => $program->program_code,
+        'batch' => 'Batch 1',
+        'status' => 'Upcoming',
+        'modality' => 'Onsite',
+        'date_start' => now()->addDays(5)->toDateString(),
+        'date_end' => now()->addDays(6)->toDateString(),
+        'time_start' => '08:00',
+        'time_end' => '17:00',
+        'days' => '2',
+        'hours' => '16',
+    ]);
+
+    $this->actingAs($admin)
+        ->post(route('programs.requirements.store', $program), ['title' => 'TREAP', 'is_required' => true])
+        ->assertSessionDoesntHaveErrors();
+
+    expect(Requirement::where('batch_id', $batch->id)->value('added_by'))->toBe('EMP-ADDEDBY-03');
 });

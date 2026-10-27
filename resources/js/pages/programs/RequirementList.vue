@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useConfirm } from '@/composables/useConfirm';
 import { router, useForm } from '@inertiajs/vue3';
-import { BadgeCheck, CalendarClock, ClipboardList, LoaderCircle, Pencil, Plus, Save, StickyNote, Trash2 } from 'lucide-vue-next';
+import { BadgeCheck, CalendarClock, ClipboardList, LoaderCircle, Pencil, Plus, Save, StickyNote, Trash2, UserCog } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 const { confirmDialog } = useConfirm();
@@ -21,6 +21,7 @@ interface Requirement {
     due_date: string;
     is_required: boolean | number;
     note: string | null;
+    added_by: string | null;
 }
 
 interface Batch {
@@ -291,6 +292,11 @@ const removeRequirement = async (requirement: Requirement) => {
                                 Due <span class="font-semibold text-foreground">{{ formatDate(r.due_date) }}</span>
                             </p>
 
+                            <p v-if="r.added_by" class="flex items-center gap-1 text-xs text-muted-foreground">
+                                <UserCog class="h-3.5 w-3.5 shrink-0" />
+                                Added by <span class="font-semibold text-foreground">{{ r.added_by }}</span>
+                            </p>
+
                             <p v-if="r.note" class="flex items-start gap-1 border-t pt-2 text-xs text-muted-foreground">
                                 <StickyNote class="mt-0.5 h-3.5 w-3.5 shrink-0" />
                                 <span class="leading-snug">{{ r.note }}</span>
@@ -457,7 +463,8 @@ const removeRequirement = async (requirement: Requirement) => {
                     <DialogDescription class="text-xs text-muted-foreground">
                         Changes apply only to
                         <span class="font-semibold">{{ editingRequirement?.title }}</span>
-                        of <span class="font-semibold">{{ editingBatchName }}</span>.
+                        of <span class="font-semibold">{{ editingBatchName }}</span
+                        >.
                     </DialogDescription>
                 </DialogHeader>
 
