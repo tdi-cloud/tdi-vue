@@ -274,105 +274,124 @@
                     </div>
 
                     <div class="reqs__list">
-                        <div
-                            v-for="r in program.requirements"
-                            :id="`req-${r.id}`"
-                            :key="r.id"
-                            class="req-card"
-                            :class="{ 'req-card--missing': !r.status && r.is_required }"
-                        >
-                            <div class="req-card__top">
-                                <component :is="reqIcon(r.status)" :size="22" :class="reqIconClass(r.status)" class="req-card__icon" />
-                                <div class="req-card__main">
-                                    <div class="req-card__title">{{ r.name }}</div>
-                                    <div class="req-card__meta">
-                                        Due {{ formatDate(r.due_date) }}
-                                        <span v-if="!r.is_required" class="req-row__optional">&middot; Optional</span>
-                                    </div>
-                                </div>
-                                <span class="req-badge" :class="reqBadgeClass(r.status)">{{ statusLabel(r.status) }}</span>
-                            </div>
-
+                        <template v-for="r in program.requirements" :key="r.id">
+                            <!-- TREAP / REAP: the online form gets its own card, separate from the PDF submission below -->
                             <Link
                                 v-if="usesReportForm(r) && r.status !== 'Approved' && program.attendance !== 'Absent'"
                                 :href="route('programs.terminal-report.edit', { batch: program.batch_id, requirement: r.id })"
-                                class="report-form-cta"
+                                class="form-card"
                             >
-                                <span class="report-form-cta__icon"><ClipboardPen :size="20" /></span>
-                                <span class="report-form-cta__text">
-                                    <strong>{{ r.file_url ? 'Update your Terminal Report' : 'Submit your Terminal Report' }}</strong>
-                                    <span>
-                                        Fill out the {{ r.title }} form online — program details are already filled in, and we'll generate and submit
-                                        the PDF for you.
+                                <span class="form-card__glow form-card__glow--one"></span>
+                                <span class="form-card__glow form-card__glow--two"></span>
+
+                                <span class="form-card__body">
+                                    <span class="form-card__eyebrow">
+                                        <Sparkles :size="13" /> {{ r.title }} &middot; Online Form
+                                        <span v-if="r.status === 'Rejected'" class="form-card__flag">Revision needed</span>
+                                    </span>
+                                    <span class="form-card__title">
+                                        {{ r.file_url ? 'Update your Terminal Report' : 'Fill out your Terminal Report' }}
+                                    </span>
+                                    <span class="form-card__text">
+                                        No need to prepare the document yourself — answer a few guided steps and we'll generate the official
+                                        TESDA-OP-AS-01-F07 PDF and submit it for you.
+                                    </span>
+
+                                    <span class="form-card__steps">
+                                        <span class="form-card__step"><CheckCircle2 :size="14" /> Program details auto-filled</span>
+                                        <span class="form-card__step"
+                                            ><CheckCircle2 :size="14" />
+                                            {{ r.title === 'REAP' ? 'Re-Entry Action Plan' : 'Optional Re-Entry Plan' }}</span
+                                        >
+                                        <span class="form-card__step"><CheckCircle2 :size="14" /> PDF generated &amp; submitted</span>
                                     </span>
                                 </span>
-                                <span class="report-form-cta__btn">{{ r.file_url ? 'Update Form' : 'Fill Out Form' }} <ArrowRight :size="14" /></span>
+
+                                <span class="form-card__side">
+                                    <span class="form-card__icon"><ClipboardPen :size="30" /></span>
+                                    <span class="form-card__btn">{{ r.file_url ? 'Update Form' : 'Fill Out Form' }} <ArrowRight :size="16" /></span>
+                                    <span class="form-card__due"><CalendarDays :size="12" /> Due {{ formatDate(r.due_date) }}</span>
+                                </span>
                             </Link>
 
-                            <div v-if="r.status === 'Rejected' && r.remarks" class="req-row__remarks">
-                                <strong>Reviewer note:</strong> {{ r.remarks }}
-                            </div>
-                            <div v-if="r.notes && expandedRequirement !== r.id" class="req-row__notes-readonly">
-                                <strong>Your note:</strong> {{ r.notes }}
-                            </div>
+                            <div :id="`req-${r.id}`" class="req-card" :class="{ 'req-card--missing': !r.status && r.is_required }">
+                                <div class="req-card__top">
+                                    <component :is="reqIcon(r.status)" :size="22" :class="reqIconClass(r.status)" class="req-card__icon" />
+                                    <div class="req-card__main">
+                                        <div class="req-card__title">{{ r.name }}</div>
+                                        <div class="req-card__meta">
+                                            Due {{ formatDate(r.due_date) }}
+                                            <span v-if="!r.is_required" class="req-row__optional">&middot; Optional</span>
+                                        </div>
+                                    </div>
+                                    <span class="req-badge" :class="reqBadgeClass(r.status)">{{ statusLabel(r.status) }}</span>
+                                </div>
 
-                            <div class="req-card__bottom">
-                                <div v-if="r.file_url" class="req-card__file">
-                                    <FileText :size="14" />
-                                    <span>{{ r.file_name }}</span>
-                                    <span v-if="r.submitted_at" class="req-card__submitted">Submitted {{ formatDate(r.submitted_at) }}</span>
+                                <div v-if="r.status === 'Rejected' && r.remarks" class="req-row__remarks">
+                                    <strong>Reviewer note:</strong> {{ r.remarks }}
                                 </div>
-                                <div v-else class="req-card__file req-card__file--empty">No file submitted yet</div>
+                                <div v-if="r.notes && expandedRequirement !== r.id" class="req-row__notes-readonly">
+                                    <strong>Your note:</strong> {{ r.notes }}
+                                </div>
 
-                                <div class="req-card__actions">
-                                    <a v-if="r.file_url" :href="r.file_url" target="_blank" rel="noopener" class="req-btn req-btn--ghost">
-                                        View Submission
-                                    </a>
-                                    <button
-                                        v-if="r.status !== 'Approved' && program.attendance !== 'Absent'"
-                                        type="button"
-                                        class="req-btn"
-                                        :class="usesReportForm(r) ? 'req-btn--ghost' : 'req-btn--primary'"
-                                        @click="toggleRequirementExpand(r.id)"
-                                    >
-                                        {{ usesReportForm(r) ? 'Upload a file instead' : r.file_url ? 'Replace File' : 'Submit Requirement' }}
-                                        <ChevronDown :size="14" :class="{ 'rotate-180': expandedRequirement === r.id }" />
-                                    </button>
+                                <div class="req-card__bottom">
+                                    <div v-if="r.file_url" class="req-card__file">
+                                        <FileText :size="14" />
+                                        <span>{{ r.file_name }}</span>
+                                        <span v-if="r.submitted_at" class="req-card__submitted">Submitted {{ formatDate(r.submitted_at) }}</span>
+                                    </div>
+                                    <div v-else class="req-card__file req-card__file--empty">No file submitted yet</div>
+
+                                    <div class="req-card__actions">
+                                        <a v-if="r.file_url" :href="r.file_url" target="_blank" rel="noopener" class="req-btn req-btn--ghost">
+                                            View Submission
+                                        </a>
+                                        <button
+                                            v-if="r.status !== 'Approved' && program.attendance !== 'Absent'"
+                                            type="button"
+                                            class="req-btn"
+                                            :class="usesReportForm(r) ? 'req-btn--ghost' : 'req-btn--primary'"
+                                            @click="toggleRequirementExpand(r.id)"
+                                        >
+                                            {{ usesReportForm(r) ? 'Upload a file instead' : r.file_url ? 'Replace File' : 'Submit Requirement' }}
+                                            <ChevronDown :size="14" :class="{ 'rotate-180': expandedRequirement === r.id }" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div
+                                    v-if="expandedRequirement === r.id && r.status !== 'Approved' && program.attendance !== 'Absent'"
+                                    class="req-card__expand"
+                                >
+                                    <div v-if="r.file_url" class="req-row__file">
+                                        <a :href="r.file_url" target="_blank" rel="noopener" class="file-link"
+                                            ><FileText :size="14" /> {{ r.file_name }}</a
+                                        >
+                                        <button type="button" class="delete-btn" :disabled="deletingId === r.id" @click="confirmDelete(r)">
+                                            <Trash2 :size="13" /> {{ deletingId === r.id ? 'Deleting…' : 'Delete' }}
+                                        </button>
+                                    </div>
+                                    <form class="req-row__upload" @submit.prevent="submitFile(r)">
+                                        <label class="upload-input">
+                                            <UploadCloud :size="14" />
+                                            <span>{{ selectedFile[r.id]?.name || (r.file_url ? 'Replace file (PDF)' : 'Choose PDF file') }}</span>
+                                            <input type="file" accept="application/pdf" @change="onFileChange($event, r.id)" />
+                                        </label>
+                                        <button
+                                            type="submit"
+                                            class="upload-btn"
+                                            :disabled="(!selectedFile[r.id] && noteDraft[r.id] === (r.notes || '')) || uploadingId === r.id"
+                                        >
+                                            {{ uploadingId === r.id ? 'Saving…' : r.file_url ? 'Save Changes' : 'Submit' }}
+                                        </button>
+                                    </form>
+                                    <div class="req-row__notes">
+                                        <textarea v-model="noteDraft[r.id]" placeholder="Add a note for the reviewer (optional)…" rows="2"></textarea>
+                                    </div>
+                                    <div v-if="fileError[r.id]" class="req-row__error">{{ fileError[r.id] }}</div>
                                 </div>
                             </div>
-
-                            <div
-                                v-if="expandedRequirement === r.id && r.status !== 'Approved' && program.attendance !== 'Absent'"
-                                class="req-card__expand"
-                            >
-                                <div v-if="r.file_url" class="req-row__file">
-                                    <a :href="r.file_url" target="_blank" rel="noopener" class="file-link"
-                                        ><FileText :size="14" /> {{ r.file_name }}</a
-                                    >
-                                    <button type="button" class="delete-btn" :disabled="deletingId === r.id" @click="confirmDelete(r)">
-                                        <Trash2 :size="13" /> {{ deletingId === r.id ? 'Deleting…' : 'Delete' }}
-                                    </button>
-                                </div>
-                                <form class="req-row__upload" @submit.prevent="submitFile(r)">
-                                    <label class="upload-input">
-                                        <UploadCloud :size="14" />
-                                        <span>{{ selectedFile[r.id]?.name || (r.file_url ? 'Replace file (PDF)' : 'Choose PDF file') }}</span>
-                                        <input type="file" accept="application/pdf" @change="onFileChange($event, r.id)" />
-                                    </label>
-                                    <button
-                                        type="submit"
-                                        class="upload-btn"
-                                        :disabled="(!selectedFile[r.id] && noteDraft[r.id] === (r.notes || '')) || uploadingId === r.id"
-                                    >
-                                        {{ uploadingId === r.id ? 'Saving…' : r.file_url ? 'Save Changes' : 'Submit' }}
-                                    </button>
-                                </form>
-                                <div class="req-row__notes">
-                                    <textarea v-model="noteDraft[r.id]" placeholder="Add a note for the reviewer (optional)…" rows="2"></textarea>
-                                </div>
-                                <div v-if="fileError[r.id]" class="req-row__error">{{ fileError[r.id] }}</div>
-                            </div>
-                        </div>
+                        </template>
                         <div v-if="!program.requirements.length" class="reqs__empty">
                             <CheckCircle2 :size="18" /> No requirements have been set for this batch yet.
                         </div>
@@ -2107,74 +2126,175 @@ a.next-action__btn {
 .req-btn--primary:hover {
     background: #1535a8;
 }
-/* TREAP / REAP online form call-to-action */
-.report-form-cta {
+
+/* TREAP / REAP online form — its own premium card, above the requirement's submission card */
+.form-card {
+    position: relative;
     display: flex;
-    align-items: center;
-    gap: 0.9rem;
-    margin-top: 0.9rem;
-    padding: 0.9rem 1rem;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #eef1fc 0%, #f5f0ff 100%);
-    border: 1px solid #dde4fb;
-    color: var(--tdi-navy);
+    align-items: stretch;
+    gap: 1.5rem;
+    overflow: hidden;
+    padding: 1.6rem 1.75rem;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #0f1c48 0%, #1d3fc4 55%, #6d28d9 100%);
+    color: #fff;
     text-decoration: none;
+    box-shadow:
+        0 14px 34px -12px rgba(29, 63, 196, 0.55),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
     transition:
-        border-color 0.15s,
-        box-shadow 0.15s,
-        transform 0.15s;
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
 }
-.report-form-cta:hover {
-    border-color: var(--tdi-blue);
-    box-shadow: 0 6px 18px rgba(29, 63, 196, 0.12);
-    transform: translateY(-1px);
+.form-card:hover {
+    transform: translateY(-3px);
+    box-shadow:
+        0 20px 44px -12px rgba(29, 63, 196, 0.65),
+        inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
-.report-form-cta__icon {
+.form-card__glow {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    filter: blur(2px);
+}
+.form-card__glow--one {
+    top: -70px;
+    right: -50px;
+    width: 220px;
+    height: 220px;
+    background: radial-gradient(circle, rgba(167, 139, 250, 0.45) 0%, transparent 70%);
+}
+.form-card__glow--two {
+    bottom: -90px;
+    left: 30%;
+    width: 240px;
+    height: 240px;
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.25) 0%, transparent 70%);
+}
+.form-card__body {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    flex: 1;
+    min-width: 0;
+}
+.form-card__eyebrow {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #c7d2fe;
+}
+.form-card__flag {
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    background: #fb923c;
+    color: #fff;
+    letter-spacing: 0.02em;
+}
+.form-card__title {
+    font-size: 1.35rem;
+    font-weight: 800;
+    line-height: 1.2;
+}
+.form-card__text {
+    max-width: 34rem;
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: rgba(255, 255, 255, 0.82);
+}
+.form-card__steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+}
+.form-card__step {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: #e0e7ff;
+    backdrop-filter: blur(4px);
+}
+.form-card__step svg {
+    color: #6ee7b7;
+}
+.form-card__side {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8rem;
+    flex-shrink: 0;
+}
+.form-card__icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 42px;
-    height: 42px;
-    flex-shrink: 0;
-    border-radius: 11px;
-    background: var(--tdi-blue);
-    color: #fff;
+    width: 64px;
+    height: 64px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.14);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+    backdrop-filter: blur(6px);
 }
-.report-form-cta__text {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-    min-width: 0;
-    flex: 1;
-    font-size: 0.82rem;
-    color: #4b5563;
+.form-card__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.7rem 1.3rem;
+    border-radius: 12px;
+    background: #fff;
+    color: #1d3fc4;
+    font-size: 0.88rem;
+    font-weight: 800;
+    white-space: nowrap;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+    transition: transform 0.2s ease;
 }
-.report-form-cta__text strong {
-    font-size: 0.92rem;
-    color: var(--tdi-navy);
+.form-card:hover .form-card__btn {
+    transform: translateX(3px);
 }
-.report-form-cta__btn {
+.form-card__due {
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
-    flex-shrink: 0;
-    padding: 0.5rem 0.9rem;
-    border-radius: 8px;
-    background: var(--tdi-blue);
-    color: #fff;
-    font-size: 0.78rem;
-    font-weight: 700;
-    white-space: nowrap;
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.7);
 }
 @media (max-width: 640px) {
-    .report-form-cta {
-        flex-wrap: wrap;
+    .form-card {
+        flex-direction: column;
+        padding: 1.3rem;
     }
-    .report-form-cta__btn {
-        width: 100%;
+    .form-card__side {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: space-between;
+    }
+    .form-card__icon {
+        display: none;
+    }
+    .form-card__btn {
+        flex: 1;
         justify-content: center;
     }
 }
+
 .req-card__expand {
     margin-top: 0.9rem;
     padding-top: 0.9rem;
