@@ -27,9 +27,7 @@
                         <CalendarDays :size="12" /> Due {{ formatDate(requirement.due_date) }}
                     </span>
                 </div>
-                <h1 class="mt-3 text-2xl font-extrabold text-white sm:text-3xl">
-                    {{ reentryPlanRequired ? 'Terminal Report & Re-Entry Action Plan' : 'Terminal Report' }}
-                </h1>
+                <h1 class="mt-3 text-xl font-extrabold tracking-wide text-white sm:text-2xl">TERMINAL AND RE-ENTRY ACTION PLAN (REAP) REPORT FORM</h1>
                 <p class="mt-2 max-w-2xl text-sm text-white/75">
                     {{ program.title }} <span v-if="program.batch_label">· {{ program.batch_label }}</span>
                 </p>
