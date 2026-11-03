@@ -13,7 +13,7 @@ function globalSubIndexAdmin(string $empcode): User
     return User::factory()->create(['empcode' => $empcode, 'access' => 'admin']);
 }
 
-function globalSubIndexEmployee(string $empcode, string $lastname): Employee
+function globalSubIndexEmployee(string $empcode, string $lastname, string $region = 'NCR'): Employee
 {
     return Employee::forceCreate([
         'EMPCODE' => $empcode,
@@ -25,7 +25,7 @@ function globalSubIndexEmployee(string $empcode, string $lastname): Employee
         'SG' => '10',
         'PLANTILLA STATUS' => 'Permanent',
         'SEX' => 'M',
-        'REGION' => 'NCR',
+        'REGION' => $region,
         'OFFICE' => 'Test Office',
         'LOCATION' => 'Main',
         'SECTION' => 'Test Section',
@@ -212,4 +212,25 @@ test('a misspelled submissions search with no results suggests the closest known
 
     $exact = $this->actingAs($admin)->get(route('submissions.index', ['search' => 'Fernandez']));
     expect($exact->inertiaProps('suggestion'))->toBeNull();
+});
+
+test('region filter narrows the global submissions list to employees of one region', function () {
+    $admin = globalSubIndexAdmin('EMP-GSI-ADM-RG');
+    [$program, $batch, $requirement] = globalSubIndexSetup('Global Submissions Region Filter Program');
+
+    $empNcr = globalSubIndexEmployee('EMP-GSI-RG-01', 'Mendoza', 'NCR');
+    $empVii = globalSubIndexEmployee('EMP-GSI-RG-02', 'Aquino', 'Region VII');
+
+    globalSubIndexSubmission($program, $batch, $requirement, $empNcr->EMPCODE, 'Pending');
+    globalSubIndexSubmission($program, $batch, $requirement, $empVii->EMPCODE, 'Pending');
+
+    $response = $this->actingAs($admin)->get(route('submissions.index', ['region' => 'Region VII']));
+    $response->assertOk();
+
+    $data = collect($response->inertiaProps('submissions')['data']);
+    expect($data)->toHaveCount(1);
+    expect($data->first()['participant']['empcode'])->toBe($empVii->EMPCODE);
+    expect($response->inertiaProps('regions'))->toContain('NCR', 'Region VII');
+    expect($response->inertiaProps('filters.region'))->toBe('Region VII');
+    expect($response->inertiaProps('approvablePendingCount'))->toBe(1);
 });

@@ -59,7 +59,7 @@ function approveAllBatch(Program $program, string $label): array
     return [$batch, $requirement];
 }
 
-function approveAllSubmission(Program $program, Batch $batch, Requirement $requirement, string $empcode, string $status): Submission
+function approveAllSubmission(Program $program, Batch $batch, Requirement $requirement, string $empcode, string $status, string $region = 'NCR'): Submission
 {
     Employee::forceCreate([
         'EMPCODE' => $empcode,
@@ -71,7 +71,7 @@ function approveAllSubmission(Program $program, Batch $batch, Requirement $requi
         'SG' => '10',
         'PLANTILLA STATUS' => 'Permanent',
         'SEX' => 'M',
-        'REGION' => 'NCR',
+        'REGION' => $region,
         'OFFICE' => 'Test Office',
         'LOCATION' => 'Main',
         'SECTION' => 'Test Section',
@@ -215,6 +215,22 @@ test('the superadmin approve all follows the program filter', function () {
 
     expect($pendingA->fresh()->status)->toBe('Approved');
     expect($pendingB->fresh()->status)->toBe('Pending');
+});
+
+test('the superadmin approve all follows the region filter', function () {
+    $superadmin = approveAllUser('superadmin');
+    $program = approveAllProgram('Program A');
+    [$batch, $requirement] = approveAllBatch($program, 'Batch 1');
+    $pendingNcr = approveAllSubmission($program, $batch, $requirement, 'EMP-AA-R1', 'Pending', 'NCR');
+    $pendingVii = approveAllSubmission($program, $batch, $requirement, 'EMP-AA-R2', 'Pending', 'Region VII');
+
+    $this->actingAs($superadmin)
+        ->post(route('submissions.approve-all'), ['region' => 'Region VII'])
+        ->assertRedirect()
+        ->assertSessionHas('success.title', '1 submission(s) approved');
+
+    expect($pendingVii->fresh()->status)->toBe('Approved');
+    expect($pendingNcr->fresh()->status)->toBe('Pending');
 });
 
 test('an admin cannot use approve all on the global submissions page', function () {

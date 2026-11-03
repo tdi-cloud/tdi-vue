@@ -103,15 +103,18 @@ interface PaginatedSubmissions {
 const props = defineProps<{
     submissions: PaginatedSubmissions;
     programs: ProgramRef[];
+    // Distinct employee regions (REGION column) for the region filter.
+    regions: string[];
     stats?: { total: number; pending: number; approved: number; rejected: number };
     filters: {
         status?: string;
         program_code?: string;
+        region?: string;
         search?: string;
     };
     // Superadmin only — "Approve all" here spans every program.
     canApproveAll: boolean;
-    // Pending submissions matching the current program/search filters.
+    // Pending submissions matching the current program/region/search filters.
     approvablePendingCount: number;
     // "Did you mean …?" when a search finds nothing (server-side SearchSuggester).
     suggestion?: string | null;
@@ -123,11 +126,13 @@ const STATUSES = ['Pending', 'Approved', 'Rejected'];
 
 const search = ref(props.filters.search ?? '');
 const filterProgram = ref(props.filters.program_code || 'all');
+const filterRegion = ref(props.filters.region || 'all');
 const filterStatus = ref(props.filters.status || 'all');
 
 const clearFilters = () => {
     search.value = '';
     filterProgram.value = 'all';
+    filterRegion.value = 'all';
     filterStatus.value = 'all';
 };
 
@@ -137,6 +142,7 @@ const applyFilters = () => {
         {
             search: search.value || undefined,
             program_code: filterProgram.value === 'all' ? undefined : filterProgram.value,
+            region: filterRegion.value === 'all' ? undefined : filterRegion.value,
             status: filterStatus.value === 'all' ? undefined : filterStatus.value,
         },
         { preserveScroll: true, preserveState: true, replace: true },
@@ -144,7 +150,7 @@ const applyFilters = () => {
 };
 
 let debounce: ReturnType<typeof setTimeout>;
-watch([search, filterProgram, filterStatus], () => {
+watch([search, filterProgram, filterRegion, filterStatus], () => {
     clearTimeout(debounce);
     debounce = setTimeout(applyFilters, 350);
 });
@@ -277,8 +283,9 @@ const approveAll = async () => {
     if (!count) return;
     const programTitle = props.programs.find((p) => p.program_code === filterProgram.value)?.title;
     const scope = programTitle ? `of "${programTitle}"` : 'across all programs';
+    const regionScope = filterRegion.value === 'all' ? '' : ` in ${filterRegion.value}`;
     const confirmed = await confirmDialog(
-        `Approve all ${count} pending submission(s) ${scope}${search.value ? ' that match your search' : ''}? Rejected submissions will not be changed.`,
+        `Approve all ${count} pending submission(s) ${scope}${regionScope}${search.value ? ' that match your search' : ''}? Rejected submissions will not be changed.`,
         { title: 'Approve all pending submissions?', confirmText: 'Approve all' },
     );
     if (!confirmed) return;
@@ -288,6 +295,7 @@ const approveAll = async () => {
         route('submissions.approve-all'),
         {
             program_code: filterProgram.value === 'all' ? null : filterProgram.value,
+            region: filterRegion.value === 'all' ? null : filterRegion.value,
             search: search.value || null,
         },
         {
@@ -432,7 +440,7 @@ onMounted(() => {
                         </div>
                     </div>
 
-                    <!-- Approve all pending (superadmin only; follows the program + search filters) -->
+                    <!-- Approve all pending (superadmin only; follows the program, region and search filters) -->
                     <Button
                         v-if="canApproveAll"
                         class="h-10 w-full shrink-0 bg-emerald-600 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 focus-visible:ring-emerald-500 dark:bg-emerald-600/90 dark:hover:bg-emerald-600 sm:w-auto"
@@ -453,7 +461,7 @@ onMounted(() => {
 
                 <!-- Filters -->
                 <div
-                    class="grid grid-cols-1 gap-2.5 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_16rem_11rem]"
+                    class="grid grid-cols-1 gap-2.5 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_16rem_11rem_11rem]"
                 >
                     <!-- Search -->
                     <div class="relative sm:col-span-2 lg:col-span-1">
@@ -476,6 +484,17 @@ onMounted(() => {
                             <SelectItem v-for="p in programs" :key="p.id" :value="p.program_code" class="text-xs">
                                 {{ p.title }}
                             </SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    <!-- Region filter -->
+                    <Select v-model="filterRegion">
+                        <SelectTrigger class="h-10 w-full text-sm" aria-label="Filter by region">
+                            <SelectValue placeholder="All regions" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem class="text-xs" value="all">All regions</SelectItem>
+                            <SelectItem v-for="r in regions" :key="r" :value="r" class="text-xs">{{ r }}</SelectItem>
                         </SelectContent>
                     </Select>
 
@@ -526,10 +545,10 @@ onMounted(() => {
                     @clear-filters="clearFilters"
                 />
                 <EmptyState
-                    v-else-if="filterProgram !== 'all' || filterStatus !== 'all'"
+                    v-else-if="filterProgram !== 'all' || filterRegion !== 'all' || filterStatus !== 'all'"
                     variant="filtered"
                     title="No submissions found"
-                    description="Try a different program or status filter."
+                    description="Try a different program, region or status filter."
                     @clear-filters="clearFilters"
                 />
                 <EmptyState

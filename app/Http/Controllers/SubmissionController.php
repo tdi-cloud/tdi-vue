@@ -34,7 +34,8 @@ class SubmissionController extends Controller
         return Inertia::render('Submissions/index', [
             'submissions' => $submissions,
             'programs' => Program::orderBy('title')->get(['id', 'program_code', 'title']),
-            'filters' => $request->only(['status', 'program_code', 'search']),
+            'regions' => Employee::query()->whereNotNull('REGION')->distinct()->orderBy('REGION')->pluck('REGION'),
+            'filters' => $request->only(['status', 'program_code', 'region', 'search']),
             'suggestion' => SearchSuggester::forEmptyResults(
                 $request->string('search'),
                 $submissions->total(),
@@ -215,12 +216,13 @@ class SubmissionController extends Controller
      * POST /submissions/approve-all (superadmins only)
      *
      * Approves every Pending submission across all programs, narrowed by the
-     * same program/search filters the global Submissions page is showing.
+     * same program/region/search filters the global Submissions page is showing.
      */
     public function approveAll(Request $request): RedirectResponse
     {
         $request->validate([
             'program_code' => 'nullable|string',
+            'region' => 'nullable|string',
             'search' => 'nullable|string',
         ]);
 
@@ -234,7 +236,7 @@ class SubmissionController extends Controller
     }
 
     /**
-     * Program + search filters of the global Submissions page — shared by the
+     * Program, region and search filters of the global Submissions page — shared by the
      * list and "Approve all" so the bulk action matches what is shown.
      *
      * @param  Builder<Submission>  $query
@@ -244,6 +246,7 @@ class SubmissionController extends Controller
     {
         return $query
             ->when($request->filled('program_code'), fn ($q) => $q->where('program_code', $request->program_code))
+            ->when($request->filled('region'), fn ($q) => $q->whereHas('participant.employee', fn ($e) => $e->where('REGION', $request->string('region'))))
             ->when($request->filled('search'), function ($q) use ($request) {
                 $search = $request->string('search');
                 $q->where(function ($sub) use ($search) {
