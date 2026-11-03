@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import FilePreviewModal from '@/components/FilePreviewModal.vue';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useNetworkStatus } from '@/composables/useNetworkStatus';
+import { suggestionFrom } from '@/lib/http';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import { AlertTriangle, CheckCircle2, CloudUpload, Eye, FileText, LoaderCircle, Search, Trash2, Upload, X, XCircle } from 'lucide-vue-next';
@@ -46,6 +49,8 @@ interface Row {
     query: string;
     searching: boolean;
     results: TrackedItem[];
+    // "Did you mean …?" from the lookup's X-Search-Suggestion header.
+    suggestion?: string | null;
     showResults: boolean;
     // Isang file ay pwedeng i-file sa DALAWA (o higit pa) na empleyado — hal.
     // may dokumentong dalawa ang "Prepared by", kaya kailangang mag-file bilang
@@ -55,6 +60,8 @@ interface Row {
 
 const rows = ref<Row[]>([]);
 const uploading = ref(false);
+// Files upload one at a time, so the app-wide upload progress belongs to the current row.
+const { uploadPercentage } = useNetworkStatus();
 const isDragging = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
 
@@ -110,6 +117,7 @@ function onQueryInput(row: Row) {
             try {
                 const res = await axios.get(route('requirements-tracker.search'), { params: { q: row.query.trim() } });
                 row.results = res.data;
+                row.suggestion = suggestionFrom(res);
             } finally {
                 row.searching = false;
             }
@@ -192,6 +200,8 @@ async function uploadAll() {
         try {
             await axios.post(route('submissions.store'), formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
+                // Each row shows its own error inline.
+                silentErrors: true,
             });
             a.status = 'done';
         } catch (err: any) {
@@ -292,7 +302,10 @@ function close() {
                                     <span class="font-semibold">{{ a.item.employee_name }}</span> — {{ a.item.requirement_title }} —
                                     {{ a.item.program_title }} ({{ a.item.batch_label }})
                                 </span>
-                                <LoaderCircle v-if="a.status === 'uploading'" class="h-3.5 w-3.5 shrink-0 animate-spin text-blue-600" />
+                                <span v-if="a.status === 'uploading'" class="flex shrink-0 items-center gap-1 text-xs tabular-nums text-blue-600">
+                                    <LoaderCircle class="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                                    {{ uploadPercentage === null ? '' : `${uploadPercentage}%` }}
+                                </span>
                                 <CheckCircle2 v-else-if="a.status === 'done'" class="h-3.5 w-3.5 shrink-0 text-emerald-600" />
                                 <XCircle v-else-if="a.status === 'error'" class="h-3.5 w-3.5 shrink-0 text-red-600" />
                                 <AlertTriangle
@@ -359,15 +372,28 @@ function close() {
                                     class="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-xs transition-colors hover:bg-muted/50"
                                     @click="pickResult(row, item)"
                                 >
-                                    <span class="font-semibold">{{ item.employee_name }} <span class="font-normal text-muted-foreground">({{ item.empcode }})</span></span>
+                                    <span class="font-semibold"
+                                        >{{ item.employee_name }} <span class="font-normal text-muted-foreground">({{ item.empcode }})</span></span
+                                    >
                                     <span class="text-[11px] text-muted-foreground">
                                         {{ item.requirement_title }} — {{ item.program_title }} ({{ item.batch_label }})
                                         <span v-if="item.is_overdue" class="ml-1 font-semibold text-red-500">overdue</span>
                                     </span>
                                 </button>
-                                <p v-if="!row.searching && row.results.length === 0" class="px-3 py-3 text-center text-xs text-muted-foreground">
-                                    No matching missing requirements found.
-                                </p>
+                                <SearchEmptyState
+                                    v-if="!row.searching && row.results.length === 0"
+                                    compact
+                                    :query="row.query"
+                                    :suggestion="row.suggestion"
+                                    description="Check the name, or confirm the requirement is still outstanding."
+                                    @search="
+                                        (term: string) => {
+                                            row.query = term;
+                                            onQueryInput(row);
+                                        }
+                                    "
+                                    @clear-filters="row.query = ''"
+                                />
                             </div>
                         </div>
                     </div>
@@ -378,7 +404,9 @@ function close() {
             <div class="flex shrink-0 flex-col gap-2 border-t px-5 py-3">
                 <p v-if="finished && (doneCount || errorCount)" class="text-xs font-semibold">
                     <span class="text-emerald-600">{{ doneCount }} uploaded</span>
-                    <span v-if="errorCount"> · <span class="text-red-600">{{ errorCount }} failed</span></span>
+                    <span v-if="errorCount">
+                        · <span class="text-red-600">{{ errorCount }} failed</span></span
+                    >
                 </p>
                 <div class="flex justify-end gap-2">
                     <Button variant="outline" size="sm" @click="close">Close</Button>

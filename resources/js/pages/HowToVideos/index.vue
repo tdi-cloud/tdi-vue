@@ -104,21 +104,30 @@
                 </div>
 
                 <div v-else class="empty">
-                    <template v-if="videos.length">
-                        <div class="empty__icon"><SearchX :size="26" /></div>
-                        <h3>No videos found</h3>
-                        <p>Nothing matches “{{ search.trim() }}”. Try a different keyword or browse the full library.</p>
-                        <button type="button" class="btn btn--ghost" @click="clearSearch"><X :size="16" /> Clear search</button>
-                    </template>
-                    <template v-else>
-                        <div class="empty__icon"><Clapperboard :size="26" /></div>
-                        <h3>No how-to videos yet</h3>
-                        <p v-if="canManage">Upload your first recorded walkthrough so admins can learn the system.</p>
-                        <p v-else>Check back soon. Guides on how to use the system will appear here when they're available.</p>
-                        <button v-if="canManage" type="button" class="btn btn--primary" @click="openCreate">
-                            <Upload :size="16" /> Upload video
-                        </button>
-                    </template>
+                    <SearchEmptyState
+                        v-if="videos.length"
+                        :query="search"
+                        :suggestion="
+                            suggestSearch(
+                                search,
+                                videos.flatMap((v) => [v.title, v.description]),
+                            )
+                        "
+                        description="Try a different keyword or browse the full library."
+                        @search="search = $event"
+                        @clear-filters="clearSearch"
+                    />
+                    <EmptyState
+                        v-else
+                        :icon="Clapperboard"
+                        title="No how-to videos yet"
+                        :description="
+                            canManage
+                                ? 'Upload your first recorded walkthrough so admins can learn the system.'
+                                : 'Check back soon. Guides on how to use the system will appear here when they\'re available.'
+                        "
+                        :action="canManage ? { label: 'Upload video', icon: Upload, onClick: openCreate } : undefined"
+                    />
                 </div>
             </section>
         </main>
@@ -214,7 +223,7 @@
                         <button type="button" class="btn btn--ghost" :disabled="form.processing" @click="closeForm">Cancel</button>
                         <button type="submit" class="btn btn--primary" :disabled="form.processing">
                             <Loader2 v-if="form.processing" :size="16" class="spin" />
-                            {{ editingId ? 'Save changes' : 'Upload video' }}
+                            {{ form.processing ? (editingId ? 'Saving…' : 'Uploading…') : editingId ? 'Save changes' : 'Upload video' }}
                         </button>
                     </div>
                 </form>
@@ -224,10 +233,13 @@
 </template>
 
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
 import HowToDocModal from '@/components/HowToDocModal.vue';
 import HowToVideoCard from '@/components/HowToVideoCard.vue';
 import HowToVideoPlayer, { type HowToVideo, type HowToViewCounts } from '@/components/HowToVideoPlayer.vue';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import { useConfirm } from '@/composables/useConfirm';
+import { suggestSearch } from '@/lib/searchSuggestion';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import {
     BookOpenText,
@@ -242,7 +254,6 @@ import {
     Play,
     PlayCircle,
     Search,
-    SearchX,
     Trash2,
     Upload,
     X,

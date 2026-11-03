@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { suggestionFrom } from '@/lib/http';
+import axios from 'axios';
 import { Building2, Calendar, FileText, Loader2, Search, UserRound, X } from 'lucide-vue-next';
-import { computed, ref, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -102,6 +105,12 @@ watch(
 
 // ─── Employee search ─────────────────────────────────────────────────────────
 
+// What each lookup last searched for, and its "Did you mean …?" (X-Search-Suggestion header).
+const lookup = reactive<Record<'prepared' | 'noted', { searched: string; suggestion: string | null }>>({
+    prepared: { searched: '', suggestion: null },
+    noted: { searched: '', suggestion: null },
+});
+
 let preparedDebounce: ReturnType<typeof setTimeout>;
 let notedDebounce: ReturnType<typeof setTimeout>;
 
@@ -116,10 +125,10 @@ async function searchEmployees(q: string, role: 'prepared' | 'noted') {
     else notedLoading.value = true;
 
     try {
-        const res = await fetch(`/employees/search-signatory?q=${encodeURIComponent(q)}`);
-        const data = await res.json();
-        if (role === 'prepared') preparedResults.value = data;
-        else notedResults.value = data;
+        const response = await axios.get('/employees/search-signatory', { params: { q } });
+        if (role === 'prepared') preparedResults.value = response.data;
+        else notedResults.value = response.data;
+        lookup[role] = { searched: q, suggestion: suggestionFrom(response) };
     } finally {
         if (role === 'prepared') preparedLoading.value = false;
         else notedLoading.value = false;
@@ -269,6 +278,18 @@ function generate() {
                                 <p class="text-[11px] text-muted-foreground">{{ emp.position }} · {{ emp.office_division }}</p>
                             </button>
                         </div>
+                        <div
+                            v-else-if="!preparedLoading && lookup.prepared.searched && lookup.prepared.searched === preparedSearch"
+                            class="absolute left-0 right-0 top-full z-20 mt-1 rounded-lg border bg-background shadow-lg"
+                        >
+                            <SearchEmptyState
+                                compact
+                                :query="preparedSearch"
+                                :suggestion="lookup.prepared.suggestion"
+                                @search="preparedSearch = $event"
+                                @clear-filters="preparedSearch = ''"
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -313,6 +334,18 @@ function generate() {
                                 <p class="text-xs font-semibold">{{ emp.name }}</p>
                                 <p class="text-[11px] text-muted-foreground">{{ emp.position }} · {{ emp.office_division }}</p>
                             </button>
+                        </div>
+                        <div
+                            v-else-if="!notedLoading && lookup.noted.searched && lookup.noted.searched === notedSearch"
+                            class="absolute left-0 right-0 top-full z-20 mt-1 rounded-lg border bg-background shadow-lg"
+                        >
+                            <SearchEmptyState
+                                compact
+                                :query="notedSearch"
+                                :suggestion="lookup.noted.suggestion"
+                                @search="notedSearch = $event"
+                                @clear-filters="notedSearch = ''"
+                            />
                         </div>
                     </div>
                 </div>

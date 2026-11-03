@@ -1,5 +1,10 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
+import InlineError from '@/components/InlineError.vue';
+import StatTilesSkeleton from '@/components/skeletons/StatTilesSkeleton.vue';
+import TableRowsSkeleton from '@/components/skeletons/TableRowsSkeleton.vue';
 import { useConfirm } from '@/composables/useConfirm';
+import { httpErrorMessage } from '@/lib/http';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import {
@@ -300,6 +305,7 @@ async function fetchDashboard() {
 
     try {
         const { data } = await axios.get(route('programs.evaluation-dashboard', props.program.id), {
+            silentErrors: true,
             params: { batch_id: filterBatchId.value !== 'all' ? filterBatchId.value : undefined },
             signal: controller.signal,
         });
@@ -312,8 +318,7 @@ async function fetchDashboard() {
         findings.value = data.findings ?? null;
     } catch (err: any) {
         if (axios.isCancel(err) || err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') return;
-        console.error('Evaluation dashboard fetch failed:', err?.response?.data ?? err);
-        errorMsg.value = `Failed to load dashboard data${err?.response?.status ? ` (${err.response.status})` : ''}.`;
+        errorMsg.value = httpErrorMessage(err);
     } finally {
         if (activeController === controller) {
             loading.value = false;
@@ -356,7 +361,7 @@ async function fetchComments(page = 1) {
         commentsPage.value = data;
     } catch (err: any) {
         if (axios.isCancel(err) || err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') return;
-        console.error('Failed to load responses:', err?.response?.data ?? err);
+        // Shown by the app-wide error toast (lib/http.ts).
     } finally {
         if (commentsController === controller) {
             commentsLoading.value = false;
@@ -432,7 +437,7 @@ async function fetchBatchResponses(page = 1) {
         batchPanelData.value = data;
     } catch (err: any) {
         if (axios.isCancel(err) || err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') return;
-        console.error('Failed to load batch responses:', err?.response?.data ?? err);
+        // Shown by the app-wide error toast (lib/http.ts).
     } finally {
         if (batchPanelController === controller) {
             batchPanelLoading.value = false;
@@ -539,16 +544,15 @@ onBeforeUnmount(() => {
             </select>
         </div>
 
-        <div
+        <EmptyState
             v-if="!batchesWithForms.length"
-            class="flex flex-col items-center gap-2 rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground shadow-md"
-        >
-            <Inbox class="h-6 w-6 text-muted-foreground" />
-            No evaluation forms have been set up for any batch in this program yet. Use "Generate" above to create one.
-        </div>
+            :icon="Inbox"
+            title="No evaluation forms yet"
+            description='No evaluation forms have been set up for any batch in this program yet. Use "Generate" above to create one.'
+        />
 
         <template v-else>
-            <p v-if="errorMsg" class="text-center text-xs text-red-600">{{ errorMsg }}</p>
+            <InlineError v-if="errorMsg" :message="errorMsg" :retrying="loading" @retry="fetchDashboard" />
 
             <!-- Stat tiles -->
             <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -603,7 +607,7 @@ onBeforeUnmount(() => {
                         </button>
                     </div>
                     <VueApexCharts v-if="ratedSections.length" type="bar" height="240" :options="sectionBarOptions" :series="sectionBarSeries" />
-                    <p v-else class="py-10 text-center text-xs text-muted-foreground">No rating data yet.</p>
+                    <EmptyState v-else compact title="No rating data yet." />
                 </div>
                 <div class="rounded-xl border p-4 shadow-md">
                     <div class="mb-2 flex items-center justify-between gap-2">
@@ -621,7 +625,7 @@ onBeforeUnmount(() => {
                     <div v-if="avgByFacilitator.length" class="max-h-[260px] overflow-y-auto pr-1">
                         <VueApexCharts type="bar" :height="facilitatorChartHeight" :options="facilitatorBarOptions" :series="facilitatorBarSeries" />
                     </div>
-                    <p v-else class="py-10 text-center text-xs text-muted-foreground">No facilitator ratings yet.</p>
+                    <EmptyState v-else compact title="No facilitator ratings yet." />
                 </div>
                 <div class="rounded-xl border p-4 shadow-md">
                     <div class="mb-2 flex items-center justify-between gap-2">
@@ -643,7 +647,7 @@ onBeforeUnmount(() => {
                         :options="distributionBarOptions"
                         :series="distributionBarSeries"
                     />
-                    <p v-else class="py-10 text-center text-xs text-muted-foreground">No overall ratings yet.</p>
+                    <EmptyState v-else compact title="No overall ratings yet." />
                 </div>
                 <div class="rounded-xl border p-4 shadow-md">
                     <div class="mb-2 flex items-center justify-between gap-2">
@@ -671,11 +675,11 @@ onBeforeUnmount(() => {
                         :series="batchRateSeries"
                         class="cursor-pointer"
                     />
-                    <p v-else class="py-10 text-center text-xs text-muted-foreground">No evaluation forms yet.</p>
+                    <EmptyState v-else compact title="No evaluation forms yet." />
                 </div>
             </div>
 
-            <p v-if="loading" class="text-center text-xs text-muted-foreground">Loading...</p>
+            <StatTilesSkeleton v-if="loading" :count="4" label="Loading evaluation results…" />
 
             <!-- Program Evaluation Findings section of the After Activity Report, generated from the results above -->
             <div class="overflow-hidden rounded-2xl border shadow-md">
@@ -701,7 +705,7 @@ onBeforeUnmount(() => {
                         </li>
                     </ul>
                 </div>
-                <p v-else class="px-5 py-8 text-center text-xs text-muted-foreground">No findings available yet.</p>
+                <EmptyState v-else compact title="No findings available yet." />
             </div>
 
             <!-- Comments (grouped per question — respondents stay anonymous) -->
@@ -716,9 +720,7 @@ onBeforeUnmount(() => {
                 </div>
 
                 <div v-else class="flex max-h-[420px] flex-col divide-y overflow-y-auto">
-                    <div v-if="commentsLoading" class="flex items-center justify-center gap-2 py-8 text-xs text-muted-foreground">
-                        <Loader2 class="h-4 w-4 animate-spin" /> Loading...
-                    </div>
+                    <TableRowsSkeleton v-if="commentsLoading" :rows="4" :columns="1" label="Loading comments…" />
 
                     <template v-else-if="groupedComments.length">
                         <div v-for="group in groupedComments" :key="group.key" class="px-5 py-3">
@@ -754,7 +756,7 @@ onBeforeUnmount(() => {
                         </div>
                     </template>
 
-                    <p v-else class="px-5 py-8 text-center text-xs text-muted-foreground">No written comments yet for this batch.</p>
+                    <EmptyState v-else compact title="No written comments yet for this batch." />
                 </div>
             </div>
         </template>
@@ -817,9 +819,7 @@ onBeforeUnmount(() => {
                     </div>
 
                     <div class="p-4">
-                        <div v-if="batchPanelLoading" class="flex items-center justify-center gap-2 py-8 text-xs text-muted-foreground">
-                            <Loader2 class="h-4 w-4 animate-spin" /> Loading...
-                        </div>
+                        <TableRowsSkeleton v-if="batchPanelLoading" :rows="4" :columns="2" label="Loading responses…" />
 
                         <div v-else-if="batchPanelData && batchPanelData.data.length" class="flex flex-col gap-2">
                             <div v-for="response in batchPanelData.data" :key="response.id" class="rounded-xl border px-3 py-2.5 shadow-md">
@@ -875,7 +875,7 @@ onBeforeUnmount(() => {
                             </div>
                         </div>
 
-                        <p v-else class="py-8 text-center text-xs text-muted-foreground">No responses yet for this batch.</p>
+                        <EmptyState v-else compact title="No responses yet for this batch." />
                     </div>
                 </div>
             </Transition>

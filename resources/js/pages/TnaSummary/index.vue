@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import TnaSummaryDashboardModal from '@/components/TnaSummaryDashboardModal.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
@@ -60,6 +62,8 @@ const props = defineProps<{
         unit?: string;
         per_page?: string;
     };
+    // "Did you mean …?" when a search finds nothing (App\Support\SearchSuggester).
+    suggestion?: string | null;
 }>();
 
 const search = ref(props.filters.search ?? '');
@@ -276,29 +280,30 @@ const priorityColor = (label: string) => {
                 </table>
 
                 <!-- Empty state -->
-                <div v-else class="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
-                    <svg viewBox="0 0 200 160" class="h-40 w-auto" xmlns="http://www.w3.org/2000/svg">
-                        <ellipse cx="100" cy="142" rx="70" ry="8" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
-                        <rect x="55" y="45" width="90" height="80" rx="6" fill="currentColor" class="text-indigo-100 dark:text-indigo-900/30" />
-                        <rect x="68" y="60" width="64" height="6" rx="3" fill="currentColor" class="text-indigo-300 dark:text-indigo-700/60" />
-                        <rect x="68" y="75" width="64" height="6" rx="3" fill="currentColor" class="text-indigo-300 dark:text-indigo-700/60" />
-                        <rect x="68" y="90" width="40" height="6" rx="3" fill="currentColor" class="text-indigo-300 dark:text-indigo-700/60" />
-                        <circle cx="145" cy="100" r="18" fill="currentColor" class="text-blue-100 dark:text-blue-900/40" />
-                        <path
-                            d="M138 100 l5 5 l10 -10"
-                            stroke="currentColor"
-                            stroke-width="3"
-                            fill="none"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            class="text-blue-500"
-                        />
-                    </svg>
-                    <p class="text-sm font-bold text-slate-500">No TNA Results found</p>
-                    <p class="max-w-xs text-xs text-slate-400">
-                        {{ hasActiveFilters() ? 'No employees match your filters.' : 'No employee has a finalized TNA Result yet.' }}
-                    </p>
-                </div>
+                <template v-else>
+                    <SearchEmptyState
+                        v-if="filters.search"
+                        :query="filters.search"
+                        :suggestion="suggestion"
+                        class="m-4"
+                        @search="search = $event"
+                        @clear-filters="clearFilters"
+                    />
+                    <EmptyState
+                        v-else-if="hasActiveFilters()"
+                        variant="filtered"
+                        title="No TNA Results found"
+                        description="No employees match your filters."
+                        class="m-4"
+                        @clear-filters="clearFilters"
+                    />
+                    <EmptyState
+                        v-else
+                        title="No TNA Results found"
+                        description="No employee has a finalized TNA Result yet. Results appear here once a supervisor finishes the review."
+                        class="m-4"
+                    />
+                </template>
             </div>
 
             <!-- Pagination -->

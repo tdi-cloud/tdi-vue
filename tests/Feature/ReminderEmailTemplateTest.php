@@ -9,7 +9,7 @@ test('the reminder email renders without the optional requirement card when no t
         signature: 'TDI Team',
     ))->render();
 
-    expect($html)->toContain('Reminder Notification');
+    expect($html)->toContain('Post-Training Requirements Reminder');
     expect($html)->toContain('Please submit your requirement.');
     expect($html)->toContain('TDI Team');
     expect($html)->not->toContain('Requirement Overview');

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
+import { httpErrorMessage } from '@/lib/http';
 import axios from 'axios';
 import {
     BarChart3,
@@ -288,6 +290,7 @@ const fetchDashboard = async () => {
 
     try {
         const { data } = await axios.get(route('foreign-programs.dashboard-data'), {
+            silentErrors: true,
             params: {
                 status: filterStatus.value || undefined,
                 agency: filterAgency.value || undefined,
@@ -308,8 +311,7 @@ const fetchDashboard = async () => {
         barDisseminated.value = data.programs.disseminated;
     } catch (err: any) {
         if (axios.isCancel(err) || err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') return;
-        console.error('Dashboard fetch failed:', err?.response?.data ?? err);
-        errorMsg.value = `Failed to load dashboard data${err?.response?.status ? ` (${err.response.status})` : ''}.`;
+        errorMsg.value = httpErrorMessage(err);
     } finally {
         if (activeController === controller) {
             loading.value = false;
@@ -370,7 +372,7 @@ async function fetchPanelNominees(page = 1) {
         panelNominees.value = data;
     } catch (err: any) {
         if (axios.isCancel(err) || err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') return;
-        console.error('Failed to load participants:', err?.response?.data ?? err);
+        // Shown by the app-wide error toast (lib/http.ts).
     } finally {
         if (panelController === controller) {
             panelLoading.value = false;
@@ -654,7 +656,12 @@ function onPanelSearchInput() {
                     </div>
                 </div>
 
-                <p v-else class="py-8 text-center text-xs text-muted-foreground">No participants found.</p>
+                <EmptyState
+                    v-else
+                    compact
+                    title="No participants found."
+                    description="Nominees appear here once they are submitted for this program."
+                />
             </div>
         </div>
     </Transition>

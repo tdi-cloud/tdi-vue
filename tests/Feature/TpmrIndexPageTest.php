@@ -63,3 +63,21 @@ test('the tpmr dashboard filters recent submissions by search term', function ()
             ->where('stats.submitted', 2)
         );
 });
+
+test('a misspelled tpmr search with no results suggests the closest known word', function () {
+    $year = now()->year;
+    RegionalReport::create([
+        'region' => 'NCR', 'month' => 'January', 'year' => $year,
+        'file_name' => 'TPMR_NCR_January.pdf', 'file_path' => 'tpmr/TPMR_NCR_January.pdf',
+        'submitted_at' => now(), 'added_by' => 'Test Admin',
+    ]);
+    $admin = User::factory()->create(['empcode' => 'TPMR-SUGGEST', 'access' => 'admin']);
+
+    $this->actingAs($admin)
+        ->get(route('tpmr.index', ['year' => $year, 'search' => 'Janaury']))
+        ->assertInertia(fn (Assert $page) => $page->has('recentSubmissions.data', 0)->where('suggestion', 'january'));
+
+    $this->actingAs($admin)
+        ->get(route('tpmr.index', ['year' => $year, 'search' => 'January']))
+        ->assertInertia(fn (Assert $page) => $page->where('suggestion', null));
+});

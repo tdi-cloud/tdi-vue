@@ -7,6 +7,7 @@ use App\Models\Participant;
 use App\Models\Program;
 use App\Models\Requirement;
 use App\Models\Submission;
+use App\Support\SearchSuggester;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -114,6 +115,12 @@ class EmployeeProgressController extends Controller
             'offices' => $offices,
             'plantillaStatuses' => $plantillaStatuses,
             'filters' => $request->only(['search', 'region', 'office', 'plantilla', 'per_page']),
+            'suggestion' => SearchSuggester::forEmptyResults(
+                $request->string('search'),
+                $employees->total(),
+                fn () => Employee::query()->get(['FIRSTNAME', 'LASTNAME', 'OFFICE/DIVISION'])
+                    ->flatMap(fn (Employee $employee) => [$employee->FIRSTNAME, $employee->LASTNAME, $employee->{'OFFICE/DIVISION'}]),
+            ),
         ]);
     }
 

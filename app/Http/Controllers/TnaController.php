@@ -10,6 +10,8 @@ use App\Notifications\FasdAssigned;
 use App\Notifications\NewSubordinateToRate;
 use App\Notifications\SelfRatingReviewed;
 use App\Notifications\SelfRatingSubmitted;
+use App\Support\FlashMessage;
+use App\Support\SearchSuggester;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -129,7 +131,11 @@ class TnaController extends Controller
         if ($assessment->supervisor_reviewed_at !== null) {
             return redirect()
                 ->route('tna.supervisory.index')
-                ->with('success', 'You have already rated this assessment.');
+                ->with('success', FlashMessage::make(
+                    'Already rated',
+                    "You have already rated {$assessment->name}'s assessment; your rating is saved.",
+                    'Use "Redo rating" on the list if you need to change it.',
+                ));
         }
 
         $supEmployee = Employee::where('EMPCODE', $user->empcode)->first();
@@ -257,7 +263,11 @@ class TnaController extends Controller
 
         return redirect()
             ->route('tna.supervisory.index')
-            ->with('success', 'Supervisory rating submitted. Thank you!');
+            ->with('success', FlashMessage::make(
+                "Supervisory rating submitted for {$assessment->name}",
+                'Thank you! Your rating is saved and the TNA Result PDF opened in a new tab.',
+                'They have been notified. Print the result, sign it, and upload the signed copy here.',
+            ));
     }
 
     public function supervisoryRedo(TnaAssessment $assessment)
@@ -290,7 +300,11 @@ class TnaController extends Controller
 
         return redirect()
             ->route('tna.supervisory.index')
-            ->with('success', 'Supervisory rating cleared. You may rate this assessment again.');
+            ->with('success', FlashMessage::make(
+                'Supervisory rating cleared',
+                "Your rating of {$assessment->name} was removed.",
+                'Open their assessment again to submit a new rating.',
+            ));
     }
 
     public function editFasd(TnaAssessment $assessment)
@@ -348,7 +362,11 @@ class TnaController extends Controller
         $assessment->user?->notify(new FasdAssigned($assessment));
 
         return redirect($this->signatoriesReturnUrl($assessment))
-            ->with('success', 'TNA Result signatories updated.');
+            ->with('success', FlashMessage::make(
+                'TNA Result signatories updated',
+                "The new signatories now appear on {$assessment->name}'s TNA Result.",
+                'The FASD signatory has been notified.',
+            ));
     }
 
     protected function isAssignedSupervisor(TnaAssessment $assessment): bool
@@ -582,7 +600,10 @@ class TnaController extends Controller
 
         $assessment->update([$column => $path]);
 
-        return back()->with('success', 'Scanned copy uploaded.');
+        return back()->with('success', FlashMessage::make(
+            'Signed copy uploaded',
+            'Your scanned copy is saved. You can view or replace it here anytime.',
+        ));
     }
 
     public function downloadScan(TnaAssessment $assessment, string $type)
@@ -614,7 +635,7 @@ class TnaController extends Controller
         Storage::disk('local')->delete($path);
         $assessment->update([$column => null]);
 
-        return back()->with('success', 'Signed copy deleted.');
+        return back()->with('success', FlashMessage::make('Signed copy deleted', 'You can upload a new scanned copy anytime.'));
     }
 
     public function resultShow(TnaAssessment $assessment)
@@ -784,6 +805,11 @@ class TnaController extends Controller
                 ->map(fn ($rows) => $rows->pluck('OFFICE')->values()),
             'units' => Competency::query()->distinct()->orderBy('unit')->pluck('unit'),
             'filters' => $request->only(['search', 'region', 'office', 'unit', 'per_page']),
+            'suggestion' => SearchSuggester::forEmptyResults(
+                $request->string('search'),
+                $assessments->total(),
+                fn () => TnaAssessment::whereNotNull('supervisor_reviewed_at')->distinct()->pluck('name'),
+            ),
         ]);
     }
 
@@ -1069,7 +1095,11 @@ class TnaController extends Controller
 
         return redirect()
             ->route('tna.self-rating')
-            ->with('success', 'Your self-rating has been submitted. Thank you!');
+            ->with('success', FlashMessage::make(
+                'Self-rating submitted',
+                'Thank you! Your answers are saved; you can view them on this page anytime.',
+                'Your supervisor has been notified and will rate your assessment next.',
+            ));
     }
 
     public function pdf(TnaAssessment $assessment)
@@ -1135,7 +1165,11 @@ class TnaController extends Controller
 
         return redirect()
             ->route('tna.self-rating')
-            ->with('success', 'Your supervisor has been updated.');
+            ->with('success', FlashMessage::make(
+                'Supervisor updated',
+                "{$assessment->supervisor_name} is now your supervisor for this TNA.",
+                'They will see your assessment in their Supervisory Rating list.',
+            ));
     }
 
     public function destroy(TnaAssessment $assessment)
@@ -1152,7 +1186,11 @@ class TnaController extends Controller
 
         return redirect()
             ->route('tna.self-rating')
-            ->with('success', 'Your self-rating has been deleted. You may submit a new one.');
+            ->with('success', FlashMessage::make(
+                'Self-rating deleted',
+                'Your previous answers were removed.',
+                'You can now fill in and submit a new self-rating.',
+            ));
     }
 
     protected function resolveEmployee($user): ?Employee

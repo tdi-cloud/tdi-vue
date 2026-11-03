@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
 import { useConfirm } from '@/composables/useConfirm';
 import axios from 'axios';
 import { Building2, Check, LoaderCircle, Pencil, Plus, Trash2, X } from 'lucide-vue-next';
@@ -70,7 +71,7 @@ const deleteSponsor = async (sponsor: Sponsor) => {
         sponsors.value = sponsors.value.filter((s) => s.id !== sponsor.id);
         emit('updated');
     } catch {
-        alert('Failed to delete sponsor.');
+        // The app-wide error toast (lib/http.ts) already explains the failure.
     } finally {
         deletingId.value = null;
     }
@@ -96,7 +97,7 @@ const saveFullName = async (sponsor: Sponsor) => {
         emit('updated');
         editingId.value = null;
     } catch {
-        alert('Failed to update full name.');
+        // The app-wide error toast (lib/http.ts) already explains the failure.
     } finally {
         savingId.value = null;
     }
@@ -162,11 +163,13 @@ onMounted(fetchSponsors);
                 <div v-if="loading" class="flex items-center justify-center py-10">
                     <LoaderCircle class="h-5 w-5 animate-spin text-blue-500" />
                 </div>
-                <div v-else-if="!sponsors.length" class="flex flex-col items-center justify-center gap-2 py-10 text-center text-muted-foreground">
-                    <Building2 class="h-8 w-8 text-slate-300" />
-                    <p class="text-xs font-semibold">No sponsors yet.</p>
-                    <p class="text-xs">Add one above to get started.</p>
-                </div>
+                <EmptyState
+                    v-else-if="!sponsors.length"
+                    compact
+                    :icon="Building2"
+                    title="No sponsors yet."
+                    description="Add one above to get started."
+                />
                 <div v-else class="divide-y overflow-hidden rounded-xl border">
                     <div v-for="sponsor in sponsors" :key="sponsor.id" class="group px-3 py-2.5 transition-colors hover:bg-muted/40">
                         <div class="flex items-center justify-between gap-2">

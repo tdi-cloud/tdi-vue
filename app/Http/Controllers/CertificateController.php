@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Certificate;
 use App\Models\Participant;
+use App\Support\FlashMessage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -61,7 +62,10 @@ class CertificateController extends Controller
 
         $cert->save();
 
-        return back()->with('success', 'Certificate saved successfully.');
+        return back()->with('success', FlashMessage::make(
+            'Certificate saved',
+            "{$participant->empcode}'s {$cert->type} certificate is saved as {$cert->status}.",
+        ));
     }
 
     /**
@@ -127,12 +131,12 @@ class CertificateController extends Controller
             $issuedCount++;
         }
 
-        $message = "{$issuedCount} certificate(s) uploaded successfully.";
-        if ($failedCount > 0) {
-            $message .= " {$failedCount} could not be processed.";
-        }
-
-        return back()->with('success', $message);
+        return back()->with('success', FlashMessage::make(
+            "{$issuedCount} certificate(s) uploaded",
+            $failedCount > 0
+                ? "{$failedCount} file(s) could not be processed; upload those again one by one."
+                : 'Every file was matched to its participant and saved.',
+        ));
     }
 
     public function uploadByUser(Request $request, $batchId)
@@ -173,7 +177,7 @@ class CertificateController extends Controller
 
         $cert->save();
 
-        return back()->with('success', 'Certificate uploaded successfully.');
+        return back()->with('success', FlashMessage::make('Certificate uploaded', 'Your certificate is saved. You can view or replace it anytime from this page.'));
     }
 
     /**
@@ -230,14 +234,14 @@ class CertificateController extends Controller
             $uploadedCount++;
         }
 
-        return back()->with('success', "{$uploadedCount} certificate(s) uploaded successfully.");
+        return back()->with('success', FlashMessage::make("{$uploadedCount} certificate(s) uploaded", 'They are saved. You can view or replace them anytime from this page.'));
     }
 
     public function destroy(Certificate $certificate)
     {
         $certificate->delete(); // booted() handles file deletion
 
-        return back()->with('success', 'Certificate deleted successfully.');
+        return back()->with('success', FlashMessage::make('Certificate deleted', "The {$certificate->type} certificate of {$certificate->empcode} was removed."));
     }
 
     public function destroyByUser(Request $request, $batchId, Certificate $certificate)
@@ -248,7 +252,7 @@ class CertificateController extends Controller
 
         $certificate->delete();
 
-        return back()->with('success', 'Certificate removed successfully.');
+        return back()->with('success', FlashMessage::make('Certificate removed', 'You can upload it again anytime.'));
     }
 
     /**

@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import InputError from '@/components/InputError.vue';
+import SubmitButton from '@/components/SubmitButton.vue';
 import TextLink from '@/components/TextLink.vue';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { updateTheme } from '@/composables/useAppearance';
 import AuthBase from '@/layouts/AuthLayout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
-import { Eye, EyeOff, LoaderCircle, Lock, Mail } from 'lucide-vue-next';
+import { Eye, EyeOff, Lock, Mail } from 'lucide-vue-next';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 
 defineProps<{
@@ -119,15 +119,14 @@ const submit = () => {
                     </Label>
                 </div>
 
-                <Button
-                    type="submit"
+                <SubmitButton
                     class="mt-2 h-11 w-full rounded-xl bg-gradient-to-b from-blue-700 to-blue-900 font-extrabold shadow-md shadow-blue-900/20 transition hover:brightness-110"
                     tabindex="4"
-                    :disabled="form.processing"
+                    :processing="form.processing"
+                    processing-label="Logging in…"
                 >
-                    <LoaderCircle v-if="form.processing" class="h-4 w-4 animate-spin" />
                     Log in
-                </Button>
+                </SubmitButton>
             </div>
 
             <div class="text-center text-sm text-white/90 drop-shadow">

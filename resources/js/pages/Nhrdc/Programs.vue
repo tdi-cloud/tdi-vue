@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { suggestSearch } from '@/lib/searchSuggestion';
 import { Head, Link } from '@inertiajs/vue3';
 import {
     ArrowRight,
@@ -198,13 +201,12 @@ const fieldClass =
                 </div>
             </header>
 
-            <div
+            <EmptyState
                 v-if="!programs.length"
-                class="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-white py-16 text-center dark:border-slate-700 dark:bg-slate-900"
-            >
-                <FolderOpen class="h-8 w-8 text-slate-300 dark:text-slate-600" />
-                <p class="text-sm font-medium text-slate-600 dark:text-slate-300">No programs with nominees yet.</p>
-            </div>
+                :icon="FolderOpen"
+                title="No programs with nominees yet."
+                description="Programs will appear here once nominees are submitted for your review."
+            />
 
             <template v-else>
                 <!-- Search & filter toolbar -->
@@ -278,20 +280,24 @@ const fieldClass =
                     </p>
                 </div>
 
-                <div
-                    v-if="!filteredPrograms.length"
-                    class="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-white py-16 text-center dark:border-slate-700 dark:bg-slate-900"
-                >
-                    <Search class="h-7 w-7 text-slate-300 dark:text-slate-600" />
-                    <p class="text-sm font-medium text-slate-600 dark:text-slate-300">No programs match your search or filters.</p>
-                    <button
-                        type="button"
-                        class="text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
-                        @click="clearFilters"
-                    >
-                        Clear filters
-                    </button>
-                </div>
+                <SearchEmptyState
+                    v-if="!filteredPrograms.length && search.trim()"
+                    :query="search"
+                    :suggestion="
+                        suggestSearch(
+                            search,
+                            programs.map((p) => p.program_title),
+                        )
+                    "
+                    @search="search = $event"
+                    @clear-filters="clearFilters"
+                />
+                <EmptyState
+                    v-else-if="!filteredPrograms.length"
+                    variant="filtered"
+                    title="No programs match your filters."
+                    @clear-filters="clearFilters"
+                />
 
                 <div v-else class="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     <Link

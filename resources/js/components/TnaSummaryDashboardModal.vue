@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { httpErrorMessage } from '@/lib/http';
 import axios from 'axios';
 import { Gauge, TrendingUp, Users2, X } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
@@ -141,6 +142,7 @@ const fetchDashboard = async () => {
 
     try {
         const { data } = await axios.get(route('tna-summary.dashboard-data'), {
+            silentErrors: true,
             params: {
                 search: props.filters.search || undefined,
                 region: props.filters.region || undefined,
@@ -156,8 +158,7 @@ const fetchDashboard = async () => {
         barSeries.value = data.top_units_series;
     } catch (err: any) {
         if (axios.isCancel(err) || err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') return;
-        console.error('TNA dashboard fetch failed:', err?.response?.data ?? err);
-        errorMsg.value = `Failed to load dashboard data${err?.response?.status ? ` (${err.response.status})` : ''}.`;
+        errorMsg.value = httpErrorMessage(err);
     } finally {
         if (activeController === controller) {
             loading.value = false;

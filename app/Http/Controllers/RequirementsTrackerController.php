@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Requirement;
+use App\Support\LiteMode;
+use App\Support\SearchSuggester;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -38,7 +40,7 @@ class RequirementsTrackerController extends Controller
             $query->whereDate('r.due_date', '<', $today);
         }
 
-        $perPage = 20;
+        $perPage = LiteMode::perPage($request, 20);
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
 
         $rows = $this->selectColumns($query)
@@ -71,6 +73,15 @@ class RequirementsTrackerController extends Controller
                 'on_time' => $total - $overdue,
             ],
             'filters' => $request->only(['search', 'requirement_title', 'office_division', 'overdue_only']),
+            'suggestion' => SearchSuggester::forEmptyResults(
+                $request->string('search'),
+                $items->total(),
+                fn () => $this->scopedQuery(Request::create('/'))
+                    ->select('e.FIRSTNAME', 'e.LASTNAME', 'prog.title')
+                    ->limit(2000)
+                    ->get()
+                    ->flatMap(fn ($row) => [$row->FIRSTNAME, $row->LASTNAME, $row->title]),
+            ),
         ]);
     }
 

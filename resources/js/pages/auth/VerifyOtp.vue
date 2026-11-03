@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { Button } from '@/components/ui/button';
+import SubmitButton from '@/components/SubmitButton.vue';
 import { Input } from '@/components/ui/input';
 import AuthBase from '@/layouts/AuthLayout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
-import { LoaderCircle, Mail } from 'lucide-vue-next';
+import { Mail } from 'lucide-vue-next';
 import { onMounted, ref } from 'vue';
 
 const props = defineProps<{ email: string }>();
@@ -95,14 +95,14 @@ onMounted(() => {
                     <p v-if="form.errors.otp" class="text-sm text-destructive">{{ form.errors.otp }}</p>
                 </div>
 
-                <Button
-                    type="submit"
+                <SubmitButton
                     class="w-full bg-gradient-to-b from-blue-700 to-blue-900 font-extrabold shadow-md shadow-blue-900/20 hover:brightness-110"
-                    :disabled="form.processing || form.otp.length < 6"
+                    :processing="form.processing"
+                    processing-label="Verifying…"
+                    :disabled="form.otp.length < 6"
                 >
-                    <LoaderCircle v-if="form.processing" class="mr-2 h-4 w-4 animate-spin" />
                     Verify OTP
-                </Button>
+                </SubmitButton>
             </form>
         </div>
     </AuthBase>

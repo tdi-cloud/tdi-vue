@@ -107,8 +107,8 @@ async function downloadCsv() {
         URL.revokeObjectURL(blobUrl);
 
         close();
-    } catch (e) {
-        console.error('Failed to download CSV:', e);
+    } catch {
+        // Shown by the app-wide error toast (lib/http.ts).
     } finally {
         downloading.value = false;
     }

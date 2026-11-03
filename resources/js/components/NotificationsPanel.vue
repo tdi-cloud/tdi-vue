@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
 import { Link, router } from '@inertiajs/vue3';
 import { Bell, BellOff, CheckCheck, ChevronRight, Inbox, LoaderCircle } from 'lucide-vue-next';
 import { ref } from 'vue';
@@ -143,16 +144,14 @@ const pageLabel = (label: string) => label.replace('&laquo;', '‹').replace('&r
         </ul>
 
         <!-- Empty -->
-        <div v-else class="flex flex-col items-center justify-center gap-2 px-6 py-16 text-center">
-            <span class="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                <BellOff v-if="filter === 'unread'" class="h-6 w-6" />
-                <Inbox v-else class="h-6 w-6" />
-            </span>
-            <p class="text-sm font-semibold text-foreground">{{ filter === 'unread' ? 'You’re all caught up' : 'No notifications yet' }}</p>
-            <p class="text-sm text-muted-foreground">
-                {{ filter === 'unread' ? 'You have no unread notifications.' : 'Updates about your programs and tasks will appear here.' }}
-            </p>
-        </div>
+        <EmptyState
+            v-else
+            compact
+            class="py-16"
+            :icon="filter === 'unread' ? BellOff : Inbox"
+            :title="filter === 'unread' ? 'You’re all caught up' : 'No notifications yet'"
+            :description="filter === 'unread' ? 'You have no unread notifications.' : 'Updates about your programs and tasks will appear here.'"
+        />
 
         <!-- Pagination -->
         <div v-if="notifications.last_page > 1" class="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 sm:px-5">

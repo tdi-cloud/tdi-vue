@@ -271,3 +271,29 @@ test('resubmitting the report form keeps existing activities and never drops one
         ->and($activities->firstWhere('activity', 'Keep me (edited)')->id)->toBe($kept->id)
         ->and(ActionPlanActivity::find($removed->id))->toBeNull();
 });
+
+test('a misspelled action plan search with no results suggests the closest known word', function () {
+    ['report' => $report] = actionPlanSetup('EMP-AP-SUGGEST');
+    actionPlanActivity($report);
+    $admin = User::factory()->create(['empcode' => 'EMP-AP-SUGGEST-ADMIN', 'access' => 'admin']);
+
+    $this->actingAs($admin)->get(route('action-plan-monitoring.index', ['search' => 'trainng']))
+        ->assertInertia(fn (Assert $page) => $page->has('activities.data', 0)->where('suggestion', 'training'));
+
+    $this->actingAs($admin)->get(route('action-plan-monitoring.index', ['search' => 'training']))
+        ->assertInertia(fn (Assert $page) => $page->where('suggestion', null));
+});
+
+test('reviewing an implementation report flashes what happened and what comes next', function () {
+    ['user' => $user, 'batch' => $batch, 'report' => $report] = actionPlanSetup('EMP-AP-FLASH');
+    $activity = actionPlanActivity($report);
+    $this->actingAs($user)->post(route('programs.action-plan.report.submit', [$batch, $activity]), implementationReportPayload());
+    $implementationReport = $activity->fresh()->implementationReport;
+    $admin = User::factory()->create(['empcode' => 'EMP-AP-FLASH-ADMIN', 'access' => 'admin']);
+
+    $this->actingAs($admin)
+        ->patch(route('action-plan-monitoring.review', $implementationReport), ['status' => 'Rejected', 'remarks' => 'Add photos.'])
+        ->assertSessionHas('success.title', 'Report returned for revision')
+        ->assertSessionHas('success.message', 'Ana Santos can now see your note on "Echo training to unit staff" in My Programs.')
+        ->assertSessionHas('success.next', 'It will appear here again as Pending once they resubmit.');
+});

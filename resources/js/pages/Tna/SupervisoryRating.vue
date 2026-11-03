@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import SignaturePad from '@/components/ui/signature-pad/SignaturePad.vue';
+import { useFormDraft } from '@/composables/useFormDraft';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed, reactive, ref, watch } from 'vue';
 import BackToTop from './BackToTop.vue';
@@ -93,6 +94,10 @@ const form = useForm({
     ratings: [],
 });
 
+// Autosave the form and the ratings so a long rating survives an expired session or a lost connection.
+const formDraft = useFormDraft(`tna-supervisory-rating:${props.assessment.id}`, form);
+const answersDraft = useFormDraft(`tna-supervisory-rating:${props.assessment.id}:answers`, answers, { notify: false });
+
 const canSubmit = computed(() => donePct.value === 100 && !!form.fasd_empcode);
 
 const submit = () => {
@@ -108,6 +113,8 @@ const submit = () => {
         preserveScroll: true,
         // Pagka-submit, buksan ang generated PDF sa bagong tab
         onSuccess: () => {
+            formDraft.clearDraft();
+            answersDraft.clearDraft();
             window.open(route('tna.supervisory.pdf', props.assessment.id), '_blank', 'noopener');
         },
     });
@@ -384,13 +391,13 @@ const submit = () => {
                 <SignatoryPicker
                     v-model="preparedBy"
                     title="Prepared by (TNA Result)"
-                    description="Select the employee who will be the &quot;Prepared by&quot; signatory on the TNA Result (usually the FASD). This is required before you can submit."
+                    description='Select the employee who will be the "Prepared by" signatory on the TNA Result (usually the FASD). This is required before you can submit.'
                     :error="form.errors.fasd_empcode"
                 />
                 <SignatoryPicker
                     v-model="notedBy"
                     title="Noted by (TNA Result)"
-                    description="You are the &quot;Noted by&quot; signatory by default. Change it only if someone else will sign."
+                    description='You are the "Noted by" signatory by default. Change it only if someone else will sign.'
                     :default-signatory="notedDefault"
                     :error="form.errors.noted_name"
                 />

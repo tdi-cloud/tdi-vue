@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useConfirm } from '@/composables/useConfirm';
@@ -755,14 +756,14 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
                         </div>
 
                         <!-- Empty state -->
-                        <div
+                        <EmptyState
                             v-else
-                            class="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 py-10 text-center text-slate-500 dark:border-slate-700 dark:text-slate-400"
-                        >
-                            <Lightbulb class="mb-2 h-6 w-6 text-slate-300 dark:text-slate-600" />
-                            <p class="text-sm font-semibold">No competencies yet.</p>
-                            <p class="mt-1 text-xs">Click "Add Competency" to attach competencies to this program.</p>
-                        </div>
+                            compact
+                            class="rounded-lg border border-dashed"
+                            :icon="Lightbulb"
+                            title="No competencies yet."
+                            description='Click "Add Competency" to attach competencies to this program.'
+                        />
                     </section>
 
                     <!-- Competency picker modal -->

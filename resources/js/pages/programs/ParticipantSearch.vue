@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ExternalLink, Search, UserSearch } from 'lucide-vue-next';
+import { suggestSearch } from '@/lib/searchSuggestion';
+import { ExternalLink, Search } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 const props = defineProps<{
@@ -82,10 +84,21 @@ const locate = (batch: any, participant: any) => {
         <!-- Results -->
         <div v-if="query.trim().length >= 2" class="mt-2">
             <!-- Walang nahanap -->
-            <div v-if="!results.length" class="rounded-lg border border-dashed px-3 py-4 text-center">
-                <UserSearch class="mx-auto h-5 w-5 text-slate-300" />
-                <p class="mt-1 text-xs font-semibold text-slate-500">No participant matching "{{ query }}" in any batch.</p>
-            </div>
+            <SearchEmptyState
+                v-if="!results.length"
+                compact
+                class="rounded-lg border border-dashed"
+                :query="query"
+                :suggestion="
+                    suggestSearch(
+                        query,
+                        allParticipants.flatMap(({ participant }) => [participant.employee?.name, participant.empcode]),
+                    )
+                "
+                description="No participant with that name or employee code in any batch."
+                @search="query = $event"
+                @clear-filters="query = ''"
+            />
 
             <!-- May results -->
             <div v-else class="max-h-64 divide-y overflow-y-auto rounded-lg border">

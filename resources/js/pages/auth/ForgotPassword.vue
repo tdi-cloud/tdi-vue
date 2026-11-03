@@ -43,7 +43,7 @@ const submit = () => {
                         :disabled="form.processing"
                     >
                         <LoaderCircle v-if="form.processing" class="h-4 w-4 animate-spin" />
-                        Email password reset link
+                        {{ form.processing ? 'Sending…' : 'Email password reset link' }}
                     </Button>
                 </div>
             </form>

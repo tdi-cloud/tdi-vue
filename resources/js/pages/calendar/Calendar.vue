@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/vue3';
@@ -667,11 +668,13 @@ const calendarOptions = computed<CalendarOptions>(() => ({
                         </li>
                     </ul>
 
-                    <div v-else class="flex flex-col items-center gap-2 px-6 py-10 text-center">
-                        <CalendarX2 class="h-8 w-8 text-muted-foreground/60" />
-                        <p class="text-sm font-medium text-foreground">No upcoming programs</p>
-                        <p class="text-xs text-muted-foreground">Programs scheduled from today onward will appear here.</p>
-                    </div>
+                    <EmptyState
+                        v-else
+                        compact
+                        :icon="CalendarX2"
+                        title="No upcoming programs"
+                        description="Programs scheduled from today onward will appear here."
+                    />
                 </aside>
             </div>
         </div>

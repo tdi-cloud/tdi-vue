@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SubmitButton from '@/components/SubmitButton.vue';
 import { useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
@@ -81,9 +82,9 @@ const closeModal = () => {
                                 <Button variant="secondary" @click="closeModal"> Cancel </Button>
                             </DialogClose>
 
-                            <Button variant="destructive" :disabled="form.processing">
-                                <button type="submit">Delete account</button>
-                            </Button>
+                            <SubmitButton variant="destructive" :processing="form.processing" processing-label="Deleting…"
+                                >Delete account</SubmitButton
+                            >
                         </DialogFooter>
                     </form>
                 </DialogContent>

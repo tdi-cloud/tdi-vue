@@ -1,6 +1,10 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
+import TableRowsSkeleton from '@/components/skeletons/TableRowsSkeleton.vue';
 import { DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Link, router } from '@inertiajs/vue3';
+import axios from 'axios';
+import { Inbox } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
 
 interface NotificationItem {
@@ -18,10 +22,8 @@ const loading = ref(true);
 async function loadNotifications() {
     loading.value = true;
     try {
-        const res = await fetch(route('notifications.index'), {
-            headers: { Accept: 'application/json' },
-        });
-        notifications.value = res.ok ? await res.json() : [];
+        const { data } = await axios.get<NotificationItem[]>(route('notifications.index'));
+        notifications.value = data;
     } catch {
         notifications.value = [];
     } finally {
@@ -63,8 +65,14 @@ function markAllRead() {
     <DropdownMenuSeparator />
 
     <div class="max-h-96 overflow-y-auto">
-        <div v-if="loading" class="px-4 py-6 text-center text-sm text-muted-foreground">Loading…</div>
-        <div v-else-if="!notifications.length" class="px-4 py-6 text-center text-sm text-muted-foreground">No notifications yet.</div>
+        <TableRowsSkeleton v-if="loading" :rows="3" :columns="1" label="Loading notifications…" />
+        <EmptyState
+            v-else-if="!notifications.length"
+            compact
+            :icon="Inbox"
+            title="No notifications yet."
+            description="Updates about your programs and tasks will appear here."
+        />
         <template v-for="(n, idx) in sortedNotifications" :key="n.id">
             <div
                 v-if="n.read && idx > 0 && !sortedNotifications[idx - 1].read"

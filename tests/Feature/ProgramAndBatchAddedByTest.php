@@ -81,3 +81,15 @@ test('adding a requirement records the empcode of the admin who added it', funct
 
     expect(Requirement::where('batch_id', $batch->id)->value('added_by'))->toBe('EMP-ADDEDBY-03');
 });
+
+test('creating a program flashes what was created, what comes next, and a link to open it', function () {
+    $admin = addedByTestAdmin('EMP-ADDEDBY-FLASH');
+
+    $response = $this->actingAs($admin)->post(route('programs.store'), addedByProgramPayload(['title' => 'Flash Test Program']));
+
+    $program = Program::where('title', 'Flash Test Program')->firstOrFail();
+    $response->assertSessionHas('success.title', 'Program created')
+        ->assertSessionHas('success.message', '"Flash Test Program" is saved and now appears in the Programs list.')
+        ->assertSessionHas('success.next', 'Open it to add a batch, then participants and requirements.')
+        ->assertSessionHas('success.action.href', route('programs.show', $program));
+});

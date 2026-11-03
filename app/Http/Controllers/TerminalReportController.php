@@ -8,6 +8,7 @@ use App\Models\Participant;
 use App\Models\Requirement;
 use App\Models\Submission;
 use App\Models\TerminalReport;
+use App\Support\FlashMessage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -126,7 +127,11 @@ class TerminalReportController extends Controller
 
         return redirect()
             ->route('programs.terminal-report.generated', [$batch, $requirement])
-            ->with('success', "Your {$requirement->title} report was generated. Print it, have it signed, then upload the signed copy to submit it.");
+            ->with('success', FlashMessage::make(
+                "{$requirement->title} report generated",
+                'Your PDF is saved; you can download it again from this page anytime.',
+                'Print it, have it signed, then upload the signed copy here to submit it.',
+            ));
     }
 
     /**

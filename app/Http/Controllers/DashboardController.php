@@ -25,12 +25,13 @@ class DashboardController extends Controller
 
         return Inertia::render('Dashboard', [
             'firstName' => filled($firstName) ? trim($firstName) : null,
-            'summary' => [
+            // Deferred so the page paints immediately; the banner tiles pulse until these counts arrive.
+            'summary' => Inertia::defer(fn () => [
                 'employees' => Employee::count(),
                 'programs' => Program::count(),
                 'active_batches' => Batch::where('status', 'Active')->count(),
                 'pending_submissions' => Submission::where('status', 'Pending')->count(),
-            ],
+            ]),
             'years' => $this->availableBatchYears(),
         ]);
     }

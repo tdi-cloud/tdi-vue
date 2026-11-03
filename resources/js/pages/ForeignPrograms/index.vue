@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
 import ForeignProgramsDashboardModal from '@/components/ForeignProgramsDashboardModal.vue';
 import NhrdcMemberModal from '@/components/NhrdcMemberModal.vue';
 import NominationHistoryModal from '@/components/NominationHistoryModal.vue';
 import OrganizingSponsorModal from '@/components/OrganizingSponsorModal.vue';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
+import StatTilesSkeleton from '@/components/skeletons/StatTilesSkeleton.vue';
 import SponsorConfigModal from '@/components/SponsorConfigModal.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -29,7 +32,8 @@ import {
 } from '@/lib/foreignPrograms';
 import EditProgramModal from '@/pages/ForeignPrograms/EditProgramModal.vue';
 import type { BreadcrumbItem } from '@/types';
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { Deferred, Head, Link, router, useForm } from '@inertiajs/vue3';
+import axios from 'axios';
 import {
     AlignLeft,
     Banknote,
@@ -125,7 +129,7 @@ const props = defineProps<{
     programs: PaginatedPrograms;
     years: number[];
     sponsorOptions: string[];
-    stats: ProgramStats;
+    stats?: ProgramStats;
     filters: {
         search?: string;
         status?: string;
@@ -136,16 +140,20 @@ const props = defineProps<{
         embassy_deadline?: string;
         interview_date?: string;
     };
+    // "Did you mean …?" when a search finds nothing (server-side SearchSuggester).
+    suggestion?: string | null;
 }>();
 
 // --- Stat cards (real backend data, no hardcoded numbers) ---
-const percentOfTotal = (value: number) => (props.stats.total ? `${Math.round((value / props.stats.total) * 100)}% of total` : 'No programs yet');
+// stats is a deferred prop: undefined until its follow-up request finishes (the cards show a skeleton meanwhile).
+const percentOfTotal = (value: number) =>
+    props.stats?.total ? `${Math.round((value / (props.stats?.total ?? 0)) * 100)}% of total` : 'No programs yet';
 
 const statCards = computed(() => [
     {
         key: 'total',
         label: 'Total Programs',
-        value: props.stats.total,
+        value: props.stats?.total ?? 0,
         sub: 'All foreign programs',
         icon: Globe,
         iconBg: 'bg-blue-100 dark:bg-blue-950/40',
@@ -154,8 +162,8 @@ const statCards = computed(() => [
     {
         key: 'active',
         label: 'Active Programs',
-        value: props.stats.active,
-        sub: percentOfTotal(props.stats.active),
+        value: props.stats?.active ?? 0,
+        sub: percentOfTotal(props.stats?.active ?? 0),
         icon: PlayCircle,
         iconBg: 'bg-emerald-100 dark:bg-emerald-950/40',
         iconColor: 'text-emerald-600 dark:text-emerald-400',
@@ -163,8 +171,8 @@ const statCards = computed(() => [
     {
         key: 'for_nomination',
         label: 'For Nomination',
-        value: props.stats.for_nomination,
-        sub: percentOfTotal(props.stats.for_nomination),
+        value: props.stats?.for_nomination ?? 0,
+        sub: percentOfTotal(props.stats?.for_nomination ?? 0),
         icon: Clock,
         iconBg: 'bg-amber-100 dark:bg-amber-950/40',
         iconColor: 'text-amber-600 dark:text-amber-400',
@@ -172,8 +180,8 @@ const statCards = computed(() => [
     {
         key: 'completed',
         label: 'Completed Programs',
-        value: props.stats.completed,
-        sub: percentOfTotal(props.stats.completed),
+        value: props.stats?.completed ?? 0,
+        sub: percentOfTotal(props.stats?.completed ?? 0),
         icon: CheckCircle2,
         iconBg: 'bg-violet-100 dark:bg-violet-950/40',
         iconColor: 'text-violet-600 dark:text-violet-400',
@@ -419,11 +427,8 @@ const showSponsorModal = ref(false);
 const sponsors = ref<string[]>([]);
 
 const fetchSponsors = async () => {
-    const res = await fetch(route('organizing-sponsors.index'), {
-        headers: { Accept: 'application/json' },
-    });
-    const data = await res.json();
-    sponsors.value = data.map((s: { id: number; name: string }) => s.name);
+    const { data } = await axios.get<{ id: number; name: string }[]>(route('organizing-sponsors.index'));
+    sponsors.value = data.map((s) => s.name);
 };
 
 const openSponsorModal = () => {
@@ -560,7 +565,12 @@ function onConfigSaved() {
                                 >
                                     {{ sponsor }}
                                 </button>
-                                <p v-if="sponsors.length === 0" class="px-3 py-2 text-xs text-muted-foreground">No sponsors found.</p>
+                                <EmptyState
+                                    v-if="sponsors.length === 0"
+                                    compact
+                                    title="No sponsors found."
+                                    description="Add one with Manage sponsors."
+                                />
                             </div>
                         </div>
                         <Button
@@ -573,21 +583,26 @@ function onConfigSaved() {
                 </div>
             </section>
 
-            <!-- Stat cards -->
-            <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <Card v-for="stat in statCards" :key="stat.key" class="shadow-sm">
-                    <CardContent class="flex items-center gap-3 p-4">
-                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" :class="stat.iconBg">
-                            <component :is="stat.icon" class="h-5 w-5" :class="stat.iconColor" />
-                        </div>
-                        <div class="min-w-0">
-                            <p class="text-2xl font-bold leading-none">{{ stat.value }}</p>
-                            <p class="mt-1.5 truncate text-xs font-semibold text-muted-foreground">{{ stat.label }}</p>
-                            <p class="mt-0.5 truncate text-[11px] text-muted-foreground">{{ stat.sub }}</p>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
+            <!-- Stat cards (deferred prop) -->
+            <Deferred data="stats">
+                <template #fallback>
+                    <StatTilesSkeleton :count="4" label="Loading program totals…" />
+                </template>
+                <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                    <Card v-for="stat in statCards" :key="stat.key" class="shadow-sm">
+                        <CardContent class="flex items-center gap-3 p-4">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" :class="stat.iconBg">
+                                <component :is="stat.icon" class="h-5 w-5" :class="stat.iconColor" />
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-2xl font-bold leading-none">{{ stat.value }}</p>
+                                <p class="mt-1.5 truncate text-xs font-semibold text-muted-foreground">{{ stat.label }}</p>
+                                <p class="mt-0.5 truncate text-[11px] text-muted-foreground">{{ stat.sub }}</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            </Deferred>
 
             <!-- Search & Filter Toolbar -->
             <div class="flex flex-col gap-2.5">
@@ -1021,28 +1036,27 @@ function onConfigSaved() {
                     </div>
                 </div>
 
-                <div v-if="programs.data.length === 0" class="flex flex-col items-center justify-center gap-3 py-24 text-muted-foreground">
-                    <div class="relative">
-                        <div class="flex h-20 w-20 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-950/30">
-                            <Globe class="h-10 w-10 text-blue-300" />
-                        </div>
-                        <div
-                            class="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-muted"
-                        >
-                            <Search class="h-3.5 w-3.5 text-muted-foreground" />
-                        </div>
-                    </div>
-                    <div class="text-center">
-                        <p class="text-sm font-semibold">No programs found.</p>
-                        <p class="mt-1 text-xs">
-                            {{ hasActiveFilters ? 'Try adjusting your search or filters.' : 'Get started by adding your first foreign program.' }}
-                        </p>
-                    </div>
-                    <Button v-if="hasActiveFilters" variant="outline" size="sm" @click="clearFilters">Clear all filters</Button>
-                    <Button v-else class="bg-blue-600 hover:bg-blue-700 dark:text-white" size="sm" @click="showModal = true">
-                        <Plus class="mr-1 h-4 w-4" /> Add Program
-                    </Button>
-                </div>
+                <SearchEmptyState
+                    v-if="programs.data.length === 0 && filters.search"
+                    :query="filters.search"
+                    :suggestion="suggestion"
+                    @search="search = $event"
+                    @clear-filters="clearFilters"
+                />
+                <EmptyState
+                    v-else-if="programs.data.length === 0 && hasActiveFilters"
+                    variant="filtered"
+                    title="No programs found."
+                    description="Try adjusting your filters."
+                    @clear-filters="clearFilters"
+                />
+                <EmptyState
+                    v-else-if="programs.data.length === 0"
+                    :icon="Globe"
+                    title="No foreign programs yet."
+                    description="Get started by adding your first foreign program."
+                    :action="{ label: 'Add Program', icon: Plus, onClick: () => (showModal = true) }"
+                />
             </div>
 
             <!-- Pagination -->

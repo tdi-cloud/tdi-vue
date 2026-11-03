@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\TutorialVideo;
 use App\Models\TutorialVideoStep;
 use App\Models\User;
+use App\Support\FlashMessage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -130,7 +131,7 @@ class TutorialVideoController extends Controller
             TutorialVideoStep::whereKey($removed->modelKeys())->delete();
         });
 
-        return back()->with('success', 'Documentation saved.');
+        return back()->with('success', FlashMessage::make('Documentation saved', "The written steps for \"{$tutorialVideo->title}\" are now visible to everyone who opens it."));
     }
 
     /**
@@ -154,7 +155,7 @@ class TutorialVideoController extends Controller
             'thumbnail' => ['nullable', 'image', 'max:5120'],
         ]);
 
-        TutorialVideo::create([
+        $video = TutorialVideo::create([
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'video_path' => $request->file('video')->store('tutorial-videos', 'public'),
@@ -162,7 +163,11 @@ class TutorialVideoController extends Controller
             'uploaded_by' => $request->user()->empcode,
         ]);
 
-        return back()->with('success', 'Video uploaded.');
+        return back()->with('success', FlashMessage::make(
+            'Video uploaded',
+            "\"{$video->title}\" is now in the How-to Videos library.",
+            'Add written steps so people can follow along without watching.',
+        ));
     }
 
     // POST /how-to-videos/{tutorialVideo} (POST so files can be sent with the edit)
@@ -194,7 +199,7 @@ class TutorialVideoController extends Controller
 
         $tutorialVideo->update($attributes);
 
-        return back()->with('success', 'Video updated.');
+        return back()->with('success', FlashMessage::make('Video updated', "Your changes to \"{$tutorialVideo->title}\" are saved."));
     }
 
     // DELETE /how-to-videos/{tutorialVideo}
@@ -207,6 +212,6 @@ class TutorialVideoController extends Controller
         ]));
         $tutorialVideo->delete();
 
-        return back()->with('success', 'Video deleted.');
+        return back()->with('success', FlashMessage::make('Video deleted', "\"{$tutorialVideo->title}\" was removed from the library."));
     }
 }

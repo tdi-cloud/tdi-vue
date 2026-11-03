@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
 import { Link } from '@inertiajs/vue3';
 import axios from 'axios';
 import { Building2, CheckCircle2, ChevronLeft, ChevronRight, ExternalLink, FileText, History, Loader2, Search, UserRound, X } from 'lucide-vue-next';
@@ -88,7 +89,7 @@ async function fetchHistory(page = 1) {
         sponsorOptions.value = data.sponsorOptions ?? [];
     } catch (err: any) {
         if (axios.isCancel(err) || err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') return;
-        console.error('Failed to load nomination history:', err?.response?.data ?? err);
+        // Shown by the app-wide error toast (lib/http.ts).
     } finally {
         if (controller === ctrl) {
             loading.value = false;
@@ -275,7 +276,12 @@ function formatDateTime(date?: string | null) {
                             </div>
                         </div>
 
-                        <p v-else class="py-10 text-center text-xs text-muted-foreground">No nomination submissions found.</p>
+                        <EmptyState
+                            v-else
+                            compact
+                            title="No nomination submissions found."
+                            description="Nominations this person submits will appear here."
+                        />
                     </div>
                 </div>
             </Transition>

@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\Program;
 use App\Models\ProgramCompetency;
 use App\Models\Submission;
+use App\Support\FlashMessage;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -140,11 +141,16 @@ class ProgramController extends Controller
             'origin' => 'required|string',
         ]);
 
-        Program::create(array_merge($request->all(), [
+        $program = Program::create(array_merge($request->all(), [
             'added_by' => auth()->user()->empcode,
         ]));
 
-        return back()->with('success', 'Program created successfully.');
+        return back()->with('success', FlashMessage::make(
+            'Program created',
+            "\"{$program->title}\" is saved and now appears in the Programs list.",
+            'Open it to add a batch, then participants and requirements.',
+            ['label' => 'Open program', 'href' => route('programs.show', $program)],
+        ));
     }
 
     public function show(Program $program)
@@ -225,7 +231,10 @@ class ProgramController extends Controller
 
         $program->update($request->all());
 
-        return redirect()->route('programs.show', $program)->with('success', 'Program updated successfully.');
+        return redirect()->route('programs.show', $program)->with('success', FlashMessage::make(
+            'Program updated',
+            "Your changes to \"{$program->title}\" are saved.",
+        ));
     }
 
     public function destroy(Program $program)
@@ -235,7 +244,10 @@ class ProgramController extends Controller
         // Kasama nang mabubura ang mga batches nito (tingnan ang Program::booted()).
         $program->delete();
 
-        return redirect()->route('programs.index')->with('success', 'Program deleted successfully.');
+        return redirect()->route('programs.index')->with('success', FlashMessage::make(
+            'Program deleted',
+            "\"{$program->title}\" and its batches were removed.",
+        ));
     }
 
     public function storeCompetencies(Request $request, Program $program)
@@ -253,7 +265,10 @@ class ProgramController extends Controller
             ]);
         }
 
-        return back()->with('success', 'Competencies added successfully.');
+        return back()->with('success', FlashMessage::make(
+            count($request->competencies).' competency(ies) added',
+            "They are now listed under \"{$program->title}\".",
+        ));
     }
 
     public function destroyCompetency(Program $program, ProgramCompetency $competency)
@@ -262,6 +277,6 @@ class ProgramController extends Controller
 
         $competency->delete();
 
-        return back()->with('success', 'Competency removed successfully.');
+        return back()->with('success', FlashMessage::make('Competency removed', "\"{$competency->competency}\" is no longer listed for this program."));
     }
 }

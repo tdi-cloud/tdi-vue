@@ -56,3 +56,20 @@ test('the dashboard first name is null when the admin has no employee record', f
         ->get('/dashboard')
         ->assertInertia(fn (Assert $page) => $page->where('firstName', null));
 });
+
+test('the dashboard summary counts are deferred until after the first paint', function () {
+    $this->actingAs(User::factory()->create(['access' => 'admin']));
+
+    $this->get('/dashboard')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Dashboard')
+            ->has('years')
+            ->missing('summary')
+            ->loadDeferredProps(fn (Assert $reload) => $reload
+                ->has('summary', fn (Assert $summary) => $summary
+                    ->where('employees', 0)
+                    ->where('programs', 0)
+                    ->where('active_batches', 0)
+                    ->where('pending_submissions', 0))));
+});

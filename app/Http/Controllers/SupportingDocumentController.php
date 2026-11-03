@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Program;
 use App\Models\ProgramSupportingDocument;
+use App\Support\FlashMessage;
+use App\Support\LiteMode;
+use App\Support\SearchSuggester;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -36,12 +39,18 @@ class SupportingDocumentController extends Controller
             // SORT: series year DESC, tapos document number DESC
             ->orderByDesc('document_series')
             ->orderByDesc('document_number')
-            ->paginate(15)
+            ->paginate(LiteMode::perPage($request, 15))
             ->withQueryString();
 
         return Inertia::render('supporting-documents/index', [
             'documents' => $documents,
             'filters' => $filters,
+            'suggestion' => SearchSuggester::forEmptyResults(
+                $filters['search'] ?? null,
+                $documents->total(),
+                fn () => ProgramSupportingDocument::query()->get(['subject', 'document_type', 'origin', 'document_number', 'program_code'])
+                    ->flatMap(fn (ProgramSupportingDocument $document) => [$document->subject, $document->document_type, $document->origin, $document->program_code]),
+            ),
 
             // Lookups para sa filter dropdowns
             'documentTypes' => ProgramSupportingDocument::query()
@@ -77,11 +86,14 @@ class SupportingDocumentController extends Controller
             'link' => 'nullable|string|max:2048|url',
         ]);
 
-        $program->supportingDocuments()->create(array_merge($validated, [
+        $document = $program->supportingDocuments()->create(array_merge($validated, [
             'program_code' => $program->program_code,
         ]));
 
-        return back()->with('success', 'Supporting document added successfully.');
+        return back()->with('success', FlashMessage::make(
+            'Supporting document added',
+            "{$document->document_type} No. {$document->document_number} is attached to \"{$program->title}\".",
+        ));
     }
 
     /**
@@ -103,7 +115,7 @@ class SupportingDocumentController extends Controller
 
         $supportingDocument->update($validated);
 
-        return back()->with('success', 'Supporting document updated successfully.');
+        return back()->with('success', FlashMessage::make('Supporting document updated', "Your changes to {$supportingDocument->document_type} No. {$supportingDocument->document_number} are saved."));
     }
 
     /**
@@ -115,6 +127,6 @@ class SupportingDocumentController extends Controller
 
         $supportingDocument->delete();
 
-        return back()->with('success', 'Supporting document deleted successfully.');
+        return back()->with('success', FlashMessage::make('Supporting document deleted', "{$supportingDocument->document_type} No. {$supportingDocument->document_number} was removed from this program."));
     }
 }

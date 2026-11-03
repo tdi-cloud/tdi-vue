@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useConfirm } from '@/composables/useConfirm';
+import { suggestSearch } from '@/lib/searchSuggestion';
 import { router } from '@inertiajs/vue3';
 import {
     AlertTriangle,
@@ -130,6 +133,12 @@ const TYPE_COLORS: Record<string, { bg: string; text: string; border: string; do
 const search = ref('');
 const batchFilter = ref<number | ''>('');
 const statusFilter = ref<string>('');
+
+const clearCertificateFilters = () => {
+    search.value = '';
+    batchFilter.value = '';
+    statusFilter.value = '';
+};
 const page = ref(1);
 
 const modalOpen = ref(false);
@@ -683,17 +692,31 @@ function submitBulk() {
         </div>
 
         <!-- ── Empty state ───────────────────────────────────────────────── -->
-        <div v-if="paginated.length === 0" class="flex flex-col items-center justify-center py-20 text-muted-foreground">
-            <Award class="mb-3 h-12 w-12 opacity-20" />
-            <p class="text-sm font-semibold">No participants found</p>
-            <p class="mt-1 text-xs">
-                {{
-                    search || batchFilter !== ''
-                        ? 'Try adjusting your search or filter.'
-                        : 'Add participants with Complete or Pending attendance to manage their certificates.'
-                }}
-            </p>
-        </div>
+        <SearchEmptyState
+            v-if="paginated.length === 0 && search.trim()"
+            :query="search"
+            :suggestion="
+                suggestSearch(
+                    search,
+                    allRows.flatMap((r) => [r.participant.employee?.name, r.participant.empcode]),
+                )
+            "
+            @search="search = $event"
+            @clear-filters="clearCertificateFilters"
+        />
+        <EmptyState
+            v-else-if="paginated.length === 0 && (batchFilter !== '' || statusFilter !== '')"
+            variant="filtered"
+            title="No participants found"
+            description="Try adjusting your batch or status filter."
+            @clear-filters="clearCertificateFilters"
+        />
+        <EmptyState
+            v-else-if="paginated.length === 0"
+            :icon="Award"
+            title="No participants found"
+            description="Add participants with Complete or Pending attendance to manage their certificates."
+        />
 
         <!-- ── Pagination ────────────────────────────────────────────────── -->
         <div v-if="totalPages > 1" class="flex items-center justify-between">
@@ -971,7 +994,13 @@ function submitBulk() {
                         </div>
                     </div>
 
-                    <p v-else class="text-center text-xs text-muted-foreground">No files added yet.</p>
+                    <EmptyState
+                        v-else
+                        compact
+                        :icon="FileUp"
+                        title="No files added yet."
+                        description="Drop PDF certificates above to match them to participants."
+                    />
                 </div>
 
                 <!-- Footer -->

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
 import {
@@ -47,6 +49,8 @@ const props = defineProps<{
         search?: string;
         status?: string;
     };
+    // "Did you mean …?" when a search finds nothing (server-side SearchSuggester).
+    suggestion?: string | null;
 }>();
 
 const search = ref(props.filters.search ?? '');
@@ -230,10 +234,31 @@ const toggleStatus = (report: ProblemReportRow) => {
                     </tbody>
                 </table>
 
-                <div v-else class="flex flex-col items-center justify-center gap-2 py-16 text-muted-foreground">
-                    <MessageSquareWarning class="h-10 w-10 opacity-30" />
-                    <p class="text-sm font-semibold">No problem reports found.</p>
-                </div>
+                <template v-else>
+                    <SearchEmptyState
+                        v-if="filters.search"
+                        :query="filters.search"
+                        :suggestion="suggestion"
+                        class="m-4"
+                        @search="search = $event"
+                        @clear-filters="clearFilters"
+                    />
+                    <EmptyState
+                        v-else-if="hasActiveFilters"
+                        variant="filtered"
+                        title="No problem reports found."
+                        description="Try another status."
+                        class="m-4"
+                        @clear-filters="clearFilters"
+                    />
+                    <EmptyState
+                        v-else
+                        :icon="MessageSquareWarning"
+                        title="No problem reports yet"
+                        description="Reports that users send with the Report a problem button will appear here."
+                        class="m-4"
+                    />
+                </template>
             </div>
 
             <!-- Pagination -->

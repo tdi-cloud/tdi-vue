@@ -70,7 +70,7 @@ test('admins and superadmins can edit the submission date', function (string $ac
     $this->actingAs(User::factory()->create(['empcode' => 'EMP-ED-'.$access, 'access' => $access]))
         ->patch(route('submissions.submitted-at.update', $submission), ['submitted_at' => $onTime->toIso8601String()])
         ->assertRedirect()
-        ->assertSessionHas('success', 'Submission date updated.');
+        ->assertSessionHas('success.title', 'Submission date updated');
 
     expect($submission->fresh()->submitted_at->equalTo($onTime))->toBeTrue();
 })->with(['admin', 'superadmin']);

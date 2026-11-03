@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -547,21 +548,16 @@ function submitBulkFacilitators() {
             </div>
 
             <!-- Empty state: set up the form -->
-            <div v-if="!form" class="flex flex-col items-center gap-4 rounded-2xl border bg-background p-8 text-center">
-                <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-100 dark:bg-rose-950/40">
-                    <Sparkles class="h-7 w-7 text-rose-600" />
-                </div>
-                <div>
-                    <p class="text-sm font-bold">No evaluation form yet for this batch</p>
-                    <p class="mt-1 max-w-md text-xs text-muted-foreground">
-                        Set one up to start collecting participant feedback on content, methodology, facilitators, and overall experience — you can
-                        edit every question afterward.
-                    </p>
-                </div>
-                <div class="mt-2 flex flex-col items-center gap-2 sm:flex-row">
+            <EmptyState
+                v-if="!form"
+                :icon="Sparkles"
+                title="No evaluation form yet for this batch"
+                description="Set one up to start collecting participant feedback on content, methodology, facilitators, and overall experience — you can edit every question afterward."
+            >
+                <div class="flex flex-col items-center gap-2 sm:flex-row">
                     <Button :disabled="creating" class="bg-rose-600 hover:bg-rose-700 dark:text-white" @click="createDefault">
                         <LoaderCircle v-if="creating" class="mr-1 h-4 w-4 animate-spin" />
-                        <Sparkles v-else class="mr-1 h-4 w-4" /> Use Default Template
+                        <Sparkles v-else class="mr-1 h-4 w-4" /> {{ creating ? 'Creating…' : 'Use Default Template' }}
                     </Button>
                     <template v-if="siblingBatchesWithForms.length">
                         <span class="text-xs text-muted-foreground">or</span>
@@ -580,7 +576,7 @@ function submitBulkFacilitators() {
                         </div>
                     </template>
                 </div>
-            </div>
+            </EmptyState>
 
             <template v-else>
                 <!-- Settings -->
@@ -673,13 +669,7 @@ function submitBulkFacilitators() {
                                 class="hidden"
                                 @change="handleBackgroundFileChange"
                             />
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                class="h-7 text-xs"
-                                :disabled="uploadingBackground"
-                                @click="triggerBackgroundUpload"
-                            >
+                            <Button size="sm" variant="outline" class="h-7 text-xs" :disabled="uploadingBackground" @click="triggerBackgroundUpload">
                                 <LoaderCircle v-if="uploadingBackground" class="mr-1 h-3 w-3 animate-spin" />
                                 <Upload v-else class="mr-1 h-3 w-3" /> Change
                             </Button>
@@ -816,7 +806,7 @@ function submitBulkFacilitators() {
                                     </button>
                                 </div>
                             </div>
-                            <p v-if="!section.questions.length" class="px-5 py-4 text-xs text-muted-foreground">No questions in this section yet.</p>
+                            <EmptyState v-if="!section.questions.length" compact title="No questions in this section yet." />
                         </div>
 
                         <div class="border-t px-5 py-3">
@@ -844,9 +834,12 @@ function submitBulkFacilitators() {
                         Every facilitator added here will be rated separately by each respondent using the Section III questions above.
                     </p>
 
-                    <div v-if="!form.facilitators.length" class="rounded-2xl border border-dashed py-10 text-center text-sm text-muted-foreground">
-                        No facilitators added yet.
-                    </div>
+                    <EmptyState
+                        v-if="!form.facilitators.length"
+                        compact
+                        class="rounded-2xl border border-dashed"
+                        title="No facilitators added yet."
+                    />
 
                     <div v-else class="divide-y overflow-hidden rounded-2xl border bg-background">
                         <div

@@ -1,7 +1,12 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
+import InlineError from '@/components/InlineError.vue';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
+import TableRowsSkeleton from '@/components/skeletons/TableRowsSkeleton.vue';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { suggestSearch } from '@/lib/searchSuggestion';
 import axios from 'axios';
 import { CircleCheckBig, CircleX, Download, GraduationCap, LoaderCircle, Search, Users } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
@@ -28,6 +33,7 @@ interface ComplianceStats {
 }
 
 const loading = ref(false);
+const loadError = ref(false);
 
 const stats = ref<ComplianceStats>({
     total: 0,
@@ -99,6 +105,7 @@ const revealStats = (data: ComplianceStats, pct: number) => {
 const fetchStats = async () => {
     const currentRequest = ++requestId;
     loading.value = true;
+    loadError.value = false;
     try {
         const { data } = await axios.get(route('dashboard.training-compliance'), {
             params: {
@@ -122,8 +129,9 @@ const fetchStats = async () => {
         } else {
             revealStats(data, pct);
         }
-    } catch (e) {
-        console.error('Failed to load training compliance stats:', e);
+    } catch {
+        // The app-wide toast explains the failure; the card shows a Retry button instead of zeros.
+        if (currentRequest === requestId) loadError.value = true;
     } finally {
         if (currentRequest === requestId) loading.value = false;
     }
@@ -180,8 +188,6 @@ const openList = async (type: 'trained' | 'not_trained') => {
             },
         });
         employees.value = data.employees;
-    } catch (e) {
-        console.error('Failed to load employee list:', e);
     } finally {
         listLoading.value = false;
     }
@@ -272,7 +278,10 @@ const chartOptions = {
         </div>
 
         <!-- CONTENT -->
-        <div class="px-5 py-4">
+        <div v-if="loadError" class="px-5 py-4">
+            <InlineError message="Compliance data couldn't be loaded." @retry="fetchStats" />
+        </div>
+        <div v-else class="px-5 py-4">
             <div class="flex flex-col items-center justify-center gap-6 sm:flex-row sm:gap-10">
                 <!-- LEFT: counts -->
                 <div class="flex flex-row items-center gap-8 sm:flex-col sm:items-start sm:gap-6">
@@ -367,9 +376,7 @@ const chartOptions = {
                 </div>
 
                 <div class="min-h-0 flex-1 overflow-y-auto">
-                    <div v-if="listLoading" class="flex items-center justify-center py-16">
-                        <LoaderCircle class="h-6 w-6 animate-spin text-blue-600" />
-                    </div>
+                    <TableRowsSkeleton v-if="listLoading" label="Loading employee list…" />
                     <table v-else-if="filteredEmployees.length" class="w-full text-sm">
                         <thead class="sticky top-0 z-10 bg-background">
                             <tr class="border-b text-left text-xs text-muted-foreground">
@@ -398,10 +405,20 @@ const chartOptions = {
                             </tr>
                         </tbody>
                     </table>
-                    <div v-else class="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
-                        <p class="text-xs font-semibold">No employees found.</p>
-                        <p class="mt-1 text-[11px]">Try a different search or adjust the filters.</p>
-                    </div>
+                    <SearchEmptyState
+                        v-else-if="listSearch.trim()"
+                        compact
+                        :query="listSearch"
+                        :suggestion="
+                            suggestSearch(
+                                listSearch,
+                                employees.flatMap((e) => [e.FIRSTNAME, e.LASTNAME, e.POSITION, e.office_division]),
+                            )
+                        "
+                        @search="listSearch = $event"
+                        @clear-filters="listSearch = ''"
+                    />
+                    <EmptyState v-else compact title="No employees found." description="Try adjusting the filters on the Dashboard." />
                 </div>
 
                 <div class="flex shrink-0 items-center justify-between border-t pt-3">

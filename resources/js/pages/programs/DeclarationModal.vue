@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { suggestionFrom } from '@/lib/http';
+import axios from 'axios';
 import { AlertTriangle, CheckCircle2, Download, FileBadge2, LoaderCircle, Search } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 
@@ -45,6 +48,9 @@ watch(
     },
 );
 
+// "Did you mean …?" for the signatory lookup (X-Search-Suggestion header).
+const lookupSuggestion = ref<string | null>(null);
+
 watch(query, (val) => {
     if (debounceTimer) clearTimeout(debounceTimer);
 
@@ -58,8 +64,9 @@ watch(query, (val) => {
         searching.value = true;
         try {
             const url = route('declarations.signatories.search', { q: val });
-            const res = await fetch(url, { headers: { Accept: 'application/json' } });
-            results.value = await res.json();
+            const response = await axios.get(url);
+            results.value = response.data;
+            lookupSuggestion.value = suggestionFrom(response);
             showDropdown.value = true;
         } catch {
             results.value = [];
@@ -151,9 +158,15 @@ const generate = () => {
 
                         <div
                             v-else-if="showDropdown && !searching && query.length >= 2"
-                            class="absolute z-50 mt-1 w-full rounded-lg border bg-popover px-3 py-2 text-xs text-muted-foreground shadow-md"
+                            class="absolute z-50 mt-1 w-full rounded-lg border bg-popover shadow-md"
                         >
-                            No employees found.
+                            <SearchEmptyState
+                                compact
+                                :query="query"
+                                :suggestion="lookupSuggestion"
+                                @search="query = $event"
+                                @clear-filters="query = ''"
+                            />
                         </div>
                     </div>
 

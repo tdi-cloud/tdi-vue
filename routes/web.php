@@ -94,7 +94,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::delete('/batches/{batch}', [BatchController::class, 'destroy'])->name('batches.destroy');
 
     // PARTICIPANTS
-    Route::get('/participants/search', [ParticipantController::class, 'search'])->name('participants.search');
+    Route::get('/participants/search', [ParticipantController::class, 'search'])->middleware('search.suggest')->name('participants.search');
     Route::post('/participants', [ParticipantController::class, 'store'])->name('participants.store');
     Route::delete('/participants/{participant}', [ParticipantController::class, 'destroy'])->name('participants.destroy');
     Route::post('/participants/{participant}/attendance', [ParticipantController::class, 'updateAttendance'])
@@ -254,7 +254,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
         // NOMINEE ASSESSMENT SHEET
         Route::get('/foreign-programs/{foreignProgram}/assessment', [ForeignNomineeAssessmentController::class, 'index'])
             ->name('foreign-programs.assessment');
-        Route::get('/foreign-nominee-assessments/search-employee', [ForeignNomineeAssessmentController::class, 'searchEmployee'])
+        Route::get('/foreign-nominee-assessments/search-employee', [ForeignNomineeAssessmentController::class, 'searchEmployee'])->middleware('search.suggest')
             ->name('foreign-nominee-assessments.search-employee');
         Route::post('/foreign-nominees/{nominee}/assessment', [ForeignNomineeAssessmentController::class, 'save'])
             ->name('foreign-nominees.assessment.save');
@@ -304,13 +304,13 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('/employees/{empcode}/progress', [EmployeeProgressController::class, 'show'])->name('employees.progress');
 
     Route::get('/reports/tpmr', [TPMRController::class, 'generate'])->name('reports.tpmr');
-    Route::get('/employees/search', [TPMRController::class, 'searchEmployees'])->name('employees.search');
+    Route::get('/employees/search', [TPMRController::class, 'searchEmployees'])->middleware('search.suggest')->name('employees.search');
 
     // POST-TRAINING REQUIREMENTS TRACKER
     Route::get('/requirements-tracker', [RequirementsTrackerController::class, 'index'])->name('requirements-tracker.index');
     Route::get('/requirements-tracker/export', [RequirementsTrackerController::class, 'exportCsv'])
         ->name('requirements-tracker.export');
-    Route::get('/requirements-tracker/search', [RequirementsTrackerController::class, 'search'])
+    Route::get('/requirements-tracker/search', [RequirementsTrackerController::class, 'search'])->middleware('search.suggest')
         ->name('requirements-tracker.search');
 
     // ACTION PLAN MONITORING — every REAP activity against its schedule; any admin reviews implementation reports
@@ -328,7 +328,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('/employees-map/region', [EmployeeMapController::class, 'byRegion'])->name('employees-map.region');
 
     // DECLARATION OF COMPLETERS:
-    Route::get('/declarations/signatories/search', [DeclarationController::class, 'searchSignatory'])
+    Route::get('/declarations/signatories/search', [DeclarationController::class, 'searchSignatory'])->middleware('search.suggest')
         ->name('declarations.signatories.search');
 
     Route::get('/batches/{batch}/declaration', [DeclarationController::class, 'generate'])
@@ -358,7 +358,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
         ->name('certificates.destroy');
 
     // ATTENDANCE
-    Route::get('/employees/search-signatory', [AttendanceController::class, 'searchSignatory'])
+    Route::get('/employees/search-signatory', [AttendanceController::class, 'searchSignatory'])->middleware('search.suggest')
         ->name('employees.search-signatory');
 
     Route::get('/attendance/generate', [AttendanceController::class, 'generate'])
@@ -424,7 +424,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::post('/programs/{program}/tesda-orders', [TesdaOrderController::class, 'store'])->name('tesda-orders.store');
     Route::get('/tesda-orders/{tesdaOrder}/download', [TesdaOrderController::class, 'download'])->name('tesda-orders.download');
     Route::delete('/tesda-orders/{tesdaOrder}', [TesdaOrderController::class, 'destroy'])->name('tesda-orders.destroy');
-    Route::get('/tesda-orders/search-signatory', [TesdaOrderController::class, 'searchSignatory'])->name('tesda-orders.search-signatory');
+    Route::get('/tesda-orders/search-signatory', [TesdaOrderController::class, 'searchSignatory'])->middleware('search.suggest')->name('tesda-orders.search-signatory');
     Route::get('/programs/{program}/tesda-orders/participants', [TesdaOrderController::class, 'participants'])
         ->name('tesda-orders.participants');
 
@@ -551,10 +551,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/tna/self-rating', [TnaController::class, 'store'])
         ->name('tna.self-rating.store');
 
-    Route::get('/tna/supervisor-search', [TnaController::class, 'searchSupervisor'])
+    Route::get('/tna/supervisor-search', [TnaController::class, 'searchSupervisor'])->middleware('search.suggest')
         ->name('tna.supervisor.search');
 
-    Route::get('/tna/fasd-search', [TnaController::class, 'searchFasd'])
+    Route::get('/tna/fasd-search', [TnaController::class, 'searchFasd'])->middleware('search.suggest')
         ->name('tna.fasd.search');
 
     Route::get('/tna/assessments/{assessment}/pdf', [TnaController::class, 'pdf'])

@@ -3,6 +3,7 @@ import FilePreviewModal from '@/components/FilePreviewModal.vue';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { useNetworkStatus } from '@/composables/useNetworkStatus';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import { AlertTriangle, CheckCircle2, ChevronDown, CloudUpload, Eye, FileText, LoaderCircle, Trash2, Upload, XCircle } from 'lucide-vue-next';
@@ -48,6 +49,8 @@ interface Row {
 const requirementId = ref('');
 const rows = ref<Row[]>([]);
 const uploading = ref(false);
+// Files upload one at a time, so the app-wide upload progress belongs to the current row.
+const { uploadPercentage } = useNetworkStatus();
 const isDragging = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
 
@@ -137,6 +140,8 @@ async function uploadAll() {
         try {
             await axios.post(route('submissions.store'), formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
+                // Each row shows its own error inline.
+                silentErrors: true,
             });
             row.status = 'done';
         } catch (err: any) {
@@ -247,7 +252,10 @@ function close() {
                             </div>
 
                             <!-- Status -->
-                            <LoaderCircle v-if="row.status === 'uploading'" class="h-4 w-4 shrink-0 animate-spin text-blue-600" />
+                            <span v-if="row.status === 'uploading'" class="flex shrink-0 items-center gap-1 text-xs tabular-nums text-blue-600">
+                                <LoaderCircle class="h-4 w-4 animate-spin" aria-hidden="true" />
+                                {{ uploadPercentage === null ? '' : `${uploadPercentage}%` }}
+                            </span>
                             <CheckCircle2 v-else-if="row.status === 'done'" class="h-4 w-4 shrink-0 text-emerald-600" />
                             <XCircle v-else-if="row.status === 'error'" class="h-4 w-4 shrink-0 text-red-600" />
                             <AlertTriangle
@@ -276,7 +284,9 @@ function close() {
             <div class="flex shrink-0 flex-col gap-2 border-t px-5 py-3">
                 <p v-if="finished && (doneCount || errorCount)" class="text-xs font-semibold">
                     <span class="text-emerald-600">{{ doneCount }} uploaded</span>
-                    <span v-if="errorCount"> · <span class="text-red-600">{{ errorCount }} failed</span></span>
+                    <span v-if="errorCount">
+                        · <span class="text-red-600">{{ errorCount }} failed</span></span
+                    >
                 </p>
                 <div class="flex justify-end gap-2">
                     <Button variant="outline" size="sm" @click="close">Close</Button>

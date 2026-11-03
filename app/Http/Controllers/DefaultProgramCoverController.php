@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\DefaultProgramCover;
+use App\Support\FlashMessage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -29,7 +30,7 @@ class DefaultProgramCoverController extends Controller
             DefaultProgramCover::create(['image' => $path]);
         }
 
-        return back()->with('success', 'Default program cover updated successfully.');
+        return back()->with('success', FlashMessage::make('Default cover updated', 'Programs without their own cover page now show this image.'));
     }
 
     public function destroy()
@@ -43,6 +44,6 @@ class DefaultProgramCoverController extends Controller
             $default->delete();
         }
 
-        return back()->with('success', 'Default program cover removed.');
+        return back()->with('success', FlashMessage::make('Default cover removed', 'Programs without their own cover page now show the built-in placeholder.'));
     }
 }

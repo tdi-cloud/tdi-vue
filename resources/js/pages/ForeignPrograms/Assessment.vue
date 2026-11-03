@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
 import NhrdcMemberModal from '@/components/NhrdcMemberModal.vue';
 import NhrdcSignedCopyUpload from '@/components/NhrdcSignedCopyUpload.vue';
 import RatingMatrixModal from '@/components/RatingMatrixModal.vue';
@@ -505,9 +506,12 @@ function gradeBadgeClass(n: Nominee) {
             </div>
 
             <!-- Nominee list -->
-            <div v-if="!nominees.length" class="rounded-2xl border border-dashed py-14 text-center text-sm text-muted-foreground">
-                No nominees to assess yet.
-            </div>
+            <EmptyState
+                v-if="!nominees.length"
+                :icon="Users"
+                title="No nominees to assess yet."
+                description="Nominees appear here once they submit the public nomination form."
+            />
 
             <div v-else class="flex flex-col gap-3">
                 <div v-for="n in nominees" :key="n.id" class="overflow-hidden rounded-2xl border bg-background shadow-sm">

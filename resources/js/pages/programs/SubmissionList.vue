@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import EditSubmittedAtDialog from '@/components/EditSubmittedAtDialog.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import FilePreviewModal from '@/components/FilePreviewModal.vue';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useConfirm } from '@/composables/useConfirm';
+import { suggestSearch } from '@/lib/searchSuggestion';
 import MissingSubmissionsModal from '@/pages/programs/MissingSubmissionsModal.vue';
 import { router } from '@inertiajs/vue3';
 import {
@@ -18,6 +21,7 @@ import {
     Eye,
     FileText,
     FileX,
+    Inbox,
     LoaderCircle,
     MessageSquareText,
     Pencil,
@@ -133,6 +137,12 @@ const search = ref('');
 const filterBatch = ref('all');
 const filterStatus = ref('all');
 
+const clearFilters = () => {
+    search.value = '';
+    filterBatch.value = 'all';
+    filterStatus.value = 'all';
+};
+
 const STATUSES = ['Pending', 'Approved', 'Rejected'];
 
 const participantName = (s: Submission): string => {
@@ -165,9 +175,7 @@ const filteredSubmissions = computed(() => {
         if (filterBatch.value !== 'all' && String(s.batch_id) !== filterBatch.value) return false;
         if (filterStatus.value !== 'all' && s.status.toLowerCase() !== filterStatus.value.toLowerCase()) return false;
         if (q) {
-            const hay = [participantName(s), s.participant?.empcode ?? '', docTitle(s), s.requirement?.name ?? '']
-                .join(' ')
-                .toLowerCase();
+            const hay = [participantName(s), s.participant?.empcode ?? '', docTitle(s), s.requirement?.name ?? ''].join(' ').toLowerCase();
             if (!hay.includes(q)) return false;
         }
         return true;
@@ -517,59 +525,37 @@ const removeSubmission = async (s: Submission) => {
         </div>
 
         <!-- ── Empty: no submissions at all ── -->
-        <div v-if="!submissions.length" class="flex flex-col items-center justify-center gap-3 rounded-2xl border px-6 py-16 text-center shadow-md">
-            <svg viewBox="0 0 200 160" class="h-40 w-auto" xmlns="http://www.w3.org/2000/svg">
-                <ellipse cx="100" cy="142" rx="70" ry="8" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
-                <path d="M40 70 L70 30 H130 L160 70 V125 H40 Z" fill="currentColor" class="text-blue-100 dark:text-blue-900/40" />
-                <path d="M40 70 H75 L85 85 H115 L125 70 H160 V125 H40 Z" fill="currentColor" class="text-blue-200 dark:text-blue-800/60" />
-                <path d="M70 30 H130 L150 65 H50 Z" fill="currentColor" class="text-blue-50 dark:text-blue-900/20" />
-                <circle cx="148" cy="42" r="16" fill="currentColor" class="text-amber-100 dark:text-amber-900/40" />
-                <path
-                    d="M141 42 h14 M148 35 v14"
-                    stroke="currentColor"
-                    stroke-width="2.5"
-                    fill="none"
-                    stroke-linecap="round"
-                    class="text-amber-500"
-                />
-            </svg>
-            <p class="text-sm font-bold text-slate-500">No submissions yet</p>
-            <p class="max-w-xs text-xs text-slate-400">Submissions from participants will appear here once they submit their requirements.</p>
-            <Button variant="outline" size="sm" class="mt-1 border-red-200 text-xs text-red-600 hover:bg-red-50" @click="showMissing = true">
+        <EmptyState
+            v-if="!submissions.length"
+            :icon="Inbox"
+            title="No submissions yet"
+            description="Submissions from participants will appear here once they submit their requirements."
+        >
+            <Button variant="outline" size="sm" class="border-red-200 text-xs text-red-600 hover:bg-red-50" @click="showMissing = true">
                 <FileX class="mr-1 h-3.5 w-3.5" /> View who hasn't completed yet
             </Button>
-        </div>
+        </EmptyState>
 
         <!-- ── Empty: filter no match ── -->
-        <div
+        <SearchEmptyState
+            v-else-if="!filteredSubmissions.length && search.trim()"
+            :query="search"
+            :suggestion="
+                suggestSearch(
+                    search,
+                    submissions.flatMap((s) => [participantName(s), s.participant?.empcode, docTitle(s), s.requirement?.name]),
+                )
+            "
+            @search="search = $event"
+            @clear-filters="clearFilters"
+        />
+        <EmptyState
             v-else-if="!filteredSubmissions.length"
-            class="flex flex-col items-center justify-center gap-3 rounded-2xl border px-6 py-16 text-center shadow-md"
-        >
-            <svg viewBox="0 0 200 160" class="h-36 w-auto" xmlns="http://www.w3.org/2000/svg">
-                <ellipse cx="100" cy="142" rx="70" ry="8" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
-                <circle cx="90" cy="75" r="40" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
-                <circle cx="90" cy="75" r="40" stroke="currentColor" stroke-width="6" fill="none" class="text-blue-300 dark:text-blue-700/60" />
-                <line
-                    x1="120"
-                    y1="105"
-                    x2="150"
-                    y2="135"
-                    stroke="currentColor"
-                    stroke-width="8"
-                    stroke-linecap="round"
-                    class="text-blue-300 dark:text-blue-700/60"
-                />
-                <path
-                    d="M75 75 h30 M90 60 v30"
-                    stroke="currentColor"
-                    stroke-width="5"
-                    stroke-linecap="round"
-                    class="text-slate-300 dark:text-slate-700"
-                />
-            </svg>
-            <p class="text-sm font-bold text-slate-500">No submissions match your filters</p>
-            <p class="max-w-xs text-xs text-slate-400">Try a different search term, batch, or status.</p>
-        </div>
+            variant="filtered"
+            title="No submissions match your filters"
+            description="Try a different search term, batch, or status."
+            @clear-filters="clearFilters"
+        />
 
         <!-- ── Submission list ── -->
         <div v-else class="flex flex-col gap-2">

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import InputError from '@/components/InputError.vue';
+import SubmitButton from '@/components/SubmitButton.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { TransitionRoot } from '@headlessui/vue';
@@ -7,7 +8,6 @@ import { Head, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
 import HeadingSmall from '@/components/HeadingSmall.vue';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { type BreadcrumbItem } from '@/types';
@@ -119,7 +119,7 @@ const updatePassword = () => {
                     </div>
 
                     <div class="flex items-center gap-4">
-                        <Button :disabled="form.processing">Save password</Button>
+                        <SubmitButton :processing="form.processing">Save password</SubmitButton>
 
                         <TransitionRoot
                             :show="form.recentlySuccessful"

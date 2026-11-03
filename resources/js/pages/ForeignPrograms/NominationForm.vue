@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { useFormDraft } from '@/composables/useFormDraft';
 import { Head, router, usePage } from '@inertiajs/vue3';
+import axios from 'axios';
 import { AlertCircle, ArrowLeft, ArrowRight, Check, ChevronDown, ExternalLink, Loader2, Upload } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
 
@@ -61,6 +63,9 @@ const fields = ref({
     contact_number: '',
     email: '',
 });
+
+// Autosave the typed fields (files can't be stored) so the nomination survives a reload or lost connection.
+const { clearDraft } = useFormDraft(`nomination:${props.config.slug}`, fields.value);
 
 const accomplishedFile = ref<File | null>(null);
 const accomplishedFileName = ref('');
@@ -152,13 +157,11 @@ const checkingEmail = ref(false);
 async function emailAlreadyUsed(): Promise<boolean> {
     checkingEmail.value = true;
     try {
-        const res = await fetch(
-            route('nominate.check-email', props.config.slug) +
-                `?email=${encodeURIComponent(fields.value.email)}&foreign_program_id=${encodeURIComponent(String(fields.value.foreign_program_id))}`,
-            { headers: { Accept: 'application/json' } },
-        );
-        if (!res.ok) return false;
-        const data = await res.json();
+        // A failed check shouldn't block the nominee; the server checks again on submit.
+        const { data } = await axios.get(route('nominate.check-email', props.config.slug), {
+            params: { email: fields.value.email, foreign_program_id: fields.value.foreign_program_id },
+            silentErrors: true,
+        });
         return !!data.already_submitted;
     } catch {
         return false;
@@ -244,6 +247,7 @@ function submit() {
 
     processing.value = true;
     router.post(route('nominate.submit', props.config.slug), data, {
+        onSuccess: () => clearDraft(),
         onFinish: () => {
             processing.value = false;
         },

@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
 import FilePreviewModal from '@/components/FilePreviewModal.vue';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -8,9 +10,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast/use-toast';
 import { useConfirm } from '@/composables/useConfirm';
+import { suggestionFrom } from '@/lib/http';
+import { suggestSearch } from '@/lib/searchSuggestion';
 import BulkAddParticipants from '@/pages/programs/BulkAddParticipants.vue';
 import BulkSubmissionUpload from '@/pages/programs/BulkSubmissionUpload.vue';
 import { router } from '@inertiajs/vue3';
+import axios from 'axios';
 import {
     CheckCircle2,
     ChevronDown,
@@ -514,6 +519,9 @@ watch(
     },
 );
 
+// "Did you mean …?" for the employee lookup (X-Search-Suggestion header).
+const lookupSuggestion = ref<string | null>(null);
+
 watch(query, (val) => {
     if (debounceTimer) clearTimeout(debounceTimer);
 
@@ -530,8 +538,9 @@ watch(query, (val) => {
                 q: val,
                 batch_id: props.batch?.id,
             });
-            const res = await fetch(url, { headers: { Accept: 'application/json' } });
-            const data: EmployeeOption[] = await res.json();
+            const response = await axios.get<EmployeeOption[]>(url);
+            const data = response.data;
+            lookupSuggestion.value = suggestionFrom(response);
 
             results.value = data.filter((emp) => !selected.value.some((s) => s.empcode === emp.empcode));
             showDropdown.value = true;
@@ -815,9 +824,15 @@ const submissionSummary = computed(() => {
                         </div>
                         <div
                             v-else-if="showDropdown && !searching && query.length >= 2"
-                            class="absolute z-50 mt-1 w-full rounded-xl border bg-white px-3 py-2 text-xs text-muted-foreground shadow-md dark:bg-slate-900"
+                            class="absolute z-50 mt-1 w-full rounded-xl border bg-white shadow-md dark:bg-slate-900"
                         >
-                            No employees found.
+                            <SearchEmptyState
+                                compact
+                                :query="query"
+                                :suggestion="lookupSuggestion"
+                                @search="query = $event"
+                                @clear-filters="query = ''"
+                            />
                         </div>
                     </div>
 
@@ -916,87 +931,28 @@ const submissionSummary = computed(() => {
                     </div>
 
                     <!-- Empty: no participants -->
-                    <div
+                    <EmptyState
                         v-if="!participants.length"
-                        class="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-10 text-center shadow-md dark:border-emerald-800 dark:bg-emerald-950/20"
-                    >
-                        <svg viewBox="0 0 160 110" class="h-24 w-auto" xmlns="http://www.w3.org/2000/svg">
-                            <ellipse cx="80" cy="98" rx="60" ry="6" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
-                            <circle cx="55" cy="40" r="18" fill="currentColor" class="text-emerald-100 dark:text-emerald-900/40" />
-                            <path
-                                d="M30 85 c0 -18 12 -28 25 -28 s25 10 25 28"
-                                fill="currentColor"
-                                class="text-emerald-100 dark:text-emerald-900/40"
-                            />
-                            <circle cx="105" cy="36" r="22" fill="currentColor" class="text-emerald-200 dark:text-emerald-800/60" />
-                            <path
-                                d="M75 88 c0 -22 14 -34 30 -34 s30 12 30 34"
-                                fill="currentColor"
-                                class="text-emerald-200 dark:text-emerald-800/60"
-                            />
-                            <circle
-                                cx="105"
-                                cy="36"
-                                r="22"
-                                stroke="currentColor"
-                                stroke-width="2"
-                                fill="none"
-                                class="text-emerald-300 dark:text-emerald-700/60"
-                                stroke-dasharray="4 4"
-                            />
-                            <path
-                                d="M95 36 l7 7 l12 -14"
-                                stroke="currentColor"
-                                stroke-width="2.5"
-                                fill="none"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                class="text-emerald-500 dark:text-emerald-400"
-                            />
-                        </svg>
-                        <p class="text-sm font-bold text-slate-500">No participants yet</p>
-                        <p class="max-w-xs text-xs text-slate-400">
-                            Use the search above to find and add employees, or use "Bulk Add" to paste a list of employee codes.
-                        </p>
-                    </div>
+                        :icon="Users"
+                        title="No participants yet"
+                        description='Use the search above to find and add employees, or use "Bulk Add" to paste a list of employee codes.'
+                    />
 
                     <!-- Empty: filter no match -->
-                    <div
+                    <SearchEmptyState
                         v-else-if="!filteredParticipants.length"
-                        class="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed px-6 py-8 text-center shadow-md"
-                    >
-                        <svg viewBox="0 0 140 100" class="h-20 w-auto" xmlns="http://www.w3.org/2000/svg">
-                            <ellipse cx="70" cy="90" rx="50" ry="6" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
-                            <circle cx="60" cy="45" r="28" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
-                            <circle
-                                cx="60"
-                                cy="45"
-                                r="28"
-                                stroke="currentColor"
-                                stroke-width="5"
-                                fill="none"
-                                class="text-blue-300 dark:text-blue-700/60"
-                            />
-                            <line
-                                x1="80"
-                                y1="65"
-                                x2="102"
-                                y2="87"
-                                stroke="currentColor"
-                                stroke-width="7"
-                                stroke-linecap="round"
-                                class="text-blue-300 dark:text-blue-700/60"
-                            />
-                            <path
-                                d="M48 45 h24 M60 33 v24"
-                                stroke="currentColor"
-                                stroke-width="4"
-                                stroke-linecap="round"
-                                class="text-slate-300 dark:text-slate-700"
-                            />
-                        </svg>
-                        <p class="text-xs font-bold text-slate-500">No participant matching "{{ listQuery }}"</p>
-                    </div>
+                        compact
+                        :query="listQuery"
+                        :suggestion="
+                            suggestSearch(
+                                listQuery,
+                                participants.flatMap((p: any) => [p.employee?.name, p.empcode]),
+                            )
+                        "
+                        class="rounded-2xl border border-dashed"
+                        @search="listQuery = $event"
+                        @clear-filters="listQuery = ''"
+                    />
 
                     <!-- Participant list -->
                     <template v-else>
@@ -1345,7 +1301,8 @@ const submissionSummary = computed(() => {
                             </svg>
                             <p class="text-sm font-bold text-slate-500">No requirements set</p>
                             <p class="max-w-xs text-xs text-slate-400">
-                                Add requirements to this batch in the Requirements tab, or add the participant's documents under Other Documents below.
+                                Add requirements to this batch in the Requirements tab, or add the participant's documents under Other Documents
+                                below.
                             </p>
                         </div>
 
@@ -1507,14 +1464,22 @@ const submissionSummary = computed(() => {
                             <div v-if="docFormOpen" class="mb-2.5 grid gap-2 rounded-xl border bg-blue-50/50 p-3 shadow-md dark:bg-blue-950/20">
                                 <div class="grid gap-1">
                                     <Label class="flex items-center gap-1 text-xs"><FileText class="h-3 w-3 text-slate-400" /> Document Title</Label>
-                                    <Input v-model="docTitle" class="h-8 bg-white text-xs dark:bg-slate-900" placeholder="e.g. Certificate of Attendance" />
+                                    <Input
+                                        v-model="docTitle"
+                                        class="h-8 bg-white text-xs dark:bg-slate-900"
+                                        placeholder="e.g. Certificate of Attendance"
+                                    />
                                     <p class="text-xs text-red-500">{{ docErrors.document_title }}</p>
                                 </div>
                                 <div class="grid grid-cols-2 gap-2">
                                     <div class="grid gap-1">
-                                        <Label class="flex items-center gap-1 text-xs"><ClipboardCheck class="h-3 w-3 text-slate-400" /> Status</Label>
+                                        <Label class="flex items-center gap-1 text-xs"
+                                            ><ClipboardCheck class="h-3 w-3 text-slate-400" /> Status</Label
+                                        >
                                         <Select v-model="docStatus">
-                                            <SelectTrigger class="h-8 bg-white text-xs dark:bg-slate-900"><SelectValue placeholder="Select status" /></SelectTrigger>
+                                            <SelectTrigger class="h-8 bg-white text-xs dark:bg-slate-900"
+                                                ><SelectValue placeholder="Select status"
+                                            /></SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem class="text-xs" value="Pending">Pending</SelectItem>
                                                 <SelectItem class="text-xs" value="Approved">Approved</SelectItem>
@@ -1530,7 +1495,9 @@ const submissionSummary = computed(() => {
                                             class="cursor-pointer text-xs file:mr-2 file:rounded-md file:border-0 file:bg-blue-600 file:px-2.5 file:py-1.5 file:text-[11px] file:font-bold file:text-white hover:file:bg-blue-500"
                                             @change="onDocFileChange"
                                         />
-                                        <p v-if="docEditingId && !docFile" class="text-[11px] text-slate-500">Leave empty to keep the current file.</p>
+                                        <p v-if="docEditingId && !docFile" class="text-[11px] text-slate-500">
+                                            Leave empty to keep the current file.
+                                        </p>
                                         <p class="text-xs text-red-500">{{ docErrors.file }}</p>
                                     </div>
                                 </div>
@@ -1563,7 +1530,10 @@ const submissionSummary = computed(() => {
                                     :class="statusMeta(doc.status, true).ring"
                                 >
                                     <div class="flex min-w-0 items-start gap-3">
-                                        <div class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" :class="statusMeta(doc.status, true).badge">
+                                        <div
+                                            class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                                            :class="statusMeta(doc.status, true).badge"
+                                        >
                                             <component :is="statusMeta(doc.status, true).icon" class="h-4 w-4" />
                                         </div>
                                         <div class="min-w-0">

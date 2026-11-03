@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
+import UploadProgress from '@/components/UploadProgress.vue';
 import { Button } from '@/components/ui/button';
 import { useConfirm } from '@/composables/useConfirm';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -19,6 +22,7 @@ import {
     Gauge,
     History,
     LayoutGrid,
+    LoaderCircle,
     Search,
     Trash2,
     Upload,
@@ -74,6 +78,8 @@ const props = defineProps<{
     recentSubmissions: Paginated<Report>;
     availableYears: number[];
     filters: { search: string };
+    // "Did you mean …?" when a search finds nothing (server-side SearchSuggester).
+    suggestion?: string | null;
 }>();
 
 // --- Year filter ---
@@ -665,17 +671,22 @@ const fieldStateClass = (error?: string) =>
                     </div>
 
                     <!-- Empty state -->
-                    <div v-if="recentSubmissions.data.length === 0" class="flex flex-col items-center px-6 py-14 text-center">
-                        <span class="mb-3 flex h-12 w-12 items-center justify-center rounded-full border bg-muted">
-                            <FileText class="h-5 w-5 text-muted-foreground" />
-                        </span>
-                        <p class="text-sm font-semibold text-foreground">
-                            {{ search ? `No results for "${search}".` : `No submissions yet for ${year}.` }}
-                        </p>
-                        <p class="mt-1 text-xs text-muted-foreground">
-                            {{ search ? 'Try a different region, month, or file name.' : 'Submitted reports will appear here.' }}
-                        </p>
-                    </div>
+                    <SearchEmptyState
+                        v-if="recentSubmissions.data.length === 0 && search"
+                        compact
+                        :query="search"
+                        :suggestion="suggestion"
+                        description="Try a different region, month, or file name."
+                        @search="search = $event"
+                        @clear-filters="search = ''"
+                    />
+                    <EmptyState
+                        v-else-if="recentSubmissions.data.length === 0"
+                        compact
+                        :icon="FileText"
+                        :title="`No submissions yet for ${year}.`"
+                        description="Submitted reports will appear here."
+                    />
                 </div>
 
                 <!-- Pagination footer -->
@@ -954,6 +965,9 @@ const fieldStateClass = (error?: string) =>
                             </section>
                         </div>
 
+                        <div v-if="form.progress" class="border-t px-5 pt-3 sm:px-6">
+                            <UploadProgress :percentage="form.progress.percentage ?? null" />
+                        </div>
                         <div class="flex justify-end gap-2.5 border-t bg-muted/40 px-5 py-4 sm:px-6">
                             <Button variant="outline" class="rounded-lg" @click="showModal = false">Cancel</Button>
                             <Button
@@ -961,8 +975,9 @@ const fieldStateClass = (error?: string) =>
                                 :disabled="form.processing"
                                 @click="submit"
                             >
-                                <Upload v-if="!form.processing" class="h-4 w-4" />
-                                {{ form.processing ? 'Submitting...' : 'Submit Report' }}
+                                <LoaderCircle v-if="form.processing" class="h-4 w-4 animate-spin" />
+                                <Upload v-else class="h-4 w-4" />
+                                {{ form.processing ? 'Uploading…' : 'Submit Report' }}
                             </Button>
                         </div>
                     </div>

@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import { Button } from '@/components/ui/button';
 import { useConfirm } from '@/composables/useConfirm';
+import { suggestSearch } from '@/lib/searchSuggestion';
 import { router } from '@inertiajs/vue3';
 import { BookOpen, Building2, CalendarDays, ChevronRight, ClipboardList, Layers, Trash2, UserCog, Users } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
@@ -39,6 +42,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     (e: 'update:filteredCount', count: number): void;
+    (e: 'clearFilters'): void;
+    (e: 'search', term: string): void;
 }>();
 
 const filtered = computed(() => {
@@ -187,18 +192,30 @@ const dateRange = (program: Program) => {
 
 <template>
     <!-- No programs at all -->
-    <div v-if="programs.length === 0" class="flex flex-col items-center justify-center py-20 text-center text-muted-foreground">
-        <p class="text-sm font-semibold">No programs yet.</p>
-        <p class="mt-1 text-xs">Click "Create Program" to add one.</p>
-    </div>
+    <EmptyState v-if="programs.length === 0" :icon="BookOpen" title="No programs yet." description='Click "Create Program" to add one.' />
 
     <template v-else>
         <div class="program-list flex min-h-0 flex-1 flex-col gap-4">
             <!-- No search results -->
-            <div v-if="filtered.length === 0" class="flex flex-col items-center justify-center py-20 text-center text-muted-foreground">
-                <p class="text-sm font-semibold">No programs found.</p>
-                <p class="mt-1 text-xs">Try a different search term.</p>
-            </div>
+            <SearchEmptyState
+                v-if="filtered.length === 0 && search.trim()"
+                :query="search"
+                :suggestion="
+                    suggestSearch(
+                        search,
+                        programs.flatMap((p) => [p.title, p.program_code]),
+                    )
+                "
+                @search="emit('search', $event)"
+                @clear-filters="emit('clearFilters')"
+            />
+            <EmptyState
+                v-else-if="filtered.length === 0"
+                variant="filtered"
+                title="No programs found."
+                description="Try a different search term or clear your filters."
+                @clear-filters="emit('clearFilters')"
+            />
 
             <!-- Scrollable list -->
             <div v-else class="program-list__scroll min-h-0 w-full max-w-full flex-1 overflow-y-auto overflow-x-hidden px-1 pb-4">
@@ -286,7 +303,10 @@ const dateRange = (program: Program) => {
             </div>
 
             <!-- Pagination fixed at bottom -->
-            <div v-if="totalPages > 1" class="program-pagination flex shrink-0 items-center justify-between border-t pt-4 text-xs text-muted-foreground">
+            <div
+                v-if="totalPages > 1"
+                class="program-pagination flex shrink-0 items-center justify-between border-t pt-4 text-xs text-muted-foreground"
+            >
                 <span>
                     Showing {{ (currentPage - 1) * perPage + 1 }}–{{ Math.min(currentPage * perPage, filtered.length) }} of
                     {{ filtered.length }} programs

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
 import FilePreviewModal from '@/components/FilePreviewModal.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import axios from 'axios';
@@ -157,6 +158,11 @@ watch([programSearch, programYear], () => {
     programPage.value = 1;
 });
 
+const clearProgramFilters = () => {
+    programSearch.value = '';
+    programYear.value = 'all';
+};
+
 watch(
     () => props.empcode,
     async (code) => {
@@ -171,8 +177,8 @@ watch(
         try {
             const res = await axios.get(route('employees.progress', { empcode: code }));
             progress.value = res.data;
-        } catch (e: any) {
-            console.error('Error:', e.response?.status, e.response?.data);
+        } catch {
+            // Shown by the app-wide error toast (lib/http.ts).
         } finally {
             loading.value = false;
         }
@@ -652,31 +658,21 @@ const pagerButtonClass =
                                         </div>
                                     </div>
 
-                                    <div
+                                    <EmptyState
                                         v-if="progress.enrolled_programs?.length === 0"
-                                        class="mt-3 flex flex-col items-center rounded-2xl border border-dashed border-violet-200 bg-violet-50/40 px-4 py-12 text-center dark:border-violet-500/20 dark:bg-violet-500/5"
-                                    >
-                                        <span
-                                            class="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-violet-100 text-violet-500 dark:bg-violet-500/15 dark:text-violet-300"
-                                        >
-                                            <BookOpen class="h-5 w-5" />
-                                        </span>
-                                        <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">No enrolled programs yet.</p>
-                                    </div>
+                                        class="mt-3"
+                                        :icon="BookOpen"
+                                        title="No enrolled programs yet."
+                                        description="Programs this employee joins will appear here."
+                                    />
 
-                                    <div
+                                    <EmptyState
                                         v-else-if="filteredPrograms.length === 0"
-                                        class="mt-3 flex flex-col items-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-12 text-center dark:border-slate-700 dark:bg-slate-800/30"
-                                    >
-                                        <span
-                                            class="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400 dark:bg-slate-800"
-                                        >
-                                            <Search class="h-5 w-5" />
-                                        </span>
-                                        <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                                            No programs match the current search/year filter.
-                                        </p>
-                                    </div>
+                                        class="mt-3"
+                                        variant="filtered"
+                                        title="No programs match the current search/year filter."
+                                        @clear-filters="clearProgramFilters"
+                                    />
 
                                     <div v-else class="mt-3 flex flex-col gap-3">
                                         <div

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Program;
 use App\Models\ResourceSpeaker;
+use App\Support\FlashMessage;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -13,11 +14,11 @@ class ResourceSpeakerController extends Controller
     {
         $validated = $this->validateSpeaker($request, $program);
 
-        $program->resourceSpeakers()->create(array_merge($validated, [
+        $speaker = $program->resourceSpeakers()->create(array_merge($validated, [
             'program_code' => $program->program_code,
         ]));
 
-        return back()->with('success', 'Resource speaker added successfully.');
+        return back()->with('success', FlashMessage::make('Resource speaker added', "{$speaker->name} is now listed for \"{$program->title}\"."));
     }
 
     public function update(Request $request, Program $program, ResourceSpeaker $resourceSpeaker)
@@ -28,7 +29,7 @@ class ResourceSpeakerController extends Controller
 
         $resourceSpeaker->update($validated);
 
-        return back()->with('success', 'Resource speaker updated successfully.');
+        return back()->with('success', FlashMessage::make('Resource speaker updated', "Your changes to {$resourceSpeaker->name} are saved."));
     }
 
     public function destroy(Program $program, ResourceSpeaker $resourceSpeaker)
@@ -37,7 +38,7 @@ class ResourceSpeakerController extends Controller
 
         $resourceSpeaker->delete();
 
-        return back()->with('success', 'Resource speaker removed successfully.');
+        return back()->with('success', FlashMessage::make('Resource speaker removed', "{$resourceSpeaker->name} is no longer listed for this program."));
     }
 
     /**

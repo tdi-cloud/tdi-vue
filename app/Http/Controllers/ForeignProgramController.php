@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\ForeignNominee;
 use App\Models\ForeignProgram;
 use App\Models\ForeignSponsorConfig;
+use App\Support\FlashMessage;
+use App\Support\LiteMode;
+use App\Support\SearchSuggester;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
@@ -62,7 +65,7 @@ class ForeignProgramController extends Controller
             $query->whereDate('interview_date', $request->interview_date);
         }
 
-        $programs = $query->orderByDesc('created_at')->paginate(15)->withQueryString();
+        $programs = $query->orderByDesc('created_at')->paginate(LiteMode::perPage($request, 15))->withQueryString();
 
         $years = ForeignProgram::whereNotNull('program_start')
             ->pluck('program_start')
@@ -77,16 +80,19 @@ class ForeignProgramController extends Controller
             ->orderBy('organizing_sponsor')
             ->pluck('organizing_sponsor');
 
-        $totalPrograms = ForeignProgram::count();
-        $forNomination = ForeignProgram::where('status', 'waiting_for_nominees')->count();
-        $completed = ForeignProgram::where('status', 'concluded')->count();
+        // Deferred: whole-table counts load after the list paints (cards show a skeleton meanwhile).
+        $stats = Inertia::defer(function () {
+            $totalPrograms = ForeignProgram::count();
+            $forNomination = ForeignProgram::where('status', 'waiting_for_nominees')->count();
+            $completed = ForeignProgram::where('status', 'concluded')->count();
 
-        $stats = [
-            'total' => $totalPrograms,
-            'active' => $totalPrograms - $forNomination - $completed,
-            'for_nomination' => $forNomination,
-            'completed' => $completed,
-        ];
+            return [
+                'total' => $totalPrograms,
+                'active' => $totalPrograms - $forNomination - $completed,
+                'for_nomination' => $forNomination,
+                'completed' => $completed,
+            ];
+        });
 
         return Inertia::render('ForeignPrograms/index', [
             'programs' => $programs,
@@ -97,6 +103,11 @@ class ForeignProgramController extends Controller
                 'search', 'status', 'year', 'semester',
                 'organization', 'category', 'embassy_deadline', 'interview_date',
             ]),
+            'suggestion' => SearchSuggester::forEmptyResults(
+                $request->string('search'),
+                $programs->total(),
+                fn () => ForeignProgram::pluck('program_title'),
+            ),
         ]);
     }
 
@@ -123,9 +134,14 @@ class ForeignProgramController extends Controller
         $data['created_by_empcode'] = $user?->empcode;
         $data['created_by_name'] = $user?->name ?? 'System';
 
-        ForeignProgram::create($data);
+        $program = ForeignProgram::create($data);
 
-        return $this->backToIndex($request)->with('success', 'Foreign program created successfully.');
+        return $this->backToIndex($request)->with('success', FlashMessage::make(
+            'Foreign program created',
+            "\"{$program->program_title}\" is saved and listed under Foreign Programs.",
+            'Share the nomination link with offices once it is open for nominations.',
+            ['label' => 'Open program', 'href' => route('foreign-programs.show', $program)],
+        ));
     }
 
     public function update(Request $request, ForeignProgram $foreignProgram)
@@ -133,14 +149,14 @@ class ForeignProgramController extends Controller
         $data = $this->validateProgram($request);
         $foreignProgram->update($data);
 
-        return $this->backToIndex($request)->with('success', 'Foreign program updated successfully.');
+        return $this->backToIndex($request)->with('success', FlashMessage::make('Foreign program updated', "Your changes to \"{$foreignProgram->program_title}\" are saved."));
     }
 
     public function destroy(Request $request, ForeignProgram $foreignProgram)
     {
         $foreignProgram->delete();
 
-        return $this->backToIndex($request)->with('success', 'Foreign program deleted successfully.');
+        return $this->backToIndex($request)->with('success', FlashMessage::make('Foreign program deleted', "\"{$foreignProgram->program_title}\" and its nominees were removed."));
     }
 
     public function bulkDestroy(Request $request)
@@ -152,7 +168,7 @@ class ForeignProgramController extends Controller
 
         $count = ForeignProgram::whereIn('id', $data['ids'])->delete();
 
-        return $this->backToIndex($request)->with('success', "{$count} foreign program(s) deleted successfully.");
+        return $this->backToIndex($request)->with('success', FlashMessage::make("{$count} foreign program(s) deleted", 'They and their nominees were removed.'));
     }
 
     /**

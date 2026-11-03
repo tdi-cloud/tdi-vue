@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
+import { toast } from '@/components/ui/toast/use-toast';
+import UploadProgress from '@/components/UploadProgress.vue';
 import { useConfirm } from '@/composables/useConfirm';
 import { router, useForm } from '@inertiajs/vue3';
-import { ImagePlus, Loader2, Maximize2, Trash2, Upload, X } from 'lucide-vue-next';
+import { ImagePlus, Maximize2, Trash2, Upload, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 const { confirmDialog } = useConfirm();
@@ -35,11 +37,11 @@ const handleFileChange = (e: Event) => {
 
     // Client-side validation
     if (!file.type.startsWith('image/')) {
-        alert('Please select an image file.');
+        toast({ title: 'Not an image', description: 'Choose a JPG, PNG or WEBP image for the cover page.', variant: 'destructive' });
         return;
     }
     if (file.size > 2 * 1024 * 1024) {
-        alert('Image too large. Max 2MB.');
+        toast({ title: 'Image is too large', description: 'The cover page can be up to 2MB. Choose a smaller image.', variant: 'destructive' });
         return;
     }
 
@@ -66,7 +68,11 @@ const uploadFile = (file: File) => {
         },
         onError: () => {
             previewUrl.value = null;
-            alert('Upload failed. Please try again.');
+            toast({
+                title: 'Cover page not saved',
+                description: 'The image could not be uploaded. Check that it is a JPG, PNG or WEBP under 2MB and try again.',
+                variant: 'destructive',
+            });
         },
         onFinish: () => {
             uploading.value = false;
@@ -93,8 +99,8 @@ const removeCover = async () => {
             <img :src="displayImage" alt="Program cover" class="h-48 w-full cursor-zoom-in object-cover md:h-56" @click="showLightbox = true" />
 
             <!-- Loading overlay -->
-            <div v-if="uploading" class="absolute inset-0 flex items-center justify-center bg-black/50">
-                <Loader2 class="h-6 w-6 animate-spin text-white" />
+            <div v-if="uploading" class="absolute inset-0 flex items-center justify-center bg-black/60 px-6 text-white">
+                <UploadProgress class="[&_span]:text-white" />
             </div>
 
             <!-- Hint na pwedeng i-click para lumaki (hover) -->
@@ -123,7 +129,7 @@ const removeCover = async () => {
             :disabled="uploading"
             class="flex h-48 w-full flex-col items-center justify-center gap-2 border-2 border-dashed border-muted-foreground/30 bg-muted/30 text-muted-foreground transition-colors hover:bg-muted/50 md:h-56"
         >
-            <Loader2 v-if="uploading" class="h-8 w-8 animate-spin" />
+            <UploadProgress v-if="uploading" class="max-w-xs px-6" />
             <template v-else>
                 <ImagePlus class="h-8 w-8" />
                 <p class="text-sm font-semibold">Add Cover Page</p>

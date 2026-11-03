@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
+import SubmitButton from '@/components/SubmitButton.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -28,7 +30,6 @@ import {
     Eye,
     FileBadge2,
     Layers,
-    LoaderCircle,
     MapPin,
     Pencil,
     Plus,
@@ -289,29 +290,12 @@ const formatTime = (t: string) => {
         <ParticipantSearch v-if="batches.length" :batches="batches" @locate="openParticipants" />
 
         <!-- Empty state -->
-        <div
+        <EmptyState
             v-if="!batches.length"
-            class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed px-6 py-14 text-center shadow-md"
-        >
-            <svg viewBox="0 0 200 160" class="h-36 w-auto" xmlns="http://www.w3.org/2000/svg">
-                <ellipse cx="100" cy="142" rx="70" ry="8" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
-                <rect x="45" y="30" width="110" height="95" rx="10" fill="currentColor" class="text-blue-100 dark:text-blue-900/40" />
-                <rect x="45" y="30" width="110" height="28" rx="10" fill="currentColor" class="text-blue-300 dark:text-blue-700/60" />
-                <rect x="60" y="20" width="8" height="20" rx="4" fill="currentColor" class="text-blue-400 dark:text-blue-600" />
-                <rect x="132" y="20" width="8" height="20" rx="4" fill="currentColor" class="text-blue-400 dark:text-blue-600" />
-                <rect x="60" y="72" width="18" height="18" rx="4" fill="currentColor" class="text-blue-200 dark:text-blue-800/60" />
-                <rect x="85" y="72" width="18" height="18" rx="4" fill="currentColor" class="text-blue-200 dark:text-blue-800/60" />
-                <rect x="110" y="72" width="18" height="18" rx="4" fill="currentColor" class="text-blue-200 dark:text-blue-800/60" />
-                <rect x="60" y="97" width="18" height="18" rx="4" fill="currentColor" class="text-blue-200 dark:text-blue-800/60" />
-                <rect x="85" y="97" width="18" height="18" rx="4" fill="currentColor" class="text-amber-200 dark:text-amber-800/60" />
-                <circle cx="94" cy="106" r="4" stroke="currentColor" stroke-width="2" fill="none" class="text-amber-500" />
-                <path d="M94 103 v3 l2 2" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" class="text-amber-500" />
-            </svg>
-            <p class="text-sm font-bold text-slate-500">No batches yet</p>
-            <p class="max-w-xs text-xs text-slate-400">
-                Add a batch to start scheduling sessions, enrolling participants, and tracking requirements for this program.
-            </p>
-        </div>
+            :icon="Layers"
+            title="No batches yet"
+            description="Add a batch to start scheduling sessions, enrolling participants, and tracking requirements for this program."
+        />
 
         <!-- Batch cards -->
         <div v-else class="grid gap-3 sm:grid-cols-2 lg:grid-cols-2">
@@ -535,10 +519,9 @@ const formatTime = (t: string) => {
 
                 <div class="mt-2 flex shrink-0 justify-end gap-2 border-t pt-3">
                     <Button type="button" variant="outline" size="sm" @click="showModal = false">Cancel</Button>
-                    <Button type="submit" class="bg-blue-600 hover:bg-blue-700" form="batch-form" size="sm" :disabled="form.processing">
-                        <LoaderCircle v-if="form.processing" class="mr-1 h-3 w-3 animate-spin" />
-                        <Save /> {{ editingBatch ? 'Update Batch' : 'Save Batch' }}
-                    </Button>
+                    <SubmitButton class="bg-blue-600 hover:bg-blue-700" form="batch-form" size="sm" :processing="form.processing" :icon="Save">
+                        {{ editingBatch ? 'Update Batch' : 'Save Batch' }}
+                    </SubmitButton>
                 </div>
             </DialogContent>
         </Dialog>

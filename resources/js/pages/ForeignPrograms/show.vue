@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
+import SubmitButton from '@/components/SubmitButton.vue';
 import { Button } from '@/components/ui/button';
 import { useConfirm } from '@/composables/useConfirm';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { suggestSearch } from '@/lib/searchSuggestion';
 import EditProgramModal from '@/pages/ForeignPrograms/EditProgramModal.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import axios from 'axios';
@@ -745,11 +749,26 @@ const modalityLabels: Record<string, string> = {
 
                         <tr v-if="filtered.length === 0">
                             <td colspan="10" class="px-4 py-16 text-center">
-                                <div class="flex flex-col items-center gap-3 text-muted-foreground">
-                                    <Users class="h-12 w-12 opacity-20" />
-                                    <p class="text-sm font-semibold">No nominees found.</p>
-                                    <p class="text-xs">Nominees are submitted through the public nomination form.</p>
-                                </div>
+                                <SearchEmptyState
+                                    v-if="searchQuery.trim()"
+                                    compact
+                                    :query="searchQuery"
+                                    :suggestion="
+                                        suggestSearch(
+                                            searchQuery,
+                                            program.nominees.flatMap((n) => [fullName(n), n.agency, n.position]),
+                                        )
+                                    "
+                                    @search="searchQuery = $event"
+                                    @clear-filters="searchQuery = ''"
+                                />
+                                <EmptyState
+                                    v-else
+                                    compact
+                                    :icon="Users"
+                                    title="No nominees yet."
+                                    description="Nominees are submitted through the public nomination form."
+                                />
                             </td>
                         </tr>
                     </tbody>
@@ -825,7 +844,7 @@ const modalityLabels: Record<string, string> = {
                                     </button>
                                 </div>
                             </div>
-                            <p v-else class="text-xs italic text-muted-foreground">No documents submitted yet.</p>
+                            <EmptyState v-else compact title="No documents submitted yet." />
                             <input ref="replaceInput" type="file" class="hidden" @change="handleReplaceFile" />
                         </div>
 
@@ -1237,16 +1256,15 @@ const modalityLabels: Record<string, string> = {
                             <!-- Footer -->
                             <div class="flex shrink-0 items-center justify-end gap-2 border-t bg-muted/20 px-6 py-4">
                                 <Button type="button" variant="outline" @click="closeAddModal">Cancel</Button>
-                                <Button
-                                    type="submit"
+                                <SubmitButton
                                     form="add-participant-form"
-                                    :disabled="addProcessing"
+                                    :processing="addProcessing"
+                                    processing-label="Adding…"
+                                    :icon="Plus"
                                     class="gap-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/20 hover:from-blue-700 hover:to-indigo-700"
                                 >
-                                    <Loader2 v-if="addProcessing" class="h-4 w-4 animate-spin" />
-                                    <Plus v-else class="h-4 w-4" />
-                                    {{ addProcessing ? 'Adding…' : 'Add Participant' }}
-                                </Button>
+                                    Add Participant
+                                </SubmitButton>
                             </div>
                         </div>
                     </Transition>

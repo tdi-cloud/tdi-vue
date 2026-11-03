@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
+import SubmitButton from '@/components/SubmitButton.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -8,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useConfirm } from '@/composables/useConfirm';
 import { router, useForm } from '@inertiajs/vue3';
-import { BadgeCheck, CalendarClock, ClipboardList, LoaderCircle, Pencil, Plus, Save, StickyNote, Trash2, UserCog } from 'lucide-vue-next';
+import { BadgeCheck, CalendarClock, ClipboardList, Layers, Pencil, Plus, Save, StickyNote, Trash2, UserCog } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 const { confirmDialog } = useConfirm();
@@ -212,21 +214,12 @@ const removeRequirement = async (requirement: Requirement) => {
         </div>
 
         <!-- Walang batch pa -->
-        <div v-if="!batches.length" class="flex flex-col items-center justify-center gap-3 rounded-2xl border px-6 py-16 text-center shadow-md">
-            <!-- Illustration: empty clipboard / no batches -->
-            <svg viewBox="0 0 200 160" class="h-40 w-auto" xmlns="http://www.w3.org/2000/svg">
-                <ellipse cx="100" cy="142" rx="70" ry="8" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
-                <rect x="60" y="25" width="80" height="110" rx="8" fill="currentColor" class="text-blue-100 dark:text-blue-900/40" />
-                <rect x="80" y="18" width="40" height="16" rx="4" fill="currentColor" class="text-blue-300 dark:text-blue-700/60" />
-                <rect x="74" y="50" width="52" height="6" rx="3" fill="currentColor" class="text-blue-200 dark:text-blue-800/60" />
-                <rect x="74" y="64" width="40" height="6" rx="3" fill="currentColor" class="text-blue-200 dark:text-blue-800/60" />
-                <rect x="74" y="78" width="48" height="6" rx="3" fill="currentColor" class="text-blue-200 dark:text-blue-800/60" />
-                <circle cx="148" cy="105" r="20" fill="currentColor" class="text-amber-100 dark:text-amber-900/40" />
-                <path d="M140 105 h16 M148 97 v16" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" class="text-amber-500" />
-            </svg>
-            <p class="text-sm font-bold text-slate-500">No batches yet</p>
-            <p class="max-w-xs text-xs text-slate-400">Add a batch first in the Participants tab before adding requirements.</p>
-        </div>
+        <EmptyState
+            v-if="!batches.length"
+            :icon="Layers"
+            title="No batches yet"
+            description="Add a batch first in the Participants tab before adding requirements."
+        />
 
         <!-- Per-batch sections -->
         <template v-else>
@@ -306,50 +299,13 @@ const removeRequirement = async (requirement: Requirement) => {
                 </template>
 
                 <!-- Empty state per batch -->
-                <div v-else class="flex flex-col items-center gap-3 rounded-xl border border-dashed px-3 py-4 text-center sm:flex-row sm:text-left">
-                    <!-- Illustration: small empty checklist -->
-                    <svg viewBox="0 0 100 80" class="h-16 w-auto shrink-0" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="20" y="8" width="60" height="64" rx="6" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
-                        <rect x="32" y="2" width="36" height="12" rx="3" fill="currentColor" class="text-slate-300 dark:text-slate-700" />
-                        <rect
-                            x="30"
-                            y="28"
-                            width="6"
-                            height="6"
-                            rx="2"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            fill="none"
-                            class="text-slate-300 dark:text-slate-600"
-                        />
-                        <rect x="42" y="29" width="28" height="4" rx="2" fill="currentColor" class="text-slate-300 dark:text-slate-700" />
-                        <rect
-                            x="30"
-                            y="42"
-                            width="6"
-                            height="6"
-                            rx="2"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            fill="none"
-                            class="text-slate-300 dark:text-slate-600"
-                        />
-                        <rect x="42" y="43" width="20" height="4" rx="2" fill="currentColor" class="text-slate-300 dark:text-slate-700" />
-                        <rect
-                            x="30"
-                            y="56"
-                            width="6"
-                            height="6"
-                            rx="2"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            fill="none"
-                            class="text-slate-300 dark:text-slate-600"
-                        />
-                        <rect x="42" y="57" width="24" height="4" rx="2" fill="currentColor" class="text-slate-300 dark:text-slate-700" />
-                    </svg>
-                    <p class="text-xs font-semibold text-muted-foreground">No requirements for this batch yet.</p>
-                </div>
+                <EmptyState
+                    v-else
+                    compact
+                    class="rounded-xl border border-dashed"
+                    :icon="ClipboardList"
+                    title="No requirements for this batch yet."
+                />
             </div>
         </template>
 
@@ -439,15 +395,15 @@ const removeRequirement = async (requirement: Requirement) => {
                     <!-- Footer -->
                     <div class="flex justify-end gap-2 border-t pt-2">
                         <Button type="button" variant="outline" size="sm" @click="showModal = false">Cancel</Button>
-                        <Button
-                            type="submit"
+                        <SubmitButton
                             size="sm"
                             class="bg-blue-600 hover:bg-blue-700 dark:text-white"
-                            :disabled="form.processing || !form.title"
+                            :processing="form.processing"
+                            :disabled="!form.title"
+                            :icon="Save"
                         >
-                            <LoaderCircle v-if="form.processing" class="mr-1 h-3 w-3 animate-spin" />
-                            <Save class="h-4 w-4" /> Save Requirement
-                        </Button>
+                            Save Requirement
+                        </SubmitButton>
                     </div>
                 </form>
             </DialogContent>
@@ -506,15 +462,15 @@ const removeRequirement = async (requirement: Requirement) => {
                     <!-- Footer -->
                     <div class="flex justify-end gap-2 border-t pt-2">
                         <Button type="button" variant="outline" size="sm" @click="showEditModal = false">Cancel</Button>
-                        <Button
-                            type="submit"
+                        <SubmitButton
                             size="sm"
                             class="bg-blue-600 hover:bg-blue-700 dark:text-white"
-                            :disabled="editForm.processing || !editForm.due_date"
+                            :processing="editForm.processing"
+                            :disabled="!editForm.due_date"
+                            :icon="Save"
                         >
-                            <LoaderCircle v-if="editForm.processing" class="mr-1 h-3 w-3 animate-spin" />
-                            <Save class="h-4 w-4" /> Save Changes
-                        </Button>
+                            Save Changes
+                        </SubmitButton>
                     </div>
                 </form>
             </DialogContent>

@@ -112,9 +112,12 @@ test('admin can view submissions across multiple programs on the global submissi
     expect($data->pluck('program.program_code')->sort()->values()->all())
         ->toBe(collect([$programA->program_code, $programB->program_code])->sort()->values()->all());
 
-    expect($response->inertiaProps('stats.total'))->toBe(2);
-    expect($response->inertiaProps('stats.pending'))->toBe(1);
-    expect($response->inertiaProps('stats.approved'))->toBe(1);
+    $response->assertInertia(fn ($page) => $page
+        ->missing('stats')
+        ->loadDeferredProps(fn ($reload) => $reload
+            ->where('stats.total', 2)
+            ->where('stats.pending', 1)
+            ->where('stats.approved', 1)));
 });
 
 test('status filter narrows the global submissions list', function () {
@@ -195,4 +198,18 @@ test('non-admin users cannot access the global submissions page', function () {
     $user = User::factory()->create(['empcode' => $employee->EMPCODE, 'access' => 'user']);
 
     $this->actingAs($user)->get(route('submissions.index'))->assertForbidden();
+});
+
+test('a misspelled submissions search with no results suggests the closest known word', function () {
+    $admin = globalSubIndexAdmin('EMP-GSI-SUGGEST');
+    [$program, $batch, $requirement] = globalSubIndexSetup('Global Submissions Suggestion Program');
+    $employee = globalSubIndexEmployee('EMP-GSI-SUGGEST-01', 'Fernandez');
+    globalSubIndexSubmission($program, $batch, $requirement, $employee->EMPCODE, 'Pending');
+
+    $typo = $this->actingAs($admin)->get(route('submissions.index', ['search' => 'Fernandes']));
+    expect($typo->inertiaProps('submissions')['data'])->toBeEmpty()
+        ->and($typo->inertiaProps('suggestion'))->toBe('fernandez');
+
+    $exact = $this->actingAs($admin)->get(route('submissions.index', ['search' => 'Fernandez']));
+    expect($exact->inertiaProps('suggestion'))->toBeNull();
 });

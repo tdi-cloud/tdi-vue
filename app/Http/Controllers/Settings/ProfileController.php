@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
+use App\Support\FlashMessage;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -60,7 +61,7 @@ class ProfileController extends Controller
 
         $user->update(['avatar' => $path]);
 
-        return back()->with('success', 'Profile picture updated.');
+        return back()->with('success', FlashMessage::make('Profile picture updated', 'Your new picture now shows across the app.'));
     }
 
     /**
@@ -75,7 +76,7 @@ class ProfileController extends Controller
             $user->update(['avatar' => null]);
         }
 
-        return back()->with('success', 'Profile picture removed.');
+        return back()->with('success', FlashMessage::make('Profile picture removed', 'Your initials now show instead. You can upload a new picture anytime.'));
     }
 
     /**

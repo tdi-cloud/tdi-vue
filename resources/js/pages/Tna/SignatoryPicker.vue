@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
+import { suggestionFrom } from '@/lib/http';
+import axios from 'axios';
 import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
@@ -22,6 +25,9 @@ let timer = null;
 const shown = computed(() => props.modelValue ?? props.defaultSignatory);
 const isDefault = computed(() => !props.modelValue && !!props.defaultSignatory);
 
+// "Did you mean …?" for the signatory lookup (X-Search-Suggestion header).
+const lookupSuggestion = ref<string | null>(null);
+
 watch(query, (val) => {
     clearTimeout(timer);
     if (val.trim().length < 2) {
@@ -36,8 +42,9 @@ async function runSearch() {
     loading.value = true;
     open.value = true;
     try {
-        const res = await fetch(route('tna.fasd.search') + '?q=' + encodeURIComponent(query.value), { headers: { Accept: 'application/json' } });
-        results.value = res.ok ? await res.json() : [];
+        const response = await axios.get(route('tna.fasd.search'), { params: { q: query.value } });
+        results.value = response.data;
+        lookupSuggestion.value = suggestionFrom(response);
     } catch {
         results.value = [];
     } finally {
@@ -140,7 +147,14 @@ function useDefault() {
                     v-else-if="open && !loading && query.length >= 2"
                     class="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-400 shadow-lg"
                 >
-                    No matching results found.
+                    <SearchEmptyState
+                        compact
+                        :query="query"
+                        :suggestion="lookupSuggestion"
+                        description="Check the spelling of the name."
+                        @search="query = $event"
+                        @clear-filters="query = ''"
+                    />
                 </div>
             </div>
             <button

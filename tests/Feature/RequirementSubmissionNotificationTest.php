@@ -209,3 +209,24 @@ test('submitting a requirement queues a pending notification when the program cr
     expect($pending->type)->toBe(RequirementSubmitted::class);
     expect($pending->data['title'])->toBe('New Requirement Submission');
 });
+
+test('submitting a requirement confirms it, reassures the file is saved, and says what happens next', function () {
+    Notification::fake();
+    Storage::fake('public');
+
+    $creator = User::factory()->create(['empcode' => 'EMP-RSN-FLASH-CREATOR', 'access' => 'admin']);
+    [, $batch, $requirement] = reqSubNotifSetup($creator->empcode);
+    $employee = reqSubNotifEmployee('EMP-RSN-FLASH-EMP', 'Reyes');
+    $employeeUser = User::factory()->create(['empcode' => $employee->EMPCODE, 'access' => 'user']);
+    Participant::create([
+        'sort_order' => 1, 'batch_id' => $batch->id, 'empcode' => $employee->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+    ]);
+
+    $this->actingAs($employeeUser)
+        ->post(route('programs.my-progress.submit', [$batch, $requirement]), [
+            'file' => UploadedFile::fake()->create('treap.pdf', 100, 'application/pdf'),
+        ])
+        ->assertSessionHas('success.title', "{$requirement->title} submitted")
+        ->assertSessionHas('success.next', 'The program admin has been notified and will review it. You will get a notification with the result.');
+});

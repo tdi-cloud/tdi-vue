@@ -7,6 +7,7 @@ use App\Models\Batch;
 use App\Models\ImplementationReport;
 use App\Models\Participant;
 use App\Models\TerminalReport;
+use App\Support\FlashMessage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -43,7 +44,11 @@ class ActionPlanController extends Controller
             'added_after_submission' => true,
         ]);
 
-        return back()->with('success', 'Activity added to your action plan. Submit its implementation report on or before the target date.');
+        return back()->with('success', FlashMessage::make(
+            'Activity added to your action plan',
+            "\"{$validated['activity']}\" is saved.",
+            'Submit its implementation report on or before the target date.',
+        ));
     }
 
     /**
@@ -63,7 +68,7 @@ class ActionPlanController extends Controller
         $activity->implementationReport?->delete();
         $activity->delete();
 
-        return back()->with('success', 'Activity removed from your action plan.');
+        return back()->with('success', FlashMessage::make('Activity removed', "\"{$activity->activity}\" is no longer in your action plan."));
     }
 
     /**
@@ -124,7 +129,11 @@ class ActionPlanController extends Controller
             ]
         );
 
-        return back()->with('success', 'Implementation report submitted. Awaiting review.');
+        return back()->with('success', FlashMessage::make(
+            'Implementation report submitted',
+            "Your report for \"{$activity->activity}\" is saved; you can view it under this activity.",
+            'An admin will review it. If it needs changes, you will see their note here.',
+        ));
     }
 
     private function ownParticipant(Request $request, Batch $batch): Participant

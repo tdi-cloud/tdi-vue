@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import EditSubmittedAtDialog from '@/components/EditSubmittedAtDialog.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import FilePreviewModal from '@/components/FilePreviewModal.vue';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
+import StatTilesSkeleton from '@/components/skeletons/StatTilesSkeleton.vue';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -8,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useConfirm } from '@/composables/useConfirm';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Head, router } from '@inertiajs/vue3';
+import { Deferred, Head, router } from '@inertiajs/vue3';
 import {
     AlarmClockMinus,
     Building2,
@@ -100,7 +103,7 @@ interface PaginatedSubmissions {
 const props = defineProps<{
     submissions: PaginatedSubmissions;
     programs: ProgramRef[];
-    stats: { total: number; pending: number; approved: number; rejected: number };
+    stats?: { total: number; pending: number; approved: number; rejected: number };
     filters: {
         status?: string;
         program_code?: string;
@@ -110,6 +113,8 @@ const props = defineProps<{
     canApproveAll: boolean;
     // Pending submissions matching the current program/search filters.
     approvablePendingCount: number;
+    // "Did you mean …?" when a search finds nothing (server-side SearchSuggester).
+    suggestion?: string | null;
 }>();
 
 const STATUSES = ['Pending', 'Approved', 'Rejected'];
@@ -119,6 +124,12 @@ const STATUSES = ['Pending', 'Approved', 'Rejected'];
 const search = ref(props.filters.search ?? '');
 const filterProgram = ref(props.filters.program_code || 'all');
 const filterStatus = ref(props.filters.status || 'all');
+
+const clearFilters = () => {
+    search.value = '';
+    filterProgram.value = 'all';
+    filterStatus.value = 'all';
+};
 
 const applyFilters = () => {
     router.get(
@@ -176,16 +187,22 @@ const statusClass = (status: string) => {
     }
 };
 
+// stats is a deferred prop: undefined until its follow-up request finishes (the cards show a skeleton meanwhile).
 const statCards = computed(() => [
-    { label: 'Total', value: props.stats.total, icon: FileText, tone: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' },
-    { label: 'Pending', value: props.stats.pending, icon: Clock3, tone: 'bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400' },
+    { label: 'Total', value: props.stats?.total ?? 0, icon: FileText, tone: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' },
+    {
+        label: 'Pending',
+        value: props.stats?.pending ?? 0,
+        icon: Clock3,
+        tone: 'bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400',
+    },
     {
         label: 'Approved',
-        value: props.stats.approved,
+        value: props.stats?.approved ?? 0,
         icon: CheckCircle2,
         tone: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400',
     },
-    { label: 'Rejected', value: props.stats.rejected, icon: XCircle, tone: 'bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400' },
+    { label: 'Rejected', value: props.stats?.rejected ?? 0, icon: XCircle, tone: 'bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400' },
 ]);
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
@@ -475,36 +492,53 @@ onMounted(() => {
                 </div>
             </section>
 
-            <!-- Stats -->
-            <section class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <div
-                    v-for="card in statCards"
-                    :key="card.label"
-                    class="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-slate-800 dark:bg-slate-900/60 dark:hover:shadow-black/20"
-                >
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" :class="card.tone">
-                        <component :is="card.icon" class="h-5 w-5" />
+            <!-- Stats (deferred prop) -->
+            <Deferred data="stats">
+                <template #fallback>
+                    <StatTilesSkeleton :count="4" label="Loading submission totals…" />
+                </template>
+                <section class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                    <div
+                        v-for="card in statCards"
+                        :key="card.label"
+                        class="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-slate-800 dark:bg-slate-900/60 dark:hover:shadow-black/20"
+                    >
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" :class="card.tone">
+                            <component :is="card.icon" class="h-5 w-5" />
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-2xl font-bold tabular-nums leading-none tracking-tight text-slate-900 dark:text-slate-50">
+                                {{ card.value }}
+                            </p>
+                            <p class="mt-1 text-xs font-medium text-muted-foreground">{{ card.label }}</p>
+                        </div>
                     </div>
-                    <div class="min-w-0">
-                        <p class="text-2xl font-bold tabular-nums leading-none tracking-tight text-slate-900 dark:text-slate-50">
-                            {{ card.value }}
-                        </p>
-                        <p class="mt-1 text-xs font-medium text-muted-foreground">{{ card.label }}</p>
-                    </div>
-                </div>
-            </section>
+                </section>
+            </Deferred>
 
             <!-- Empty -->
-            <div
-                v-if="!submissions.data.length"
-                class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center dark:border-slate-700 dark:bg-slate-900/40"
-            >
-                <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800">
-                    <Inbox class="h-7 w-7 text-slate-400 dark:text-slate-500" />
-                </div>
-                <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">No submissions found</p>
-                <p class="max-w-xs text-xs text-muted-foreground">Try a different search term, program, or status filter.</p>
-            </div>
+            <template v-if="!submissions.data.length">
+                <SearchEmptyState
+                    v-if="filters.search"
+                    :query="filters.search"
+                    :suggestion="suggestion"
+                    @search="search = $event"
+                    @clear-filters="clearFilters"
+                />
+                <EmptyState
+                    v-else-if="filterProgram !== 'all' || filterStatus !== 'all'"
+                    variant="filtered"
+                    title="No submissions found"
+                    description="Try a different program or status filter."
+                    @clear-filters="clearFilters"
+                />
+                <EmptyState
+                    v-else
+                    :icon="Inbox"
+                    title="No submissions yet"
+                    description="Requirement submissions from participants of every program will appear here."
+                />
+            </template>
 
             <!-- List -->
             <section v-else class="flex flex-col gap-3">

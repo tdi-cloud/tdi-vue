@@ -236,3 +236,15 @@ test('a user who never logged in has no last-active time', function () {
             ->where('users.data.0.last_active_at', null)
         );
 });
+
+test('a misspelled user search with no results suggests the closest known name', function () {
+    $admin = userManagementSuperadmin('EMP-UM-SUGGEST');
+    User::factory()->create(['name' => 'Rosalinda Macaraeg', 'empcode' => 'EMP-UM-SUGGEST-01']);
+
+    $typo = $this->actingAs($admin)->get(route('user-management.index', ['search' => 'Macaraig']));
+    expect($typo->inertiaProps('users')['data'])->toBeEmpty()
+        ->and($typo->inertiaProps('suggestion'))->toBe('macaraeg');
+
+    $exact = $this->actingAs($admin)->get(route('user-management.index', ['search' => 'Macaraeg']));
+    expect($exact->inertiaProps('suggestion'))->toBeNull();
+});

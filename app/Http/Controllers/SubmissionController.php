@@ -2,9 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Employee;
 use App\Models\Program;
+use App\Models\Requirement;
 use App\Models\Submission;
 use App\Models\SubmissionActivityLog;
+use App\Support\FlashMessage;
+use App\Support\LiteMode;
+use App\Support\SearchSuggester;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -24,18 +29,26 @@ class SubmissionController extends Controller
             ->tap(fn ($q) => $this->applyListFilters($q, $request))
             ->orderByDesc('submitted_at');
 
-        $submissions = $query->paginate(20)->withQueryString();
+        $submissions = $query->paginate(LiteMode::perPage($request, 20))->withQueryString();
 
         return Inertia::render('Submissions/index', [
             'submissions' => $submissions,
             'programs' => Program::orderBy('title')->get(['id', 'program_code', 'title']),
             'filters' => $request->only(['status', 'program_code', 'search']),
-            'stats' => [
+            'suggestion' => SearchSuggester::forEmptyResults(
+                $request->string('search'),
+                $submissions->total(),
+                fn () => Employee::whereHas('participants.submissions')->get(['FIRSTNAME', 'LASTNAME'])
+                    ->flatMap(fn (Employee $employee) => [$employee->FIRSTNAME, $employee->LASTNAME])
+                    ->merge(Requirement::distinct()->pluck('title')),
+            ),
+            // Deferred: whole-table counts load after the list paints (cards show a skeleton meanwhile).
+            'stats' => Inertia::defer(fn () => [
                 'total' => Submission::count(),
                 'pending' => Submission::where('status', 'Pending')->count(),
                 'approved' => Submission::where('status', 'Approved')->count(),
                 'rejected' => Submission::where('status', 'Rejected')->count(),
-            ],
+            ]),
             // "Approve all" here spans every program, so it's superadmin only.
             'canApproveAll' => $request->user()->isSuperAdmin(),
             'approvablePendingCount' => $this->applyListFilters(Submission::where('status', 'Pending'), $request)->count(),
@@ -111,7 +124,11 @@ class SubmissionController extends Controller
             $this->logActivity($request, $submission, 'encoded', ['file_uploaded' => $request->hasFile('file')]);
         }
 
-        return back()->with('success', 'Submission saved successfully.');
+        return back()->with('success', FlashMessage::make(
+            'Submission saved',
+            "{$submission->participant?->employee?->name}'s {$submission->requirement?->title} is saved as {$submission->status}.",
+            $submission->status === 'Pending' ? 'Review it when you are ready; it is waiting under Pending.' : null,
+        ));
     }
 
     /**
@@ -133,7 +150,13 @@ class SubmissionController extends Controller
 
         $this->logActivity($request, $submission, 'reviewed', ['remarks' => $validated['remarks'] ?? null]);
 
-        return back()->with('success', 'Submission reviewed successfully.');
+        return back()->with('success', FlashMessage::make(
+            "Submission {$validated['status']}",
+            "{$submission->participant?->employee?->name}'s {$submission->requirement?->title} is now marked {$validated['status']}.",
+            $validated['status'] === 'Rejected'
+                ? 'They can see your remarks in My Programs and upload a new file.'
+                : 'It now counts toward their completed requirements.',
+        ));
     }
 
     /**
@@ -159,7 +182,10 @@ class SubmissionController extends Controller
             'new_submitted_at' => $submission->submitted_at->toDateTimeString(),
         ]);
 
-        return back()->with('success', 'Submission date updated.');
+        return back()->with('success', FlashMessage::make(
+            'Submission date updated',
+            'The new date is saved and the On time / Late label was recalculated.',
+        ));
     }
 
     /**
@@ -180,7 +206,9 @@ class SubmissionController extends Controller
 
         $count = $this->approvePending($request, $query);
 
-        return back()->with('success', $count ? "{$count} submission(s) approved." : 'There are no pending submissions to approve.');
+        return back()->with('success', $count
+            ? FlashMessage::make("{$count} submission(s) approved", "Every pending submission in \"{$program->title}\" is now Approved.")
+            : FlashMessage::make('Nothing to approve', 'There are no pending submissions to approve.'));
     }
 
     /**
@@ -200,7 +228,9 @@ class SubmissionController extends Controller
 
         $count = $this->approvePending($request, $query);
 
-        return back()->with('success', $count ? "{$count} submission(s) approved." : 'There are no pending submissions to approve.');
+        return back()->with('success', $count
+            ? FlashMessage::make("{$count} submission(s) approved", 'Every pending submission in the current list is now Approved.')
+            : FlashMessage::make('Nothing to approve', 'There are no pending submissions to approve.'));
     }
 
     /**
@@ -268,7 +298,7 @@ class SubmissionController extends Controller
 
         $submission->delete();
 
-        return back()->with('success', 'Submission deleted successfully.');
+        return back()->with('success', FlashMessage::make('Submission deleted', 'The file and its record were removed. The participant can submit again.'));
     }
 
     /**

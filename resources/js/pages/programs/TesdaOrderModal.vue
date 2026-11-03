@@ -1,5 +1,9 @@
 <script setup lang="ts">
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
+import { toast } from '@/components/ui/toast/use-toast';
+import { suggestionFrom } from '@/lib/http';
 import { router } from '@inertiajs/vue3';
+import axios from 'axios';
 import {
     AlignCenter,
     AlignJustify,
@@ -89,8 +93,8 @@ const loadingParticipants = ref(false);
 async function fetchParticipants() {
     loadingParticipants.value = true;
     try {
-        const res = await fetch(route('tesda-orders.participants', props.program.id));
-        orderedBatches.value = await res.json();
+        const { data } = await axios.get(route('tesda-orders.participants', props.program.id));
+        orderedBatches.value = data;
     } finally {
         loadingParticipants.value = false;
     }
@@ -174,6 +178,8 @@ const highlightColors = ['#fff59d', '#a5d6a7', '#90caf9', '#ef9a9a', '#ce93d8', 
 // ── Signatory search ───────────────────────────────────────────────────────
 const signatoryQuery = ref('');
 const signatoryResults = ref<{ empcode: string; name: string; position: string }[]>([]);
+// What the lookup last searched for, and its "Did you mean …?" (X-Search-Suggestion header).
+const signatoryLookup = ref<{ searched: string; suggestion: string | null }>({ searched: '', suggestion: null });
 let searchTimeout: ReturnType<typeof setTimeout>;
 
 watch(signatoryQuery, (val) => {
@@ -183,8 +189,9 @@ watch(signatoryQuery, (val) => {
         return;
     }
     searchTimeout = setTimeout(async () => {
-        const res = await fetch(route('tesda-orders.search-signatory') + `?q=${encodeURIComponent(val)}`);
-        signatoryResults.value = await res.json();
+        const response = await axios.get(route('tesda-orders.search-signatory'), { params: { q: val } });
+        signatoryResults.value = response.data;
+        signatoryLookup.value = { searched: val, suggestion: suggestionFrom(response) };
     }, 300);
 });
 
@@ -199,11 +206,15 @@ function selectSignatory(emp: { empcode: string; name: string; position: string 
 // ── Submit ─────────────────────────────────────────────────────────────────
 function submit() {
     if (!form.value.subject.trim()) {
-        alert('Subject is required.');
+        toast({ title: 'Subject is required', description: 'Enter the subject of the TESDA Order before generating it.', variant: 'destructive' });
         return;
     }
     if (!form.value.signatory_name.trim() || !form.value.signatory_position.trim()) {
-        alert('Please select or enter a signatory.');
+        toast({
+            title: 'Signatory is required',
+            description: 'Select a signatory from the search, or type a name and position.',
+            variant: 'destructive',
+        });
         return;
     }
     processing.value = true;
@@ -596,6 +607,19 @@ function submit() {
                                         <span>{{ emp.name }}</span>
                                         <span class="text-xs text-muted-foreground">{{ emp.position }}</span>
                                     </button>
+                                </div>
+                                <div
+                                    v-else-if="signatoryLookup.searched && signatoryLookup.searched === signatoryQuery && !form.signatory_name"
+                                    class="absolute z-10 mt-1 w-full rounded-xl border bg-background shadow-lg"
+                                >
+                                    <SearchEmptyState
+                                        compact
+                                        :query="signatoryQuery"
+                                        :suggestion="signatoryLookup.suggestion"
+                                        description="You can also type the signatory's name and position below."
+                                        @search="signatoryQuery = $event"
+                                        @clear-filters="signatoryQuery = ''"
+                                    />
                                 </div>
                             </div>
                             <div

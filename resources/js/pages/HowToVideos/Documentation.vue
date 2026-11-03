@@ -37,15 +37,17 @@
         <main class="content">
             <article class="doc-card">
                 <HowToDocSteps v-if="steps.length" :steps="steps" />
-                <div v-else class="empty">
-                    <FileText :size="28" />
-                    <h2>No written steps yet</h2>
-                    <p v-if="canManage">Add the steps and screenshots so admins can follow along without watching the video.</p>
-                    <p v-else>The written guide for this video hasn't been added yet. You can still watch the video.</p>
-                    <button v-if="canManage" type="button" class="btn btn--primary" @click="editing = true">
-                        <Pencil :size="16" /> Write documentation
-                    </button>
-                </div>
+                <EmptyState
+                    v-else
+                    :icon="FileText"
+                    title="No written steps yet"
+                    :description="
+                        canManage
+                            ? 'Add the steps and screenshots so admins can follow along without watching the video.'
+                            : 'The written guide for this video hasn\'t been added yet. You can still watch the video.'
+                    "
+                    :action="canManage ? { label: 'Write documentation', icon: Pencil, onClick: () => (editing = true) } : undefined"
+                />
             </article>
         </main>
 
@@ -57,6 +59,7 @@
 </template>
 
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
 import HowToDocModal from '@/components/HowToDocModal.vue';
 import HowToDocSteps from '@/components/HowToDocSteps.vue';
 import HowToVideoPlayer, { type HowToVideo } from '@/components/HowToVideoPlayer.vue';

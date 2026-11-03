@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
+import SubmitButton from '@/components/SubmitButton.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -14,9 +16,9 @@ import {
     Building2,
     CalendarDays,
     CalendarRange,
-    LoaderCircle,
     Mail,
     Megaphone,
+    Mic,
     Pencil,
     Phone,
     Plus,
@@ -221,55 +223,13 @@ const batchLabel = (speaker: ResourceSpeaker) => {
         </div>
 
         <!-- Empty state with illustration -->
-        <div
+        <EmptyState
             v-if="!speakers.length"
-            class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed px-6 py-16 text-center shadow-md"
-        >
-            <!-- Illustration: speaker at podium / microphone -->
-            <svg viewBox="0 0 200 160" class="h-40 w-auto" xmlns="http://www.w3.org/2000/svg">
-                <ellipse cx="100" cy="142" rx="70" ry="8" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
-
-                <!-- podium -->
-                <path d="M70 130 L80 75 H120 L130 130 Z" fill="currentColor" class="text-blue-100 dark:text-blue-900/40" />
-                <rect x="75" y="68" width="50" height="10" rx="2" fill="currentColor" class="text-blue-200 dark:text-blue-800/60" />
-
-                <!-- person -->
-                <circle cx="100" cy="40" r="16" fill="currentColor" class="text-blue-200 dark:text-blue-800/60" />
-                <path d="M76 75 c0 -16 11 -24 24 -24 s24 8 24 24 Z" fill="currentColor" class="text-blue-200 dark:text-blue-800/60" />
-
-                <!-- microphone -->
-                <rect x="142" y="55" width="10" height="22" rx="5" fill="currentColor" class="text-amber-400 dark:text-amber-500" />
-                <path
-                    d="M134 68 a13 13 0 0 0 26 0"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    fill="none"
-                    stroke-linecap="round"
-                    class="text-amber-400 dark:text-amber-500"
-                />
-                <line
-                    x1="147"
-                    y1="81"
-                    x2="147"
-                    y2="92"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    stroke-linecap="round"
-                    class="text-amber-400 dark:text-amber-500"
-                />
-
-                <!-- sparkle accents -->
-                <circle cx="48" cy="50" r="3" fill="currentColor" class="text-amber-300 dark:text-amber-600" />
-                <circle cx="40" cy="65" r="2" fill="currentColor" class="text-blue-300 dark:text-blue-700" />
-                <circle cx="158" cy="38" r="2.5" fill="currentColor" class="text-blue-300 dark:text-blue-700" />
-            </svg>
-            <p class="text-sm font-bold text-slate-500">No resource speakers yet</p>
-            <p class="max-w-xs text-xs text-slate-400">
-                Keep a record of the speakers, trainers, or experts who were engaged for this program — their topics, affiliations, and contact
-                details.
-            </p>
-            <Button size="sm" variant="outline" class="mt-1" @click="openCreate"> <Plus class="mr-1 h-3.5 w-3.5" /> Add your first speaker </Button>
-        </div>
+            :icon="Mic"
+            title="No resource speakers yet"
+            description="Keep a record of the speakers, trainers, or experts who were engaged for this program — their topics, affiliations, and contact details."
+            :action="{ label: 'Add your first speaker', icon: Plus, onClick: openCreate }"
+        />
 
         <!-- Speaker list -->
         <div v-else class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -462,17 +422,15 @@ const batchLabel = (speaker: ResourceSpeaker) => {
 
                 <div class="mt-2 flex shrink-0 justify-end gap-2 border-t pt-3">
                     <Button type="button" variant="outline" size="sm" @click="showModal = false">Cancel</Button>
-                    <Button
-                        type="submit"
+                    <SubmitButton
                         class="bg-blue-600 hover:bg-blue-700 dark:text-white"
                         form="resource-speaker-form"
                         size="sm"
-                        :disabled="processing"
+                        :processing="processing"
+                        :icon="Save"
                     >
-                        <LoaderCircle v-if="processing" class="mr-1 h-3 w-3 animate-spin" />
-                        <Save v-else class="h-3.5 w-3.5" />
                         {{ editingSpeaker ? 'Update Speaker' : 'Save Speaker' }}
-                    </Button>
+                    </SubmitButton>
                 </div>
             </DialogContent>
         </Dialog>

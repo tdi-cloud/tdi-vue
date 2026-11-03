@@ -110,7 +110,7 @@ test('an admin can approve all pending submissions of a program', function () {
     $this->actingAs($admin)
         ->post(route('programs.submissions.approve-all', $program))
         ->assertRedirect()
-        ->assertSessionHas('success', '2 submission(s) approved.');
+        ->assertSessionHas('success.title', '2 submission(s) approved');
 
     expect($pendingOne->fresh()->status)->toBe('Approved');
     expect($pendingOne->fresh()->reviewed_by)->toBe($admin->name);
@@ -142,7 +142,7 @@ test('approve all only affects pending submissions — already approved ones kee
 
     $this->actingAs($admin)
         ->post(route('programs.submissions.approve-all', $program))
-        ->assertSessionHas('success', '1 submission(s) approved.');
+        ->assertSessionHas('success.title', '1 submission(s) approved');
 
     expect($approved->fresh()->reviewed_by)->toBe('Original Reviewer');
     expect($approved->fresh()->reviewed_at->equalTo($originalReviewedAt))->toBeTrue();
@@ -193,7 +193,7 @@ test('a superadmin can approve all pending submissions across every program', fu
     $this->actingAs($superadmin)
         ->post(route('submissions.approve-all'))
         ->assertRedirect()
-        ->assertSessionHas('success', '2 submission(s) approved.');
+        ->assertSessionHas('success.title', '2 submission(s) approved');
 
     expect($pendingA->fresh()->status)->toBe('Approved');
     expect($pendingB->fresh()->status)->toBe('Approved');

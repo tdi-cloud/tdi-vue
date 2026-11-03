@@ -8,6 +8,7 @@ use App\Models\Participant;
 use App\Models\PendingNotification;
 use App\Notifications\ParticipantAdded;
 use App\Notifications\ParticipantRemoved;
+use App\Support\FlashMessage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -122,14 +123,23 @@ class ParticipantController extends Controller
                 ->map(fn ($e) => $e->name)
                 ->implode(', ');
 
-            $message = $added
-                ? "{$added} participant(s) added. Skipped (already enrolled in another batch of this program): {$names}."
-                : "No participants added. Already enrolled in another batch of this program: {$names}.";
-
-            return back()->with($added ? 'success' : 'error', $message);
+            return back()->with($added ? 'success' : 'error', $added
+                ? FlashMessage::make(
+                    "{$added} participant(s) added to {$batch->batch}",
+                    "They were notified. Skipped because they're already in another batch of this program: {$names}.",
+                )
+                : FlashMessage::make(
+                    'No participants added',
+                    "Already enrolled in another batch of this program: {$names}.",
+                    'Remove them from the other batch first if they should move.',
+                ));
         }
 
-        return back()->with('success', 'Participants added successfully.');
+        return back()->with('success', FlashMessage::make(
+            "{$added} participant(s) added to {$batch->batch}",
+            'Each one was notified and can now see this program under My Programs.',
+            'Track their attendance and requirements from the batch.',
+        ));
     }
 
     /**
@@ -204,7 +214,10 @@ class ParticipantController extends Controller
                 break;
         }
 
-        return back()->with('success', 'Attendance updated.');
+        return back()->with('success', FlashMessage::make(
+            'Attendance updated',
+            "{$participant->empcode} is now marked {$participant->attendance}.",
+        ));
     }
 
     /**
@@ -226,7 +239,7 @@ class ParticipantController extends Controller
             $participant->update(['attendance' => 'Pending']);
         }
 
-        return back()->with('success', 'Justification memo removed.');
+        return back()->with('success', FlashMessage::make('Justification memo removed', "{$participant->empcode}'s attendance is back to {$participant->attendance}."));
     }
 
     public function applyToAll(Request $request, Participant $participant)
@@ -246,7 +259,10 @@ class ParticipantController extends Controller
                 'hours' => $hours,
             ]);
 
-        return back()->with('success', 'Attendance applied to all eligible participants.');
+        return back()->with('success', FlashMessage::make(
+            'Attendance applied to the whole batch',
+            "Everyone not marked Absent in {$batch->batch} is now Complete with {$hours} hour(s).",
+        ));
     }
 
     public function destroy(Participant $participant)
@@ -273,7 +289,10 @@ class ParticipantController extends Controller
             PendingNotification::notifyOrQueue($empcode, new ParticipantRemoved($program->title, $batchLabel, $pendingRequirementTitles));
         }
 
-        return back()->with('success', 'Participant removed.');
+        return back()->with('success', FlashMessage::make(
+            'Participant removed',
+            "{$empcode} was removed from this batch and has been notified.",
+        ));
     }
 
     public function bulkStore(Request $request)
@@ -387,6 +406,6 @@ class ParticipantController extends Controller
         $participant->save();
         $swap->save();
 
-        return back()->with('success', 'Order updated.');
+        return back()->with('success', FlashMessage::make('Order updated', 'The new participant order is saved.'));
     }
 }

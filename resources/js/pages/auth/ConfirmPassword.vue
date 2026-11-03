@@ -47,7 +47,7 @@ const submit = () => {
                         :disabled="form.processing"
                     >
                         <LoaderCircle v-if="form.processing" class="h-4 w-4 animate-spin" />
-                        Confirm Password
+                        {{ form.processing ? 'Confirming…' : 'Confirm Password' }}
                     </Button>
                 </div>
             </div>

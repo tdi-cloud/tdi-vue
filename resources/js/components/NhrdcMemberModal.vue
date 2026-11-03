@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import { useConfirm } from '@/composables/useConfirm';
+import { suggestionFrom } from '@/lib/http';
 import axios from 'axios';
 import { ChevronDown, ChevronUp, LoaderCircle, Plus, Search, Trash2, UserCheck, UserPlus, Users, X } from 'lucide-vue-next';
 import { onMounted, ref } from 'vue';
@@ -71,10 +74,11 @@ async function runSearch() {
     searching.value = true;
     open.value = true;
     try {
-        const { data } = await axios.get(route('foreign-nominee-assessments.search-employee'), {
+        const response = await axios.get(route('foreign-nominee-assessments.search-employee'), {
             params: { q: query.value },
         });
-        results.value = data;
+        results.value = response.data;
+        lookupSuggestion.value = suggestionFrom(response);
     } catch {
         results.value = [];
     } finally {
@@ -112,7 +116,7 @@ const deleteMember = async (member: Member) => {
         await fetchMembers();
         emit('updated');
     } catch {
-        alert('Failed to remove member.');
+        // The app-wide error toast (lib/http.ts) already explains the failure.
     } finally {
         deletingId.value = null;
     }
@@ -139,6 +143,19 @@ const moveMember = async (member: Member, direction: 'up' | 'down') => {
 
 const repForId = ref<number | null>(null);
 const repQuery = ref('');
+// "Did you mean …?" for both employee lookups (X-Search-Suggestion header).
+const lookupSuggestion = ref<string | null>(null);
+const repSuggestion = ref<string | null>(null);
+
+function searchMemberFor(term: string) {
+    query.value = term;
+    runSearch();
+}
+
+function searchRepFor(term: string) {
+    repQuery.value = term;
+    onRepQueryInput();
+}
 const repResults = ref<EmployeeResult[]>([]);
 const repSearching = ref(false);
 const repSaving = ref(false);
@@ -162,8 +179,9 @@ function onRepQueryInput() {
     repSearchTimer = setTimeout(async () => {
         repSearching.value = true;
         try {
-            const { data } = await axios.get(route('foreign-nominee-assessments.search-employee'), { params: { q: repQuery.value } });
-            repResults.value = data;
+            const response = await axios.get(route('foreign-nominee-assessments.search-employee'), { params: { q: repQuery.value } });
+            repResults.value = response.data;
+            repSuggestion.value = suggestionFrom(response);
         } catch {
             repResults.value = [];
         } finally {
@@ -251,7 +269,14 @@ onMounted(fetchMembers);
                                 <span v-if="isMember(emp.empcode)" class="shrink-0 text-[10px] font-bold text-emerald-600">Added</span>
                                 <Plus v-else class="h-3.5 w-3.5 shrink-0 text-indigo-600" />
                             </button>
-                            <p v-if="!results.length" class="px-3 py-2 text-xs text-muted-foreground">No matches.</p>
+                            <SearchEmptyState
+                                v-if="!results.length"
+                                compact
+                                :query="query"
+                                :suggestion="lookupSuggestion"
+                                @search="searchMemberFor"
+                                @clear-filters="query = ''"
+                            />
                         </template>
                     </div>
                 </div>
@@ -263,11 +288,7 @@ onMounted(fetchMembers);
                 <div v-if="loading" class="flex items-center justify-center py-10">
                     <LoaderCircle class="h-5 w-5 animate-spin text-indigo-500" />
                 </div>
-                <div v-else-if="!members.length" class="flex flex-col items-center justify-center gap-2 py-10 text-center text-muted-foreground">
-                    <Users class="h-8 w-8 text-slate-300" />
-                    <p class="text-xs font-semibold">No NHRDC members yet.</p>
-                    <p class="text-xs">Search above to add one.</p>
-                </div>
+                <EmptyState v-else-if="!members.length" compact :icon="Users" title="No NHRDC members yet." description="Search above to add one." />
                 <div v-else class="divide-y overflow-hidden rounded-xl border">
                     <div v-for="(member, index) in members" :key="member.id">
                         <div class="group flex items-center justify-between gap-1 px-3 py-2.5 transition-colors hover:bg-muted/40">
@@ -386,7 +407,14 @@ onMounted(fetchMembers);
                                             >
                                             <UserPlus v-else class="h-3.5 w-3.5 shrink-0 text-indigo-600" />
                                         </button>
-                                        <p v-if="!repResults.length" class="px-3 py-2 text-xs text-muted-foreground">No matches.</p>
+                                        <SearchEmptyState
+                                            v-if="!repResults.length"
+                                            compact
+                                            :query="repQuery"
+                                            :suggestion="repSuggestion"
+                                            @search="searchRepFor"
+                                            @clear-filters="repQuery = ''"
+                                        />
                                     </template>
                                 </div>
                                 <p v-if="repError" class="mt-1 text-xs text-red-500">{{ repError }}</p>

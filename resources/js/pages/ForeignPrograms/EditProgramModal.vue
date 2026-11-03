@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { PROGRAM_STATUS_OPTIONS, toDateInput } from '@/lib/foreignPrograms';
 import { useForm } from '@inertiajs/vue3';
+import axios from 'axios';
 import {
     AlignLeft,
     Banknote,
@@ -143,11 +144,8 @@ const showSponsorModal = ref(false);
 const sponsors = ref<string[]>([]);
 
 const fetchSponsors = async () => {
-    const res = await fetch(route('organizing-sponsors.index'), {
-        headers: { Accept: 'application/json' },
-    });
-    const data = await res.json();
-    sponsors.value = data.map((s: { id: number; name: string }) => s.name);
+    const { data } = await axios.get<{ id: number; name: string }[]>(route('organizing-sponsors.index'));
+    sponsors.value = data.map((s) => s.name);
 };
 
 fetchSponsors();
@@ -277,14 +275,21 @@ const onSponsorSelected = (name: string) => {
                                     <Label class="flex items-center gap-1.5 text-xs font-semibold">
                                         <Banknote class="h-3.5 w-3.5 text-muted-foreground" /> Program Cost
                                     </Label>
-                                    <Input v-model="editForm.program_cost" type="text" class="bg-white dark:bg-background" placeholder="e.g. 50,000" />
+                                    <Input
+                                        v-model="editForm.program_cost"
+                                        type="text"
+                                        class="bg-white dark:bg-background"
+                                        placeholder="e.g. 50,000"
+                                    />
                                 </div>
                                 <div class="flex flex-col gap-1">
                                     <Label class="flex items-center gap-1.5 text-xs font-semibold">
                                         <FileText class="h-3.5 w-3.5 text-muted-foreground" /> Fund Source
                                     </Label>
                                     <Select v-model="editForm.fund_source">
-                                        <SelectTrigger class="w-full bg-white dark:bg-background"><SelectValue placeholder="— Select —" /></SelectTrigger>
+                                        <SelectTrigger class="w-full bg-white dark:bg-background"
+                                            ><SelectValue placeholder="— Select —"
+                                        /></SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="SDP">SDP</SelectItem>
                                             <SelectItem value="Other Office">Other Office</SelectItem>

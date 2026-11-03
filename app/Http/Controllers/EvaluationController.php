@@ -8,6 +8,7 @@ use App\Models\EvaluationQuestion;
 use App\Models\EvaluationResponse;
 use App\Models\EvaluationSection;
 use App\Models\SiteImage;
+use App\Support\FlashMessage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -61,7 +62,11 @@ class EvaluationController extends Controller
         }
 
         if ($request->filled('empcode') && $form->responses()->where('empcode', $request->empcode)->exists()) {
-            return back()->with('error', 'You have already submitted an evaluation for this batch.')->withInput();
+            return back()->with('error', FlashMessage::make(
+                'Evaluation already submitted',
+                'You have already submitted an evaluation for this batch, and it is saved.',
+                'There is nothing else you need to do.',
+            ))->withInput();
         }
 
         $rules = [

@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import EmployeeProgressModal from '@/components/EmployeeProgressModal.vue';
+import EmptyState from '@/components/EmptyState.vue';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
@@ -57,6 +59,8 @@ const props = defineProps<{
         plantilla?: string;
         per_page?: string;
     };
+    // "Did you mean …?" when a search finds nothing (server-side SearchSuggester).
+    suggestion?: string | null;
 }>();
 
 // Filters
@@ -429,15 +433,23 @@ const selectClass =
 
                             <tr v-if="employees.data?.length === 0" key="empty-state">
                                 <td colspan="7" class="px-4 py-16">
-                                    <div class="flex flex-col items-center text-center">
-                                        <span
-                                            class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500"
-                                        >
-                                            <Users class="h-6 w-6" />
-                                        </span>
-                                        <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">No employees found.</p>
-                                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Try adjusting your search or filters.</p>
-                                    </div>
+                                    <SearchEmptyState
+                                        v-if="filters.search"
+                                        compact
+                                        :query="filters.search"
+                                        :suggestion="suggestion"
+                                        @search="search = $event"
+                                        @clear-filters="clearFilters"
+                                    />
+                                    <EmptyState
+                                        v-else
+                                        compact
+                                        variant="filtered"
+                                        :icon="Users"
+                                        title="No employees found."
+                                        description="Try adjusting your filters."
+                                        @clear-filters="clearFilters"
+                                    />
                                 </td>
                             </tr>
                         </TransitionGroup>
@@ -501,14 +513,24 @@ const selectClass =
                         </button>
                     </article>
 
-                    <div v-if="employees.data?.length === 0" key="empty-state" class="flex flex-col items-center px-4 py-14 text-center">
-                        <span
-                            class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500"
-                        >
-                            <Users class="h-6 w-6" />
-                        </span>
-                        <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">No employees found.</p>
-                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Try adjusting your search or filters.</p>
+                    <div v-if="employees.data?.length === 0" key="empty-state">
+                        <SearchEmptyState
+                            v-if="filters.search"
+                            compact
+                            :query="filters.search"
+                            :suggestion="suggestion"
+                            @search="search = $event"
+                            @clear-filters="clearFilters"
+                        />
+                        <EmptyState
+                            v-else
+                            compact
+                            variant="filtered"
+                            :icon="Users"
+                            title="No employees found."
+                            description="Try adjusting your filters."
+                            @clear-filters="clearFilters"
+                        />
                     </div>
                 </TransitionGroup>
 

@@ -79,3 +79,15 @@ test('superadmin can mark a report resolved and reopen it', function () {
 
     expect($report->fresh()->status)->toBe(ProblemReport::STATUS_OPEN);
 });
+
+test('a misspelled problem report search with no results suggests the closest known word', function () {
+    $superadmin = User::factory()->create(['access' => 'superadmin', 'empcode' => 'EMP-PR-SUGGEST']);
+    ProblemReport::factory()->for($superadmin, 'user')->create(['description' => 'The upload button froze.']);
+
+    $typo = $this->actingAs($superadmin)->get(route('problem-reports.index', ['search' => 'uplod']));
+    expect($typo->inertiaProps('reports')['data'])->toBeEmpty()
+        ->and($typo->inertiaProps('suggestion'))->toBe('upload');
+
+    $exact = $this->actingAs($superadmin)->get(route('problem-reports.index', ['search' => 'upload']));
+    expect($exact->inertiaProps('suggestion'))->toBeNull();
+});

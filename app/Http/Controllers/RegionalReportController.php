@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\RegionalReport;
+use App\Support\FlashMessage;
+use App\Support\SearchSuggester;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -137,6 +139,12 @@ class RegionalReportController extends Controller
             'currentMonth' => $currentMonth,
             'stats' => compact('totalRequired', 'submitted', 'pending', 'rate'),
             'recentSubmissions' => $recentSubmissions,
+            'suggestion' => SearchSuggester::forEmptyResults(
+                $search,
+                $recentSubmissions->total(),
+                fn () => collect(self::MONTHS)->merge(array_keys(self::REGIONS))->merge(self::REGIONS)
+                    ->merge(RegionalReport::where('year', $year)->pluck('added_by')),
+            ),
             'availableYears' => $availableYears,
             'filters' => ['search' => $search],
         ]);
@@ -178,7 +186,11 @@ class RegionalReportController extends Controller
             'added_by' => Auth::check() ? Auth::user()->empcode : 'unknown',
         ]);
 
-        return back()->with('success', 'Report submitted successfully.');
+        return back()->with('success', FlashMessage::make(
+            "TPMR submitted for {$validated['region']}, {$validated['month']} {$validated['year']}",
+            'The PDF is saved and the matrix now shows this month as submitted.',
+            'You can view or delete it anytime under Recent Submissions.',
+        ));
     }
 
     public function destroy(RegionalReport $regionalReport)
@@ -186,6 +198,9 @@ class RegionalReportController extends Controller
         Storage::disk('public')->delete($regionalReport->file_path);
         $regionalReport->delete();
 
-        return back()->with('success', 'Report deleted.');
+        return back()->with('success', FlashMessage::make(
+            'TPMR deleted',
+            "{$regionalReport->region}, {$regionalReport->month} {$regionalReport->year} is back to Pending in the matrix.",
+        ));
     }
 }

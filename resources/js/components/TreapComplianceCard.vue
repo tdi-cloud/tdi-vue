@@ -1,21 +1,14 @@
 <script setup lang="ts">
 import EmployeeProgressModal from '@/components/EmployeeProgressModal.vue';
+import EmptyState from '@/components/EmptyState.vue';
+import InlineError from '@/components/InlineError.vue';
 import RegionalRankingModal, { type RankedRegion } from '@/components/RegionalRankingModal.vue';
-import {
-    Award,
-    ChevronRight,
-    ClipboardCheck,
-    Download,
-    FileCheck,
-    FileX,
-    Loader2,
-    Medal,
-    Search,
-    TrendingUp,
-    Trophy,
-    Users,
-    X,
-} from 'lucide-vue-next';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
+import StatTilesSkeleton from '@/components/skeletons/StatTilesSkeleton.vue';
+import TableRowsSkeleton from '@/components/skeletons/TableRowsSkeleton.vue';
+import { suggestSearch } from '@/lib/searchSuggestion';
+import axios from 'axios';
+import { Award, ChevronRight, ClipboardCheck, Download, FileCheck, FileX, Medal, Search, TrendingUp, Trophy, Users, X } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import VueApexCharts from 'vue3-apexcharts';
 
@@ -57,6 +50,7 @@ interface EmployeeRow {
 
 const data = ref<TreapData | null>(null);
 const loading = ref(false);
+const loadError = ref(false);
 
 // ─── Modal state ─────────────────────────────────────────────────────────────
 
@@ -84,6 +78,7 @@ const selectedEmpcode = ref<string | null>(null);
 
 async function fetchData() {
     loading.value = true;
+    loadError.value = false;
     try {
         const params = new URLSearchParams({
             region: props.region,
@@ -92,8 +87,11 @@ async function fetchData() {
             year: props.year,
         });
         props.selectedStatuses.forEach((s) => params.append('plant_status[]', s));
-        const res = await fetch(`/dashboard/treap-compliance?${params}`);
-        data.value = await res.json();
+        const response = await axios.get('/dashboard/treap-compliance', { params });
+        data.value = response.data;
+    } catch {
+        // The app-wide toast explains the failure; the card shows a Retry button.
+        loadError.value = true;
     } finally {
         loading.value = false;
     }
@@ -121,8 +119,7 @@ async function fetchList(type: 'submitted' | 'not_submitted', reg = 'ALL') {
             reg,
         });
         props.selectedStatuses.forEach((s) => params.append('plant_status[]', s));
-        const res = await fetch(`/dashboard/treap-compliance-list?${params}`);
-        const json = await res.json();
+        const { data: json } = await axios.get('/dashboard/treap-compliance-list', { params });
         modalEmployees.value = json.employees;
         modalCount.value = json.count;
     } finally {
@@ -402,9 +399,8 @@ const modalTitle = computed(() => {
         </div>
 
         <!-- Loading -->
-        <div v-if="loading" class="flex justify-center py-12">
-            <div class="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
-        </div>
+        <StatTilesSkeleton v-if="loading" :count="3" with-chart label="Loading compliance data…" />
+        <InlineError v-else-if="loadError" message="Compliance data couldn't be loaded." @retry="fetchData" />
 
         <template v-else-if="data">
             <!-- Stat row — clickable -->
@@ -653,9 +649,7 @@ const modalTitle = computed(() => {
                 </div>
 
                 <!-- Loading -->
-                <div v-if="modalLoading" class="flex justify-center py-12">
-                    <Loader2 class="h-7 w-7 animate-spin text-muted-foreground" />
-                </div>
+                <TableRowsSkeleton v-if="modalLoading" label="Loading employee list…" />
 
                 <!-- Table -->
                 <div v-else class="flex-1 overflow-y-auto">
@@ -712,10 +706,29 @@ const modalTitle = computed(() => {
                                 </td>
                             </tr>
                             <tr v-if="modalEmployees.length === 0">
-                                <td colspan="7" class="px-4 py-12 text-center text-sm text-muted-foreground">No employees found.</td>
+                                <td colspan="7">
+                                    <EmptyState
+                                        compact
+                                        title="No employees found."
+                                        description="Nobody falls in this group for the current filters."
+                                    />
+                                </td>
                             </tr>
                             <tr v-else-if="filteredModalEmployees.length === 0">
-                                <td colspan="7" class="px-4 py-12 text-center text-sm text-muted-foreground">No employees match your search.</td>
+                                <td colspan="7">
+                                    <SearchEmptyState
+                                        compact
+                                        :query="modalSearch"
+                                        :suggestion="
+                                            suggestSearch(
+                                                modalSearch,
+                                                modalEmployees.flatMap((e) => [e.name, e.position, e.office_division, e.program_title]),
+                                            )
+                                        "
+                                        @search="modalSearch = $event"
+                                        @clear-filters="modalSearch = ''"
+                                    />
+                                </td>
                             </tr>
                         </tbody>
                     </table>

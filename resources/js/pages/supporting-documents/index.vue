@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -75,6 +77,8 @@ const props = defineProps<{
         types: number;
         withLinks: number;
     };
+    // "Did you mean …?" when a search finds nothing (server-side SearchSuggester).
+    suggestion?: string | null;
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Supporting Documents', href: '/supporting-documents' }];
@@ -366,20 +370,29 @@ const formatDate = (date: string | null) => {
                             <!-- Empty state -->
                             <tr v-if="documents.data.length === 0">
                                 <td colspan="8" class="px-4 py-14">
-                                    <div class="flex flex-col items-center justify-center gap-2 text-center text-muted-foreground">
-                                        <Inbox class="h-8 w-8" />
-                                        <p class="text-sm font-semibold">No supporting documents found.</p>
-                                        <p class="text-xs">
-                                            {{
-                                                hasActiveFilters
-                                                    ? 'Try adjusting the search or clearing the filters.'
-                                                    : 'Documents added inside a program will appear here.'
-                                            }}
-                                        </p>
-                                        <Button v-if="hasActiveFilters" variant="outline" size="sm" class="mt-1" @click="resetFilters">
-                                            <RotateCcw class="mr-1 h-4 w-4" /> Clear filters
-                                        </Button>
-                                    </div>
+                                    <SearchEmptyState
+                                        v-if="filters.search"
+                                        compact
+                                        :query="filters.search"
+                                        :suggestion="suggestion"
+                                        @search="search = $event"
+                                        @clear-filters="resetFilters"
+                                    />
+                                    <EmptyState
+                                        v-else-if="hasActiveFilters"
+                                        compact
+                                        variant="filtered"
+                                        title="No supporting documents found."
+                                        description="Try adjusting or clearing the filters."
+                                        @clear-filters="resetFilters"
+                                    />
+                                    <EmptyState
+                                        v-else
+                                        compact
+                                        :icon="Inbox"
+                                        title="No supporting documents yet."
+                                        description="Documents added inside a program will appear here."
+                                    />
                                 </td>
                             </tr>
                         </tbody>

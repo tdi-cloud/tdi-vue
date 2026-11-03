@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Batch;
 use App\Models\Requirement;
+use App\Support\FlashMessage;
 use Illuminate\Http\Request;
 
 class BatchController extends Controller
@@ -39,7 +40,11 @@ class BatchController extends Controller
         // base sa date_end ng BAGONG batch.
         $this->copyRequirementsFromSibling($batch);
 
-        return back()->with('success', 'Batch created successfully.');
+        return back()->with('success', FlashMessage::make(
+            "{$batch->batch} created",
+            'It is saved under this program, with the requirements of its other batches copied over.',
+            'Next, add participants to the batch.',
+        ));
     }
 
     /**
@@ -76,7 +81,7 @@ class BatchController extends Controller
             }
         }
 
-        return back()->with('success', 'Batch updated successfully.');
+        return back()->with('success', FlashMessage::make("{$batch->batch} updated", 'Your changes to the schedule and details are saved.'));
     }
 
     /**
@@ -88,7 +93,7 @@ class BatchController extends Controller
     {
         $batch->delete();
 
-        return back()->with('success', 'Batch deleted successfully.');
+        return back()->with('success', FlashMessage::make('Batch deleted', "{$batch->batch} and its records were removed from this program."));
     }
 
     /**

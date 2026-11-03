@@ -269,7 +269,8 @@ async function removeActivity(activity: Activity) {
                     :disabled="activityForm.processing"
                     class="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-sm font-bold text-white hover:bg-violet-700 disabled:opacity-60"
                 >
-                    <Loader2 v-if="activityForm.processing" :size="14" class="animate-spin" /> Add activity
+                    <Loader2 v-if="activityForm.processing" :size="14" class="animate-spin" />
+                    {{ activityForm.processing ? 'Adding…' : 'Add activity' }}
                 </button>
             </div>
         </form>
@@ -408,7 +409,7 @@ async function removeActivity(activity: Activity) {
                         class="inline-flex items-center gap-1.5 rounded-lg bg-[#1d3fc4] px-4 py-2 text-sm font-bold text-white hover:bg-[#1535a8] disabled:opacity-60"
                     >
                         <Loader2 v-if="reportForm.processing" :size="14" class="animate-spin" />
-                        <Send v-else :size="14" /> Submit report
+                        <Send v-else :size="14" /> {{ reportForm.processing ? 'Submitting…' : 'Submit report' }}
                     </button>
                 </div>
             </form>

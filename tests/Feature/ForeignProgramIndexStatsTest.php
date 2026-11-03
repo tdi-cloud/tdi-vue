@@ -36,9 +36,11 @@ test('the index page reports program totals grouped by status from real data', f
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('ForeignPrograms/index')
-        ->where('stats.total', 5)
-        ->where('stats.for_nomination', 2)
-        ->where('stats.completed', 1)
-        ->where('stats.active', 2)
+        ->missing('stats')
+        ->loadDeferredProps(fn ($reload) => $reload
+            ->where('stats.total', 5)
+            ->where('stats.for_nomination', 2)
+            ->where('stats.completed', 1)
+            ->where('stats.active', 2))
     );
 });

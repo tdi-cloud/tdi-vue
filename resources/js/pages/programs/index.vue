@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import MultiSelectFilter from '@/components/MultiSelectFilter.vue';
+import SubmitButton from '@/components/SubmitButton.vue';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -25,7 +26,6 @@ import {
     Image,
     Info,
     Layers3,
-    LoaderCircle,
     MonitorSmartphone,
     PhilippinePeso,
     Plus,
@@ -370,7 +370,6 @@ const clearAllFilters = () => {
     <Head title="Programs" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-
         <!-- HEADER  -->
         <div ref="pageRef" :style="{ height: pageHeight }" class="flex w-full max-w-full flex-col gap-4 overflow-hidden p-4">
             <div class="flex w-full shrink-0 flex-wrap items-center justify-between">
@@ -571,6 +570,8 @@ const clearAllFilters = () => {
             <!-- Program List: fills the rest; only its inner list scrolls -->
             <ProgramList
                 @update:filtered-count="filteredCount = $event"
+                @clear-filters="clearAllFilters"
+                @search="search = $event"
                 :programs="programs"
                 :search="search"
                 :filter-initiated="filterInitiated"
@@ -848,16 +849,15 @@ const clearAllFilters = () => {
                         </p>
                         <div class="flex gap-2">
                             <Button type="button" variant="outline" size="sm" @click="showModal = false">Cancel</Button>
-                            <Button
-                                type="submit"
+                            <SubmitButton
                                 class="bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md shadow-blue-500/25 hover:from-blue-700 hover:to-blue-600"
                                 form="program-form"
                                 size="sm"
-                                :disabled="form.processing"
+                                :processing="form.processing"
+                                :icon="Save"
                             >
-                                <LoaderCircle v-if="form.processing" class="mr-1 h-3 w-3 animate-spin" />
-                                <Save class="h-3.5 w-3.5" /> Save Program
-                            </Button>
+                                Save Program
+                            </SubmitButton>
                         </div>
                     </div>
                 </DialogContent>

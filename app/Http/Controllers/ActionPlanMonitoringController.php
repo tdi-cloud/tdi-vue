@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\ActionPlanActivity;
 use App\Models\Employee;
 use App\Models\ImplementationReport;
+use App\Support\FlashMessage;
+use App\Support\LiteMode;
+use App\Support\SearchSuggester;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,7 +30,7 @@ class ActionPlanMonitoringController extends Controller
             ->orderByRaw('CASE WHEN target_date IS NULL THEN 1 ELSE 0 END')
             ->orderBy('target_date')
             ->orderBy('id')
-            ->paginate($request->integer('per_page', 15) ?: 15)
+            ->paginate(LiteMode::perPage($request, 15))
             ->withQueryString()
             ->through(fn (ActionPlanActivity $activity) => $this->transform($activity));
 
@@ -37,6 +40,20 @@ class ActionPlanMonitoringController extends Controller
             'statuses' => ActionPlanActivity::STATUSES,
             'regions' => Employee::query()->whereNotNull('REGION')->distinct()->orderBy('REGION')->pluck('REGION'),
             'filters' => $request->only(['search', 'status', 'region']),
+            'suggestion' => SearchSuggester::forEmptyResults(
+                $request->string('search'),
+                $activities->total(),
+                fn () => ActionPlanActivity::with(['batch.program:id,title', 'participant.employee'])
+                    ->latest('id')
+                    ->limit(500)
+                    ->get()
+                    ->flatMap(fn (ActionPlanActivity $activity) => [
+                        $activity->activity,
+                        $activity->batch?->program?->title,
+                        $activity->participant?->employee?->FIRSTNAME,
+                        $activity->participant?->employee?->LASTNAME,
+                    ]),
+            ),
         ]);
     }
 
@@ -59,9 +76,21 @@ class ActionPlanMonitoringController extends Controller
             'reviewed_at' => now(),
         ]);
 
+        $employee = $implementationReport->participant?->employee;
+        $participantName = $employee ? trim("{$employee->FIRSTNAME} {$employee->LASTNAME}") : 'The participant';
+        $activity = $implementationReport->activity?->activity ?? 'this activity';
+
         return back()->with('success', $validated['status'] === ImplementationReport::STATUS_APPROVED
-            ? 'Implementation report approved.'
-            : 'Implementation report returned for revision.');
+            ? FlashMessage::make(
+                'Implementation report approved',
+                "{$participantName}'s report for \"{$activity}\" is approved and the activity now counts as completed.",
+                'No further action is needed from you.',
+            )
+            : FlashMessage::make(
+                'Report returned for revision',
+                "{$participantName} can now see your note on \"{$activity}\" in My Programs.",
+                'It will appear here again as Pending once they resubmit.',
+            ));
     }
 
     private function filteredQuery(Request $request, bool $ignoreStatus = false): Builder

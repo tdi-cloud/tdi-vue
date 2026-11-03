@@ -40,7 +40,9 @@
 
         <div class="dashboard">
             <!-- Flash message -->
-            <div v-if="$page.props.flash?.success" class="flash flash--success"><CheckCircle2 :size="16" /> {{ $page.props.flash.success }}</div>
+            <div v-if="$page.props.flash?.success" class="flash flash--success">
+                <CheckCircle2 :size="16" /> {{ flashText($page.props.flash.success) }}
+            </div>
 
             <!-- Progress Summary -->
             <section class="summary">
@@ -386,6 +388,7 @@
                                             {{ uploadingId === r.id ? 'Saving…' : r.file_url ? 'Save Changes' : 'Submit' }}
                                         </button>
                                     </form>
+                                    <UploadProgress v-if="uploadingId === r.id && uploadPercentage !== null" class="mt-2" />
                                     <div class="req-row__notes">
                                         <textarea v-model="noteDraft[r.id]" placeholder="Add a note for the reviewer (optional)…" rows="2"></textarea>
                                     </div>
@@ -393,9 +396,13 @@
                                 </div>
                             </div>
                         </template>
-                        <div v-if="!program.requirements.length" class="reqs__empty">
-                            <CheckCircle2 :size="18" /> No requirements have been set for this batch yet.
-                        </div>
+                        <EmptyState
+                            v-if="!program.requirements.length"
+                            compact
+                            :icon="CheckCircle2"
+                            title="No requirements have been set for this batch yet."
+                            description="When the program admin adds requirements, they will appear here with their due dates."
+                        />
 
                         <!-- Other documents: for batches without requirements, or kept after a requirement was removed -->
                         <div v-if="program.can_submit_other_documents && program.attendance !== 'Absent'" class="req-card">
@@ -423,6 +430,7 @@
                                         {{ uploadingOtherDoc ? 'Saving…' : 'Submit' }}
                                     </button>
                                 </form>
+                                <UploadProgress v-if="uploadingOtherDoc && uploadPercentage !== null" class="mt-2" />
                                 <div class="req-row__notes">
                                     <textarea v-model="otherDocNotes" placeholder="Add a note for the reviewer (optional)…" rows="2"></textarea>
                                 </div>
@@ -514,6 +522,7 @@
                             {{ uploadingJustification ? 'Uploading…' : 'Upload Justification' }}
                         </button>
                     </form>
+                    <UploadProgress v-if="uploadingJustification && uploadPercentage !== null" class="mt-2" />
                     <div v-if="justificationError" class="req-row__error">{{ justificationError }}</div>
                 </section>
 
@@ -569,11 +578,12 @@
                         </div>
                     </div>
 
-                    <div v-else class="certs__empty">
-                        <div class="certs__empty-icon"><Award :size="48" color="#c7d2fe" /></div>
-                        <p class="certs__empty-title">No certificates yet</p>
-                        <p class="certs__empty-sub">Your certificate will appear here once issued or uploaded.</p>
-                    </div>
+                    <EmptyState
+                        v-else
+                        :icon="Award"
+                        title="No certificates yet"
+                        description="Your certificate will appear here once issued or uploaded."
+                    />
 
                     <div class="cert-upload">
                         <div class="cert-upload__header">
@@ -664,7 +674,11 @@
 
 <script setup lang="ts">
 import ActionPlanTracker from '@/components/ActionPlanTracker.vue';
+import EmptyState from '@/components/EmptyState.vue';
+import UploadProgress from '@/components/UploadProgress.vue';
 import { useConfirm } from '@/composables/useConfirm';
+import { flashText } from '@/composables/useFlash';
+import { useNetworkStatus } from '@/composables/useNetworkStatus';
 import { Head, Link, router } from '@inertiajs/vue3';
 import {
     AlertCircle,
@@ -949,6 +963,7 @@ function switchToRequirement(requirement) {
 const selectedFile = ref({});
 const fileError = ref({});
 const uploadingId = ref(null);
+const { uploadPercentage } = useNetworkStatus();
 const deletingId = ref(null);
 
 function onFileChange(event, requirementId) {

@@ -1,8 +1,12 @@
 <script setup lang="ts">
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import TnaScanUpload from '@/components/TnaScanUpload.vue';
 import SignaturePad from '@/components/ui/signature-pad/SignaturePad.vue';
 import { useConfirm } from '@/composables/useConfirm';
-import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { useFormDraft } from '@/composables/useFormDraft';
+import { suggestionFrom } from '@/lib/http';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import axios from 'axios';
 import { computed, reactive, ref, watch } from 'vue';
 import BackToTop from './BackToTop.vue';
 import TnaBackdrop from './TnaBackdrop.vue';
@@ -16,9 +20,6 @@ const props = defineProps({
     electiveUnits: { type: Array, default: () => [] },
     alreadySubmitted: { type: Object, default: null },
 });
-
-const page = usePage();
-const flashSuccess = computed(() => page.props.flash?.success);
 
 /* Scale guide */
 const SCALES = [
@@ -66,6 +67,8 @@ const corePct = computed(() => (requiredIds.length ? Math.round((coreDone.value 
 
 /* Supervisor search */
 const supQuery = ref('');
+// "Did you mean …?" for the supervisor lookup (X-Search-Suggestion header).
+const supSuggestion = ref<string | null>(null);
 const supResults = ref([]);
 const supLoading = ref(false);
 const supOpen = ref(false);
@@ -86,10 +89,9 @@ async function runSupSearch() {
     supLoading.value = true;
     supOpen.value = true;
     try {
-        const res = await fetch(route('tna.supervisor.search') + '?q=' + encodeURIComponent(supQuery.value), {
-            headers: { Accept: 'application/json' },
-        });
-        supResults.value = res.ok ? await res.json() : [];
+        const response = await axios.get(route('tna.supervisor.search'), { params: { q: supQuery.value } });
+        supResults.value = response.data;
+        supSuggestion.value = suggestionFrom(response);
     } catch {
         supResults.value = [];
     } finally {
@@ -129,6 +131,10 @@ const form = useForm({
     ratings: [],
 });
 
+// Autosave the form and the ratings so a long self-rating survives an expired session or a lost connection.
+const formDraft = props.alreadySubmitted ? null : useFormDraft('tna-self-rating', form);
+const answersDraft = props.alreadySubmitted ? null : useFormDraft('tna-self-rating:answers', answers, { notify: false });
+
 const canSubmit = computed(() => !!form.supervisor_empcode && corePct.value === 100);
 
 const submit = () => {
@@ -140,7 +146,13 @@ const submit = () => {
             competence: a.competence,
             frequency: a.frequency,
         })),
-    })).post(route('tna.self-rating.store'), { preserveScroll: true });
+    })).post(route('tna.self-rating.store'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            formDraft?.clearDraft();
+            answersDraft?.clearDraft();
+        },
+    });
 };
 
 async function deleteAssessment() {
@@ -172,10 +184,8 @@ watch(chgQuery, (val) => {
 async function runChgSearch() {
     chgLoading.value = true;
     try {
-        const res = await fetch(route('tna.supervisor.search') + '?q=' + encodeURIComponent(chgQuery.value), {
-            headers: { Accept: 'application/json' },
-        });
-        chgResults.value = res.ok ? await res.json() : [];
+        const { data } = await axios.get(route('tna.supervisor.search'), { params: { q: chgQuery.value } });
+        chgResults.value = data;
     } catch {
         chgResults.value = [];
     } finally {
@@ -227,10 +237,6 @@ function saveSupervisor() {
                 </svg>
                 Back to Home
             </Link>
-
-            <div v-if="flashSuccess" class="rounded-xl border border-green-200 bg-green-50 px-5 py-4 text-sm font-medium text-green-800 shadow">
-                {{ flashSuccess }}
-            </div>
 
             <!-- Already submitted state -->
             <div v-if="alreadySubmitted" class="rounded-2xl bg-white p-8 text-center shadow-xl">
@@ -464,7 +470,14 @@ function saveSupervisor() {
                             v-else-if="supOpen && !supLoading && supQuery.length >= 2"
                             class="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-400 shadow-lg"
                         >
-                            No matching results found.
+                            <SearchEmptyState
+                                compact
+                                :query="supQuery"
+                                :suggestion="supSuggestion"
+                                description="Check the spelling of the name."
+                                @search="supQuery = $event"
+                                @clear-filters="supQuery = ''"
+                            />
                         </div>
                     </div>
 

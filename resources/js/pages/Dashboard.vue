@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button';
+import { useLiteMode } from '@/composables/useLiteMode';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
+import axios from 'axios';
+import { BarChart3, Feather } from 'lucide-vue-next';
 import { onMounted, ref, watch } from 'vue';
 import DashboardSummaryBanner from '../components/DashboardSummaryBanner.vue';
 import PlaceholderPattern from '../components/PlaceholderPattern.vue';
@@ -17,7 +21,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Dashboard', href: '/dashboard' }];
 
 defineProps<{
-    summary: {
+    // Deferred prop (loaded after the first paint).
+    summary?: {
         employees: number;
         programs: number;
         active_batches: number;
@@ -40,6 +45,9 @@ const region = ref('ALL');
 // props kaya awtomatikong na-a-apply sa lahat ng compliance card).
 const selectedStatuses = ref<string[]>(STATUS_OPTIONS.filter((s) => s !== 'JOB ORDER'));
 
+// Lite mode (slow connections): skip the chart cards and their data requests until asked.
+const { isLiteMode, setLiteMode } = useLiteMode();
+
 const office = ref('ALL');
 const officeOptions = ref<string[]>([]);
 
@@ -54,9 +62,10 @@ const toggleStatus = (status: string) => {
     }
 };
 
+// Goes through axios so failures get the app-wide friendly error toast (lib/http.ts).
 const fetchOffices = async () => {
-    const res = await fetch(`/dashboard/offices?region=${region.value}`);
-    officeOptions.value = await res.json();
+    const { data } = await axios.get(route('dashboard.offices'), { params: { region: region.value } });
+    officeOptions.value = data;
     office.value = 'ALL';
 };
 
@@ -142,38 +151,69 @@ watch(region, fetchOffices);
                 </div>
 
                 <!-- Reports — pumili ng Report Time Range, tapos Download CSV (programs + batches + participants + attendance) -->
-                <ReportsModal class="ml-auto" :region="region" :office="office" :target="target" :selected-statuses="selectedStatuses" />
-            </div>
-
-            <!-- ===================== TWO CARDS SIDE BY SIDE ===================== -->
-            <div class="grid gap-4 md:grid-cols-2">
-                <TrainingComplianceCard :target="target" :region="region" :selected-statuses="selectedStatuses" :office="office" :year="year" />
-                <SupervisoryComplianceCard :target="target" :region="region" :selected-statuses="selectedStatuses" :office="office" :year="year" />
-            </div>
-
-            <!-- ===================== TREAP PANEL ===================== -->
-            <TreapComplianceCard :target="target" :region="region" :selected-statuses="selectedStatuses" :office="office" :year="year" />
-
-            <ReapComplianceCard :target="target" :region="region" :selected-statuses="selectedStatuses" :office="office" :year="year" />
-
-            <!-- ===================== TDOR PANEL ===================== -->
-            <TdorComplianceCard :target="target" :region="region" :selected-statuses="selectedStatuses" :office="office" :year="year" />
-
-            <div class="grid auto-rows-min gap-4 md:grid-cols-3">
-                <div class="tdi-card relative isolate aspect-video overflow-hidden rounded-xl border">
-                    <PlaceholderPattern />
-                </div>
-                <div class="tdi-card relative isolate aspect-video overflow-hidden rounded-xl border">
-                    <PlaceholderPattern />
-                </div>
-                <div class="tdi-card relative isolate aspect-video overflow-hidden rounded-xl border">
-                    <PlaceholderPattern />
+                <div class="ml-auto flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        class="h-9 text-xs font-semibold"
+                        :aria-pressed="isLiteMode"
+                        @click="setLiteMode(!isLiteMode)"
+                    >
+                        <BarChart3 v-if="isLiteMode" class="h-4 w-4" />
+                        <Feather v-else class="h-4 w-4" />
+                        {{ isLiteMode ? 'Show charts' : 'Load without charts' }}
+                    </Button>
+                    <ReportsModal :region="region" :office="office" :target="target" :selected-statuses="selectedStatuses" />
                 </div>
             </div>
 
-            <div class="tdi-card relative isolate min-h-[100vh] flex-1 overflow-hidden rounded-xl border md:min-h-min">
-                <PlaceholderPattern />
+            <!-- ===================== LITE MODE ===================== -->
+            <div v-if="isLiteMode" role="status" class="tdi-card flex flex-col items-center gap-2 rounded-xl border px-6 py-10 text-center">
+                <Feather class="h-6 w-6 text-muted-foreground" aria-hidden="true" />
+                <p class="text-sm font-semibold">Charts are hidden to save data</p>
+                <p class="max-w-md text-xs text-muted-foreground">
+                    Lite mode is on, so compliance charts aren't loaded. Your choice is remembered on this browser.
+                </p>
+                <Button size="sm" class="mt-1" @click="setLiteMode(false)"><BarChart3 class="h-4 w-4" /> Show charts</Button>
             </div>
+
+            <template v-else>
+                <!-- ===================== TWO CARDS SIDE BY SIDE ===================== -->
+                <div class="grid gap-4 md:grid-cols-2">
+                    <TrainingComplianceCard :target="target" :region="region" :selected-statuses="selectedStatuses" :office="office" :year="year" />
+                    <SupervisoryComplianceCard
+                        :target="target"
+                        :region="region"
+                        :selected-statuses="selectedStatuses"
+                        :office="office"
+                        :year="year"
+                    />
+                </div>
+
+                <!-- ===================== TREAP PANEL ===================== -->
+                <TreapComplianceCard :target="target" :region="region" :selected-statuses="selectedStatuses" :office="office" :year="year" />
+
+                <ReapComplianceCard :target="target" :region="region" :selected-statuses="selectedStatuses" :office="office" :year="year" />
+
+                <!-- ===================== TDOR PANEL ===================== -->
+                <TdorComplianceCard :target="target" :region="region" :selected-statuses="selectedStatuses" :office="office" :year="year" />
+
+                <div class="grid auto-rows-min gap-4 md:grid-cols-3">
+                    <div class="tdi-card relative isolate aspect-video overflow-hidden rounded-xl border">
+                        <PlaceholderPattern />
+                    </div>
+                    <div class="tdi-card relative isolate aspect-video overflow-hidden rounded-xl border">
+                        <PlaceholderPattern />
+                    </div>
+                    <div class="tdi-card relative isolate aspect-video overflow-hidden rounded-xl border">
+                        <PlaceholderPattern />
+                    </div>
+                </div>
+
+                <div class="tdi-card relative isolate min-h-[100vh] flex-1 overflow-hidden rounded-xl border md:min-h-min">
+                    <PlaceholderPattern />
+                </div>
+            </template>
         </div>
     </AppLayout>
 </template>

@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
 import EvaluationLikertGrid from '@/components/EvaluationLikertGrid.vue';
+import { useFormDraft } from '@/composables/useFormDraft';
 import { Head, router, usePage } from '@inertiajs/vue3';
 import {
     AlertCircle,
@@ -166,6 +168,11 @@ for (const section of props.form.sections) {
     }
 }
 
+// Autosave so a long evaluation survives an accidental reload or a lost connection.
+const respondentDraft = useFormDraft(`evaluation:${props.form.slug}:respondent`, respondent);
+const answersDraft = useFormDraft(`evaluation:${props.form.slug}:answers`, answers, { notify: false });
+const facilitatorDraft = useFormDraft(`evaluation:${props.form.slug}:facilitators`, facilitatorAnswers, { notify: false });
+
 function likertQuestions(section: Section) {
     return section.questions.filter((q) => q.type === 'likert5');
 }
@@ -283,6 +290,11 @@ function submit() {
 
     processing.value = true;
     router.post(route('evaluate.submit', props.form.slug), payload, {
+        onSuccess: () => {
+            respondentDraft.clearDraft();
+            answersDraft.clearDraft();
+            facilitatorDraft.clearDraft();
+        },
         onFinish: () => {
             processing.value = false;
         },
@@ -295,11 +307,7 @@ function submit() {
 
     <div class="relative min-h-screen bg-gray-100 px-4 py-8 [color-scheme:light]">
         <!-- Background image (superadmin default via Homepage Images, or a per-batch override in Evaluation settings) -->
-        <div
-            v-if="backgroundUrl"
-            class="fixed inset-0 bg-cover bg-center bg-fixed"
-            :style="{ backgroundImage: `url(${backgroundUrl})` }"
-        ></div>
+        <div v-if="backgroundUrl" class="fixed inset-0 bg-cover bg-fixed bg-center" :style="{ backgroundImage: `url(${backgroundUrl})` }"></div>
         <div v-if="backgroundUrl" class="fixed inset-0 bg-white/80"></div>
 
         <div class="relative mx-auto max-w-2xl space-y-4">
@@ -438,9 +446,13 @@ function submit() {
                                 <p v-if="section.description" class="mt-0.5 text-xs text-gray-500">{{ section.description }}</p>
                             </div>
 
-                            <div v-if="!form.facilitators.length" class="px-5 py-6 text-center text-xs text-gray-400">
-                                No facilitators have been added for this batch yet.
-                            </div>
+                            <EmptyState
+                                v-if="!form.facilitators.length"
+                                compact
+                                class="[color-scheme:light]"
+                                title="No facilitators have been added for this batch yet."
+                                description="You can skip this section."
+                            />
 
                             <div v-for="facilitator in form.facilitators" :key="facilitator.id" class="border-t px-5 py-5 first:border-t-0">
                                 <p class="text-sm font-bold text-gray-800">{{ facilitator.name }}</p>

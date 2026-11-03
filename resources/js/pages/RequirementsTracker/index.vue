@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
 import MultiSelectFilter from '@/components/MultiSelectFilter.vue';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BulkImportModal from '@/pages/RequirementsTracker/BulkImportModal.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
@@ -60,6 +62,8 @@ const props = defineProps<{
         office_division?: string | string[];
         overdue_only?: string;
     };
+    // "Did you mean …?" when a search finds nothing (server-side SearchSuggester).
+    suggestion?: string | null;
 }>();
 
 const showBulkImport = ref(false);
@@ -351,38 +355,32 @@ const initials = (name: string) => {
                 </table>
 
                 <!-- Empty: nothing missing at all -->
-                <div v-else class="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
-                    <svg viewBox="0 0 200 160" class="h-40 w-auto" xmlns="http://www.w3.org/2000/svg">
-                        <ellipse cx="100" cy="142" rx="70" ry="8" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
-                        <circle cx="100" cy="80" r="52" fill="currentColor" class="text-emerald-50 dark:text-emerald-900/20" />
-                        <circle
-                            cx="100"
-                            cy="80"
-                            r="52"
-                            stroke="currentColor"
-                            stroke-width="5"
-                            fill="none"
-                            class="text-emerald-300 dark:text-emerald-700/60"
-                        />
-                        <path
-                            d="M78 82 L94 98 L126 62"
-                            stroke="currentColor"
-                            stroke-width="8"
-                            fill="none"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            class="text-emerald-500"
-                        />
-                    </svg>
-                    <p class="text-sm font-bold text-slate-500">All caught up!</p>
-                    <p class="max-w-xs text-xs text-slate-400">
-                        {{
-                            hasActiveFilters()
-                                ? 'No outstanding requirements match your filters.'
-                                : 'No employees currently have outstanding post-training requirements.'
-                        }}
-                    </p>
-                </div>
+                <template v-else>
+                    <SearchEmptyState
+                        v-if="filters.search"
+                        :query="filters.search"
+                        :suggestion="suggestion"
+                        class="m-4"
+                        @search="search = $event"
+                        @clear-filters="clearFilters"
+                    />
+                    <EmptyState
+                        v-else-if="hasActiveFilters()"
+                        variant="filtered"
+                        :icon="CheckCircle2"
+                        title="All caught up!"
+                        description="No outstanding requirements match your filters."
+                        class="m-4"
+                        @clear-filters="clearFilters"
+                    />
+                    <EmptyState
+                        v-else
+                        :icon="CheckCircle2"
+                        title="All caught up!"
+                        description="No employees currently have outstanding post-training requirements."
+                        class="m-4"
+                    />
+                </template>
             </div>
 
             <!-- Pagination -->

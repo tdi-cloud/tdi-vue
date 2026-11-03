@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
 import FilePreviewModal from '@/components/FilePreviewModal.vue';
+import SubmitButton from '@/components/SubmitButton.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -8,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useConfirm } from '@/composables/useConfirm';
 import { router } from '@inertiajs/vue3';
-import { Building2, CalendarDays, Eye, Hash, LoaderCircle, Pencil, Plus, Save, ScrollText, Trash2 } from 'lucide-vue-next';
+import { Building2, CalendarDays, Eye, FolderOpen, Hash, Pencil, Plus, Save, ScrollText, Trash2 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 const { confirmDialog } = useConfirm();
@@ -201,35 +203,13 @@ const docTypeColor = (type: string) => {
         </div>
 
         <!-- Empty state with illustration -->
-        <div
+        <EmptyState
             v-if="!documents.length"
-            class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed px-6 py-16 text-center shadow-md"
-        >
-            <!-- Folder illustration -->
-            <svg viewBox="0 0 200 160" class="h-40 w-auto" xmlns="http://www.w3.org/2000/svg">
-                <ellipse cx="100" cy="142" rx="70" ry="8" fill="currentColor" class="text-slate-100 dark:text-slate-800" />
-                <path d="M30 50 H80 L95 65 H170 V125 H30 Z" fill="currentColor" class="text-blue-100 dark:text-blue-900/40" />
-                <path d="M30 50 H80 L95 65 H170 V70 H30 Z" fill="currentColor" class="text-blue-200 dark:text-blue-800/60" />
-                <rect x="45" y="85" width="60" height="6" rx="3" fill="currentColor" class="text-blue-300 dark:text-blue-700/60" />
-                <rect x="45" y="98" width="90" height="6" rx="3" fill="currentColor" class="text-blue-300 dark:text-blue-700/60" />
-                <rect x="45" y="111" width="75" height="6" rx="3" fill="currentColor" class="text-blue-300 dark:text-blue-700/60" />
-                <circle cx="155" cy="40" r="18" fill="currentColor" class="text-amber-100 dark:text-amber-900/40" />
-                <path
-                    d="M148 40 l5 5 l9 -10"
-                    stroke="currentColor"
-                    stroke-width="2.5"
-                    fill="none"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    class="text-amber-500"
-                />
-            </svg>
-            <p class="text-sm font-bold text-slate-500">No supporting documents yet</p>
-            <p class="max-w-xs text-xs text-slate-400">
-                Memos, office orders, circulars, certificates — attach official documents related to this program here.
-            </p>
-            <Button size="sm" variant="outline" class="mt-1" @click="openCreate"> <Plus class="mr-1 h-3.5 w-3.5" /> Add your first document </Button>
-        </div>
+            :icon="FolderOpen"
+            title="No supporting documents yet"
+            description="Memos, office orders, circulars, certificates — attach official documents related to this program here."
+            :action="{ label: 'Add your first document', icon: Plus, onClick: openCreate }"
+        />
 
         <!-- Document list -->
         <div v-else class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -363,17 +343,16 @@ const docTypeColor = (type: string) => {
 
                 <div class="mt-2 flex shrink-0 justify-end gap-2 border-t pt-3">
                     <Button type="button" variant="outline" size="sm" @click="showModal = false">Cancel</Button>
-                    <Button
-                        type="submit"
+                    <SubmitButton
                         class="bg-blue-600 hover:bg-blue-700 dark:text-white"
                         form="supporting-doc-form"
                         size="sm"
-                        :disabled="processing"
+                        :processing="processing"
+                        :processing-label="editingDoc ? 'Saving…' : 'Uploading…'"
+                        :icon="Save"
                     >
-                        <LoaderCircle v-if="processing" class="mr-1 h-3 w-3 animate-spin" />
-                        <Save v-else class="h-3.5 w-3.5" />
                         {{ editingDoc ? 'Update Document' : 'Save Document' }}
-                    </Button>
+                    </SubmitButton>
                 </div>
             </DialogContent>
         </Dialog>

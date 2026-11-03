@@ -675,6 +675,7 @@
 </template>
 
 <script setup lang="ts">
+import { useFormDraft } from '@/composables/useFormDraft';
 import SignatoryPicker from '@/pages/Tna/SignatoryPicker.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import {
@@ -793,6 +794,9 @@ const form = useForm({
     prepared_by: { ...props.defaultPreparedBy, ...(props.report?.prepared_by ?? {}) } as Signatory,
     approved_by: null as Signatory | null,
 });
+
+// Autosaved to this browser so a long report survives an expired session or a lost connection.
+const { clearDraft } = useFormDraft(`terminal-report:${props.batchId}:${props.requirement.id}`, form);
 
 const savedApprover = props.report?.approved_by as Signatory | undefined;
 const approver = ref<Signatory | null>(savedApprover ? { ...savedApprover } : null);
@@ -949,6 +953,7 @@ function submit() {
         approved_by: approver.value ? { ...approver.value, date: approvedDate.value || null } : null,
     })).put(route('programs.terminal-report.update', { batch: props.batchId, requirement: props.requirement.id }), {
         preserveScroll: true,
+        onSuccess: () => clearDraft(),
     });
 }
 

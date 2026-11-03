@@ -113,3 +113,15 @@ test('bulk delete requires at least one valid id', function () {
         ->delete(route('foreign-programs.bulk-destroy'), ['ids' => [999999]])
         ->assertSessionHasErrors('ids.0');
 });
+
+test('a misspelled program search with no results suggests the closest known word', function () {
+    $admin = filterPreservationAdmin('EMP-FP-SUGGEST');
+    ForeignProgram::create(filterPreservationProgramPayload());
+
+    $typo = $this->actingAs($admin)->get(route('foreign-programs.index', ['search' => 'Preservaton']));
+    expect($typo->inertiaProps('programs')['data'])->toBeEmpty()
+        ->and($typo->inertiaProps('suggestion'))->toBe('preservation');
+
+    $exact = $this->actingAs($admin)->get(route('foreign-programs.index', ['search' => 'Preservation']));
+    expect($exact->inertiaProps('suggestion'))->toBeNull();
+});

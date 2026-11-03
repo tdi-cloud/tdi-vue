@@ -143,3 +143,13 @@ test('non-admin users cannot access the employees map', function () {
 
     $this->actingAs($user)->get(route('employees-map.index'))->assertForbidden();
 });
+
+test('employees map region search with no results suggests the closest name in that region', function () {
+    $admin = employeeMapTestAdmin('EMP-MAP-SUGGEST');
+    employeeMapTestEmployee('EMP-MAP-SUGGEST-01', 'R5', 'Bautista');
+
+    $this->actingAs($admin)->getJson(route('employees-map.region', ['region' => 'R5', 'search' => 'Bautsta']))
+        ->assertOk()
+        ->assertJsonCount(0, 'employees.data')
+        ->assertJsonPath('suggestion', 'bautista');
+});

@@ -1,4 +1,9 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
+import TableRowsSkeleton from '@/components/skeletons/TableRowsSkeleton.vue';
+import { Button } from '@/components/ui/button';
+import { useLiteMode } from '@/composables/useLiteMode';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import axios from 'axios';
@@ -103,12 +108,28 @@ const dataColor = (ratio: number): THREE.Color => {
 
 const canvasWrap = ref<HTMLDivElement | null>(null);
 const loading = ref(true);
+
+// Lite mode: the 3D map is heavy, so wait until the user asks for it.
+const { isLiteMode } = useLiteMode();
+const mapStarted = ref(false);
 const hoveredRegion = ref<{ region: string; label: string; total: number } | null>(null);
 const tooltipStyle = ref({ left: '0px', top: '0px' });
 const showLegend = ref(true);
 
 const showPanel = ref(false);
 const panelLoading = ref(false);
+const panelSuggestion = ref<string | null>(null);
+
+function searchPanelFor(term: string) {
+    panelSearch.value = term;
+    fetchRegionEmployees(1);
+}
+
+function clearPanelFilters() {
+    panelSearch.value = '';
+    panelOffice.value = 'all';
+    fetchRegionEmployees(1);
+}
 const panelRegion = ref<{ region: string; label: string; total: number } | null>(null);
 const panelSearch = ref('');
 const panelOffice = ref('all');
@@ -505,7 +526,7 @@ function clearFocusOutline() {
 }
 
 async function buildScene(container: HTMLDivElement) {
-    const regionsData: RegionsData = await (await fetch('/data/ph-regions.json')).json();
+    const { data: regionsData } = await axios.get<RegionsData>('/data/ph-regions.json');
     const project = makeProjector(regionsData.bounds);
     regionsDataRef = regionsData;
     projectRef = project;
@@ -785,6 +806,7 @@ async function fetchRegionEmployees(page = 1) {
         });
         panelEmployees.value = data.employees;
         panelOfficeBreakdown.value = data.officeBreakdown;
+        panelSuggestion.value = data.suggestion ?? null;
     } finally {
         panelLoading.value = false;
     }
@@ -838,14 +860,19 @@ function handleResize() {
     renderer.setSize(width, height);
 }
 
-onMounted(async () => {
-    if (!canvasWrap.value) return;
+async function startMap() {
+    if (!canvasWrap.value || mapStarted.value) return;
+    mapStarted.value = true;
     await buildScene(canvasWrap.value);
     loading.value = false;
 
     canvasWrap.value.addEventListener('pointermove', handlePointerMove);
     canvasWrap.value.addEventListener('click', handleClick);
     window.addEventListener('resize', handleResize);
+}
+
+onMounted(() => {
+    if (!isLiteMode.value) startMap();
 });
 
 onBeforeUnmount(() => {
@@ -886,7 +913,20 @@ onBeforeUnmount(() => {
         <div class="relative flex flex-1 flex-col overflow-hidden">
             <div ref="canvasWrap" class="absolute inset-0 cursor-grab bg-blue-50" />
 
-            <div v-if="loading" class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-blue-50 dark:bg-background">
+            <div
+                v-if="!mapStarted && isLiteMode"
+                role="status"
+                class="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-blue-50 px-6 text-center dark:bg-background"
+            >
+                <Map class="h-8 w-8 text-muted-foreground" aria-hidden="true" />
+                <p class="text-sm font-bold text-foreground">The 3D map is paused to save data</p>
+                <p class="max-w-sm text-xs text-muted-foreground">
+                    Lite mode is on. The map downloads textures and needs a fast device, so it isn't loaded automatically.
+                </p>
+                <Button size="sm" @click="startMap">Load map anyway</Button>
+            </div>
+
+            <div v-else-if="loading" class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-blue-50 dark:bg-background">
                 <div class="map-spinner" aria-hidden="true"></div>
                 <div class="text-center">
                     <p class="text-sm font-bold text-foreground">Preparing Employee Map</p>
@@ -1070,7 +1110,7 @@ onBeforeUnmount(() => {
                 </div>
 
                 <div class="flex-1 overflow-y-auto p-4">
-                    <p v-if="panelLoading" class="py-8 text-center text-xs text-muted-foreground">Loading...</p>
+                    <TableRowsSkeleton v-if="panelLoading" :rows="5" :columns="2" label="Loading employees…" />
 
                     <div v-else-if="panelEmployees?.data?.length" class="flex flex-col gap-2">
                         <div
@@ -1113,10 +1153,22 @@ onBeforeUnmount(() => {
                         </div>
                     </div>
 
-                    <div v-else class="flex flex-col items-center gap-1 py-10 text-center">
-                        <p class="text-sm font-semibold text-foreground">No employees found</p>
-                        <p class="text-xs text-muted-foreground">Try adjusting your search or office filter.</p>
-                    </div>
+                    <SearchEmptyState
+                        v-else-if="panelSearch.trim()"
+                        compact
+                        :query="panelSearch"
+                        :suggestion="panelSuggestion"
+                        @search="searchPanelFor"
+                        @clear-filters="clearPanelFilters"
+                    />
+                    <EmptyState
+                        v-else
+                        compact
+                        variant="filtered"
+                        title="No employees found"
+                        description="Try another office filter."
+                        @clear-filters="clearPanelFilters"
+                    />
                 </div>
             </div>
         </Transition>

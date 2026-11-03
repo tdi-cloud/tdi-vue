@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { AlertTriangle, CheckCircle2, ChevronDown, Clock, FileText, Search, Target, Wallet, X, XCircle } from 'lucide-vue-next';
+import { AlertTriangle, CheckCircle2, ChevronDown, Clock, FileText, LoaderCircle, Search, Target, Wallet, X, XCircle } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 
 interface Report {
@@ -54,6 +56,8 @@ const props = defineProps<{
     statuses: string[];
     regions: string[];
     filters: { search?: string; status?: string; region?: string };
+    // "Did you mean …?" when a search finds nothing (App\Support\SearchSuggester).
+    suggestion?: string | null;
 }>();
 
 const STATUS_STYLES: Record<string, string> = {
@@ -76,7 +80,11 @@ watch([search, status, region], () => {
     debounce = setTimeout(() => {
         router.get(
             route('action-plan-monitoring.index'),
-            { search: search.value || undefined, status: status.value || undefined, region: region.value || undefined },
+            {
+                search: search.value || undefined,
+                status: status.value || undefined,
+                region: region.value || undefined,
+            },
             { preserveState: true, preserveScroll: true, replace: true },
         );
     }, 300);
@@ -244,7 +252,31 @@ function formatDate(value: string | null): string {
 
             <!-- List -->
             <div class="overflow-hidden rounded-2xl border bg-card">
-                <div v-if="!activities.data.length" class="p-10 text-center text-sm text-muted-foreground">No activities match these filters.</div>
+                <template v-if="!activities.data.length">
+                    <SearchEmptyState
+                        v-if="filters.search"
+                        compact
+                        :query="filters.search"
+                        :suggestion="suggestion"
+                        @search="search = $event"
+                        @clear-filters="clearFilters"
+                    />
+                    <EmptyState
+                        v-else-if="hasFilters"
+                        compact
+                        variant="filtered"
+                        title="No activities match these filters."
+                        description="Try another status or region."
+                        @clear-filters="clearFilters"
+                    />
+                    <EmptyState
+                        v-else
+                        compact
+                        :icon="Target"
+                        title="No action plan activities yet"
+                        description="Activities appear here once participants submit their REAP/TREAP terminal reports."
+                    />
+                </template>
 
                 <div v-for="row in activities.data" :key="row.id" class="border-b last:border-b-0">
                     <button type="button" class="flex w-full items-start gap-4 p-4 text-left transition hover:bg-muted/40" @click="toggle(row)">
@@ -316,7 +348,12 @@ function formatDate(value: string | null): string {
                                         class="inline-flex items-center gap-1 rounded-lg border border-orange-300 px-3 py-1.5 text-xs font-bold text-orange-700 hover:bg-orange-50 disabled:opacity-60 dark:hover:bg-orange-950"
                                         @click="review(row, 'Rejected')"
                                     >
-                                        <XCircle class="h-3.5 w-3.5" /> Return for revision
+                                        <LoaderCircle
+                                            v-if="reviewForm.processing && reviewForm.status === 'Rejected'"
+                                            class="h-3.5 w-3.5 animate-spin"
+                                        />
+                                        <XCircle v-else class="h-3.5 w-3.5" />
+                                        {{ reviewForm.processing && reviewForm.status === 'Rejected' ? 'Returning…' : 'Return for revision' }}
                                     </button>
                                     <button
                                         type="button"
@@ -324,7 +361,12 @@ function formatDate(value: string | null): string {
                                         class="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-60"
                                         @click="review(row, 'Approved')"
                                     >
-                                        <CheckCircle2 class="h-3.5 w-3.5" /> Approve
+                                        <LoaderCircle
+                                            v-if="reviewForm.processing && reviewForm.status === 'Approved'"
+                                            class="h-3.5 w-3.5 animate-spin"
+                                        />
+                                        <CheckCircle2 v-else class="h-3.5 w-3.5" />
+                                        {{ reviewForm.processing && reviewForm.status === 'Approved' ? 'Approving…' : 'Approve' }}
                                     </button>
                                 </div>
                             </div>

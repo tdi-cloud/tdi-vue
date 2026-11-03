@@ -12,6 +12,7 @@ use App\Models\Requirement;
 use App\Models\Submission;
 use App\Models\TerminalReport;
 use App\Notifications\RequirementSubmitted;
+use App\Support\FlashMessage;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -207,8 +208,12 @@ class EnrolledProgramController extends Controller
         }
 
         return back()->with('success', $newFileUploaded
-            ? 'Requirement submitted successfully. Awaiting review.'
-            : 'Notes updated.');
+            ? FlashMessage::make(
+                "{$requirement->title} submitted",
+                'Your file is saved; you can view or replace it here anytime until it is reviewed.',
+                'The program admin has been notified and will review it. You will get a notification with the result.',
+            )
+            : FlashMessage::make('Notes updated', "Your note on {$requirement->title} is saved for the reviewer."));
     }
 
     public function destroySubmission(Request $request, Batch $batch, Requirement $requirement)
@@ -228,7 +233,10 @@ class EnrolledProgramController extends Controller
 
         $submission->delete();
 
-        return back()->with('success', 'Submission deleted.');
+        return back()->with('success', FlashMessage::make(
+            "{$requirement->title} submission deleted",
+            'You can upload a new file anytime before the due date.',
+        ));
     }
 
     /**
@@ -269,7 +277,11 @@ class EnrolledProgramController extends Controller
             PendingNotification::notifyOrQueue($batch->program->added_by, new RequirementSubmitted($saved));
         }
 
-        return back()->with('success', 'Document submitted successfully. Awaiting review.');
+        return back()->with('success', FlashMessage::make(
+            "\"{$saved->document_title}\" submitted",
+            'Your file is saved under Other Documents.',
+            'The program admin will review it; you will get a notification with the result.',
+        ));
     }
 
     /**
@@ -288,7 +300,7 @@ class EnrolledProgramController extends Controller
 
         $submission->delete();
 
-        return back()->with('success', 'Submission deleted.');
+        return back()->with('success', FlashMessage::make('Document deleted', 'You can submit it again anytime.'));
     }
 
     // POST /my-programs/{batch}/absent-justification
@@ -318,7 +330,11 @@ class EnrolledProgramController extends Controller
             'hours' => 0,
         ]);
 
-        return back()->with('success', 'Justification uploaded. You have been marked as Absent for this program and no longer need to submit the requirements.');
+        return back()->with('success', FlashMessage::make(
+            'Justification uploaded',
+            'You are now marked Absent for this program, and your file is saved here.',
+            'You no longer need to submit the requirements for this program.',
+        ));
     }
 
     // DELETE /my-programs/{batch}/absent-justification
@@ -335,7 +351,7 @@ class EnrolledProgramController extends Controller
             $participant->update(['attendance' => 'Pending']);
         }
 
-        return back()->with('success', 'Justification removed.');
+        return back()->with('success', FlashMessage::make('Justification removed', 'You can upload a new one anytime.'));
     }
 
     protected static function transform(Participant $participant, bool $withRequirements = false): array

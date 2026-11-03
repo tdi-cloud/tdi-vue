@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import { useConfirm } from '@/composables/useConfirm';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { suggestSearch } from '@/lib/searchSuggestion';
 import { Head, router } from '@inertiajs/vue3';
 import { CheckCircle2, ChevronDown, Eye, ImageOff, Images, Layers, Loader2, RotateCcw, Search, SlidersHorizontal, Upload, X } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
@@ -217,20 +220,27 @@ onUnmounted(() => window.removeEventListener('keydown', onEscape));
             </div>
 
             <!-- Empty state: no sections at all -->
-            <div v-if="!hasAnySections" class="flex flex-col items-center justify-center gap-2 rounded-2xl border py-16 text-muted-foreground">
-                <ImageOff class="h-10 w-10 opacity-30" />
-                <p class="text-sm font-semibold">No image slots configured.</p>
-            </div>
+            <EmptyState
+                v-if="!hasAnySections"
+                :icon="ImageOff"
+                title="No image slots configured."
+                description="Image slots are defined by the system."
+            />
 
             <!-- Empty state: filters return nothing -->
-            <div
-                v-else-if="!hasVisibleResults"
-                class="flex flex-col items-center justify-center gap-2 rounded-2xl border py-16 text-muted-foreground"
-            >
-                <Search class="h-10 w-10 opacity-30" />
-                <p class="text-sm font-semibold">No images match your search or filter.</p>
-                <button type="button" class="text-xs font-semibold text-fuchsia-600 hover:underline" @click="clearFilters">Clear filters</button>
-            </div>
+            <SearchEmptyState
+                v-else-if="!hasVisibleResults && search.trim()"
+                :query="search"
+                :suggestion="
+                    suggestSearch(
+                        search,
+                        allSlots.map((slot) => slot.label),
+                    )
+                "
+                @search="search = $event"
+                @clear-filters="clearFilters"
+            />
+            <EmptyState v-else-if="!hasVisibleResults" variant="filtered" title="No images match your filter." @clear-filters="clearFilters" />
 
             <!-- Sections -->
             <div v-for="(slots, sectionName) in filteredSections" :key="sectionName" class="flex flex-col gap-3">

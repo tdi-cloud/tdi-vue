@@ -306,3 +306,20 @@ test('non-admin users cannot access the requirements tracker', function () {
 
     $this->actingAs($user)->get(route('requirements-tracker.index'))->assertForbidden();
 });
+
+test('a misspelled tracker search with no results suggests the closest known name', function () {
+    $admin = trackerTestAdmin('EMP-ADM-SUGGEST');
+    [, $batch] = trackerTestSetup();
+    $employee = trackerTestEmployee('EMP-MISS-SUGGEST', 'Villanueva');
+    Participant::create([
+        'sort_order' => 1, 'batch_id' => $batch->id, 'empcode' => $employee->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+    ]);
+
+    $typo = $this->actingAs($admin)->get(route('requirements-tracker.index', ['search' => 'Vilanueva']));
+    expect($typo->inertiaProps('items')['data'])->toBeEmpty()
+        ->and($typo->inertiaProps('suggestion'))->toBe('villanueva');
+
+    $exact = $this->actingAs($admin)->get(route('requirements-tracker.index', ['search' => 'Villanueva']));
+    expect($exact->inertiaProps('suggestion'))->toBeNull();
+});

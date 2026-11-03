@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Employee;
+use App\Support\LiteMode;
+use App\Support\SearchSuggester;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -55,7 +57,7 @@ class EmployeeMapController extends Controller
 
         $employees = $query
             ->orderBy('LASTNAME')
-            ->paginate($request->get('per_page', 20))
+            ->paginate(LiteMode::perPage($request, 20))
             ->withQueryString();
 
         $officeBreakdown = Employee::query()
@@ -70,6 +72,13 @@ class EmployeeMapController extends Controller
         return response()->json([
             'employees' => $employees,
             'officeBreakdown' => $officeBreakdown,
+            'suggestion' => SearchSuggester::forEmptyResults(
+                $request->string('search'),
+                $employees->total(),
+                fn () => Employee::query()->where('REGION', $request->string('region'))
+                    ->get(['FIRSTNAME', 'LASTNAME', 'OFFICE/DIVISION'])
+                    ->flatMap(fn (Employee $employee) => [$employee->FIRSTNAME, $employee->LASTNAME, $employee->{'OFFICE/DIVISION'}]),
+            ),
         ]);
     }
 }

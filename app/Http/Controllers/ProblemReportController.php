@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\ProblemReport;
 use App\Models\User;
 use App\Notifications\ProblemReported;
+use App\Support\FlashMessage;
+use App\Support\LiteMode;
+use App\Support\SearchSuggester;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -30,11 +33,17 @@ class ProblemReportController extends Controller
             });
         }
 
-        $reports = $query->paginate(15)->withQueryString();
+        $reports = $query->paginate(LiteMode::perPage($request, 15))->withQueryString();
 
         return Inertia::render('ProblemReports/index', [
             'reports' => $reports,
             'filters' => $request->only(['search', 'status']),
+            'suggestion' => SearchSuggester::forEmptyResults(
+                $request->string('search'),
+                $reports->total(),
+                fn () => User::whereIn('id', ProblemReport::select('user_id'))->pluck('name')
+                    ->merge(ProblemReport::latest()->limit(300)->pluck('description')),
+            ),
         ]);
     }
 
@@ -46,7 +55,7 @@ class ProblemReportController extends Controller
 
         $problemReport->update($data);
 
-        return back()->with('success', 'Report status updated.');
+        return back()->with('success', FlashMessage::make("Report marked {$problemReport->status}", 'The status change is saved.'));
     }
 
     public function store(Request $request)
@@ -68,6 +77,10 @@ class ProblemReportController extends Controller
             $superAdmin->notify(new ProblemReported($problemReport));
         }
 
-        return back()->with('success', 'Thank you! Your problem report has been sent to the super admin.');
+        return back()->with('success', FlashMessage::make(
+            'Problem report sent',
+            'Thank you! The super admins have been notified and will look into it.',
+            "You don't need to do anything else.",
+        ));
     }
 }

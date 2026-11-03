@@ -9,6 +9,7 @@ export interface RankedRegion {
 
 <script setup lang="ts">
 import TrophyArenaCanvas from '@/components/TrophyArenaCanvas.vue';
+import { useLiteMode } from '@/composables/useLiteMode';
 import { CalendarDays, ChevronRight, Crown, ListOrdered, Trophy, X } from 'lucide-vue-next';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
@@ -28,6 +29,7 @@ const emit = defineEmits<{
 const dialogRef = ref<HTMLElement | null>(null);
 const closeButtonRef = ref<HTMLButtonElement | null>(null);
 const prefersReducedMotion = ref(false);
+const { isLiteMode } = useLiteMode();
 
 // ─── Rankings ────────────────────────────────────────────────────────────────
 
@@ -262,7 +264,11 @@ const transitionDuration = computed(() => (prefersReducedMotion.value ? 0 : { en
                                     >
                                         <!-- Award -->
                                         <div v-if="slot.rank === 1" class="rr-trophy-stage relative w-[150%] max-w-none">
-                                            <TrophyArenaCanvas :reduced-motion="prefersReducedMotion" :paused="paused" />
+                                            <!-- Lite mode skips the 3D scene (heavy on slow connections and devices). -->
+                                            <div v-if="isLiteMode" class="flex aspect-square items-center justify-center" aria-hidden="true">
+                                                <Trophy class="h-1/3 w-1/3 text-amber-400" />
+                                            </div>
+                                            <TrophyArenaCanvas v-else :reduced-motion="prefersReducedMotion" :paused="paused" />
                                         </div>
                                         <div v-else class="rr-medal-stage flex items-end justify-center" aria-hidden="true">
                                             <div class="rr-medal" :class="slot.rank === 2 ? 'rr-medal-silver' : 'rr-medal-bronze'">

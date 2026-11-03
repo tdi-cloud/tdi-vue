@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\SiteImage;
+use App\Support\FlashMessage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -54,7 +55,7 @@ class SiteImageController extends Controller
 
         SiteImage::updateOrCreate(['key' => $key], ['path' => $path]);
 
-        return back()->with('success', 'Image updated.');
+        return back()->with('success', FlashMessage::make('Image updated', 'The new image now shows on the site. You can reset it to the default anytime.'));
     }
 
     public function destroy(string $key): RedirectResponse
@@ -69,6 +70,6 @@ class SiteImageController extends Controller
             $existing->delete();
         }
 
-        return back()->with('success', 'Image reset to default.');
+        return back()->with('success', FlashMessage::make('Image reset to default', 'The site now shows the built-in image again.'));
     }
 }

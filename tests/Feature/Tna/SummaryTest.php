@@ -338,3 +338,15 @@ test('tna summary sorts and paginates without selecting full assessment rows', f
     expect($rows->pluck('id'))->toContain($finalized->id);
     expect($rows->first()['top_priorities'][0]['unit'])->toBe('Unit Needing Training - EMP-TSUM-90');
 });
+
+test('a misspelled tna summary search with no results suggests the closest known name', function () {
+    $admin = summaryTestAdmin('EMP-TSUM-SUGGEST');
+    summaryTestFinalizedAssessment('EMP-TSUM-SUGGEST-01', 'Test Officer S');
+
+    $typo = $this->actingAs($admin)->get(route('tna-summary.index', ['search' => 'Dela Curz']));
+    expect($typo->inertiaProps('assessments')['data'])->toBeEmpty()
+        ->and($typo->inertiaProps('suggestion'))->toBe('dela cruz');
+
+    $exact = $this->actingAs($admin)->get(route('tna-summary.index', ['search' => 'Dela Cruz']));
+    expect($exact->inertiaProps('suggestion'))->toBeNull();
+});

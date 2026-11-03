@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { suggestSearch } from '@/lib/searchSuggestion';
 import EmailReminderModal from '@/pages/programs/EmailReminderModal.vue';
 import {
     AlertTriangle,
@@ -158,6 +161,12 @@ const allMissing = computed((): MissingEntry[] => {
 const search = ref('');
 const filterBatch = ref('all');
 const filterReq = ref('all');
+
+const clearMissingFilters = () => {
+    search.value = '';
+    filterBatch.value = 'all';
+    filterReq.value = 'all';
+};
 
 const batches = computed(() => (props.program.batches ?? []).map((b) => ({ id: b.id, batch: b.batch })));
 const requirementTitles = computed(() => [...new Set(allMissing.value.map((m) => m.requirement_title))].sort());
@@ -442,11 +451,27 @@ const openEmailReminder = (group: Group) => {
                             </div>
 
                             <!-- No filter match -->
-                            <div v-else-if="filtered.length === 0" class="flex flex-col items-center justify-center gap-2 py-12 text-center">
-                                <Search class="h-8 w-8 text-muted-foreground/50" />
-                                <p class="text-sm font-bold text-muted-foreground">No results match your filters</p>
-                                <p class="text-xs text-muted-foreground">Try adjusting the search or filter options.</p>
-                            </div>
+                            <SearchEmptyState
+                                v-else-if="filtered.length === 0 && search.trim()"
+                                compact
+                                :query="search"
+                                :suggestion="
+                                    suggestSearch(
+                                        search,
+                                        allMissing.flatMap((m) => [m.employee_name, m.empcode, m.requirement_title, m.employee_office]),
+                                    )
+                                "
+                                @search="search = $event"
+                                @clear-filters="clearMissingFilters"
+                            />
+                            <EmptyState
+                                v-else-if="filtered.length === 0"
+                                compact
+                                variant="filtered"
+                                title="No results match your filters"
+                                description="Try adjusting the batch or requirement filter."
+                                @clear-filters="clearMissingFilters"
+                            />
 
                             <!-- Grouped list -->
                             <template v-else>
@@ -566,15 +591,12 @@ const openEmailReminder = (group: Group) => {
 
                         <!-- ─── REMINDER HISTORY ─── -->
                         <template v-else>
-                            <div v-if="reminderLogs.length === 0" class="flex flex-col items-center justify-center gap-3 py-16 text-center">
-                                <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
-                                    <History class="h-8 w-8 text-muted-foreground/50" />
-                                </div>
-                                <p class="text-sm font-bold">No reminders sent yet</p>
-                                <p class="max-w-xs text-xs text-muted-foreground">
-                                    Once you send an email reminder, it will show up here with the date and recipients.
-                                </p>
-                            </div>
+                            <EmptyState
+                                v-if="reminderLogs.length === 0"
+                                :icon="History"
+                                title="No reminders sent yet"
+                                description="Once you send an email reminder, it will show up here with the date and recipients."
+                            />
 
                             <template v-else>
                                 <p class="text-[11px] text-muted-foreground">

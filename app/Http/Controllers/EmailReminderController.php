@@ -6,6 +6,7 @@ use App\Mail\ReminderEmail;
 use App\Models\Batch;
 use App\Models\EmailReminderLog;
 use App\Models\Requirement;
+use App\Support\FlashMessage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
@@ -97,6 +98,9 @@ class EmailReminderController extends Controller
             'recipients_count' => count($validated['to']),
         ]);
 
-        return back()->with('success', 'Email reminder sent successfully to '.count($validated['to']).' recipient(s).');
+        return back()->with('success', FlashMessage::make(
+            'Reminder sent to '.count($validated['to']).' recipient(s)',
+            "\"{$validated['subject']}\" is on its way. It is logged under Reminder history.",
+        ));
     }
 }

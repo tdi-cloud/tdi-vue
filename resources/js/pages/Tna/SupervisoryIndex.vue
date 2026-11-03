@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
 import TnaScanUpload from '@/components/TnaScanUpload.vue';
 import { useConfirm } from '@/composables/useConfirm';
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { Users } from 'lucide-vue-next';
 import BackToTop from './BackToTop.vue';
 import TnaBackdrop from './TnaBackdrop.vue';
 
@@ -11,8 +12,6 @@ defineProps({
     pendingCount: { type: Number, default: 0 },
 });
 
-const page = usePage();
-const flashSuccess = computed(() => page.props.flash?.success);
 const { confirmDialog } = useConfirm();
 
 async function redoRating(id) {
@@ -39,10 +38,6 @@ async function redoRating(id) {
                 Back to Home
             </Link>
 
-            <div v-if="flashSuccess" class="rounded-xl border border-green-200 bg-green-50 px-5 py-4 text-sm font-medium text-green-800 shadow">
-                {{ flashSuccess }}
-            </div>
-
             <!-- Header -->
             <div class="rounded-2xl bg-white p-8 shadow-xl">
                 <h1 class="text-2xl font-bold tracking-tight text-gray-900">Supervisory Rating</h1>
@@ -53,9 +48,13 @@ async function redoRating(id) {
             </div>
 
             <!-- Empty state -->
-            <div v-if="!assessments.length" class="rounded-2xl bg-white p-10 text-center shadow-xl">
-                <p class="text-sm text-gray-500">No one has selected you as their supervisor yet.</p>
-            </div>
+            <EmptyState
+                v-if="!assessments.length"
+                class="border-0 bg-white shadow-xl [color-scheme:light]"
+                :icon="Users"
+                title="No one has selected you as their supervisor yet."
+                description="When a team member picks you as their supervisor in their TNA self-rating, they will appear here for your rating."
+            />
 
             <!-- List -->
             <div v-else class="space-y-3">

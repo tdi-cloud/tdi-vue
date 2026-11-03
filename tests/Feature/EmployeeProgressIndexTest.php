@@ -476,3 +476,14 @@ test('employees index filters employees by the selected office', function () {
     expect($rows)->toContain('EMP-PIDX-08')
         ->and($rows)->not->toContain('EMP-PIDX-09');
 });
+
+test('a misspelled search with no results suggests the closest known word', function () {
+    $admin = progressIndexTestAdmin('EMP-PIDX-SUGGEST');
+
+    $typo = $this->actingAs($admin)->get(route('employees.index', ['search' => 'Admn']));
+    expect($typo->inertiaProps('employees')['data'])->toBeEmpty()
+        ->and($typo->inertiaProps('suggestion'))->toBe('admin');
+
+    $exact = $this->actingAs($admin)->get(route('employees.index', ['search' => 'Admin']));
+    expect($exact->inertiaProps('suggestion'))->toBeNull();
+});

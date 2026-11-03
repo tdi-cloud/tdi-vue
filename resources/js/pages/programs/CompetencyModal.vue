@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { suggestSearch } from '@/lib/searchSuggestion';
 import { router } from '@inertiajs/vue3';
 import { Lightbulb, LoaderCircle, Plus, Search, TriangleAlert, X } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
@@ -202,10 +205,28 @@ const submit = () => {
                             </label>
                         </div>
 
-                        <div v-if="grouped.length === 0" class="flex flex-col items-center justify-center py-10 text-center text-muted-foreground">
-                            <p class="text-xs font-semibold">No competencies found.</p>
-                            <p class="mt-1 text-[11px]">Try a different search, or everything has been added already.</p>
-                        </div>
+                        <template v-if="grouped.length === 0">
+                            <SearchEmptyState
+                                v-if="search.trim()"
+                                compact
+                                :query="search"
+                                :suggestion="
+                                    suggestSearch(
+                                        search,
+                                        COMPETENCIES.flatMap((c) => [c.competency, c.domain]),
+                                    )
+                                "
+                                description="Try a different search, or everything has been added already."
+                                @search="search = $event"
+                                @clear-filters="search = ''"
+                            />
+                            <EmptyState
+                                v-else
+                                compact
+                                title="All competencies have been added."
+                                description="There's nothing left to add for this program."
+                            />
+                        </template>
                     </div>
 
                     <!-- Footer -->

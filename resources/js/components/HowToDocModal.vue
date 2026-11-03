@@ -38,10 +38,7 @@
                     <div class="docm__body">
                         <p v-if="video.description" class="docm__intro">{{ video.description }}</p>
                         <HowToDocSteps v-if="steps.length" :steps="steps" />
-                        <div v-else class="docm__empty">
-                            <FileText :size="26" />
-                            <p>No written steps yet for this video.</p>
-                        </div>
+                        <EmptyState v-else :icon="FileText" title="No written steps yet for this video." />
                     </div>
                 </template>
 
@@ -124,7 +121,7 @@
                     <div class="docm__foot">
                         <button type="button" class="btn btn--ghost" :disabled="form.processing" @click="cancelEditing">Cancel</button>
                         <button type="submit" class="btn btn--primary" :disabled="form.processing">
-                            <Loader2 v-if="form.processing" :size="16" class="spin" /> Save documentation
+                            <Loader2 v-if="form.processing" :size="16" class="spin" /> {{ form.processing ? 'Saving…' : 'Save documentation' }}
                         </button>
                     </div>
                 </form>
@@ -134,6 +131,7 @@
 </template>
 
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
 import { useConfirm } from '@/composables/useConfirm';
 import { Link, useForm } from '@inertiajs/vue3';
 import {

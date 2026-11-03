@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Program;
 use App\Models\Requirement;
+use App\Support\FlashMessage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -52,7 +53,11 @@ class RequirementController extends Controller
             ]);
         }
 
-        return back();
+        return back()->with('success', FlashMessage::make(
+            "{$validated['title']} requirement added",
+            "It was added to all {$batches->count()} batch(es), each with its own due date.",
+            'Participants will see it under My Programs and can submit from there.',
+        ));
     }
 
     /**
@@ -73,7 +78,10 @@ class RequirementController extends Controller
 
         $requirement->update($validated);
 
-        return back();
+        return back()->with('success', FlashMessage::make(
+            "{$requirement->title} requirement updated",
+            "The new due date for {$requirement->batch->batch} is ".$requirement->due_date?->format('M j, Y').'.',
+        ));
     }
 
     /**
@@ -89,6 +97,9 @@ class RequirementController extends Controller
 
         $requirement->delete();
 
-        return back();
+        return back()->with('success', FlashMessage::make(
+            "{$requirement->title} requirement removed",
+            "It no longer applies to {$requirement->batch->batch}.",
+        ));
     }
 }

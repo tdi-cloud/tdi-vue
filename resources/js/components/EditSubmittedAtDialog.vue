@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import InputError from '@/components/InputError.vue';
+import SubmitButton from '@/components/SubmitButton.vue';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { router } from '@inertiajs/vue3';
-import { AlarmClockMinus, CalendarClock, CheckCircle2, LoaderCircle, Save } from 'lucide-vue-next';
+import { AlarmClockMinus, CalendarClock, CheckCircle2, Save } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 
 /**
@@ -98,11 +99,9 @@ const save = () => {
 
                 <div class="flex justify-end gap-2">
                     <Button type="button" variant="outline" @click="open = false">Cancel</Button>
-                    <Button type="submit" class="bg-blue-600 hover:bg-blue-700 dark:text-white" :disabled="processing || !value">
-                        <LoaderCircle v-if="processing" class="mr-1 h-4 w-4 animate-spin" />
-                        <Save v-else class="mr-1 h-4 w-4" />
-                        Save
-                    </Button>
+                    <SubmitButton class="bg-blue-600 hover:bg-blue-700 dark:text-white" :processing="processing" :disabled="!value" :icon="Save"
+                        >Save</SubmitButton
+                    >
                 </div>
             </form>
         </DialogContent>

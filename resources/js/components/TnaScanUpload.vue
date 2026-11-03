@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import UploadProgress from '@/components/UploadProgress.vue';
 import { useConfirm } from '@/composables/useConfirm';
+import { useNetworkStatus } from '@/composables/useNetworkStatus';
 import { router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
@@ -16,6 +18,7 @@ const MAX_BYTES = 10 * 1024 * 1024;
 
 const fileInput = ref(null);
 const processing = ref(false);
+const { uploadPercentage } = useNetworkStatus();
 const error = ref('');
 
 function triggerPick() {
@@ -95,6 +98,7 @@ async function destroy() {
             </button>
             <span v-if="!hasFile && !processing" class="text-xs text-gray-400">No signed copy uploaded yet.</span>
         </div>
+        <UploadProgress v-if="processing && uploadPercentage !== null" class="mt-2 max-w-xs" />
         <input ref="fileInput" type="file" accept="application/pdf" class="hidden" @change="handleFileChange" />
         <p v-if="error" class="mt-1 text-xs text-red-600">{{ error }}</p>
     </div>

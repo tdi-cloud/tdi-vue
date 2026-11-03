@@ -10,7 +10,10 @@
  * Note: gumagamit ito ng route('reports.tpmr') at route('employees.search')
  * helpers (Ziggy). Siguraduhing naka-register ang mga routes (see routes_snippet.php).
  */
+import EmptyState from '@/components/EmptyState.vue';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import { Button } from '@/components/ui/button';
+import { suggestionFrom } from '@/lib/http';
 import axios from 'axios';
 import { ChevronRight, FileText, Search, SlidersHorizontal, Stamp, UserCheck, X } from 'lucide-vue-next';
 import { computed, reactive, ref, watch } from 'vue';
@@ -76,6 +79,9 @@ const openEmployeeSearch = (target: Target) => {
     fetchEmployees('');
 };
 
+// "Did you mean …?" for the employee lookup (X-Search-Suggestion header).
+const lookupSuggestion = ref<string | null>(null);
+
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 watch(employeeQuery, (val) => {
     if (searchTimeout) clearTimeout(searchTimeout);
@@ -85,8 +91,9 @@ watch(employeeQuery, (val) => {
 const fetchEmployees = async (q: string) => {
     searching.value = true;
     try {
-        const { data } = await axios.get(route('employees.search'), { params: { q } });
-        employeeResults.value = data;
+        const response = await axios.get(route('employees.search'), { params: { q } });
+        employeeResults.value = response.data;
+        lookupSuggestion.value = suggestionFrom(response);
     } catch {
         employeeResults.value = [];
     } finally {
@@ -341,9 +348,15 @@ const generate = () => {
                 </div>
                 <div class="flex-1 divide-y overflow-y-auto">
                     <div v-if="searching" class="px-5 py-6 text-center text-sm text-muted-foreground">Searching...</div>
-                    <div v-else-if="employeeResults.length === 0" class="px-5 py-6 text-center text-sm text-muted-foreground">
-                        No employees found.
-                    </div>
+                    <SearchEmptyState
+                        v-else-if="employeeResults.length === 0 && employeeQuery.trim()"
+                        compact
+                        :query="employeeQuery"
+                        :suggestion="lookupSuggestion"
+                        @search="employeeQuery = $event"
+                        @clear-filters="employeeQuery = ''"
+                    />
+                    <EmptyState v-else-if="employeeResults.length === 0" compact title="Type a name to find employees." />
                     <button
                         v-for="emp in employeeResults"
                         :key="emp.EMPCODE"

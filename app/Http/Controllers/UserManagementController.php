@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\FlashMessage;
+use App\Support\LiteMode;
+use App\Support\SearchSuggester;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -65,7 +68,7 @@ class UserManagementController extends Controller
             ->orderByRaw('CASE WHEN session_activity.last_activity >= ? THEN 0 ELSE 1 END', [$onlineThreshold])
             ->orderByDesc('session_activity.last_activity')
             ->orderBy('users.name')
-            ->paginate(15)
+            ->paginate(LiteMode::perPage($request, 15))
             ->withQueryString();
 
         $users->getCollection()->transform(function (User $user) use ($onlineThreshold) {
@@ -81,6 +84,11 @@ class UserManagementController extends Controller
             'users' => $users,
             'accessLevels' => self::ACCESS_LEVELS,
             'filters' => $request->only(['search', 'access', 'fstp']),
+            'suggestion' => SearchSuggester::forEmptyResults(
+                $request->string('search'),
+                $users->total(),
+                fn () => User::query()->get(['name', 'email'])->flatMap(fn (User $user) => [$user->name, strtok((string) $user->email, '@')]),
+            ),
         ]);
     }
 
@@ -97,12 +105,16 @@ class UserManagementController extends Controller
         ]);
 
         if (array_key_exists('access', $data) && $user->id === $request->user()->id) {
-            return back()->with('error', 'You cannot change your own access level.');
+            return back()->with('error', FlashMessage::make(
+                "You can't change your own access level",
+                'This keeps an admin from locking themselves out.',
+                'Ask another superadmin to change it for you.',
+            ));
         }
 
         $user->update($data);
 
-        return back()->with('success', "Updated {$user->name}.");
+        return back()->with('success', FlashMessage::make("{$user->name} updated", 'The change is saved and applies the next time they open a page.'));
     }
 
     public function updateAvatar(Request $request, User $user): RedirectResponse
@@ -119,7 +131,7 @@ class UserManagementController extends Controller
 
         $user->update(['avatar' => $path]);
 
-        return back()->with('success', "Updated {$user->name}'s profile picture.");
+        return back()->with('success', FlashMessage::make('Profile picture updated', "{$user->name}'s new picture now shows across the app."));
     }
 
     public function destroyAvatar(Request $request, User $user): RedirectResponse
@@ -129,6 +141,6 @@ class UserManagementController extends Controller
             $user->update(['avatar' => null]);
         }
 
-        return back()->with('success', "Removed {$user->name}'s profile picture.");
+        return back()->with('success', FlashMessage::make('Profile picture removed', "{$user->name} now shows their initials instead."));
     }
 }

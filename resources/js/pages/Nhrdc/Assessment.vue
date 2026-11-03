@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
 import NhrdcSelfSignedCopyUpload from '@/components/NhrdcSelfSignedCopyUpload.vue';
 import RatingMatrixModal from '@/components/RatingMatrixModal.vue';
+import { toast } from '@/components/ui/toast/use-toast';
+import { useFormDraft } from '@/composables/useFormDraft';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
 import axios from 'axios';
@@ -170,6 +173,24 @@ function ensureDraft(nominee: Nominee) {
         };
     } else {
         draft[nominee.id] = blankDraft();
+    }
+}
+
+// Autosave unsaved ratings to this browser. Every nominee gets a draft up front so a saved
+// draft can be restored into it; the notice only shows when restored scores differ from what's saved.
+props.nominees.forEach(ensureDraft);
+const { restoredAt } = useFormDraft(`nhrdc-assessment:${props.program.id}`, draft, { notify: false });
+if (restoredAt.value) {
+    const unsaved = props.nominees.filter((n) => {
+        const saved = n.my_rating;
+        const current = draft[n.id];
+        return Object.keys(current).some((key) => Number(current[key]) !== Number(saved ? (saved as unknown as Record<string, unknown>)[key] : 0));
+    });
+    if (unsaved.length) {
+        toast({
+            title: 'Your unsaved ratings were restored',
+            description: `We kept your scores for ${unsaved.length} nominee(s). Review them, then click Save rating.`,
+        });
     }
 }
 
@@ -558,8 +579,13 @@ const sponsorDisplay = computed(() => {
                     v-if="!nominees.length"
                     class="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-white py-14 text-center dark:border-slate-700 dark:bg-slate-900"
                 >
-                    <Users class="h-7 w-7 text-slate-300 dark:text-slate-600" />
-                    <p class="text-sm font-medium text-slate-600 dark:text-slate-300">No nominees to rate yet.</p>
+                    <EmptyState
+                        compact
+                        class="border-0 bg-transparent"
+                        :icon="Users"
+                        title="No nominees to rate yet."
+                        description="Nominees appear here once the FSTP endorses them for your rating."
+                    />
                 </div>
 
                 <div

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
 import { onClickOutside } from '@vueuse/core';
 import { Check, ChevronDown, Search, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
@@ -111,7 +112,7 @@ const allVisibleSelected = computed(() => filteredOptions.value.length > 0 && fi
 
             <!-- Options -->
             <div class="max-h-56 overflow-y-auto py-1">
-                <p v-if="filteredOptions.length === 0" class="px-3 py-4 text-center text-xs text-muted-foreground">No matches.</p>
+                <EmptyState v-if="filteredOptions.length === 0" compact variant="filtered" title="No matches." description="Try a shorter word." />
                 <button
                     v-for="option in filteredOptions"
                     :key="option"

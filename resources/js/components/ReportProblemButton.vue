@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import InputError from '@/components/InputError.vue';
+import SubmitButton from '@/components/SubmitButton.vue';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useForm } from '@inertiajs/vue3';
-import { LoaderCircle, MessageSquareWarning } from 'lucide-vue-next';
+import { MessageSquareWarning } from 'lucide-vue-next';
 import { ref } from 'vue';
 
 withDefaults(
     defineProps<{
         buttonClass?: string;
+        // When set, renders a text button (e.g. on the Error page) instead of the icon-only one.
+        label?: string;
     }>(),
     {
         buttonClass: 'text-foreground/70 hover:bg-accent hover:text-accent-foreground',
@@ -39,13 +42,14 @@ const submit = () => {
 <template>
     <button
         type="button"
-        class="relative inline-flex h-9 w-9 items-center justify-center rounded-lg transition"
-        :class="buttonClass"
-        aria-label="Report a problem"
-        title="Report a problem"
+        class="relative inline-flex h-9 items-center justify-center gap-2 rounded-lg transition"
+        :class="[buttonClass, label ? 'px-3 text-sm font-medium' : 'w-9']"
+        :aria-label="label ? undefined : 'Report a problem'"
+        :title="label ? undefined : 'Report a problem'"
         @click="open = true"
     >
         <MessageSquareWarning class="h-5 w-5" />
+        <span v-if="label">{{ label }}</span>
     </button>
 
     <Dialog :open="open" @update:open="open = $event">
@@ -73,10 +77,14 @@ const submit = () => {
 
                 <div class="flex justify-end gap-2">
                     <Button type="button" variant="outline" @click="open = false">Cancel</Button>
-                    <Button type="submit" class="bg-amber-600 hover:bg-amber-700" :disabled="form.processing || !form.description.trim()">
-                        <LoaderCircle v-if="form.processing" class="h-4 w-4 animate-spin" />
+                    <SubmitButton
+                        class="bg-amber-600 hover:bg-amber-700"
+                        :processing="form.processing"
+                        processing-label="Sending…"
+                        :disabled="!form.description.trim()"
+                    >
                         Submit Report
-                    </Button>
+                    </SubmitButton>
                 </div>
             </form>
         </DialogContent>

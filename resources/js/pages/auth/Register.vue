@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import InputError from '@/components/InputError.vue';
+import SubmitButton from '@/components/SubmitButton.vue';
 import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -77,8 +78,8 @@ const confirmAndSendOtp = async () => {
         });
         showConfirmModal.value = false;
         router.visit(route('register.otp-page', { email: form.email }));
-    } catch (err: any) {
-        console.error('FULL ERROR:', err.response?.data);
+    } catch {
+        // Shown by the app-wide error toast (lib/http.ts); field errors come back as 422 above.
     } finally {
         isSendingOtp.value = false;
     }
@@ -171,15 +172,14 @@ const initials = (name: string) =>
                     </div>
                 </div>
 
-                <Button
-                    type="submit"
+                <SubmitButton
                     class="mt-2 w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all hover:from-blue-700 hover:to-blue-600 hover:shadow-blue-500/40 disabled:opacity-70"
                     tabindex="6"
-                    :disabled="isVerifying"
+                    :processing="isVerifying"
+                    processing-label="Checking…"
                 >
-                    <LoaderCircle v-if="isVerifying" class="h-4 w-4 animate-spin" />
                     Continue
-                </Button>
+                </SubmitButton>
             </div>
 
             <div class="text-center text-sm text-white/90 drop-shadow">

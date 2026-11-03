@@ -13,6 +13,8 @@ use App\Models\Participant;
 use App\Models\Program;
 use App\Models\SiteImage;
 use App\Support\EvaluationFindings;
+use App\Support\FlashMessage;
+use App\Support\LiteMode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -100,7 +102,11 @@ class EvaluationFormController extends Controller
             $form->seedDefaults();
         }
 
-        return back()->with('success', 'Evaluation form created successfully.');
+        return back()->with('success', FlashMessage::make(
+            "Evaluation form created for {$batch->batch}",
+            'It is saved with its sections and questions, which you can edit anytime.',
+            'Share the evaluation link with participants when the batch ends.',
+        ));
     }
 
     // PUT /evaluation-forms/{evaluationForm}
@@ -114,7 +120,7 @@ class EvaluationFormController extends Controller
 
         $evaluationForm->update($data);
 
-        return back()->with('success', 'Evaluation form settings updated.');
+        return back()->with('success', FlashMessage::make('Evaluation settings saved', 'The changes apply to the evaluation link right away.'));
     }
 
     // DELETE /evaluation-forms/{evaluationForm}
@@ -122,7 +128,7 @@ class EvaluationFormController extends Controller
     {
         $evaluationForm->delete();
 
-        return back()->with('success', 'Evaluation form deleted.');
+        return back()->with('success', FlashMessage::make('Evaluation form deleted', 'Its link no longer works. You can set up a new form anytime.'));
     }
 
     // POST /evaluation-forms/{evaluationForm}/background
@@ -142,7 +148,7 @@ class EvaluationFormController extends Controller
         $path = $request->file('image')->store('evaluation-backgrounds', 'public');
         $evaluationForm->update(['background_image' => $path]);
 
-        return back()->with('success', 'Evaluation background updated.');
+        return back()->with('success', FlashMessage::make('Evaluation background updated', 'Participants will see the new image when they open the evaluation.'));
     }
 
     // DELETE /evaluation-forms/{evaluationForm}/background
@@ -154,7 +160,7 @@ class EvaluationFormController extends Controller
 
         $evaluationForm->update(['background_image' => null]);
 
-        return back()->with('success', 'Evaluation background reset to the site default.');
+        return back()->with('success', FlashMessage::make('Evaluation background reset', 'The evaluation now uses the site default image.'));
     }
 
     // ── Sections ──────────────────────────────────────────────────────────────
@@ -169,7 +175,7 @@ class EvaluationFormController extends Controller
 
         $evaluationSection->update($data);
 
-        return back()->with('success', 'Section updated.');
+        return back()->with('success', FlashMessage::make('Section updated', 'Your changes to this section are saved.'));
     }
 
     // POST /evaluation-sections/{evaluationSection}/move-up
@@ -198,7 +204,7 @@ class EvaluationFormController extends Controller
 
         $evaluationSection->questions()->create($data);
 
-        return back()->with('success', 'Question added.');
+        return back()->with('success', FlashMessage::make('Question added', 'It now appears in this section of the evaluation.'));
     }
 
     // PUT /evaluation-questions/{evaluationQuestion}
@@ -206,7 +212,7 @@ class EvaluationFormController extends Controller
     {
         $evaluationQuestion->update($this->validateQuestion($request));
 
-        return back()->with('success', 'Question updated.');
+        return back()->with('success', FlashMessage::make('Question updated', 'Your changes are saved.'));
     }
 
     // DELETE /evaluation-questions/{evaluationQuestion}
@@ -214,7 +220,7 @@ class EvaluationFormController extends Controller
     {
         $evaluationQuestion->delete();
 
-        return back()->with('success', 'Question removed.');
+        return back()->with('success', FlashMessage::make('Question removed', 'It no longer appears in the evaluation.'));
     }
 
     // POST /evaluation-questions/{evaluationQuestion}/move-up
@@ -278,7 +284,10 @@ class EvaluationFormController extends Controller
             $evaluationForm->facilitators()->create($data);
         });
 
-        return back()->with('success', 'Facilitator added.');
+        return back()->with('success', FlashMessage::make(
+            "{$data['name']} added as a facilitator",
+            'Participants can now rate them in the evaluation, and they are listed under Resource Speakers.',
+        ));
     }
 
     // POST /evaluation-forms/{evaluationForm}/facilitators/bulk
@@ -317,7 +326,7 @@ class EvaluationFormController extends Controller
 
         $count = count($data['facilitators']);
 
-        return back()->with('success', "{$count} facilitator(s) added.");
+        return back()->with('success', FlashMessage::make("{$count} facilitator(s) added", 'Participants can now rate them in the evaluation.'));
     }
 
     // PUT /evaluation-facilitators/{evaluationFacilitator}
@@ -338,7 +347,7 @@ class EvaluationFormController extends Controller
             ]);
         });
 
-        return back()->with('success', 'Facilitator updated.');
+        return back()->with('success', FlashMessage::make('Facilitator updated', "Your changes to {$evaluationFacilitator->name} are saved."));
     }
 
     // DELETE /evaluation-facilitators/{evaluationFacilitator}
@@ -349,7 +358,7 @@ class EvaluationFormController extends Controller
             $evaluationFacilitator->delete();
         });
 
-        return back()->with('success', 'Facilitator removed.');
+        return back()->with('success', FlashMessage::make('Facilitator removed', "{$evaluationFacilitator->name} is no longer in the evaluation."));
     }
 
     // POST /evaluation-facilitators/{evaluationFacilitator}/move-up
@@ -482,7 +491,7 @@ class EvaluationFormController extends Controller
         $responses = $evaluationForm->responses()
             ->with(['answers.question.section', 'answers.facilitator'])
             ->latest()
-            ->paginate($request->integer('per_page', 20));
+            ->paginate(LiteMode::perPage($request, 20));
 
         return response()->json($responses);
     }
@@ -494,6 +503,6 @@ class EvaluationFormController extends Controller
 
         $evaluationResponse->delete();
 
-        return back()->with('success', 'Response deleted.');
+        return back()->with('success', FlashMessage::make('Response deleted', 'The results and findings were recalculated without it.'));
     }
 }

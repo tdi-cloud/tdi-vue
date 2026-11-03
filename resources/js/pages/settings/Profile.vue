@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SubmitButton from '@/components/SubmitButton.vue';
 import { TransitionRoot } from '@headlessui/vue';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
@@ -195,7 +196,7 @@ async function removeAvatar() {
                         </div>
 
                         <div class="flex items-center gap-4">
-                            <Button :disabled="form.processing">Save</Button>
+                            <SubmitButton :processing="form.processing">Save</SubmitButton>
 
                             <TransitionRoot
                                 :show="form.recentlySuccessful"

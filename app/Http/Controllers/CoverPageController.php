@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CoverPage;
 use App\Models\Program;
+use App\Support\FlashMessage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -31,7 +32,7 @@ class CoverPageController extends Controller
             ['image' => $path]
         );
 
-        return back()->with('success', 'Cover page updated successfully.');
+        return back()->with('success', FlashMessage::make('Cover page updated', 'The new image now shows on this program across the app.'));
     }
 
     public function destroy(Program $program)
@@ -45,6 +46,6 @@ class CoverPageController extends Controller
             $cover->delete();
         }
 
-        return back()->with('success', 'Cover page removed.');
+        return back()->with('success', FlashMessage::make('Cover page removed', 'This program now uses the default cover.'));
     }
 }

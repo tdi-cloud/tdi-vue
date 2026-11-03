@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useConfirm } from '@/composables/useConfirm';
 import { useInitials } from '@/composables/useInitials';
@@ -38,6 +40,8 @@ const props = defineProps<{
         access?: string;
         fstp?: string;
     };
+    // "Did you mean …?" when a search finds nothing (server-side SearchSuggester).
+    suggestion?: string | null;
 }>();
 
 const page = usePage();
@@ -461,10 +465,25 @@ async function removeAvatar() {
                     </tbody>
                 </table>
 
-                <div v-else class="flex flex-col items-center justify-center gap-2 py-16 text-muted-foreground">
-                    <ShieldCheck class="h-10 w-10 opacity-30" />
-                    <p class="text-sm font-semibold">No users found.</p>
-                </div>
+                <template v-else>
+                    <SearchEmptyState
+                        v-if="filters.search"
+                        :query="filters.search"
+                        :suggestion="suggestion"
+                        class="m-4"
+                        @search="search = $event"
+                        @clear-filters="clearFilters"
+                    />
+                    <EmptyState
+                        v-else
+                        variant="filtered"
+                        :icon="ShieldCheck"
+                        title="No users found."
+                        description="Try another access level, or turn off the FSTP filter."
+                        class="m-4"
+                        @clear-filters="clearFilters"
+                    />
+                </template>
             </div>
 
             <!-- Pagination -->

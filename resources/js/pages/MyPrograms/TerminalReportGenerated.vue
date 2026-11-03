@@ -138,8 +138,9 @@
                         >
                             <Loader2 v-if="uploadForm.processing" :size="15" class="animate-spin" />
                             <Send v-else :size="15" />
-                            {{ signedCopy ? 'Replace signed copy' : 'Submit signed copy' }}
+                            {{ uploadForm.processing ? 'Uploading…' : signedCopy ? 'Replace signed copy' : 'Submit signed copy' }}
                         </button>
+                        <UploadProgress v-if="uploadForm.progress" :percentage="uploadForm.progress.percentage ?? null" />
                     </form>
                 </div>
 
@@ -180,6 +181,7 @@
 </template>
 
 <script setup lang="ts">
+import UploadProgress from '@/components/UploadProgress.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ArrowLeft, ArrowRight, Check, CheckCircle2, Download, FileText, Loader2, PenLine, Printer, Send, Target, Upload } from 'lucide-vue-next';
 import { computed } from 'vue';

@@ -1,9 +1,13 @@
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
+import InlineError from '@/components/InlineError.vue';
+import TableRowsSkeleton from '@/components/skeletons/TableRowsSkeleton.vue';
 import { Button } from '@/components/ui/button';
 import { useConfirm } from '@/composables/useConfirm';
 import TesdaOrderModal from '@/pages/programs/TesdaOrderModal.vue';
 import { router } from '@inertiajs/vue3';
-import { Calendar, Download, FileSignature, Layers, Loader2, Plus, Trash2, UserCheck } from 'lucide-vue-next';
+import axios from 'axios';
+import { Calendar, Download, FileSignature, Layers, Plus, ScrollText, Trash2, UserCheck } from 'lucide-vue-next';
 import { onMounted, ref } from 'vue';
 
 const { confirmDialog } = useConfirm();
@@ -34,11 +38,20 @@ const orders = ref<TesdaOrder[]>(props.tesdaOrders ?? []);
 const showModal = ref(false);
 const loading = ref(false);
 
+const loadError = ref(false);
+
 async function refreshOrders() {
     loading.value = true;
-    const res = await fetch(route('tesda-orders.index', props.program.id));
-    orders.value = await res.json();
-    loading.value = false;
+    loadError.value = false;
+    try {
+        const { data } = await axios.get(route('tesda-orders.index', props.program.id));
+        orders.value = data;
+    } catch {
+        // The app-wide toast explains the failure; the panel offers Retry.
+        loadError.value = true;
+    } finally {
+        loading.value = false;
+    }
 }
 
 onMounted(() => {
@@ -90,19 +103,16 @@ function accentFor(id: number) {
         </div>
 
         <!-- Loading -->
-        <div v-if="loading && orders.length === 0" class="flex justify-center py-16">
-            <Loader2 class="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
+        <TableRowsSkeleton v-if="loading && orders.length === 0" :rows="3" :columns="3" label="Loading TESDA Orders…" />
+        <InlineError v-else-if="loadError" message="TESDA Orders couldn't be loaded." :retrying="loading" @retry="refreshOrders" />
 
         <!-- Empty state -->
-        <div
+        <EmptyState
             v-else-if="orders.length === 0"
-            class="flex flex-col items-center justify-center rounded-2xl border border-dashed py-16 text-center text-muted-foreground shadow-md"
-        >
-            <img src="/storage/images/tesda-order.png" alt="TESDA Order" class="mb-4 w-40 drop-shadow-lg" />
-            <p class="text-sm font-semibold">No TESDA Orders generated yet.</p>
-            <p class="mt-1 text-xs">Click "Generate TESDA Order" to create one.</p>
-        </div>
+            :icon="ScrollText"
+            title="No TESDA Orders generated yet."
+            description='Click "Generate TESDA Order" to create one.'
+        />
 
         <!-- Card grid -->
         <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">

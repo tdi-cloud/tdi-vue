@@ -3,8 +3,6 @@
 import NavMain from '@/components/NavMain.vue';
 // import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
-import { Toaster } from '@/components/ui/toast';
-import { useFlash } from '@/composables/useFlash';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
 import {
@@ -28,8 +26,6 @@ import {
 } from 'lucide-vue-next';
 import { computed } from 'vue';
 import AppLogo from './AppLogo.vue';
-
-useFlash();
 
 const page = usePage();
 
@@ -219,6 +215,4 @@ const mainNavItems = computed<NavItem[]>(() => {
         </SidebarFooter>
     </Sidebar>
     <slot />
-
-    <Toaster />
 </template>

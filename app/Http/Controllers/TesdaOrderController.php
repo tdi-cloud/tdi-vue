@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Employee;
 use App\Models\Program;
 use App\Models\TesdaOrder;
+use App\Support\FlashMessage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -192,7 +193,7 @@ class TesdaOrderController extends Controller
         }
         $tesdaOrder->delete();
 
-        return back()->with('success', 'TESDA Order deleted.');
+        return back()->with('success', FlashMessage::make('TESDA Order deleted', 'The order and its PDF were removed. You can generate a new one anytime.'));
     }
 
     public function searchSignatory(Request $request)

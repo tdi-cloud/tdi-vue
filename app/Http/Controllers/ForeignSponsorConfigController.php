@@ -7,6 +7,7 @@ use App\Models\ForeignNomineeRequirement;
 use App\Models\ForeignNomineeSubmission;
 use App\Models\ForeignProgram;
 use App\Models\ForeignSponsorConfig;
+use App\Support\FlashMessage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -172,7 +173,11 @@ class ForeignSponsorConfigController extends Controller
             }
         }
 
-        return back()->with('success', 'Participant added successfully.');
+        return back()->with('success', FlashMessage::make(
+            'Nominee added',
+            "{$nominee->firstname} {$nominee->surname} is saved with the files you attached.",
+            'They now appear in the nominee list for assessment.',
+        ));
     }
 
     // PATCH /foreign-nominees/{nominee}/status
