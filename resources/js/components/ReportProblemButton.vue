@@ -4,7 +4,7 @@ import SubmitButton from '@/components/SubmitButton.vue';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { useForm } from '@inertiajs/vue3';
+import { Link, useForm } from '@inertiajs/vue3';
 import { MessageSquareWarning } from 'lucide-vue-next';
 import { ref } from 'vue';
 
@@ -75,7 +75,15 @@ const submit = () => {
                     <InputError :message="form.errors.description" />
                 </div>
 
-                <div class="flex justify-end gap-2">
+                <div class="flex flex-wrap items-center justify-end gap-2">
+                    <!-- Earlier reports and the super admins' replies -->
+                    <Link
+                        :href="route('problem-reports.mine')"
+                        class="mr-auto text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+                        @click="open = false"
+                    >
+                        My reports &amp; replies
+                    </Link>
                     <Button type="button" variant="outline" @click="open = false">Cancel</Button>
                     <SubmitButton
                         class="bg-amber-600 hover:bg-amber-700"

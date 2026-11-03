@@ -94,10 +94,10 @@ function approveAllSubmission(Program $program, Batch $batch, Requirement $requi
     ]);
 }
 
-// ── Per-program (admins) ─────────────────────────────────────────────────────
+// ── Per-program (superadmins only) ────────────────────────────────────────────────
 
-test('an admin can approve all pending submissions of a program', function () {
-    $admin = approveAllUser('admin');
+test('a superadmin can approve all pending submissions of a program', function () {
+    $superadmin = approveAllUser('superadmin');
     $program = approveAllProgram('Program A');
     [$batch, $requirement] = approveAllBatch($program, 'Batch 1');
     $pendingOne = approveAllSubmission($program, $batch, $requirement, 'EMP-AA-P1', 'Pending');
@@ -107,13 +107,13 @@ test('an admin can approve all pending submissions of a program', function () {
     [$otherBatch, $otherRequirement] = approveAllBatch($otherProgram, 'Batch 1');
     $otherPending = approveAllSubmission($otherProgram, $otherBatch, $otherRequirement, 'EMP-AA-P3', 'Pending');
 
-    $this->actingAs($admin)
+    $this->actingAs($superadmin)
         ->post(route('programs.submissions.approve-all', $program))
         ->assertRedirect()
         ->assertSessionHas('success.title', '2 submission(s) approved');
 
     expect($pendingOne->fresh()->status)->toBe('Approved');
-    expect($pendingOne->fresh()->reviewed_by)->toBe($admin->name);
+    expect($pendingOne->fresh()->reviewed_by)->toBe($superadmin->name);
     expect($pendingOne->fresh()->reviewed_at)->not->toBeNull();
     expect($pendingTwo->fresh()->status)->toBe('Approved');
     expect($otherPending->fresh()->status)->toBe('Pending');
@@ -121,18 +121,18 @@ test('an admin can approve all pending submissions of a program', function () {
 });
 
 test('approve all leaves rejected submissions untouched', function () {
-    $admin = approveAllUser('admin');
+    $superadmin = approveAllUser('superadmin');
     $program = approveAllProgram('Program A');
     [$batch, $requirement] = approveAllBatch($program, 'Batch 1');
     $rejected = approveAllSubmission($program, $batch, $requirement, 'EMP-AA-R1', 'Rejected');
 
-    $this->actingAs($admin)->post(route('programs.submissions.approve-all', $program))->assertRedirect();
+    $this->actingAs($superadmin)->post(route('programs.submissions.approve-all', $program))->assertRedirect();
 
     expect($rejected->fresh()->status)->toBe('Rejected');
 });
 
 test('approve all only affects pending submissions — already approved ones keep their original review', function () {
-    $admin = approveAllUser('admin');
+    $superadmin = approveAllUser('superadmin');
     $program = approveAllProgram('Program A');
     [$batch, $requirement] = approveAllBatch($program, 'Batch 1');
     $approved = approveAllSubmission($program, $batch, $requirement, 'EMP-AA-A1', 'Approved');
@@ -140,7 +140,7 @@ test('approve all only affects pending submissions — already approved ones kee
     $originalReviewedAt = $approved->fresh()->reviewed_at;
     $pending = approveAllSubmission($program, $batch, $requirement, 'EMP-AA-A2', 'Pending');
 
-    $this->actingAs($admin)
+    $this->actingAs($superadmin)
         ->post(route('programs.submissions.approve-all', $program))
         ->assertSessionHas('success.title', '1 submission(s) approved');
 
@@ -151,14 +151,14 @@ test('approve all only affects pending submissions — already approved ones kee
 });
 
 test('approve all can be limited to one batch of a program', function () {
-    $admin = approveAllUser('admin');
+    $superadmin = approveAllUser('superadmin');
     $program = approveAllProgram('Program A');
     [$batchOne, $requirementOne] = approveAllBatch($program, 'Batch 1');
     [$batchTwo, $requirementTwo] = approveAllBatch($program, 'Batch 2');
     $inBatchOne = approveAllSubmission($program, $batchOne, $requirementOne, 'EMP-AA-B1', 'Pending');
     $inBatchTwo = approveAllSubmission($program, $batchTwo, $requirementTwo, 'EMP-AA-B2', 'Pending');
 
-    $this->actingAs($admin)
+    $this->actingAs($superadmin)
         ->post(route('programs.submissions.approve-all', $program), ['batch_id' => $batchOne->id])
         ->assertRedirect();
 
@@ -172,6 +172,18 @@ test('regular users cannot approve all submissions of a program', function () {
     $pending = approveAllSubmission($program, $batch, $requirement, 'EMP-AA-U1', 'Pending');
 
     $this->actingAs(approveAllUser('user'))
+        ->post(route('programs.submissions.approve-all', $program))
+        ->assertForbidden();
+
+    expect($pending->fresh()->status)->toBe('Pending');
+});
+
+test('an admin cannot approve all submissions of a program', function () {
+    $program = approveAllProgram('Program A');
+    [$batch, $requirement] = approveAllBatch($program, 'Batch 1');
+    $pending = approveAllSubmission($program, $batch, $requirement, 'EMP-AA-A1', 'Pending');
+
+    $this->actingAs(approveAllUser('admin'))
         ->post(route('programs.submissions.approve-all', $program))
         ->assertForbidden();
 

@@ -190,10 +190,10 @@ class SubmissionController extends Controller
     }
 
     /**
-     * POST /programs/{program}/submissions/approve-all (admins)
+     * POST /programs/{program}/submissions/approve-all (superadmins only)
      *
      * Approves every Pending submission of one program — optionally only one
-     * batch — so admins don't have to review them one by one. Rejected
+     * batch — so superadmins don't have to review them one by one. Rejected
      * submissions are left untouched.
      */
     public function approveAllForProgram(Request $request, Program $program): RedirectResponse

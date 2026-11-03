@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useConfirm } from '@/composables/useConfirm';
 import { suggestSearch } from '@/lib/searchSuggestion';
 import MissingSubmissionsModal from '@/pages/programs/MissingSubmissionsModal.vue';
-import { router } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import {
     AlarmClockMinus,
     CalendarClock,
@@ -352,6 +352,10 @@ const { confirmDialog } = useConfirm();
 
 /* ===================== APPROVE ALL ===================== */
 
+// Approving everything at once is limited to superadmins (the route enforces it too).
+const page = usePage();
+const isSuperAdmin = computed(() => (page.props.auth as any)?.user?.access === 'superadmin');
+
 // Follows the batch filter: approves the pending submissions of the selected
 // batch, or of the whole program when "All batches" is selected.
 const approveAllPendingCount = computed(
@@ -417,8 +421,9 @@ const removeSubmission = async (s: Submission) => {
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
-                <!-- Approve all pending (follows the batch filter) -->
+                <!-- Approve all pending (superadmin only; follows the batch filter) -->
                 <Button
+                    v-if="isSuperAdmin"
                     size="sm"
                     class="h-8 bg-emerald-600 text-xs text-white hover:bg-emerald-700"
                     :disabled="!approveAllPendingCount || approvingAll"

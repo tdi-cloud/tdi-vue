@@ -163,9 +163,10 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     // Correct the submission date (e.g. to clear a wrong "Late" indication)
     Route::patch('submissions/{submission}/submitted-at', [SubmissionController::class, 'updateSubmittedAt'])
         ->name('submissions.submitted-at.update');
-    // Approve every Pending submission at once — per program for admins,
-    // across all programs (global Submissions page) for superadmins only.
+    // Approve every Pending submission at once — per program or across all
+    // programs (global Submissions page). Superadmins only.
     Route::post('programs/{program}/submissions/approve-all', [SubmissionController::class, 'approveAllForProgram'])
+        ->middleware('superadmin')
         ->name('programs.submissions.approve-all');
     Route::post('submissions/approve-all', [SubmissionController::class, 'approveAll'])
         ->middleware('superadmin')
@@ -542,6 +543,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // PROBLEM REPORTS
     Route::post('/problem-reports', [ProblemReportController::class, 'store'])
         ->name('problem-reports.store');
+    // The reporter's own reports + conversations; replies are open to the reporter and super admins.
+    Route::get('/problem-reports/mine', [ProblemReportController::class, 'mine'])
+        ->name('problem-reports.mine');
+    Route::post('/problem-reports/{problemReport}/replies', [ProblemReportController::class, 'reply'])
+        ->name('problem-reports.replies.store');
 
     // SELF RATING
 
