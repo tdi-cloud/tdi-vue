@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\Program;
 use App\Models\Submission;
 use Carbon\Carbon;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -15,6 +16,14 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DashboardController extends Controller
 {
+    /**
+     * Batches with these statuses haven't been held yet, so their TREAP, REAP
+     * and TDOR reports aren't owed and are left out of the compliance counts.
+     *
+     * @var array<int, string>
+     */
+    private const NOT_YET_HELD_BATCH_STATUSES = ['Upcoming', 'Rescheduled'];
+
     public function index(Request $request)
     {
         // Full first name from the employee record (e.g. "MA. THERESE ANGELICA"),
@@ -78,6 +87,11 @@ class DashboardController extends Controller
         return $query->when($year && $year !== 'ALL', function ($q) use ($year, $column) {
             $q->whereYear($column, $year);
         });
+    }
+
+    private function excludeNotYetHeldBatches(Builder $query): Builder
+    {
+        return $query->whereNotIn('batches.status', self::NOT_YET_HELD_BATCH_STATUSES);
     }
 
     public function offices(Request $request)
@@ -702,6 +716,7 @@ class DashboardController extends Controller
             $baseParticipants, $region, $statuses, $officeFilter, $office, 'employees.'
         );
         $baseParticipants = $this->applyYearFilter($baseParticipants, $year);
+        $baseParticipants = $this->excludeNotYetHeldBatches($baseParticipants);
 
         // Bawat TREAP obligation ang binibilang dito — hindi per-employee —
         // kaya kung tatlo ang required na batch ng isang tao, tatlo rin ang
@@ -754,6 +769,7 @@ class DashboardController extends Controller
             $query, $region, $statuses, $officeFilter, $office, 'employees.'
         );
         $query = $this->applyYearFilter($query, $year);
+        $query = $this->excludeNotYetHeldBatches($query);
 
         if ($reg && $reg !== 'ALL') {
             $query->where('employees.REGION', $reg);
@@ -850,6 +866,7 @@ class DashboardController extends Controller
             $baseParticipants, $region, $statuses, $officeFilter, $office, 'employees.'
         );
         $baseParticipants = $this->applyYearFilter($baseParticipants, $year);
+        $baseParticipants = $this->excludeNotYetHeldBatches($baseParticipants);
 
         // Bawat REAP obligation ang binibilang dito — hindi per-employee.
         $totalEmployees = (clone $baseParticipants)->count();
@@ -900,6 +917,7 @@ class DashboardController extends Controller
             $query, $region, $statuses, $officeFilter, $office, 'employees.'
         );
         $query = $this->applyYearFilter($query, $year);
+        $query = $this->excludeNotYetHeldBatches($query);
 
         if ($reg && $reg !== 'ALL') {
             $query->where('employees.REGION', $reg);
@@ -996,6 +1014,7 @@ class DashboardController extends Controller
             $baseParticipants, $region, $statuses, $officeFilter, $office, 'employees.'
         );
         $baseParticipants = $this->applyYearFilter($baseParticipants, $year);
+        $baseParticipants = $this->excludeNotYetHeldBatches($baseParticipants);
 
         // Bawat TDOR obligation ang binibilang dito — hindi per-employee.
         $totalEmployees = (clone $baseParticipants)->count();
@@ -1046,6 +1065,7 @@ class DashboardController extends Controller
             $query, $region, $statuses, $officeFilter, $office, 'employees.'
         );
         $query = $this->applyYearFilter($query, $year);
+        $query = $this->excludeNotYetHeldBatches($query);
 
         if ($reg && $reg !== 'ALL') {
             $query->where('employees.REGION', $reg);

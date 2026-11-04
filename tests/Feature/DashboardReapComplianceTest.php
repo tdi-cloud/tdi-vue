@@ -241,3 +241,39 @@ test('non-admin users cannot access the reap compliance endpoints', function () 
     $this->actingAs($user)->getJson(route('dashboard.reap-compliance'))->assertForbidden();
     $this->actingAs($user)->getJson(route('dashboard.reap-compliance.list'))->assertForbidden();
 });
+
+test('reap compliance leaves out batches that are upcoming or rescheduled', function () {
+    $admin = reapTestAdmin('EMP-REAP-ADM-HELD');
+    [, $heldBatch] = reapTestSetup();
+    [, $upcomingBatch] = reapTestSetup();
+    [, $rescheduledBatch] = reapTestSetup();
+    $heldBatch->update(['status' => 'Completed']);
+    $upcomingBatch->update(['status' => 'Upcoming']);
+    $rescheduledBatch->update(['status' => 'Rescheduled']);
+
+    // One participant per batch, none of them submitted yet.
+    foreach ([$heldBatch, $upcomingBatch, $rescheduledBatch] as $index => $batch) {
+        $employee = reapTestEmployee("EMP-REAP-HELD-0{$index}", 'Reyes');
+        Participant::create([
+            'sort_order' => 1, 'batch_id' => $batch->id, 'empcode' => $employee->EMPCODE,
+            'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+        ]);
+    }
+
+    $filters = ['region' => 'ALL', 'year' => 'ALL', 'office' => 'ALL', 'office_filter' => 'ALL'];
+
+    $response = $this->actingAs($admin)->getJson(route('dashboard.reap-compliance', $filters));
+
+    $response->assertOk();
+    expect($response->json('total'))->toBe(1)
+        ->and($response->json('not_submitted'))->toBe(1)
+        ->and(array_sum($response->json('regions_not_submitted')))->toBe(1);
+
+    $listResponse = $this->actingAs($admin)->getJson(route('dashboard.reap-compliance.list', [
+        ...$filters, 'type' => 'not_submitted', 'reg' => 'ALL',
+    ]));
+
+    $listResponse->assertOk();
+    expect($listResponse->json('count'))->toBe(1)
+        ->and($listResponse->json('employees.0.empcode'))->toBe('EMP-REAP-HELD-00');
+});
