@@ -6,6 +6,7 @@ use App\Models\DefaultProgramCover;
 use App\Models\Employee;
 use App\Models\Program;
 use App\Models\ProgramCompetency;
+use App\Models\ProgramRegistration;
 use App\Models\Submission;
 use App\Support\FlashMessage;
 use Carbon\Carbon;
@@ -169,8 +170,11 @@ class ProgramController extends Controller
                     ->with([
                         'requirements',
                         'evaluationForm:id,batch_id,is_active',
-                        'registrationForm' => fn ($rq) => $rq->select(['id', 'batch_id', 'is_open'])
-                            ->withCount(['registrations as pending_registrations_count' => fn ($pq) => $pq->where('status', 'pending')]),
+                        'registrationForm' => fn ($rq) => $rq->select(['id', 'batch_id', 'slug', 'title', 'theme', 'is_open', 'closes_at', 'slot_limit', 'updated_at'])
+                            ->withCount([
+                                'registrations as pending_registrations_count' => fn ($pq) => $pq->where('status', ProgramRegistration::STATUS_PENDING),
+                                'registrations as slots_taken_count' => fn ($pq) => $pq->holdingSlot(),
+                            ]),
                         'participants' => function ($pq) {
                             $pq->addSelect([
                                 'participants.*',
@@ -202,6 +206,7 @@ class ProgramController extends Controller
             'program' => $program,
             'submissions' => $submissions,
             'canDelete' => $program->canBeDeletedBy(auth()->user()),
+            'canManageRegistrations' => $program->canManageRegistrationsBy(auth()->user()),
         ]);
     }
 

@@ -24,6 +24,11 @@ export interface RegistrationTheme {
     focus: string;
     // Highlighted choice (selected name in the search results)
     selected: string;
+    // Registration card on the program page: dark-mode gradient stops (used
+    // with header), the blurred glow blob and the colored drop shadow
+    darkHeader: string;
+    glow: string;
+    shadow: string;
 }
 
 export const REGISTRATION_THEMES: Record<string, RegistrationTheme> = {
@@ -40,6 +45,9 @@ export const REGISTRATION_THEMES: Record<string, RegistrationTheme> = {
         sectionHeader: 'border-blue-500 bg-blue-50',
         focus: 'focus:border-blue-500 focus:ring-blue-100',
         selected: 'border-blue-500 bg-blue-50',
+        darkHeader: 'dark:from-blue-950 dark:via-blue-900 dark:to-sky-900',
+        glow: 'bg-sky-300/30',
+        shadow: 'shadow-blue-900/25',
     },
     navy: {
         label: 'Navy',
@@ -54,6 +62,9 @@ export const REGISTRATION_THEMES: Record<string, RegistrationTheme> = {
         sectionHeader: 'border-blue-800 bg-slate-50',
         focus: 'focus:border-blue-800 focus:ring-blue-200',
         selected: 'border-blue-800 bg-slate-50',
+        darkHeader: 'dark:from-slate-950 dark:via-blue-950 dark:to-blue-900',
+        glow: 'bg-blue-400/25',
+        shadow: 'shadow-slate-900/30',
     },
     sky: {
         label: 'Sky',
@@ -68,6 +79,9 @@ export const REGISTRATION_THEMES: Record<string, RegistrationTheme> = {
         sectionHeader: 'border-sky-500 bg-sky-50',
         focus: 'focus:border-sky-500 focus:ring-sky-100',
         selected: 'border-sky-500 bg-sky-50',
+        darkHeader: 'dark:from-sky-950 dark:via-sky-900 dark:to-cyan-900',
+        glow: 'bg-cyan-200/30',
+        shadow: 'shadow-sky-900/25',
     },
     indigo: {
         label: 'Indigo',
@@ -82,6 +96,9 @@ export const REGISTRATION_THEMES: Record<string, RegistrationTheme> = {
         sectionHeader: 'border-indigo-500 bg-indigo-50',
         focus: 'focus:border-indigo-500 focus:ring-indigo-100',
         selected: 'border-indigo-500 bg-indigo-50',
+        darkHeader: 'dark:from-indigo-950 dark:via-indigo-900 dark:to-blue-900',
+        glow: 'bg-violet-300/25',
+        shadow: 'shadow-indigo-900/25',
     },
     teal: {
         label: 'Teal',
@@ -96,6 +113,9 @@ export const REGISTRATION_THEMES: Record<string, RegistrationTheme> = {
         sectionHeader: 'border-teal-500 bg-teal-50',
         focus: 'focus:border-teal-500 focus:ring-teal-100',
         selected: 'border-teal-500 bg-teal-50',
+        darkHeader: 'dark:from-teal-950 dark:via-teal-900 dark:to-cyan-900',
+        glow: 'bg-emerald-300/25',
+        shadow: 'shadow-teal-900/25',
     },
 };
 

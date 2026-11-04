@@ -9,6 +9,7 @@ import CertificatesPanel from '@/pages/programs/CertificatesPanel.vue';
 import CompetencyModal from '@/pages/programs/CompetencyModal.vue';
 import CoverPagePanel from '@/pages/programs/CoverPagePanel.vue';
 import EvaluationDashboard from '@/pages/programs/EvaluationDashboard.vue';
+import RegistrationFormCard from '@/pages/programs/RegistrationFormCard.vue';
 import RequirementList from '@/pages/programs/RequirementList.vue';
 import ResourceSpeakers from '@/pages/programs/ResourceSpeakers.vue';
 import SubmissionList from '@/pages/programs/SubmissionList.vue';
@@ -145,6 +146,7 @@ const props = defineProps<{
     program: Program;
     submissions: any[];
     canDelete: boolean;
+    canManageRegistrations: boolean;
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -625,9 +627,86 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
                                     </dl>
                                 </section>
                             </div>
+
+                            <!-- Competencies -->
+                            <section ref="competenciesSection" class="min-w-0 scroll-mt-4 p-4 sm:p-5" :class="cardClass">
+                                <header class="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-center sm:justify-between">
+                                    <div class="flex min-w-0 items-center gap-2">
+                                        <span
+                                            class="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-300"
+                                        >
+                                            <Lightbulb class="h-4 w-4" />
+                                        </span>
+                                        <div>
+                                            <h2 class="text-base font-semibold text-slate-900 dark:text-white">Competencies</h2>
+                                            <p class="text-xs text-slate-500 dark:text-slate-400">Grouped by competency domain</p>
+                                        </div>
+                                    </div>
+                                    <Button
+                                        size="sm"
+                                        class="h-9 w-full shrink-0 bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 sm:w-auto"
+                                        @click="showCompetencyModal = true"
+                                    >
+                                        <Plus class="h-4 w-4" /> Add Competency
+                                    </Button>
+                                </header>
+
+                                <!-- Grouped list -->
+                                <div v-if="groupedCompetencies.length" class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 2xl:grid-cols-3">
+                                    <div
+                                        v-for="group in groupedCompetencies"
+                                        :key="group.domain"
+                                        class="min-w-0 overflow-hidden rounded-lg border border-slate-200/80 dark:border-slate-800"
+                                    >
+                                        <div
+                                            class="flex items-center justify-between gap-2 border-b px-3 py-2"
+                                            :class="[DOMAIN_ACCENTS[group.domain]?.rule, DOMAIN_ACCENTS[group.domain]?.header]"
+                                        >
+                                            <p
+                                                class="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider"
+                                                :class="DOMAIN_COLORS[group.domain]"
+                                            >
+                                                <span class="h-2 w-2 rounded-full" :class="DOMAIN_ACCENTS[group.domain]?.dot"></span>
+                                                {{ group.domain }}
+                                            </p>
+                                            <span class="text-[11px] font-medium text-slate-500 dark:text-slate-400">{{ group.items.length }}</span>
+                                        </div>
+                                        <ul class="flex flex-col divide-y divide-slate-100 dark:divide-slate-800">
+                                            <li
+                                                v-for="c in group.items"
+                                                :key="c.id"
+                                                class="group flex items-start justify-between gap-2 px-3 py-2 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                                            >
+                                                <p class="min-w-0 break-words text-sm leading-snug text-slate-700 dark:text-slate-200">
+                                                    {{ c.competency }}
+                                                </p>
+                                                <button
+                                                    type="button"
+                                                    class="-m-1 shrink-0 rounded p-1 text-slate-400 transition-all hover:text-red-500 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within:opacity-100 [@media(hover:hover)]:group-hover:opacity-100"
+                                                    :aria-label="`Remove ${c.competency}`"
+                                                    :title="`Remove ${c.competency}`"
+                                                    @click="removeCompetency(c)"
+                                                >
+                                                    <X class="h-4 w-4" />
+                                                </button>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <!-- Empty state -->
+                                <EmptyState
+                                    v-else
+                                    compact
+                                    class="rounded-lg border border-dashed"
+                                    :icon="Lightbulb"
+                                    title="No competencies yet."
+                                    description='Click "Add Competency" to attach competencies to this program.'
+                                />
+                            </section>
                         </div>
 
-                        <!-- SIDEBAR: Quick actions + evaluation -->
+                        <!-- SIDEBAR: Quick actions + registration + evaluation -->
                         <aside class="grid min-w-0 grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-1">
                             <!-- Quick Actions -->
                             <section :class="cardClass" class="min-w-0 p-4 sm:p-5">
@@ -661,6 +740,13 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
                                 </div>
                             </section>
 
+                            <!-- Registration Form (colors follow the featured form's theme) -->
+                            <RegistrationFormCard
+                                :batches="batches"
+                                :can-manage="canManageRegistrations"
+                                @open-participants="goToTab('participants')"
+                            />
+
                             <!-- Evaluation Results -->
                             <section
                                 class="relative min-w-0 overflow-hidden rounded-xl bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-900 p-4 text-white shadow-lg ring-1 ring-blue-900/10 transition-shadow hover:shadow-xl dark:from-blue-900 dark:via-indigo-950 dark:to-slate-950 dark:ring-white/10 sm:p-5"
@@ -690,81 +776,6 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
                             </section>
                         </aside>
                     </div>
-
-                    <!-- Competencies -->
-                    <section ref="competenciesSection" class="min-w-0 scroll-mt-4 p-4 sm:p-5" :class="cardClass">
-                        <header class="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-center sm:justify-between">
-                            <div class="flex min-w-0 items-center gap-2">
-                                <span
-                                    class="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-300"
-                                >
-                                    <Lightbulb class="h-4 w-4" />
-                                </span>
-                                <div>
-                                    <h2 class="text-base font-semibold text-slate-900 dark:text-white">Competencies</h2>
-                                    <p class="text-xs text-slate-500 dark:text-slate-400">Grouped by competency domain</p>
-                                </div>
-                            </div>
-                            <Button
-                                size="sm"
-                                class="h-9 w-full shrink-0 bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 sm:w-auto"
-                                @click="showCompetencyModal = true"
-                            >
-                                <Plus class="h-4 w-4" /> Add Competency
-                            </Button>
-                        </header>
-
-                        <!-- Grouped list -->
-                        <div v-if="groupedCompetencies.length" class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
-                            <div
-                                v-for="group in groupedCompetencies"
-                                :key="group.domain"
-                                class="min-w-0 overflow-hidden rounded-lg border border-slate-200/80 dark:border-slate-800"
-                            >
-                                <div
-                                    class="flex items-center justify-between gap-2 border-b px-3 py-2"
-                                    :class="[DOMAIN_ACCENTS[group.domain]?.rule, DOMAIN_ACCENTS[group.domain]?.header]"
-                                >
-                                    <p
-                                        class="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider"
-                                        :class="DOMAIN_COLORS[group.domain]"
-                                    >
-                                        <span class="h-2 w-2 rounded-full" :class="DOMAIN_ACCENTS[group.domain]?.dot"></span>
-                                        {{ group.domain }}
-                                    </p>
-                                    <span class="text-[11px] font-medium text-slate-500 dark:text-slate-400">{{ group.items.length }}</span>
-                                </div>
-                                <ul class="flex flex-col divide-y divide-slate-100 dark:divide-slate-800">
-                                    <li
-                                        v-for="c in group.items"
-                                        :key="c.id"
-                                        class="group flex items-start justify-between gap-2 px-3 py-2 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                                    >
-                                        <p class="min-w-0 break-words text-sm leading-snug text-slate-700 dark:text-slate-200">{{ c.competency }}</p>
-                                        <button
-                                            type="button"
-                                            class="-m-1 shrink-0 rounded p-1 text-slate-400 transition-all hover:text-red-500 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within:opacity-100 [@media(hover:hover)]:group-hover:opacity-100"
-                                            :aria-label="`Remove ${c.competency}`"
-                                            :title="`Remove ${c.competency}`"
-                                            @click="removeCompetency(c)"
-                                        >
-                                            <X class="h-4 w-4" />
-                                        </button>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <!-- Empty state -->
-                        <EmptyState
-                            v-else
-                            compact
-                            class="rounded-lg border border-dashed"
-                            :icon="Lightbulb"
-                            title="No competencies yet."
-                            description='Click "Add Competency" to attach competencies to this program.'
-                        />
-                    </section>
 
                     <!-- Competency picker modal -->
                     <CompetencyModal
