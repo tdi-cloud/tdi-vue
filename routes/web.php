@@ -22,6 +22,7 @@ use App\Http\Controllers\ForeignNomineeAssessmentController;
 use App\Http\Controllers\ForeignParticipantController;
 use App\Http\Controllers\ForeignProgramController;
 use App\Http\Controllers\ForeignSponsorConfigController;
+use App\Http\Controllers\MyCertificateController;
 use App\Http\Controllers\NhrdcMemberController;
 use App\Http\Controllers\NhrdcSelfServiceController;
 use App\Http\Controllers\NotificationController;
@@ -30,7 +31,11 @@ use App\Http\Controllers\ParticipantController;
 use App\Http\Controllers\ProblemReportController;
 use App\Http\Controllers\ProgramActivityController;
 use App\Http\Controllers\ProgramController;
+use App\Http\Controllers\ProvisionalEmployeeController;
+use App\Http\Controllers\PublicRegistrationController;
 use App\Http\Controllers\RegionalReportController;
+use App\Http\Controllers\RegistrationFormController;
+use App\Http\Controllers\RegistrationReviewController;
 use App\Http\Controllers\RequirementController;
 use App\Http\Controllers\RequirementsTrackerController;
 use App\Http\Controllers\ResourceSpeakerController;
@@ -220,6 +225,26 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('/programs/{program}/evaluation-dashboard', [EvaluationFormController::class, 'dashboardData'])->name('programs.evaluation-dashboard');
     Route::get('/evaluation-forms/{evaluationForm}/responses', [EvaluationFormController::class, 'responses'])->name('evaluation-forms.responses');
     Route::delete('/evaluation-forms/{evaluationForm}/responses/{evaluationResponse}', [EvaluationFormController::class, 'destroyResponse'])->name('evaluation-forms.responses.destroy');
+
+    // REGISTRATION FORM (admin) — changes are limited to the program's creator or a superadmin inside the controller
+    Route::get('/batches/{batch}/registration', [RegistrationFormController::class, 'edit'])->name('batches.registration.edit');
+    Route::post('/batches/{batch}/registration-form', [RegistrationFormController::class, 'store'])->name('batches.registration-form.store');
+    Route::put('/registration-forms/{registrationForm}', [RegistrationFormController::class, 'update'])->name('registration-forms.update');
+    Route::post('/registration-forms/{registrationForm}/background', [RegistrationFormController::class, 'uploadBackground'])->name('registration-forms.background.upload');
+    Route::delete('/registration-forms/{registrationForm}/background', [RegistrationFormController::class, 'destroyBackground'])->name('registration-forms.background.destroy');
+    Route::post('/registration-forms/{registrationForm}/questions', [RegistrationFormController::class, 'storeQuestion'])->name('registration-forms.questions.store');
+    Route::put('/registration-questions/{registrationQuestion}', [RegistrationFormController::class, 'updateQuestion'])->name('registration-questions.update');
+    Route::delete('/registration-questions/{registrationQuestion}', [RegistrationFormController::class, 'destroyQuestion'])->name('registration-questions.destroy');
+    Route::post('/registration-questions/{registrationQuestion}/move-up', [RegistrationFormController::class, 'moveQuestionUp'])->name('registration-questions.move-up');
+    Route::post('/registration-questions/{registrationQuestion}/move-down', [RegistrationFormController::class, 'moveQuestionDown'])->name('registration-questions.move-down');
+
+    Route::post('/registration-forms/{registrationForm}/approve', [RegistrationReviewController::class, 'bulkApprove'])->name('registration-forms.approve');
+    Route::post('/program-registrations/{programRegistration}/approve', [RegistrationReviewController::class, 'approve'])->name('program-registrations.approve');
+    Route::post('/program-registrations/{programRegistration}/reject', [RegistrationReviewController::class, 'reject'])->name('program-registrations.reject');
+    Route::put('/program-registrations/{programRegistration}', [RegistrationReviewController::class, 'update'])->name('program-registrations.update');
+    Route::post('/program-registrations/{programRegistration}/resend-login', [RegistrationReviewController::class, 'resendLogin'])
+        ->middleware('throttle:6,1,resend-login')
+        ->name('program-registrations.resend-login');
 
     // COVER PAGE
     Route::post('/programs/cover/upload', [CoverPageController::class, 'upload'])->name('programs.cover.upload');
@@ -454,6 +479,11 @@ Route::middleware(['auth', 'verified', 'superadmin'])->group(function () {
     // PROBLEM REPORTS
     Route::get('/problem-reports', [ProblemReportController::class, 'index'])->name('problem-reports.index');
     Route::put('/problem-reports/{problemReport}', [ProblemReportController::class, 'updateStatus'])->name('problem-reports.update-status');
+
+    // EMPLOYEES FROM REGISTRATION (holding list until HR's monthly list includes them)
+    Route::get('/employees-from-registration', [ProvisionalEmployeeController::class, 'index'])->name('employees-from-registration.index');
+    Route::post('/employees-from-registration/sync', [ProvisionalEmployeeController::class, 'sync'])->name('employees-from-registration.sync');
+    Route::put('/employees-from-registration/{provisionalEmployee}', [ProvisionalEmployeeController::class, 'update'])->name('employees-from-registration.update');
 });
 
 // NHRDC SELF-SERVICE (committee members rate nominee interviews themselves —
@@ -476,6 +506,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/my-programs/{batch}', [EnrolledProgramController::class, 'show'])
         ->name('programs.my-progress');
+
+    // MY CERTIFICATES — every certificate of the signed-in employee in one gallery
+    Route::get('/my-certificates', [MyCertificateController::class, 'index'])
+        ->name('certificates.mine');
 
     Route::post('/my-programs/{batch}/requirements/{requirement}/submit', [EnrolledProgramController::class, 'submitRequirement'])
         ->name('programs.my-progress.submit');
@@ -623,6 +657,13 @@ Route::get('/nominate/{slug}/success', [ForeignNominationController::class, 'suc
 Route::get('/evaluate/{slug}', [EvaluationController::class, 'show'])->name('evaluate.show');
 Route::post('/evaluate/{slug}', [EvaluationController::class, 'submit'])->name('evaluate.submit');
 Route::get('/evaluate/{slug}/success', [EvaluationController::class, 'success'])->name('evaluate.success');
+
+Route::get('/join/{slug}', [PublicRegistrationController::class, 'show'])->name('join.show');
+// Each throttle has its own prefix so searching doesn't use up the submit allowance
+// (offices often share one IP, so the limits are generous).
+Route::get('/join/{slug}/search', [PublicRegistrationController::class, 'search'])->middleware(['throttle:60,1,join-search', 'search.suggest'])->name('join.search');
+Route::post('/join/{slug}', [PublicRegistrationController::class, 'submit'])->middleware('throttle:20,1,join-submit')->name('join.submit');
+Route::get('/join/{slug}/success', [PublicRegistrationController::class, 'success'])->name('join.success');
 
 // LOCAL ONLY: email template preview
 if (app()->environment('local')) {

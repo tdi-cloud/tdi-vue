@@ -37,6 +37,7 @@ import {
     ScrollText,
     Trash2,
     UserCog,
+    UserPlus,
     Users,
 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
@@ -99,6 +100,12 @@ const openParticipants = (batch: any, participant?: any) => {
 
 const openEvaluation = (batch: any) => {
     router.visit(route('batches.evaluation.edit', batch.id));
+};
+
+// ─── Registration form ────────────────────────────────────────────────────────
+
+const openRegistration = (batch: any) => {
+    router.visit(route('batches.registration.edit', batch.id));
 };
 
 // ─── Form ─────────────────────────────────────────────────────────────────────
@@ -386,6 +393,22 @@ const formatTime = (t: string) => {
                                 <ClipboardCheck class="h-3.5 w-3.5 text-rose-600" />
                                 Evaluation
                                 <span v-if="!batch.evaluation_form" class="ml-auto h-1.5 w-1.5 rounded-full bg-amber-500" title="Not set up yet" />
+                            </DropdownMenuItem>
+                            <DropdownMenuItem class="cursor-pointer gap-2 text-xs" @click="openRegistration(batch)">
+                                <UserPlus class="h-3.5 w-3.5 text-blue-600" />
+                                Registration Form
+                                <span
+                                    v-if="batch.registration_form?.pending_registrations_count"
+                                    class="ml-auto rounded-full bg-blue-600 px-1.5 text-[10px] font-bold leading-4 text-white"
+                                    :title="`${batch.registration_form.pending_registrations_count} waiting for review`"
+                                >
+                                    {{ batch.registration_form.pending_registrations_count }}
+                                </span>
+                                <span
+                                    v-else-if="batch.registration_form?.is_open"
+                                    class="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-500"
+                                    title="Accepting registrations"
+                                />
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>

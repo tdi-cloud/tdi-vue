@@ -51,6 +51,15 @@ class LoginRequest extends FormRequest
         }
 
         RateLimiter::clear($this->throttleKey());
+
+        // A temporary password from a registration approval only works for a limited time.
+        if (Auth::user()?->hasExpiredTemporaryPassword()) {
+            Auth::guard('web')->logout();
+
+            throw ValidationException::withMessages([
+                'email' => 'Your temporary password has expired. Use "Forgot password" to set a new one, or ask the program organizer to resend your login details.',
+            ]);
+        }
     }
 
     /**

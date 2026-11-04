@@ -46,6 +46,11 @@ class Batch extends Model
         return $this->hasOne(EvaluationForm::class);
     }
 
+    public function registrationForm()
+    {
+        return $this->hasOne(RegistrationForm::class);
+    }
+
     protected static function booted(): void
     {
         static::deleting(function (Batch $batch) {

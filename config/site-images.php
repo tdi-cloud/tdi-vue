@@ -17,6 +17,12 @@ return [
         'default' => '/storage/hero/cpsc.JPG',
     ],
 
+    'registration_background' => [
+        'label' => 'Registration Form Background (default for all batches)',
+        'section' => 'Registration Form',
+        'default' => '/storage/hero/cpsc.JPG',
+    ],
+
     'navbar_logo' => [
         'label' => 'Navbar Logo (TESDA Seal)',
         'section' => 'Navbar',

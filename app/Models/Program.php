@@ -84,6 +84,20 @@ class Program extends Model
         return $this->added_by !== null && $this->added_by === $user->empcode;
     }
 
+    /**
+     * Only the admin who added this program, or a superadmin, can set up its
+     * registration forms and approve or reject the people who register.
+     * Programs saved before added_by existed are superadmin-only.
+     */
+    public function canManageRegistrationsBy(User $user): bool
+    {
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        return $user->isAdmin() && $this->added_by !== null && $this->added_by === $user->empcode;
+    }
+
     public function batches()
     {
         return $this->hasMany(Batch::class, 'program_code', 'program_code');

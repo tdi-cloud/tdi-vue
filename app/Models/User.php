@@ -28,6 +28,8 @@ class User extends Authenticatable
         'access',
         'is_fstp_member',
         'avatar',
+        'must_change_password',
+        'temp_password_expires_at',
     ];
 
     /**
@@ -51,7 +53,20 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_fstp_member' => 'boolean',
+            'must_change_password' => 'boolean',
+            'temp_password_expires_at' => 'datetime',
         ];
+    }
+
+    /**
+     * True when the account still has the temporary password it was given on
+     * approval and that password's time is up.
+     */
+    public function hasExpiredTemporaryPassword(): bool
+    {
+        return $this->must_change_password
+            && $this->temp_password_expires_at !== null
+            && $this->temp_password_expires_at->isPast();
     }
 
     /**

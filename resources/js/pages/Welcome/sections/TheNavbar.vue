@@ -23,9 +23,26 @@
                 </template>
                 <Link v-else :href="route('home')" class="nav-link nav-link--home"><House class="h-3.5 w-3.5" /> Home</Link>
                 <Link v-if="isAdmin" :href="route('how-to-videos.index')" class="nav-link">How-to Videos</Link>
-                <Link v-if="auth?.user" :href="route('programs.my-programs')" class="nav-link nav-link--mine">
-                    <GraduationCap class="h-3.5 w-3.5" /> My Programs
-                </Link>
+                <template v-if="auth?.user">
+                    <Link
+                        :href="route('programs.my-programs')"
+                        class="nav-link nav-link--mine"
+                        :class="{ 'nav-link--active': isMyProgramsPage }"
+                        :aria-current="isMyProgramsPage ? 'page' : undefined"
+                        title="My Programs"
+                    >
+                        <GraduationCap class="h-3.5 w-3.5" /> <span class="nav-link__label">My Programs</span>
+                    </Link>
+                    <Link
+                        :href="route('certificates.mine')"
+                        class="nav-link nav-link--mine"
+                        :class="{ 'nav-link--active': isMyCertificatesPage }"
+                        :aria-current="isMyCertificatesPage ? 'page' : undefined"
+                        title="My Certificates"
+                    >
+                        <Award class="h-3.5 w-3.5" /> <span class="nav-link__label">My Certificates</span>
+                    </Link>
+                </template>
             </div>
 
             <!-- Auth Buttons -->
@@ -77,9 +94,26 @@
 
         <!-- Mobile Menu -->
         <div class="mobile-menu" :class="{ 'mobile-menu--open': mobileMenuOpen }">
-            <Link v-if="auth?.user" :href="route('programs.my-programs')" class="nav-link nav-link--mine" @click="mobileMenuOpen = false">
-                <GraduationCap class="h-3.5 w-3.5" /> My Programs
-            </Link>
+            <div v-if="auth?.user" class="mobile-menu__mine">
+                <Link
+                    :href="route('programs.my-programs')"
+                    class="nav-link nav-link--mine"
+                    :class="{ 'nav-link--active': isMyProgramsPage }"
+                    :aria-current="isMyProgramsPage ? 'page' : undefined"
+                    @click="mobileMenuOpen = false"
+                >
+                    <GraduationCap class="h-3.5 w-3.5" /> My Programs
+                </Link>
+                <Link
+                    :href="route('certificates.mine')"
+                    class="nav-link nav-link--mine"
+                    :class="{ 'nav-link--active': isMyCertificatesPage }"
+                    :aria-current="isMyCertificatesPage ? 'page' : undefined"
+                    @click="mobileMenuOpen = false"
+                >
+                    <Award class="h-3.5 w-3.5" /> My Certificates
+                </Link>
+            </div>
             <template v-if="isHomePage">
                 <a href="#about" class="nav-link" @click="close('about')">About TDI</a>
                 <a href="#programs" class="nav-link" @click="close('programs')">Programs</a>
@@ -118,7 +152,7 @@ import NotificationBell from '@/components/NotificationBell.vue';
 import ReportProblemButton from '@/components/ReportProblemButton.vue';
 import { useScrollTo } from '@/composables/useScrollTo';
 import { Link, router, usePage } from '@inertiajs/vue3';
-import { ChartPie, ChevronsUpDown, GraduationCap, House, LogOut, Settings } from 'lucide-vue-next';
+import { Award, ChartPie, ChevronsUpDown, GraduationCap, House, LogOut, Settings } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 defineProps({
@@ -132,6 +166,8 @@ const auth = computed(() => page.props.auth);
 // The navbar is shared with other pages (How-to Videos, My Programs, …) where the
 // homepage section anchors don't exist, so those pages get a Home link instead.
 const isHomePage = computed(() => page.component === 'Welcome/index');
+const isMyProgramsPage = computed(() => page.component.startsWith('MyPrograms/'));
+const isMyCertificatesPage = computed(() => page.component.startsWith('MyCertificates/'));
 
 const isScrolled = ref(false);
 const mobileMenuOpen = ref(false);
@@ -271,6 +307,15 @@ onBeforeUnmount(() => {
     background: rgba(245, 184, 0, 0.24);
     color: #fff;
     border-color: #f5b800;
+}
+.nav-link--mine.nav-link--active {
+    background: #f5d76e;
+    color: #0f1c48;
+    border-color: #f5d76e;
+}
+.nav-link--mine:focus-visible {
+    outline: 2px solid #f5d76e;
+    outline-offset: 3px;
 }
 
 .navbar__actions {
@@ -464,6 +509,11 @@ onBeforeUnmount(() => {
 .mobile-menu .nav-link {
     padding: 0.5rem 0;
 }
+.mobile-menu__mine {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
 .mobile-menu .nav-link--mine {
     align-self: flex-start;
     padding: 0.4rem 0.85rem;
@@ -475,6 +525,33 @@ onBeforeUnmount(() => {
     flex-wrap: wrap;
 }
 
+/* Mid-size screens: My Programs / My Certificates become icon pills (the label stays readable
+   for screen readers) so the desktop bar never overflows. */
+@media (min-width: 769px) and (max-width: 1240px) {
+    .navbar__links .nav-link--mine {
+        position: relative;
+        padding: 0.45rem;
+    }
+    .navbar__links .nav-link__label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+}
+@media (min-width: 769px) and (max-width: 1024px) {
+    .navbar__inner {
+        gap: 1.25rem;
+    }
+    .navbar__links {
+        gap: 1rem;
+    }
+    .navbar__brand-text {
+        display: none;
+    }
+}
 @media (max-width: 768px) {
     .navbar__links,
     .navbar__actions {

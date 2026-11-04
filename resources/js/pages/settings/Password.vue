@@ -4,8 +4,8 @@ import SubmitButton from '@/components/SubmitButton.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { TransitionRoot } from '@headlessui/vue';
-import { Head, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { Head, useForm, usePage } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 
 import HeadingSmall from '@/components/HeadingSmall.vue';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,10 @@ interface Props {
 }
 
 defineProps<Props>();
+
+const page = usePage();
+// Accounts made from an approved registration start with an emailed temporary password.
+const mustChangePassword = computed(() => !!(page.props.auth as any)?.user?.must_change_password);
 
 const breadcrumbItems: BreadcrumbItem[] = [
     {
@@ -70,6 +74,17 @@ const updatePassword = () => {
                     :icon="KeyRound"
                     icon-class="bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400"
                 />
+
+                <div
+                    v-if="mustChangePassword"
+                    class="mt-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-300"
+                >
+                    <p class="font-bold">Welcome! Please set your own password.</p>
+                    <p class="mt-0.5">
+                        Your account was created when your registration was approved. Type the temporary password from your approval email as your
+                        current password, then choose a new one.
+                    </p>
+                </div>
 
                 <form @submit.prevent="updatePassword" class="mt-5 space-y-6">
                     <div class="grid gap-2">

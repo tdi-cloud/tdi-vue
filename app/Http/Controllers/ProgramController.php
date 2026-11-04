@@ -169,6 +169,8 @@ class ProgramController extends Controller
                     ->with([
                         'requirements',
                         'evaluationForm:id,batch_id,is_active',
+                        'registrationForm' => fn ($rq) => $rq->select(['id', 'batch_id', 'is_open'])
+                            ->withCount(['registrations as pending_registrations_count' => fn ($pq) => $pq->where('status', 'pending')]),
                         'participants' => function ($pq) {
                             $pq->addSelect([
                                 'participants.*',

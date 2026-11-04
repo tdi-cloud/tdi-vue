@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\AddSearchSuggestionHeader;
+use App\Http\Middleware\EnsurePasswordIsChanged;
 use App\Http\Middleware\EnsureUserCanAccessForeignPrograms;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\EnsureUserIsNhrdcMember;
@@ -31,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
             SecurityHeaders::class,
+            EnsurePasswordIsChanged::class,
         ]);
 
         $middleware->alias([

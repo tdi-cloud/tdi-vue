@@ -6,12 +6,17 @@ import ReportProblemButton from '@/components/ReportProblemButton.vue';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import type { BreadcrumbItemType } from '@/types';
-import { Link } from '@inertiajs/vue3';
-import { BookOpen } from 'lucide-vue-next';
+import { Link, usePage } from '@inertiajs/vue3';
+import { Award, BookOpen } from 'lucide-vue-next';
+import { computed } from 'vue';
 
 defineProps<{
     breadcrumbs?: BreadcrumbItemType[];
 }>();
+
+const page = usePage();
+const isMyProgramsPage = computed(() => page.component.startsWith('MyPrograms/'));
+const isMyCertificatesPage = computed(() => page.component.startsWith('MyCertificates/'));
 </script>
 
 <template>
@@ -44,11 +49,23 @@ defineProps<{
         <div class="ml-auto flex items-center gap-3">
             <Link
                 :href="route('programs.my-programs')"
-                class="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-foreground/70 transition hover:bg-accent hover:text-accent-foreground"
+                class="relative inline-flex h-9 w-9 items-center justify-center rounded-lg transition hover:bg-accent hover:text-accent-foreground"
+                :class="isMyProgramsPage ? 'bg-accent text-accent-foreground' : 'text-foreground/70'"
+                :aria-current="isMyProgramsPage ? 'page' : undefined"
                 aria-label="My enrolled programs"
                 title="My enrolled programs"
             >
                 <BookOpen class="h-5 w-5" />
+            </Link>
+            <Link
+                :href="route('certificates.mine')"
+                class="relative inline-flex h-9 w-9 items-center justify-center rounded-lg transition hover:bg-accent hover:text-accent-foreground"
+                :class="isMyCertificatesPage ? 'bg-accent text-accent-foreground' : 'text-foreground/70'"
+                :aria-current="isMyCertificatesPage ? 'page' : undefined"
+                aria-label="My certificates"
+                title="My certificates"
+            >
+                <Award class="h-5 w-5" />
             </Link>
             <ReportProblemButton />
             <NotificationBell />

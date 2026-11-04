@@ -22,6 +22,7 @@ import {
     PlayCircle,
     ShieldCheck,
     Target,
+    UserPlus,
     Users,
 } from 'lucide-vue-next';
 import { computed } from 'vue';
@@ -158,6 +159,13 @@ const superAdminNavItems: NavItem[] = [
         url: '/problem-reports',
         icon: MessageSquareWarning,
         color: 'text-amber-500',
+        group: 'Management',
+    },
+    {
+        title: 'Employees from Registration',
+        url: '/employees-from-registration',
+        icon: UserPlus,
+        color: 'text-blue-500',
         group: 'Management',
     },
 ];
