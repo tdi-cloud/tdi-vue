@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Batch;
 use App\Models\Employee;
-use App\Models\Program;
 use App\Models\ProgramRegistration;
 use App\Models\RegistrationForm;
+use App\Models\RegistrationFormEditor;
 use App\Models\RegistrationQuestion;
 use App\Models\SiteImage;
 use App\Models\User;
@@ -23,16 +23,18 @@ use Inertia\Response;
 
 /**
  * Admin side of a batch's public registration form: settings, look and the
- * extra questions. Any admin can view it; only the program's creator or a
- * superadmin can change it.
+ * extra questions. Any admin can view it. Only the program's creator or a
+ * superadmin can set one up; after that, only the form's owner, its editors
+ * or a superadmin can change it.
  */
 class RegistrationFormController extends Controller
 {
     // GET /batches/{batch}/registration
     public function edit(Request $request, Batch $batch): Response
     {
-        $batch->load(['program.coverPage', 'registrationForm.questions']);
+        $batch->load(['program.coverPage', 'registrationForm.questions', 'registrationForm.editors.user:id,name,empcode,access']);
         $form = $batch->registrationForm;
+        $user = $request->user();
 
         return Inertia::render('programs/RegistrationConfig', [
             'batch' => $batch->only(['id', 'batch', 'program_code', 'date_start', 'date_end', 'venue']),
@@ -52,10 +54,24 @@ class RegistrationFormController extends Controller
                 'background_image_url' => $form->background_image_url,
                 'hide_background' => $form->hide_background,
                 'created_by_name' => $form->created_by_name,
+                'owner' => $form->created_by_empcode ? [
+                    'name' => $form->created_by_name,
+                    'empcode' => $form->created_by_empcode,
+                ] : null,
+                'editors' => $form->editors->map(fn (RegistrationFormEditor $editor) => [
+                    'id' => $editor->id,
+                    'name' => $editor->user->name,
+                    'empcode' => $editor->user->empcode,
+                    'has_admin_access' => $editor->user->isAdmin(),
+                    'added_by_name' => $editor->added_by_name,
+                    'added_at' => $editor->created_at?->format('M j, Y g:i A'),
+                ])->values(),
                 'questions' => $form->questions,
             ] : null,
             'registrations' => $form ? $this->registrationRows($form) : [],
-            'canManageRegistrations' => $batch->program?->canManageRegistrationsBy($request->user()) === true,
+            'canCreateForm' => $form === null && $batch->program?->canCreateRegistrationFormsBy($user) === true,
+            'canEdit' => $form?->canBeEditedBy($user) === true,
+            'canManageEditors' => $form?->canManageEditorsBy($user) === true,
             'defaultBackgroundUrl' => SiteImage::urlFor('registration_background'),
             'themes' => RegistrationForm::THEMES,
             'fieldOptions' => EmployeeFieldOptions::all(),
@@ -132,7 +148,11 @@ class RegistrationFormController extends Controller
     // POST /batches/{batch}/registration-form
     public function store(Request $request, Batch $batch): RedirectResponse
     {
-        $this->ensureCanManage($request, $batch->program);
+        abort_unless(
+            $batch->program?->canCreateRegistrationFormsBy($request->user()) === true,
+            403,
+            'Only the admin who created this program or a superadmin can set up its registration form.',
+        );
         abort_if($batch->registrationForm()->exists(), 422, 'This batch already has a registration form.');
 
         $user = $request->user();
@@ -161,7 +181,7 @@ class RegistrationFormController extends Controller
     // PUT /registration-forms/{registrationForm}
     public function update(Request $request, RegistrationForm $registrationForm): RedirectResponse
     {
-        $this->ensureCanManage($request, $registrationForm->batch->program);
+        $this->ensureCanEdit($request, $registrationForm);
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
@@ -182,7 +202,7 @@ class RegistrationFormController extends Controller
     // A per-batch override of the site-wide default (site-images.registration_background).
     public function uploadBackground(Request $request, RegistrationForm $registrationForm): RedirectResponse
     {
-        $this->ensureCanManage($request, $registrationForm->batch->program);
+        $this->ensureCanEdit($request, $registrationForm);
 
         $request->validate([
             'image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
@@ -200,7 +220,7 @@ class RegistrationFormController extends Controller
     // DELETE /registration-forms/{registrationForm}/background
     public function destroyBackground(Request $request, RegistrationForm $registrationForm): RedirectResponse
     {
-        $this->ensureCanManage($request, $registrationForm->batch->program);
+        $this->ensureCanEdit($request, $registrationForm);
 
         $this->deleteBackgroundFile($registrationForm);
         // Back to the site default, which also undoes "No background".
@@ -214,7 +234,7 @@ class RegistrationFormController extends Controller
     // POST /registration-forms/{registrationForm}/questions
     public function storeQuestion(Request $request, RegistrationForm $registrationForm): RedirectResponse
     {
-        $this->ensureCanManage($request, $registrationForm->batch->program);
+        $this->ensureCanEdit($request, $registrationForm);
 
         $data = $this->validateQuestion($request);
         $data['sort_order'] = (int) $registrationForm->questions()->max('sort_order') + 1;
@@ -227,7 +247,7 @@ class RegistrationFormController extends Controller
     // PUT /registration-questions/{registrationQuestion}
     public function updateQuestion(Request $request, RegistrationQuestion $registrationQuestion): RedirectResponse
     {
-        $this->ensureCanManage($request, $registrationQuestion->form->batch->program);
+        $this->ensureCanEdit($request, $registrationQuestion->form);
 
         $registrationQuestion->update($this->validateQuestion($request));
 
@@ -237,7 +257,7 @@ class RegistrationFormController extends Controller
     // DELETE /registration-questions/{registrationQuestion}
     public function destroyQuestion(Request $request, RegistrationQuestion $registrationQuestion): RedirectResponse
     {
-        $this->ensureCanManage($request, $registrationQuestion->form->batch->program);
+        $this->ensureCanEdit($request, $registrationQuestion->form);
 
         $registrationQuestion->delete();
 
@@ -247,7 +267,7 @@ class RegistrationFormController extends Controller
     // POST /registration-questions/{registrationQuestion}/move-up
     public function moveQuestionUp(Request $request, RegistrationQuestion $registrationQuestion): RedirectResponse
     {
-        $this->ensureCanManage($request, $registrationQuestion->form->batch->program);
+        $this->ensureCanEdit($request, $registrationQuestion->form);
 
         $registrationQuestion->moveUp();
 
@@ -257,19 +277,19 @@ class RegistrationFormController extends Controller
     // POST /registration-questions/{registrationQuestion}/move-down
     public function moveQuestionDown(Request $request, RegistrationQuestion $registrationQuestion): RedirectResponse
     {
-        $this->ensureCanManage($request, $registrationQuestion->form->batch->program);
+        $this->ensureCanEdit($request, $registrationQuestion->form);
 
         $registrationQuestion->moveDown();
 
         return back();
     }
 
-    private function ensureCanManage(Request $request, ?Program $program): void
+    private function ensureCanEdit(Request $request, RegistrationForm $form): void
     {
         abort_unless(
-            $program?->canManageRegistrationsBy($request->user()) === true,
+            $form->canBeEditedBy($request->user()),
             403,
-            'Only the admin who created this program or a superadmin can change its registration form.',
+            'Only the owner of this registration form, its editors or a superadmin can change it.',
         );
     }
 

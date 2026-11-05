@@ -35,6 +35,7 @@ use App\Http\Controllers\ProvisionalEmployeeController;
 use App\Http\Controllers\PublicRegistrationController;
 use App\Http\Controllers\RegionalReportController;
 use App\Http\Controllers\RegistrationFormController;
+use App\Http\Controllers\RegistrationFormEditorController;
 use App\Http\Controllers\RegistrationReviewController;
 use App\Http\Controllers\RequirementController;
 use App\Http\Controllers\RequirementsTrackerController;
@@ -226,7 +227,8 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('/evaluation-forms/{evaluationForm}/responses', [EvaluationFormController::class, 'responses'])->name('evaluation-forms.responses');
     Route::delete('/evaluation-forms/{evaluationForm}/responses/{evaluationResponse}', [EvaluationFormController::class, 'destroyResponse'])->name('evaluation-forms.responses.destroy');
 
-    // REGISTRATION FORM (admin) — changes are limited to the program's creator or a superadmin inside the controller
+    // REGISTRATION FORM (admin) — the controllers limit changes to the form's owner, its editors or a superadmin
+    // (setting a form up: the program's creator or a superadmin)
     Route::get('/batches/{batch}/registration', [RegistrationFormController::class, 'edit'])->name('batches.registration.edit');
     Route::post('/batches/{batch}/registration-form', [RegistrationFormController::class, 'store'])->name('batches.registration-form.store');
     Route::put('/registration-forms/{registrationForm}', [RegistrationFormController::class, 'update'])->name('registration-forms.update');
@@ -237,6 +239,12 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::delete('/registration-questions/{registrationQuestion}', [RegistrationFormController::class, 'destroyQuestion'])->name('registration-questions.destroy');
     Route::post('/registration-questions/{registrationQuestion}/move-up', [RegistrationFormController::class, 'moveQuestionUp'])->name('registration-questions.move-up');
     Route::post('/registration-questions/{registrationQuestion}/move-down', [RegistrationFormController::class, 'moveQuestionDown'])->name('registration-questions.move-down');
+
+    // Only the form's owner or a superadmin can add or remove editors
+    Route::get('/registration-forms/{registrationForm}/editors/search', [RegistrationFormEditorController::class, 'search'])->middleware('search.suggest')
+        ->name('registration-forms.editors.search');
+    Route::post('/registration-forms/{registrationForm}/editors', [RegistrationFormEditorController::class, 'store'])->name('registration-forms.editors.store');
+    Route::delete('/registration-form-editors/{registrationFormEditor}', [RegistrationFormEditorController::class, 'destroy'])->name('registration-form-editors.destroy');
 
     Route::post('/registration-forms/{registrationForm}/approve', [RegistrationReviewController::class, 'bulkApprove'])->name('registration-forms.approve');
     Route::post('/program-registrations/{programRegistration}/approve', [RegistrationReviewController::class, 'approve'])->name('program-registrations.approve');

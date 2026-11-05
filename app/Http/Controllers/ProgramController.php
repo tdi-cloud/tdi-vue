@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\Program;
 use App\Models\ProgramCompetency;
 use App\Models\ProgramRegistration;
+use App\Models\RegistrationForm;
 use App\Models\Submission;
 use App\Support\FlashMessage;
 use Carbon\Carbon;
@@ -170,7 +171,7 @@ class ProgramController extends Controller
                     ->with([
                         'requirements',
                         'evaluationForm:id,batch_id,is_active',
-                        'registrationForm' => fn ($rq) => $rq->select(['id', 'batch_id', 'slug', 'title', 'theme', 'is_open', 'closes_at', 'slot_limit', 'updated_at'])
+                        'registrationForm' => fn ($rq) => $rq->select(['id', 'batch_id', 'slug', 'title', 'theme', 'is_open', 'closes_at', 'slot_limit', 'created_by_empcode', 'updated_at'])
                             ->withCount([
                                 'registrations as pending_registrations_count' => fn ($pq) => $pq->where('status', ProgramRegistration::STATUS_PENDING),
                                 'registrations as slots_taken_count' => fn ($pq) => $pq->holdingSlot(),
@@ -197,6 +198,12 @@ class ProgramController extends Controller
             },
         ]);
 
+        // Who can change a registration form is decided per form, so each one says whether this user can.
+        $program->batches->pluck('registrationForm')->filter()->each(function (RegistrationForm $form) {
+            $form->setAttribute('can_manage', $form->canBeEditedBy(auth()->user()));
+            $form->makeHidden('created_by_empcode');
+        });
+
         $submissions = Submission::with(['participant.employee', 'participant.justification', 'batch', 'requirement'])
             ->where('program_code', $program->program_code)
             ->orderByDesc('submitted_at')
@@ -206,7 +213,7 @@ class ProgramController extends Controller
             'program' => $program,
             'submissions' => $submissions,
             'canDelete' => $program->canBeDeletedBy(auth()->user()),
-            'canManageRegistrations' => $program->canManageRegistrationsBy(auth()->user()),
+            'canCreateRegistrationForms' => $program->canCreateRegistrationFormsBy(auth()->user()),
         ]);
     }
 

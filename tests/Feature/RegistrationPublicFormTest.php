@@ -140,11 +140,10 @@ test('rejected registrations free up their slot', function () {
         ->assertInertia(fn ($page) => $page->component('Registration/Form'));
 });
 
-test('the program manager can preview a closed form, but the public and other admins cannot', function () {
-    $form = RegistrationForm::factory()->closed()->create();
+test('the form\'s owner can preview a closed form, but the public and other admins cannot', function () {
     $creator = User::factory()->create(['empcode' => 'ADM-REG-CREATOR', 'access' => 'admin']);
     $otherAdmin = User::factory()->create(['empcode' => 'ADM-REG-OTHER', 'access' => 'admin']);
-    $form->batch->program->update(['added_by' => $creator->empcode]);
+    $form = RegistrationForm::factory()->closed()->ownedBy($creator)->create();
 
     $previewUrl = route('join.show', ['slug' => $form->slug, 'preview' => 1]);
 

@@ -85,11 +85,12 @@ class Program extends Model
     }
 
     /**
-     * Only the admin who added this program, or a superadmin, can set up its
-     * registration forms and approve or reject the people who register.
+     * Only the admin who added this program, or a superadmin, can set up a
+     * registration form for one of its batches. Once a form exists, who can
+     * change it is decided by the form (see RegistrationForm::canBeEditedBy()).
      * Programs saved before added_by existed are superadmin-only.
      */
-    public function canManageRegistrationsBy(User $user): bool
+    public function canCreateRegistrationFormsBy(User $user): bool
     {
         if ($user->isSuperAdmin()) {
             return true;

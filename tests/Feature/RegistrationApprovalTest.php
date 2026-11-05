@@ -8,6 +8,7 @@ use App\Models\Participant;
 use App\Models\ProgramRegistration;
 use App\Models\ProvisionalEmployee;
 use App\Models\RegistrationForm;
+use App\Models\RegistrationFormEditor;
 use App\Models\User;
 use App\Notifications\RegistrationSubmitted;
 use Illuminate\Support\Facades\DB;
@@ -21,11 +22,14 @@ function regApprovalAdmin(string $empcode, string $access = 'admin'): User
 }
 
 /**
- * A form whose program was created by the given admin.
+ * A form set up (and so owned) by the given admin, who also created its program.
  */
 function regApprovalForm(?User $creator = null): RegistrationForm
 {
-    $form = RegistrationForm::factory()->create();
+    $form = RegistrationForm::factory()->create([
+        'created_by_empcode' => $creator?->empcode,
+        'created_by_name' => $creator?->name,
+    ]);
     $form->batch->program->update(['added_by' => $creator?->empcode]);
 
     return $form->refresh();
@@ -265,7 +269,7 @@ test('a super admin can approve registrations for a program someone else created
     expect($registration->refresh()->status)->toBe(ProgramRegistration::STATUS_APPROVED);
 });
 
-test('on a program with no recorded creator, only a super admin can approve', function () {
+test('on a form with no recorded owner, only a super admin can approve', function () {
     $form = regApprovalForm(null);
     $registration = ProgramRegistration::factory()->forForm($form)->create();
 
@@ -278,7 +282,7 @@ test('on a program with no recorded creator, only a super admin can approve', fu
         ->assertSessionHas('success');
 });
 
-test('an admin who did not create the program cannot review its registrations', function (string $action) {
+test('an admin who is not the form\'s owner or an editor cannot review its registrations', function (string $action) {
     $form = regApprovalForm(regApprovalAdmin('ADM-APR-CREATOR'));
     $pending = ProgramRegistration::factory()->forForm($form)->create();
 
@@ -454,12 +458,17 @@ test('resending login details replaces the temporary password, only while it has
     Mail::assertNothingSent();
 });
 
-test('the program creator and super admins are notified of a new registration', function () {
+test('the form\'s owner, its editors and super admins are notified of a new registration', function () {
     Notification::fake();
     $creator = regApprovalAdmin('ADM-APR-CREATOR');
     $superAdmin = regApprovalAdmin('SUP-APR-01', 'superadmin');
+    $editor = regApprovalAdmin('ADM-APR-EDITOR');
+    $demotedEditor = regApprovalAdmin('ADM-APR-DEMOTED');
     $otherAdmin = regApprovalAdmin('ADM-APR-OTHER');
     $form = regApprovalForm($creator);
+    RegistrationFormEditor::factory()->forForm($form)->forUser($editor)->create();
+    RegistrationFormEditor::factory()->forForm($form)->forUser($demotedEditor)->create();
+    $demotedEditor->update(['access' => 'user']);
     regApprovalEmployee();
 
     $this->post(route('join.submit', $form->slug), [
@@ -470,6 +479,6 @@ test('the program creator and super admins are notified of a new registration', 
         'data_privacy_consent' => true,
     ])->assertRedirect(route('join.success', $form->slug));
 
-    Notification::assertSentTo([$creator, $superAdmin], RegistrationSubmitted::class);
-    Notification::assertNotSentTo($otherAdmin, RegistrationSubmitted::class);
+    Notification::assertSentTo([$creator, $superAdmin, $editor], RegistrationSubmitted::class);
+    Notification::assertNotSentTo([$demotedEditor, $otherAdmin], RegistrationSubmitted::class);
 });

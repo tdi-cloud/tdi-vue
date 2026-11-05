@@ -4,6 +4,7 @@ use App\Models\Batch;
 use App\Models\Program;
 use App\Models\ProgramRegistration;
 use App\Models\RegistrationForm;
+use App\Models\RegistrationFormEditor;
 use App\Models\User;
 use Carbon\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -52,7 +53,7 @@ test('the program page sends what the registration card needs for each batch for
     $closedBatch = regCardBatch($program, 'Batch 2', 20);
     $closesAt = now()->addDays(5)->startOfMinute();
 
-    $openForm = RegistrationForm::factory()->forBatch($openBatch)->withSlotLimit(30)->create([
+    $openForm = RegistrationForm::factory()->forBatch($openBatch)->ownedBy($creator)->withSlotLimit(30)->create([
         'slug' => 'card-batch-1',
         'title' => 'Join Batch 1',
         'theme' => 'teal',
@@ -71,8 +72,10 @@ test('the program page sends what the registration card needs for each batch for
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('programs/show')
-            ->where('canManageRegistrations', true)
+            ->where('canCreateRegistrationForms', true)
             ->where('program.batches.0.registration_form.id', $openForm->id)
+            ->where('program.batches.0.registration_form.can_manage', true)
+            ->missing('program.batches.0.registration_form.created_by_empcode')
             ->where('program.batches.0.registration_form.slug', 'card-batch-1')
             ->where('program.batches.0.registration_form.title', 'Join Batch 1')
             ->where('program.batches.0.registration_form.theme', 'teal')
@@ -105,18 +108,46 @@ test('a batch without a registration form sends null for it', function () {
         );
 });
 
-test('only the program creator or a superadmin gets the manage permission flag', function () {
+test('only the program creator or a superadmin gets the flag to set up a new form', function () {
     $creator = regCardUser('ADM-CARD-03');
     $otherAdmin = regCardUser('ADM-CARD-04');
     $superAdmin = regCardUser('SUP-CARD-01', 'superadmin');
     $program = regCardProgram($creator->empcode);
 
     $this->actingAs($creator)->get(route('programs.show', $program))
-        ->assertInertia(fn (Assert $page) => $page->where('canManageRegistrations', true));
+        ->assertInertia(fn (Assert $page) => $page->where('canCreateRegistrationForms', true));
 
     $this->actingAs($otherAdmin)->get(route('programs.show', $program))
-        ->assertInertia(fn (Assert $page) => $page->where('canManageRegistrations', false));
+        ->assertInertia(fn (Assert $page) => $page->where('canCreateRegistrationForms', false));
 
     $this->actingAs($superAdmin)->get(route('programs.show', $program))
-        ->assertInertia(fn (Assert $page) => $page->where('canManageRegistrations', true));
+        ->assertInertia(fn (Assert $page) => $page->where('canCreateRegistrationForms', true));
 });
+
+test('each batch form says whether the viewer can manage that form', function (string $viewer, bool $canManageFirst, bool $canManageSecond) {
+    $creator = regCardUser('ADM-CARD-05');
+    $owner = regCardUser('ADM-CARD-OWNER');
+    $people = [
+        'program creator' => $creator,
+        'form owner' => $owner,
+        'editor of the first form' => regCardUser('ADM-CARD-EDITOR'),
+        'other admin' => regCardUser('ADM-CARD-OTHER'),
+        'superadmin' => regCardUser('SUP-CARD-02', 'superadmin'),
+    ];
+    $program = regCardProgram($creator->empcode);
+    $firstForm = RegistrationForm::factory()->forBatch(regCardBatch($program, 'Batch 1', 10))->ownedBy($owner)->create();
+    RegistrationForm::factory()->forBatch(regCardBatch($program, 'Batch 2', 20))->ownedBy($creator)->create();
+    RegistrationFormEditor::factory()->forForm($firstForm)->forUser($people['editor of the first form'])->create();
+
+    $this->actingAs($people[$viewer])->get(route('programs.show', $program))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('program.batches.0.registration_form.can_manage', $canManageFirst)
+            ->where('program.batches.1.registration_form.can_manage', $canManageSecond)
+        );
+})->with([
+    'program creator' => ['program creator', false, true],
+    'form owner' => ['form owner', true, false],
+    'editor of the first form' => ['editor of the first form', true, false],
+    'other admin' => ['other admin', false, false],
+    'superadmin' => ['superadmin', true, true],
+]);

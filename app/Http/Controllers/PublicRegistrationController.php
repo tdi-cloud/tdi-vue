@@ -8,7 +8,6 @@ use App\Models\Participant;
 use App\Models\ProgramRegistration;
 use App\Models\RegistrationForm;
 use App\Models\RegistrationQuestion;
-use App\Models\User;
 use App\Notifications\RegistrationSubmitted;
 use App\Support\EmployeeFieldOptions;
 use Illuminate\Http\JsonResponse;
@@ -164,17 +163,12 @@ class PublicRegistrationController extends Controller
     }
 
     /**
-     * Lets the program's creator and every superadmin know there's a
-     * registration to review.
+     * Lets everyone who can review this form's registrations (its owner, its
+     * editors and every superadmin) know there's one waiting.
      */
     private function notifyManagers(RegistrationForm $form, ProgramRegistration $registration): void
     {
-        $creatorEmpcode = $form->batch->program?->added_by;
-
-        $recipients = User::query()
-            ->where('access', 'superadmin')
-            ->when($creatorEmpcode, fn ($query) => $query->orWhere(fn ($q) => $q->where('empcode', $creatorEmpcode)->whereIn('access', ['admin', 'superadmin'])))
-            ->get();
+        $recipients = $form->usersWhoCanEdit();
 
         $registration->setRelation('batch', $form->batch);
 
@@ -191,7 +185,8 @@ class PublicRegistrationController extends Controller
     }
 
     /**
-     * Managers can open a closed form with ?preview=1 to check how it looks.
+     * The form's owner, editors and superadmins can open a closed form with
+     * ?preview=1 to check how it looks.
      */
     private function isManagerPreview(Request $request, RegistrationForm $form): bool
     {
@@ -199,7 +194,7 @@ class PublicRegistrationController extends Controller
 
         return $request->boolean('preview')
             && $user !== null
-            && $form->batch->program?->canManageRegistrationsBy($user) === true;
+            && $form->canBeEditedBy($user);
     }
 
     /**

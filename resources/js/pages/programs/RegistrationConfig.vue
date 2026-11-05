@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -9,15 +10,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useConfirm } from '@/composables/useConfirm';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { suggestionFrom } from '@/lib/http';
 import { REGISTRATION_THEMES } from '@/lib/registrationThemes';
 import RegistrationReviewPanel, { type RegistrationRow } from '@/pages/programs/RegistrationReviewPanel.vue';
 import { Head, router } from '@inertiajs/vue3';
+import axios from 'axios';
 import {
     ArrowLeft,
     Check,
     ChevronDown,
     ChevronUp,
     Copy,
+    Crown,
     ExternalLink,
     Eye,
     Image as ImageIcon,
@@ -28,9 +32,13 @@ import {
     Pencil,
     Plus,
     Save,
+    Search,
     Settings2,
+    ShieldCheck,
     Trash2,
     Upload,
+    UserCog,
+    UserMinus,
     UserPlus,
     Users,
     X,
@@ -67,7 +75,26 @@ interface RegistrationFormData {
     background_image_url: string | null;
     hide_background: boolean;
     created_by_name: string | null;
+    owner: { name: string | null; empcode: string } | null;
+    editors: FormEditor[];
     questions: Question[];
+}
+
+interface FormEditor {
+    id: number;
+    name: string;
+    empcode: string | null;
+    has_admin_access: boolean;
+    added_by_name: string | null;
+    added_at: string | null;
+}
+
+interface EditorCandidate {
+    id: number;
+    name: string;
+    empcode: string | null;
+    // Why they can't be added (e.g. "Owner"), or null when they can.
+    unavailable: string | null;
 }
 
 const props = defineProps<{
@@ -75,14 +102,16 @@ const props = defineProps<{
     program: { id: number; title: string; pax: string | null } | null;
     registrationForm: RegistrationFormData | null;
     registrations: RegistrationRow[];
-    canManageRegistrations: boolean;
+    canCreateForm: boolean;
+    canEdit: boolean;
+    canManageEditors: boolean;
     defaultBackgroundUrl: string;
     themes: string[];
     fieldOptions: { region: string[]; office_division: Record<string, string[]>; sex: string[]; plantilla_status: string[] };
 }>();
 
 const form = computed(() => props.registrationForm);
-const canManage = computed(() => props.canManageRegistrations);
+const canManage = computed(() => props.canEdit);
 
 const pendingCount = computed(() => props.registrations.filter((r) => r.status === 'pending').length);
 
@@ -447,6 +476,99 @@ function moveQuestion(question: Question, dir: 'up' | 'down') {
     router.post(route(`registration-questions.move-${dir}`, question.id), {}, { preserveScroll: true, preserveState: true });
 }
 
+/* ── Who can edit ─────────────────────────────────────────────────────────── */
+const ownerName = computed(() => form.value?.owner?.name ?? null);
+
+// For admins who can only view the form.
+const readOnlyNote = computed(() =>
+    ownerName.value
+        ? `Only ${ownerName.value} or a superadmin can change this form. Ask them to add you as an editor.`
+        : 'Only a superadmin can change this form. Ask one to add you as an editor.',
+);
+
+const editorOnlyNote = computed(() =>
+    ownerName.value
+        ? `You're an editor of this form. Only ${ownerName.value} or a superadmin can add or remove editors.`
+        : "You're an editor of this form. Only a superadmin can add or remove editors.",
+);
+
+const editorQuery = ref('');
+const editorResults = ref<EditorCandidate[]>([]);
+const editorSearchOpen = ref(false);
+const searchingEditors = ref(false);
+const editorSuggestion = ref<string | null>(null);
+const editorError = ref('');
+const addingEditorId = ref<number | null>(null);
+const removingEditorId = ref<number | null>(null);
+let editorSearchTimer: ReturnType<typeof setTimeout> | undefined;
+
+watch(editorQuery, (value) => {
+    clearTimeout(editorSearchTimer);
+    editorError.value = '';
+    if (value.trim().length < 2) {
+        editorResults.value = [];
+        editorSearchOpen.value = false;
+        return;
+    }
+    editorSearchTimer = setTimeout(searchEditors, 300);
+});
+
+async function searchEditors() {
+    if (!form.value) return;
+    searchingEditors.value = true;
+    editorSearchOpen.value = true;
+    try {
+        const response = await axios.get(route('registration-forms.editors.search', form.value.id), { params: { q: editorQuery.value } });
+        editorResults.value = response.data;
+        editorSuggestion.value = suggestionFrom(response);
+    } catch {
+        editorResults.value = [];
+    } finally {
+        searchingEditors.value = false;
+    }
+}
+
+function addEditor(candidate: EditorCandidate) {
+    if (!form.value || candidate.unavailable) return;
+    addingEditorId.value = candidate.id;
+    editorError.value = '';
+    router.post(
+        route('registration-forms.editors.store', form.value.id),
+        { user_id: candidate.id },
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                editorQuery.value = '';
+            },
+            onError: (errors) => {
+                editorError.value = errors.user_id ?? Object.values(errors)[0] ?? '';
+            },
+            onFinish: () => {
+                addingEditorId.value = null;
+            },
+        },
+    );
+}
+
+async function removeEditor(editor: FormEditor) {
+    const confirmed = await confirmDialog(
+        `Remove ${editor.name} as an editor? They will no longer be able to change this form or review its registrations.`,
+        {
+            title: 'Remove editor?',
+            confirmText: 'Remove',
+        },
+    );
+    if (!confirmed) return;
+
+    removingEditorId.value = editor.id;
+    router.delete(route('registration-form-editors.destroy', editor.id), {
+        preserveScroll: true,
+        onFinish: () => {
+            removingEditorId.value = null;
+        },
+    });
+}
+
 function backToProgram() {
     if (props.program) {
         router.visit(route('programs.show', props.program.id));
@@ -488,12 +610,12 @@ function backToProgram() {
 
             <!-- Read-only notice -->
             <p
-                v-if="!canManage"
+                v-if="form ? !canManage : !canCreateForm"
                 class="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300"
             >
                 <Lock class="mt-0.5 h-4 w-4 shrink-0" />
-                Only the admin who created this program or a super admin can set up this registration form and approve registrations. You can view it,
-                but you can't change it.
+                <span v-if="form">You can view this form, but you can't change it or review its registrations. {{ readOnlyNote }}</span>
+                <span v-else>Only the admin who created this program or a superadmin can set up a registration form for this batch.</span>
             </p>
 
             <!-- Empty state: set up the form -->
@@ -503,7 +625,7 @@ function backToProgram() {
                 title="No registration form yet for this batch"
                 description="Set one up to share a public link where people register for this batch. You review every registration before anyone becomes a participant."
             >
-                <Button v-if="canManage" :disabled="creating" class="bg-blue-600 hover:bg-blue-700 dark:text-white" @click="createForm">
+                <Button v-if="canCreateForm" :disabled="creating" class="bg-blue-600 hover:bg-blue-700 dark:text-white" @click="createForm">
                     <LoaderCircle v-if="creating" class="mr-1 h-4 w-4 animate-spin" />
                     <UserPlus v-else class="mr-1 h-4 w-4" /> {{ creating ? 'Setting up…' : 'Set Up Registration Form' }}
                 </Button>
@@ -854,6 +976,147 @@ function backToProgram() {
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <!-- Who can edit -->
+                <div v-show="activeTab === 'settings'" class="flex flex-col gap-3 rounded-2xl border bg-background p-5">
+                    <div>
+                        <h2 class="flex items-center gap-1.5 text-sm font-extrabold"><ShieldCheck class="h-4 w-4 text-blue-600" /> Who Can Edit</h2>
+                        <p class="mt-0.5 text-[11px] text-muted-foreground">
+                            The people below and every superadmin can change this form and approve or reject its registrations. Other admins can only
+                            view it.
+                        </p>
+                    </div>
+
+                    <ul class="divide-y overflow-hidden rounded-xl border" aria-label="People who can edit this form">
+                        <!-- Owner -->
+                        <li class="flex items-center gap-3 px-4 py-3">
+                            <span
+                                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"
+                            >
+                                <Crown class="h-4 w-4" />
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <template v-if="form.owner">
+                                    <p class="break-words text-xs font-semibold">{{ form.owner.name ?? form.owner.empcode }}</p>
+                                    <p class="break-words text-[11px] text-muted-foreground">{{ form.owner.empcode }} · Set up this form</p>
+                                </template>
+                                <template v-else>
+                                    <p class="text-xs font-semibold text-muted-foreground">No owner on record</p>
+                                    <p class="text-[11px] text-muted-foreground">Only superadmins and the editors below can change this form.</p>
+                                </template>
+                            </div>
+                            <Badge
+                                variant="outline"
+                                class="shrink-0 border-blue-200 text-[10px] text-blue-600 dark:border-blue-900 dark:text-blue-400"
+                            >
+                                Owner
+                            </Badge>
+                        </li>
+
+                        <!-- Editors -->
+                        <li v-for="editor in form.editors" :key="editor.id" class="flex items-center gap-3 px-4 py-3">
+                            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                                <UserCog class="h-4 w-4" />
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <p class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs font-semibold">
+                                    <span class="break-words">{{ editor.name }}</span>
+                                    <span
+                                        v-if="!editor.has_admin_access"
+                                        class="rounded-full bg-amber-100 px-1.5 text-[10px] font-bold leading-4 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                                        title="They can't edit this form until they have admin access again."
+                                    >
+                                        No admin access
+                                    </span>
+                                </p>
+                                <p class="break-words text-[11px] text-muted-foreground">
+                                    {{ editor.empcode }}<template v-if="editor.added_by_name"> · Added by {{ editor.added_by_name }}</template
+                                    ><template v-if="editor.added_at"> on {{ editor.added_at }}</template>
+                                </p>
+                            </div>
+                            <Badge variant="outline" class="shrink-0 text-[10px]">Editor</Badge>
+                            <button
+                                v-if="canManageEditors"
+                                type="button"
+                                class="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:text-red-600 disabled:opacity-40"
+                                :disabled="removingEditorId !== null"
+                                :aria-label="`Remove ${editor.name} as an editor`"
+                                @click="removeEditor(editor)"
+                            >
+                                <LoaderCircle v-if="removingEditorId === editor.id" class="h-3.5 w-3.5 animate-spin" />
+                                <UserMinus v-else class="h-3.5 w-3.5" />
+                            </button>
+                        </li>
+
+                        <li v-if="!form.editors.length" class="px-4 py-3 text-[11px] text-muted-foreground">
+                            No editors yet.<template v-if="canManageEditors"> Search below to let another admin help manage this form.</template>
+                        </li>
+                    </ul>
+
+                    <!-- Add editor (owner and superadmins only) -->
+                    <div v-if="canManageEditors" class="grid gap-1">
+                        <Label for="editor-search" class="text-xs">Add Editor</Label>
+                        <div class="relative">
+                            <Search class="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                id="editor-search"
+                                v-model="editorQuery"
+                                type="text"
+                                autocomplete="off"
+                                class="h-8 pl-8 text-xs"
+                                placeholder="Search an admin by name or employee code…"
+                                @focus="editorQuery.trim().length >= 2 && (editorSearchOpen = true)"
+                                @keydown.esc="editorSearchOpen = false"
+                            />
+                            <div
+                                v-if="editorSearchOpen"
+                                class="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border bg-background shadow-lg"
+                            >
+                                <div v-if="searchingEditors" class="flex items-center gap-1.5 px-3 py-2 text-xs text-muted-foreground">
+                                    <LoaderCircle class="h-3 w-3 animate-spin" /> Searching…
+                                </div>
+                                <template v-else>
+                                    <button
+                                        v-for="candidate in editorResults"
+                                        :key="candidate.id"
+                                        type="button"
+                                        class="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-60"
+                                        :disabled="!!candidate.unavailable || addingEditorId !== null"
+                                        @click="addEditor(candidate)"
+                                    >
+                                        <span class="min-w-0 break-words">
+                                            <span class="font-semibold">{{ candidate.name }}</span>
+                                            <span v-if="candidate.empcode" class="text-muted-foreground"> · {{ candidate.empcode }}</span>
+                                        </span>
+                                        <span v-if="candidate.unavailable" class="shrink-0 text-[10px] font-bold text-muted-foreground">
+                                            {{ candidate.unavailable }}
+                                        </span>
+                                        <LoaderCircle
+                                            v-else-if="addingEditorId === candidate.id"
+                                            class="h-3.5 w-3.5 shrink-0 animate-spin text-blue-600"
+                                        />
+                                        <Plus v-else class="h-3.5 w-3.5 shrink-0 text-blue-600" />
+                                    </button>
+                                    <SearchEmptyState
+                                        v-if="!editorResults.length"
+                                        compact
+                                        :query="editorQuery"
+                                        :suggestion="editorSuggestion"
+                                        description="Only admins can be editors. Check the spelling of the name or employee code."
+                                        @search="editorQuery = $event"
+                                        @clear-filters="editorQuery = ''"
+                                    />
+                                </template>
+                            </div>
+                        </div>
+                        <p v-if="editorError" class="text-xs text-red-500">{{ editorError }}</p>
+                        <p v-else class="text-[11px] text-muted-foreground">Only admins can be added. Editors can't add or remove other editors.</p>
+                    </div>
+                    <p v-else class="flex items-start gap-2 text-[11px] text-muted-foreground">
+                        <Lock class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        {{ canManage ? editorOnlyNote : readOnlyNote }}
+                    </p>
                 </div>
             </template>
         </div>

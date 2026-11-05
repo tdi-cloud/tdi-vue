@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Models\Batch;
 use App\Models\Program;
 use App\Models\RegistrationForm;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -36,6 +37,14 @@ class RegistrationFormFactory extends Factory
     public function forBatch(Batch $batch): static
     {
         return $this->state(fn () => ['batch_id' => $batch->id]);
+    }
+
+    public function ownedBy(User $user): static
+    {
+        return $this->state(fn () => [
+            'created_by_empcode' => $user->empcode,
+            'created_by_name' => $user->name,
+        ]);
     }
 
     public function closed(): static

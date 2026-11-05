@@ -146,7 +146,7 @@ const props = defineProps<{
     program: Program;
     submissions: any[];
     canDelete: boolean;
-    canManageRegistrations: boolean;
+    canCreateRegistrationForms: boolean;
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -743,7 +743,7 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
                             <!-- Registration Form (colors follow the featured form's theme) -->
                             <RegistrationFormCard
                                 :batches="batches"
-                                :can-manage="canManageRegistrations"
+                                :can-create-form="canCreateRegistrationForms"
                                 @open-participants="goToTab('participants')"
                             />
 

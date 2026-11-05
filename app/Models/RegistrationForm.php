@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\RegistrationFormFactory;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -94,6 +95,64 @@ class RegistrationForm extends Model
     public function registrations(): HasMany
     {
         return $this->hasMany(ProgramRegistration::class);
+    }
+
+    public function editors(): HasMany
+    {
+        return $this->hasMany(RegistrationFormEditor::class)->orderBy('created_at')->orderBy('id');
+    }
+
+    /**
+     * The owner is whoever set the form up. Forms saved without a creator
+     * have no owner, so only superadmins (and editors they add) can change them.
+     */
+    public function isOwnedBy(User $user): bool
+    {
+        return $this->created_by_empcode !== null && $this->created_by_empcode === $user->empcode;
+    }
+
+    /**
+     * Who can change this form and review its registrations: any superadmin,
+     * plus the owner and the editors they added while they still have admin
+     * access. Checked on every request, so lowering someone to "user" takes
+     * their edit rights away right away.
+     */
+    public function canBeEditedBy(User $user): bool
+    {
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        if (! $user->isAdmin()) {
+            return false;
+        }
+
+        return $this->isOwnedBy($user) || $this->editors()->where('user_id', $user->id)->exists();
+    }
+
+    /**
+     * Only the owner and superadmins can add or remove editors.
+     */
+    public function canManageEditorsBy(User $user): bool
+    {
+        return $user->isSuperAdmin() || ($user->isAdmin() && $this->isOwnedBy($user));
+    }
+
+    /**
+     * Everyone canBeEditedBy() lets in, as one query (used to notify them).
+     *
+     * @return Collection<int, User>
+     */
+    public function usersWhoCanEdit(): Collection
+    {
+        return User::query()
+            ->where('access', 'superadmin')
+            ->orWhere(fn ($query) => $query
+                ->where('access', 'admin')
+                ->where(fn ($people) => $people
+                    ->whereIn('id', $this->editors()->reorder()->select('user_id'))
+                    ->when($this->created_by_empcode, fn ($owner, string $empcode) => $owner->orWhere('empcode', $empcode))))
+            ->get();
     }
 
     /**

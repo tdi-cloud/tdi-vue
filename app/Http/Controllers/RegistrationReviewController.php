@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Employee;
 use App\Models\Participant;
-use App\Models\Program;
 use App\Models\ProgramRegistration;
 use App\Models\RegistrationForm;
 use App\Support\EmployeeFieldOptions;
@@ -18,7 +17,8 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Approve, reject or correct the registrations people submitted through a
- * batch's public form. Only the program's creator or a superadmin can do this.
+ * batch's public form. Only the form's owner, its editors or a superadmin can
+ * do this (see RegistrationForm::canBeEditedBy()).
  */
 class RegistrationReviewController extends Controller
 {
@@ -27,7 +27,7 @@ class RegistrationReviewController extends Controller
     // POST /program-registrations/{programRegistration}/approve
     public function approve(Request $request, ProgramRegistration $programRegistration): RedirectResponse
     {
-        $this->ensureCanManage($request, $programRegistration);
+        $this->ensureCanReview($request, $programRegistration->form);
 
         try {
             ['registration' => $registration, 'temporaryPassword' => $password] = $this->approver->approve($programRegistration, $request->user());
@@ -58,7 +58,7 @@ class RegistrationReviewController extends Controller
     // Approves the selected pending registrations (or all of them when none are given).
     public function bulkApprove(Request $request, RegistrationForm $registrationForm): RedirectResponse
     {
-        $this->ensureCanManageProgram($request, $registrationForm->batch->program);
+        $this->ensureCanReview($request, $registrationForm);
 
         $data = $request->validate([
             'ids' => ['nullable', 'array'],
@@ -117,7 +117,7 @@ class RegistrationReviewController extends Controller
     // POST /program-registrations/{programRegistration}/reject
     public function reject(Request $request, ProgramRegistration $programRegistration): RedirectResponse
     {
-        $this->ensureCanManage($request, $programRegistration);
+        $this->ensureCanReview($request, $programRegistration->form);
 
         $data = $request->validate([
             'remarks' => ['required', 'string', 'max:1000'],
@@ -143,7 +143,7 @@ class RegistrationReviewController extends Controller
     // only be edited for people who typed them in; listed ones come from HR's list.
     public function update(Request $request, ProgramRegistration $programRegistration): RedirectResponse
     {
-        $this->ensureCanManage($request, $programRegistration);
+        $this->ensureCanReview($request, $programRegistration->form);
 
         if (! $programRegistration->isPending()) {
             return back()->with('error', FlashMessage::make('Registration not changed', 'Only pending registrations can be edited.'));
@@ -196,7 +196,7 @@ class RegistrationReviewController extends Controller
     // POST /program-registrations/{programRegistration}/resend-login
     public function resendLogin(Request $request, ProgramRegistration $programRegistration): RedirectResponse
     {
-        $this->ensureCanManage($request, $programRegistration);
+        $this->ensureCanReview($request, $programRegistration->form);
 
         try {
             $password = $this->approver->resetTemporaryPassword($programRegistration);
@@ -220,17 +220,12 @@ class RegistrationReviewController extends Controller
         ));
     }
 
-    private function ensureCanManage(Request $request, ProgramRegistration $registration): void
-    {
-        $this->ensureCanManageProgram($request, $registration->batch?->program);
-    }
-
-    private function ensureCanManageProgram(Request $request, ?Program $program): void
+    private function ensureCanReview(Request $request, ?RegistrationForm $form): void
     {
         abort_unless(
-            $program?->canManageRegistrationsBy($request->user()) === true,
+            $form?->canBeEditedBy($request->user()) === true,
             403,
-            'Only the admin who created this program or a superadmin can review its registrations.',
+            'Only the owner of this registration form, its editors or a superadmin can review its registrations.',
         );
     }
 

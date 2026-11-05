@@ -17,6 +17,8 @@ interface RegistrationFormSummary {
     updated_at: string | null;
     pending_registrations_count: number;
     slots_taken_count: number;
+    // Whether this user can change this form (its owner, an editor or a superadmin).
+    can_manage: boolean;
 }
 
 interface CardBatch {
@@ -35,7 +37,8 @@ interface FormRow {
 
 const props = defineProps<{
     batches: CardBatch[];
-    canManage: boolean;
+    // Setting up a new form (the program's creator or a superadmin).
+    canCreateForm: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -267,9 +270,9 @@ const glassButton =
             <ul class="flex flex-col gap-1.5" aria-label="Registration forms by batch">
                 <li v-for="row in rows" :key="row.form.id">
                     <component
-                        :is="canManage ? Link : 'div'"
+                        :is="row.form.can_manage ? Link : 'div'"
                         v-bind="
-                            canManage
+                            row.form.can_manage
                                 ? {
                                       href: route('batches.registration.edit', row.batch.id),
                                       'aria-label': `Manage registration form for ${row.batch.batch}`,
@@ -279,7 +282,9 @@ const glassButton =
                         class="flex min-w-0 items-center gap-2.5 rounded-lg px-2.5 py-2 ring-1 transition-colors"
                         :class="[
                             row.form.id === featured.form.id ? 'bg-white/20 ring-white/35' : 'bg-white/10 ring-white/10',
-                            canManage ? 'hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80' : '',
+                            row.form.can_manage
+                                ? 'hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80'
+                                : '',
                         ]"
                     >
                         <span
@@ -313,7 +318,7 @@ const glassButton =
 
             <!-- Actions (for the featured form) -->
             <div class="flex flex-col gap-2">
-                <Button v-if="canManage" as-child size="sm" :class="[solidButton, theme.accentText]">
+                <Button v-if="featured.form.can_manage" as-child size="sm" :class="[solidButton, theme.accentText]">
                     <Link
                         :href="route('batches.registration.edit', featured.batch.id)"
                         class="group/manage"
@@ -329,7 +334,7 @@ const glassButton =
                         <Copy v-else class="h-4 w-4" />
                         {{ copyState === 'copied' ? 'Copied!' : copyState === 'failed' ? 'Copy failed' : 'Copy link' }}
                     </Button>
-                    <Button v-if="canManage" as-child size="sm" :class="glassButton">
+                    <Button v-if="featured.form.can_manage" as-child size="sm" :class="glassButton">
                         <a
                             :href="previewUrl"
                             target="_blank"
@@ -384,7 +389,7 @@ const glassButton =
             >
                 Add a batch <ArrowRight class="h-4 w-4" />
             </Button>
-            <template v-else-if="canManage">
+            <template v-else-if="canCreateForm">
                 <Button
                     size="sm"
                     :class="[solidButton, theme.accentText]"

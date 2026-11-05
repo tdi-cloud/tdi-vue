@@ -55,7 +55,7 @@ function regCustomizeSettings(array $overrides = []): array
     ], $overrides);
 }
 
-test('any admin can view the registration page, but only the program creator can manage it', function () {
+test('any admin can view the registration page, but only the program creator can set up a form', function () {
     $creator = regCustomizeUser('ADM-RC-CREATOR');
     $otherAdmin = regCustomizeUser('ADM-RC-OTHER');
     $batch = regCustomizeBatch($creator->empcode);
@@ -64,27 +64,29 @@ test('any admin can view the registration page, but only the program creator can
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('programs/RegistrationConfig')
-            ->where('canManageRegistrations', true)
+            ->where('canCreateForm', true)
+            ->where('canEdit', false)
+            ->where('canManageEditors', false)
             ->where('registrationForm', null)
             ->where('defaultBackgroundUrl', SiteImage::urlFor('registration_background'))
         );
 
     $this->actingAs($otherAdmin)->get(route('batches.registration.edit', $batch))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('canManageRegistrations', false));
+        ->assertInertia(fn ($page) => $page->where('canCreateForm', false));
 });
 
-test('a super admin can manage any program, including ones with no recorded creator', function () {
+test('a super admin can set up a form on any program, including ones with no recorded creator', function () {
     $superAdmin = regCustomizeUser('SUP-RC-01', 'superadmin');
     $admin = regCustomizeUser('ADM-RC-01');
     $batch = regCustomizeBatch(null);
 
     $this->actingAs($admin)->get(route('batches.registration.edit', $batch))
-        ->assertInertia(fn ($page) => $page->where('canManageRegistrations', false));
+        ->assertInertia(fn ($page) => $page->where('canCreateForm', false));
     $this->actingAs($admin)->post(route('batches.registration-form.store', $batch))->assertForbidden();
 
     $this->actingAs($superAdmin)->get(route('batches.registration.edit', $batch))
-        ->assertInertia(fn ($page) => $page->where('canManageRegistrations', true));
+        ->assertInertia(fn ($page) => $page->where('canCreateForm', true));
     $this->actingAs($superAdmin)->post(route('batches.registration-form.store', $batch))->assertRedirect();
 
     expect($batch->registrationForm()->exists())->toBeTrue();
@@ -154,7 +156,7 @@ test('a pax that is not a plain number leaves the slots unlimited', function () 
 
 test('the creator can change the title, instructions, theme, status, closing date and slots', function () {
     $creator = regCustomizeUser('ADM-RC-CREATOR');
-    $form = RegistrationForm::factory()->forBatch(regCustomizeBatch($creator->empcode))->closed()->create();
+    $form = RegistrationForm::factory()->forBatch(regCustomizeBatch($creator->empcode))->ownedBy($creator)->closed()->create();
 
     $this->actingAs($creator)
         ->put(route('registration-forms.update', $form), regCustomizeSettings())
@@ -171,7 +173,7 @@ test('the creator can change the title, instructions, theme, status, closing dat
 
 test('an unknown theme is rejected', function () {
     $creator = regCustomizeUser('ADM-RC-CREATOR');
-    $form = RegistrationForm::factory()->forBatch(regCustomizeBatch($creator->empcode))->create();
+    $form = RegistrationForm::factory()->forBatch(regCustomizeBatch($creator->empcode))->ownedBy($creator)->create();
 
     $this->actingAs($creator)
         ->put(route('registration-forms.update', $form), regCustomizeSettings(['theme' => 'neon-pink']))
@@ -183,7 +185,7 @@ test('an unknown theme is rejected', function () {
 test('the creator can upload and reset a custom background, and the public form falls back to the site default', function () {
     Storage::fake('public');
     $creator = regCustomizeUser('ADM-RC-CREATOR');
-    $form = RegistrationForm::factory()->forBatch(regCustomizeBatch($creator->empcode))->create();
+    $form = RegistrationForm::factory()->forBatch(regCustomizeBatch($creator->empcode))->ownedBy($creator)->create();
 
     $this->actingAs($creator)
         ->post(route('registration-forms.background.upload', $form), ['image' => UploadedFile::fake()->image('bg.jpg')])
@@ -207,7 +209,7 @@ test('the creator can upload and reset a custom background, and the public form 
 test('"No background" shows the public form without any image, and keeps the custom image to switch back to', function () {
     Storage::fake('public');
     $creator = regCustomizeUser('ADM-RC-CREATOR');
-    $form = RegistrationForm::factory()->forBatch(regCustomizeBatch($creator->empcode))->create();
+    $form = RegistrationForm::factory()->forBatch(regCustomizeBatch($creator->empcode))->ownedBy($creator)->create();
 
     $this->actingAs($creator)
         ->post(route('registration-forms.background.upload', $form), ['image' => UploadedFile::fake()->image('bg.jpg')]);
@@ -238,7 +240,7 @@ test('"No background" shows the public form without any image, and keeps the cus
 test('uploading a new image or going back to the site default turns "No background" off', function () {
     Storage::fake('public');
     $creator = regCustomizeUser('ADM-RC-CREATOR');
-    $form = RegistrationForm::factory()->forBatch(regCustomizeBatch($creator->empcode))->create(['hide_background' => true]);
+    $form = RegistrationForm::factory()->forBatch(regCustomizeBatch($creator->empcode))->ownedBy($creator)->create(['hide_background' => true]);
 
     $this->actingAs($creator)
         ->post(route('registration-forms.background.upload', $form), ['image' => UploadedFile::fake()->image('bg.jpg')]);
@@ -256,7 +258,7 @@ test('uploading a new image or going back to the site default turns "No backgrou
 test('a background must be an image', function () {
     Storage::fake('public');
     $creator = regCustomizeUser('ADM-RC-CREATOR');
-    $form = RegistrationForm::factory()->forBatch(regCustomizeBatch($creator->empcode))->create();
+    $form = RegistrationForm::factory()->forBatch(regCustomizeBatch($creator->empcode))->ownedBy($creator)->create();
 
     $this->actingAs($creator)
         ->post(route('registration-forms.background.upload', $form), ['image' => UploadedFile::fake()->create('notes.pdf', 10, 'application/pdf')])
@@ -265,7 +267,7 @@ test('a background must be an image', function () {
 
 test('the creator can add, edit, reorder and delete additional questions', function () {
     $creator = regCustomizeUser('ADM-RC-CREATOR');
-    $form = RegistrationForm::factory()->forBatch(regCustomizeBatch($creator->empcode))->create();
+    $form = RegistrationForm::factory()->forBatch(regCustomizeBatch($creator->empcode))->ownedBy($creator)->create();
 
     $this->actingAs($creator)->post(route('registration-forms.questions.store', $form), [
         'type' => 'text',
@@ -303,7 +305,7 @@ test('the creator can add, edit, reorder and delete additional questions', funct
 
 test('single choice and checkbox questions can add an "Other" choice, other types cannot', function () {
     $creator = regCustomizeUser('ADM-RC-CREATOR');
-    $form = RegistrationForm::factory()->forBatch(regCustomizeBatch($creator->empcode))->create();
+    $form = RegistrationForm::factory()->forBatch(regCustomizeBatch($creator->empcode))->ownedBy($creator)->create();
 
     $this->actingAs($creator)->post(route('registration-forms.questions.store', $form), [
         'type' => 'radio',
@@ -328,7 +330,7 @@ test('single choice and checkbox questions can add an "Other" choice, other type
 
 test('each option must be filled in and different from the others', function () {
     $creator = regCustomizeUser('ADM-RC-CREATOR');
-    $form = RegistrationForm::factory()->forBatch(regCustomizeBatch($creator->empcode))->create();
+    $form = RegistrationForm::factory()->forBatch(regCustomizeBatch($creator->empcode))->ownedBy($creator)->create();
 
     $this->actingAs($creator)
         ->post(route('registration-forms.questions.store', $form), ['type' => 'radio', 'label' => 'Pick one', 'options' => ['Yes', 'yes']])
@@ -343,7 +345,7 @@ test('each option must be filled in and different from the others', function () 
 
 test('choice questions need options and plain text questions drop them', function () {
     $creator = regCustomizeUser('ADM-RC-CREATOR');
-    $form = RegistrationForm::factory()->forBatch(regCustomizeBatch($creator->empcode))->create();
+    $form = RegistrationForm::factory()->forBatch(regCustomizeBatch($creator->empcode))->ownedBy($creator)->create();
 
     $this->actingAs($creator)
         ->post(route('registration-forms.questions.store', $form), ['type' => 'checkbox', 'label' => 'Devices?'])
@@ -356,10 +358,11 @@ test('choice questions need options and plain text questions drop them', functio
     expect(RegistrationQuestion::sole()->options)->toBeNull();
 });
 
-test('an admin who did not create the program cannot change its registration form', function (string $action) {
+test('an admin who is not the owner or an editor cannot change the registration form', function (string $action) {
+    $creator = regCustomizeUser('ADM-RC-CREATOR');
     $otherAdmin = regCustomizeUser('ADM-RC-OTHER');
-    $batch = regCustomizeBatch('ADM-RC-CREATOR');
-    $form = RegistrationForm::factory()->forBatch($batch)->create();
+    $batch = regCustomizeBatch($creator->empcode);
+    $form = RegistrationForm::factory()->forBatch($batch)->ownedBy($creator)->create();
     $question = RegistrationQuestion::factory()->for($form, 'form')->create();
 
     $this->actingAs($otherAdmin);
