@@ -129,7 +129,7 @@ class EmployeeProgressController extends Controller
         $employee = Employee::with('user:id,empcode,avatar')->where('EMPCODE', $empcode)->firstOrFail();
         $employee->avatar = $employee->user?->avatar;
 
-        $participants = Participant::with(['batch.program.coverPage'])
+        $participants = Participant::with(['batch.program.coverPage', 'justification'])
             ->where('empcode', $empcode)
             ->get();
 
@@ -190,7 +190,16 @@ class EmployeeProgressController extends Controller
                 'date_start' => $batch->date_start,
                 'date_end' => $batch->date_end,
                 'hours' => $participant->hours ?? $batch->hours,
+                // Default hours when an admin marks the participant Complete from the training profile.
+                'batch_hours' => is_numeric($batch->hours) ? (float) $batch->hours : null,
                 'attendance' => $participant->attendance,
+                'justification' => $participant->justification ? [
+                    'file_path' => $participant->justification->file_path,
+                    'original_name' => $participant->justification->original_name,
+                    'file_size' => $participant->justification->file_size,
+                    'uploaded_by_name' => $participant->justification->uploaded_by_name,
+                    'uploaded_at' => $participant->justification->updated_at?->toIso8601String(),
+                ] : null,
                 'batch_status' => $batch->status,
                 'is_completed' => $isCompleted,
                 'total_requirements' => $totalReqs,

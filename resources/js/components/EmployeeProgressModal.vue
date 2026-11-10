@@ -78,7 +78,15 @@ interface EnrolledProgram {
     date_start: string;
     date_end: string;
     hours: number;
+    batch_hours: number | null;
     attendance: string;
+    justification: {
+        file_path: string;
+        original_name: string | null;
+        file_size: number | null;
+        uploaded_by_name: string | null;
+        uploaded_at: string | null;
+    } | null;
     batch_status: string;
     is_completed: boolean;
     total_requirements: number;
@@ -187,12 +195,13 @@ const uploadRemarks = ref('');
 const uploadProcessing = ref(false);
 const uploadErrors = ref<{ file?: string; status?: string; remarks?: string; general?: string }>({});
 // Set once something is saved, so the page behind the modal refreshes its counts on close.
-const hasSavedSubmissions = ref(false);
+const hasSavedChanges = ref(false);
 
 const isUploadOpen = (prog: EnrolledProgram, req: Requirement) =>
     uploadTarget.value?.participantId === prog.participant_id && uploadTarget.value?.requirementId === req.id;
 
 const openUpload = (prog: EnrolledProgram, req: Requirement) => {
+    closeAttendance();
     uploadTarget.value = { participantId: prog.participant_id, requirementId: req.id };
     uploadFile.value = null;
     // Same default as the program page: a new submission starts as Approved.
@@ -252,7 +261,7 @@ const saveUpload = async (prog: EnrolledProgram, req: Requirement) => {
             // Errors are shown inside the upload form.
             silentErrors: true,
         });
-        hasSavedSubmissions.value = true;
+        hasSavedChanges.value = true;
         toast({
             title: 'Submission saved',
             description: `${req.title} for ${prog.program_title} is saved as ${uploadStatus.value}.`,
@@ -278,6 +287,178 @@ const currentEmpcode = () => props.empcode ?? progress.value?.employee.EMPCODE ?
 const formatFileSize = (bytes: number) =>
     bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 
+/* ---------- Attendance (admins set a program's attendance right from the profile) ---------- */
+type AttendanceStatus = 'Pending' | 'Complete' | 'Absent';
+
+const attendanceStatuses: AttendanceStatus[] = ['Pending', 'Complete', 'Absent'];
+const MEMO_MAX_BYTES = 5 * 1024 * 1024; // matches the 5 MB limit of participants.attendance
+const MEMO_EXTENSIONS = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'];
+
+const attendanceOptions = [
+    {
+        value: 'Pending' as const,
+        label: 'Pending',
+        hint: 'Not yet confirmed',
+        icon: Clock,
+        activeClass: 'border-amber-400 bg-amber-50 ring-2 ring-amber-400/30 dark:border-amber-500/70 dark:bg-amber-500/10',
+        iconClass: 'bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300',
+    },
+    {
+        value: 'Complete' as const,
+        label: 'Complete',
+        hint: 'Attended, earns hours',
+        icon: CheckCircle2,
+        activeClass: 'border-emerald-400 bg-emerald-50 ring-2 ring-emerald-400/30 dark:border-emerald-500/70 dark:bg-emerald-500/10',
+        iconClass: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300',
+    },
+    {
+        value: 'Absent' as const,
+        label: 'Absent',
+        hint: 'Needs a memo',
+        icon: CircleX,
+        activeClass: 'border-red-400 bg-red-50 ring-2 ring-red-400/30 dark:border-red-500/70 dark:bg-red-500/10',
+        iconClass: 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-300',
+    },
+];
+
+const attendanceTargetId = ref<number | null>(null);
+const attendanceStatus = ref<AttendanceStatus>('Pending');
+const attendanceHours = ref<string | number>('');
+const attendanceMemo = ref<File | null>(null);
+const attendanceProcessing = ref(false);
+const attendanceErrors = ref<{ attendance?: string; hours?: string; justification?: string; general?: string }>({});
+
+const isAttendanceOpen = (prog: EnrolledProgram) => attendanceTargetId.value === prog.participant_id;
+
+// The program whose attendance was just saved, highlighted for a few seconds so the change is easy to spot.
+const recentlySavedAttendanceId = ref<number | null>(null);
+let recentlySavedTimer: ReturnType<typeof setTimeout> | undefined;
+
+const highlightSavedAttendance = (participantId: number) => {
+    clearTimeout(recentlySavedTimer);
+    recentlySavedAttendanceId.value = participantId;
+    recentlySavedTimer = setTimeout(() => (recentlySavedAttendanceId.value = null), 4000);
+};
+
+const attendanceSummary = (prog: EnrolledProgram) => {
+    if (prog.attendance === 'Complete') {
+        return {
+            icon: CheckCircle2,
+            panel: 'border-emerald-100 bg-emerald-50/60 dark:border-emerald-500/20 dark:bg-emerald-500/[0.06]',
+            pill: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+            detail: `${Number(prog.hours) || 0} hrs credited`,
+        };
+    }
+    if (prog.attendance === 'Absent') {
+        return {
+            icon: CircleX,
+            panel: 'border-red-100 bg-red-50/60 dark:border-red-500/20 dark:bg-red-500/[0.06]',
+            pill: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+            detail: prog.justification ? 'Excused with a justification memo' : 'No justification memo on file',
+        };
+    }
+    return {
+        icon: Clock,
+        panel: 'border-amber-100 bg-amber-50/60 dark:border-amber-500/20 dark:bg-amber-500/[0.06]',
+        pill: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+        detail: 'Not yet confirmed',
+    };
+};
+
+const openAttendance = (prog: EnrolledProgram) => {
+    closeUpload();
+    const current = attendanceStatuses.includes(prog.attendance as AttendanceStatus) ? (prog.attendance as AttendanceStatus) : 'Pending';
+
+    attendanceTargetId.value = prog.participant_id;
+    attendanceStatus.value = current;
+    // Same default as the program page: Complete starts with the participant's hours, otherwise the batch hours.
+    attendanceHours.value = current === 'Complete' && prog.hours ? prog.hours : (prog.batch_hours ?? '');
+    attendanceMemo.value = null;
+    attendanceErrors.value = {};
+};
+
+function closeAttendance() {
+    attendanceTargetId.value = null;
+    attendanceMemo.value = null;
+    attendanceErrors.value = {};
+}
+
+const selectAttendanceStatus = (prog: EnrolledProgram, status: AttendanceStatus) => {
+    attendanceStatus.value = status;
+    attendanceErrors.value = {};
+    if (status === 'Complete' && !attendanceHours.value) {
+        attendanceHours.value = prog.batch_hours ?? '';
+    }
+};
+
+const onAttendanceMemoChange = (event: Event) => {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    input.value = '';
+    attendanceErrors.value = { ...attendanceErrors.value, justification: undefined };
+
+    if (!file) return;
+    if (!MEMO_EXTENSIONS.includes(file.name.split('.').pop()?.toLowerCase() ?? '')) {
+        attendanceErrors.value.justification = 'The memo must be a PDF, Word document, or JPG/PNG image.';
+        return;
+    }
+    if (file.size > MEMO_MAX_BYTES) {
+        attendanceErrors.value.justification = `"${file.name}" is ${formatFileSize(file.size)}. The memo must be 5 MB or smaller.`;
+        return;
+    }
+    attendanceMemo.value = file;
+};
+
+const saveAttendance = async (prog: EnrolledProgram) => {
+    attendanceErrors.value = {};
+
+    const hours = Number(attendanceHours.value);
+    if (attendanceStatus.value === 'Complete' && (attendanceHours.value === '' || isNaN(hours) || hours < 0.5)) {
+        attendanceErrors.value.hours = 'Please enter the completed hours (at least 0.5).';
+        return;
+    }
+    if (attendanceStatus.value === 'Absent' && !attendanceMemo.value && !prog.justification) {
+        attendanceErrors.value.justification = 'Please upload the justification memo for the absence.';
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('attendance', attendanceStatus.value);
+    formData.append('hours', attendanceStatus.value === 'Complete' ? String(hours) : '0');
+    if (attendanceStatus.value === 'Absent' && attendanceMemo.value) {
+        formData.append('justification', attendanceMemo.value);
+    }
+
+    const savedStatus = attendanceStatus.value;
+    attendanceProcessing.value = true;
+    try {
+        await axios.post(route('participants.attendance', prog.participant_id), formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            // Errors are shown inside the attendance form.
+            silentErrors: true,
+        });
+        hasSavedChanges.value = true;
+        toast({
+            title: 'Attendance updated',
+            description: `${progress.value?.employee.name ?? 'The employee'} is now marked ${savedStatus} in ${prog.program_title}.`,
+        });
+        closeAttendance();
+        try {
+            await fetchProgress(currentEmpcode());
+        } catch {
+            // The save worked; a failed refresh is shown by the app-wide error toast.
+        }
+        highlightSavedAttendance(prog.participant_id);
+    } catch (error: any) {
+        const errors = error.response?.data?.errors;
+        attendanceErrors.value = errors
+            ? { attendance: errors.attendance?.[0], hours: errors.hours?.[0], justification: errors.justification?.[0] }
+            : { general: httpErrorMessage(error) };
+    } finally {
+        attendanceProcessing.value = false;
+    }
+};
+
 watch(
     () => props.empcode,
     async (code) => {
@@ -287,7 +468,9 @@ watch(
         programYear.value = 'all';
         programPage.value = 1;
         closeUpload();
-        hasSavedSubmissions.value = false;
+        closeAttendance();
+        recentlySavedAttendanceId.value = null;
+        hasSavedChanges.value = false;
         if (!code) return;
 
         loading.value = true;
@@ -304,8 +487,8 @@ watch(
 
 const close = () => {
     emit('close');
-    if (hasSavedSubmissions.value) {
-        hasSavedSubmissions.value = false;
+    if (hasSavedChanges.value) {
+        hasSavedChanges.value = false;
         router.reload();
     }
 };
@@ -873,6 +1056,273 @@ const pagerButtonClass =
                                                         >
                                                             <Clock class="h-3.5 w-3.5 text-amber-500" /> {{ prog.hours }} hrs
                                                         </span>
+                                                    </div>
+
+                                                    <!-- Attendance summary: always shows the current attendance, highlighted right after it is saved -->
+                                                    <div
+                                                        v-if="!isAttendanceOpen(prog)"
+                                                        class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border px-3 py-2.5 text-xs transition-shadow duration-500"
+                                                        :class="[
+                                                            attendanceSummary(prog).panel,
+                                                            recentlySavedAttendanceId === prog.participant_id
+                                                                ? 'ring-4 ring-violet-400/40 dark:ring-violet-500/30'
+                                                                : '',
+                                                        ]"
+                                                    >
+                                                        <span
+                                                            class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                                                            >Attendance</span
+                                                        >
+                                                        <span
+                                                            class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold"
+                                                            :class="attendanceSummary(prog).pill"
+                                                        >
+                                                            <component :is="attendanceSummary(prog).icon" class="h-3.5 w-3.5" />
+                                                            {{ prog.attendance || 'Pending' }}
+                                                        </span>
+                                                        <span class="text-slate-600 dark:text-slate-300">{{ attendanceSummary(prog).detail }}</span>
+                                                        <button
+                                                            v-if="prog.attendance === 'Absent' && prog.justification"
+                                                            type="button"
+                                                            class="inline-flex items-center gap-1 font-semibold text-red-700 hover:underline dark:text-red-300"
+                                                            title="View the justification memo"
+                                                            @click.stop="
+                                                                openFilePreview(
+                                                                    prog.justification.file_path,
+                                                                    'Justification memo',
+                                                                    prog.program_title,
+                                                                )
+                                                            "
+                                                        >
+                                                            <FileText class="h-3.5 w-3.5" /> View memo
+                                                        </button>
+                                                        <span
+                                                            v-if="recentlySavedAttendanceId === prog.participant_id"
+                                                            class="inline-flex items-center gap-1 font-semibold text-violet-600 dark:text-violet-300"
+                                                        >
+                                                            <CheckCircle2 class="h-3.5 w-3.5" /> Just updated
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            class="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-white px-2.5 py-1 font-semibold text-violet-700 transition hover:border-violet-300 hover:bg-violet-50 dark:border-violet-500/30 dark:bg-slate-900 dark:text-violet-300 dark:hover:bg-violet-500/10"
+                                                            title="Set this employee's attendance for this program"
+                                                            @click.stop="openAttendance(prog)"
+                                                        >
+                                                            <UserCheck class="h-3.5 w-3.5" /> Set attendance
+                                                        </button>
+                                                    </div>
+
+                                                    <!-- Inline attendance editor: saves through the same route as the program page -->
+                                                    <div
+                                                        v-if="isAttendanceOpen(prog)"
+                                                        class="mt-3 cursor-default rounded-xl border border-violet-200 bg-white p-3 shadow-sm dark:border-violet-500/30 dark:bg-slate-900 sm:p-4"
+                                                        @click.stop
+                                                    >
+                                                        <div class="flex flex-wrap items-center justify-between gap-2">
+                                                            <p
+                                                                class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-violet-700 dark:text-violet-300"
+                                                            >
+                                                                <UserCheck class="h-3.5 w-3.5" /> Set attendance
+                                                            </p>
+                                                            <span
+                                                                v-if="prog.attendance !== attendanceStatus"
+                                                                class="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700 dark:bg-violet-500/15 dark:text-violet-300"
+                                                            >
+                                                                {{ prog.attendance }} <ChevronRight class="h-3 w-3" /> {{ attendanceStatus }}
+                                                            </span>
+                                                        </div>
+
+                                                        <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                                                            <button
+                                                                v-for="option in attendanceOptions"
+                                                                :key="option.value"
+                                                                type="button"
+                                                                class="flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition"
+                                                                :class="
+                                                                    attendanceStatus === option.value
+                                                                        ? option.activeClass
+                                                                        : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600'
+                                                                "
+                                                                :aria-pressed="attendanceStatus === option.value"
+                                                                :disabled="attendanceProcessing"
+                                                                @click="selectAttendanceStatus(prog, option.value)"
+                                                            >
+                                                                <span
+                                                                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                                                                    :class="option.iconClass"
+                                                                >
+                                                                    <component :is="option.icon" class="h-4 w-4" />
+                                                                </span>
+                                                                <span class="min-w-0">
+                                                                    <span class="block text-sm font-semibold text-slate-800 dark:text-slate-100">{{
+                                                                        option.label
+                                                                    }}</span>
+                                                                    <span class="block text-[11px] text-slate-500 dark:text-slate-400">{{
+                                                                        option.hint
+                                                                    }}</span>
+                                                                </span>
+                                                            </button>
+                                                        </div>
+                                                        <p
+                                                            v-if="attendanceErrors.attendance"
+                                                            class="mt-1.5 text-xs font-medium text-red-600 dark:text-red-400"
+                                                        >
+                                                            {{ attendanceErrors.attendance }}
+                                                        </p>
+
+                                                        <!-- Complete: hours -->
+                                                        <label v-if="attendanceStatus === 'Complete'" class="mt-3 block sm:w-56">
+                                                            <span class="mb-1 block text-[11px] font-semibold text-slate-600 dark:text-slate-300"
+                                                                >Completed hours</span
+                                                            >
+                                                            <input
+                                                                v-model="attendanceHours"
+                                                                type="number"
+                                                                min="0.5"
+                                                                step="0.5"
+                                                                :disabled="attendanceProcessing"
+                                                                :class="[toolbarControlClass, 'h-9 px-3 tabular-nums']"
+                                                            />
+                                                            <span
+                                                                v-if="attendanceErrors.hours"
+                                                                class="mt-1 block text-xs text-red-600 dark:text-red-400"
+                                                                >{{ attendanceErrors.hours }}</span
+                                                            >
+                                                            <span
+                                                                v-else-if="prog.batch_hours"
+                                                                class="mt-1 block text-[11px] text-slate-500 dark:text-slate-400"
+                                                                >Batch hours: {{ prog.batch_hours }}</span
+                                                            >
+                                                        </label>
+
+                                                        <!-- Absent: justification memo -->
+                                                        <div v-if="attendanceStatus === 'Absent'" class="mt-3">
+                                                            <div
+                                                                v-if="prog.justification"
+                                                                class="mb-2 flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs dark:bg-slate-800/60"
+                                                            >
+                                                                <FileText class="h-3.5 w-3.5 shrink-0 text-red-500" />
+                                                                <span class="min-w-0 flex-1 truncate text-slate-700 dark:text-slate-200">
+                                                                    Memo on file:
+                                                                    <span class="font-semibold">{{
+                                                                        prog.justification.original_name ?? 'Justification memo'
+                                                                    }}</span>
+                                                                    <span
+                                                                        v-if="prog.justification.uploaded_by_name"
+                                                                        class="text-slate-500 dark:text-slate-400"
+                                                                    >
+                                                                        · by {{ prog.justification.uploaded_by_name }}</span
+                                                                    >
+                                                                </span>
+                                                                <button
+                                                                    type="button"
+                                                                    class="shrink-0 font-semibold text-blue-600 hover:underline dark:text-blue-300"
+                                                                    @click="
+                                                                        openFilePreview(
+                                                                            prog.justification.file_path,
+                                                                            'Justification memo',
+                                                                            prog.program_title,
+                                                                        )
+                                                                    "
+                                                                >
+                                                                    View
+                                                                </button>
+                                                            </div>
+                                                            <label
+                                                                class="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed p-3 transition"
+                                                                :class="
+                                                                    attendanceErrors.justification
+                                                                        ? 'border-red-300 bg-red-50/60 dark:border-red-500/40 dark:bg-red-500/[0.06]'
+                                                                        : attendanceMemo
+                                                                          ? 'border-emerald-300 bg-emerald-50/60 dark:border-emerald-500/40 dark:bg-emerald-500/[0.06]'
+                                                                          : 'border-slate-200 bg-slate-50/60 hover:border-violet-300 hover:bg-violet-50/60 dark:border-slate-700 dark:bg-slate-800/40 dark:hover:border-violet-500/40'
+                                                                "
+                                                            >
+                                                                <input
+                                                                    type="file"
+                                                                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                                                    class="sr-only"
+                                                                    :disabled="attendanceProcessing"
+                                                                    @change="onAttendanceMemoChange"
+                                                                />
+                                                                <span
+                                                                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-sm"
+                                                                    :class="
+                                                                        attendanceMemo
+                                                                            ? 'bg-gradient-to-br from-emerald-400 to-emerald-600'
+                                                                            : 'bg-gradient-to-br from-rose-400 to-red-600'
+                                                                    "
+                                                                >
+                                                                    <FileUp class="h-5 w-5" />
+                                                                </span>
+                                                                <span class="min-w-0 flex-1">
+                                                                    <span
+                                                                        class="block truncate text-sm font-semibold text-slate-800 dark:text-slate-100"
+                                                                        :title="attendanceMemo?.name"
+                                                                    >
+                                                                        {{
+                                                                            attendanceMemo?.name ??
+                                                                            (prog.justification
+                                                                                ? 'Replace the memo (optional)'
+                                                                                : 'Choose the justification memo')
+                                                                        }}
+                                                                    </span>
+                                                                    <span class="block text-[11px] text-slate-500 dark:text-slate-400">
+                                                                        <template v-if="attendanceMemo"
+                                                                            >{{ formatFileSize(attendanceMemo.size) }} · click to change</template
+                                                                        >
+                                                                        <template v-else>PDF, Word, JPG or PNG, up to 5 MB</template>
+                                                                    </span>
+                                                                </span>
+                                                            </label>
+                                                            <p
+                                                                v-if="attendanceErrors.justification"
+                                                                class="mt-1.5 text-xs font-medium text-red-600 dark:text-red-400"
+                                                            >
+                                                                {{ attendanceErrors.justification }}
+                                                            </p>
+                                                        </div>
+
+                                                        <p
+                                                            v-if="attendanceStatus === 'Pending'"
+                                                            class="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-800 dark:bg-amber-500/10 dark:text-amber-200"
+                                                        >
+                                                            Pending means attendance isn't confirmed yet. The hours are reset to 0 until marked
+                                                            Complete.
+                                                        </p>
+                                                        <p
+                                                            v-if="attendanceStatus !== 'Absent' && prog.justification"
+                                                            class="mt-2 rounded-lg bg-red-50 px-3 py-2 text-[11px] text-red-700 dark:bg-red-500/10 dark:text-red-300"
+                                                        >
+                                                            Saving as {{ attendanceStatus }} removes the justification memo on file.
+                                                        </p>
+                                                        <p
+                                                            v-if="attendanceErrors.general"
+                                                            class="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700 dark:bg-red-500/10 dark:text-red-300"
+                                                        >
+                                                            {{ attendanceErrors.general }}
+                                                        </p>
+
+                                                        <div class="mt-3 flex items-center justify-end gap-2">
+                                                            <button
+                                                                type="button"
+                                                                class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:text-white"
+                                                                :disabled="attendanceProcessing"
+                                                                @click="closeAttendance"
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                class="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-violet-500 to-violet-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-violet-500/25 transition hover:from-violet-600 hover:to-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                                                :disabled="attendanceProcessing"
+                                                                @click="saveAttendance(prog)"
+                                                            >
+                                                                <Loader2 v-if="attendanceProcessing" class="h-3.5 w-3.5 animate-spin" />
+                                                                <CheckCircle2 v-else class="h-3.5 w-3.5" />
+                                                                {{ attendanceProcessing ? 'Saving…' : 'Save attendance' }}
+                                                            </button>
+                                                        </div>
                                                     </div>
 
                                                     <div v-if="prog.total_requirements > 0" class="mt-4">
