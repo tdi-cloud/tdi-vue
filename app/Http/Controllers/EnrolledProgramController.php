@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AbsentJustification;
 use App\Models\ActionPlanActivity;
 use App\Models\Batch;
 use App\Models\Certificate;
@@ -316,13 +317,13 @@ class EnrolledProgramController extends Controller
             'file' => ['required', 'file', 'mimes:pdf', 'max:10240'],
         ]);
 
-        $path = $request->file('file')->store('justifications', 'public');
+        $upload = AbsentJustification::attributesForUpload($request->file('file'), $request->user());
 
         if ($participant->justification) {
             Storage::disk('public')->delete($participant->justification->file_path);
-            $participant->justification->update(['file_path' => $path]);
+            $participant->justification->update($upload);
         } else {
-            $participant->justification()->create(['file_path' => $path]);
+            $participant->justification()->create($upload);
         }
 
         $participant->update([

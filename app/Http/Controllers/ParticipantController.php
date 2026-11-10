@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AbsentJustification;
 use App\Models\Batch;
 use App\Models\Employee;
 use App\Models\Participant;
@@ -197,13 +198,13 @@ class ParticipantController extends Controller
             case 'Absent':
                 // Mag-save lang ng file kung may bagong in-upload
                 if ($request->hasFile('justification')) {
-                    $path = $request->file('justification')->store('justifications', 'public');
+                    $upload = AbsentJustification::attributesForUpload($request->file('justification'), $request->user());
 
                     if ($participant->justification) {
                         Storage::disk('public')->delete($participant->justification->file_path);
-                        $participant->justification->update(['file_path' => $path]);
+                        $participant->justification->update($upload);
                     } else {
-                        $participant->justification()->create(['file_path' => $path]);
+                        $participant->justification()->create($upload);
                     }
                 }
 

@@ -2,6 +2,9 @@
 import EmptyState from '@/components/EmptyState.vue';
 import FilePreviewModal from '@/components/FilePreviewModal.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { toast } from '@/components/ui/toast/use-toast';
+import { httpErrorMessage } from '@/lib/http';
+import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import {
     AlertCircle,
@@ -20,12 +23,15 @@ import {
     ExternalLink,
     FileCheck2,
     FileText,
+    FileUp,
     GraduationCap,
     Hash,
+    Loader2,
     MapPin,
     Search,
     Star,
     TrendingUp,
+    Upload,
     UserCheck,
     X,
 } from 'lucide-vue-next';
@@ -163,6 +169,115 @@ const clearProgramFilters = () => {
     programYear.value = 'all';
 };
 
+const fetchProgress = async (code: string) => {
+    const res = await axios.get(route('employees.progress', { empcode: code }));
+    progress.value = res.data;
+};
+
+/* ---------- Requirement upload (admins submit a requirement right from the profile) ---------- */
+type SubmissionStatus = 'Pending' | 'Approved' | 'Rejected';
+
+const MAX_UPLOAD_BYTES = 20 * 1024 * 1024; // matches the 20 MB limit of submissions.store
+const submissionStatuses: SubmissionStatus[] = ['Approved', 'Pending', 'Rejected'];
+
+const uploadTarget = ref<{ participantId: number; requirementId: number } | null>(null);
+const uploadFile = ref<File | null>(null);
+const uploadStatus = ref<SubmissionStatus>('Approved');
+const uploadRemarks = ref('');
+const uploadProcessing = ref(false);
+const uploadErrors = ref<{ file?: string; status?: string; remarks?: string; general?: string }>({});
+// Set once something is saved, so the page behind the modal refreshes its counts on close.
+const hasSavedSubmissions = ref(false);
+
+const isUploadOpen = (prog: EnrolledProgram, req: Requirement) =>
+    uploadTarget.value?.participantId === prog.participant_id && uploadTarget.value?.requirementId === req.id;
+
+const openUpload = (prog: EnrolledProgram, req: Requirement) => {
+    uploadTarget.value = { participantId: prog.participant_id, requirementId: req.id };
+    uploadFile.value = null;
+    // Same default as the program page: a new submission starts as Approved.
+    uploadStatus.value = submissionStatuses.includes(req.submission?.status as SubmissionStatus)
+        ? (req.submission?.status as SubmissionStatus)
+        : 'Approved';
+    uploadRemarks.value = req.submission?.remarks ?? '';
+    uploadErrors.value = {};
+};
+
+function closeUpload() {
+    uploadTarget.value = null;
+    uploadFile.value = null;
+    uploadErrors.value = {};
+}
+
+const onUploadFileChange = (event: Event) => {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    input.value = '';
+    uploadErrors.value = { ...uploadErrors.value, file: undefined };
+
+    if (!file) return;
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+        uploadErrors.value.file = 'Only PDF files can be uploaded.';
+        return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+        uploadErrors.value.file = 'The file is larger than 20 MB. Choose a smaller PDF.';
+        return;
+    }
+    uploadFile.value = file;
+};
+
+const saveUpload = async (prog: EnrolledProgram, req: Requirement) => {
+    if (!uploadFile.value && !req.submission?.file_path) {
+        uploadErrors.value = { file: 'Choose a PDF file to upload.' };
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('participant_id', String(prog.participant_id));
+    formData.append('batch_id', String(prog.batch_id));
+    formData.append('program_code', prog.program_code);
+    formData.append('requirement_id', String(req.id));
+    formData.append('status', uploadStatus.value);
+    formData.append('remarks', uploadRemarks.value);
+    if (uploadFile.value) {
+        formData.append('file', uploadFile.value);
+    }
+
+    uploadProcessing.value = true;
+    uploadErrors.value = {};
+    try {
+        await axios.post(route('submissions.store'), formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            // Errors are shown inside the upload form.
+            silentErrors: true,
+        });
+        hasSavedSubmissions.value = true;
+        toast({
+            title: 'Submission saved',
+            description: `${req.title} for ${prog.program_title} is saved as ${uploadStatus.value}.`,
+        });
+        closeUpload();
+        try {
+            await fetchProgress(currentEmpcode());
+        } catch {
+            // The save worked; a failed refresh is shown by the app-wide error toast.
+        }
+    } catch (error: any) {
+        const errors = error.response?.data?.errors;
+        uploadErrors.value = errors
+            ? { file: errors.file?.[0], status: errors.status?.[0], remarks: errors.remarks?.[0] }
+            : { general: httpErrorMessage(error) };
+    } finally {
+        uploadProcessing.value = false;
+    }
+};
+
+const currentEmpcode = () => props.empcode ?? progress.value?.employee.EMPCODE ?? '';
+
+const formatFileSize = (bytes: number) =>
+    bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+
 watch(
     () => props.empcode,
     async (code) => {
@@ -171,12 +286,13 @@ watch(
         programSearch.value = '';
         programYear.value = 'all';
         programPage.value = 1;
+        closeUpload();
+        hasSavedSubmissions.value = false;
         if (!code) return;
 
         loading.value = true;
         try {
-            const res = await axios.get(route('employees.progress', { empcode: code }));
-            progress.value = res.data;
+            await fetchProgress(code);
         } catch {
             // Shown by the app-wide error toast (lib/http.ts).
         } finally {
@@ -186,7 +302,13 @@ watch(
     { immediate: true },
 );
 
-const close = () => emit('close');
+const close = () => {
+    emit('close');
+    if (hasSavedSubmissions.value) {
+        hasSavedSubmissions.value = false;
+        router.reload();
+    }
+};
 
 // Helpers
 const plantillaColor = (status: string) => {
@@ -836,56 +958,236 @@ const pagerButtonClass =
                                                                 <li
                                                                     v-for="req in prog.requirements"
                                                                     :key="req.id"
-                                                                    class="flex flex-col gap-2 px-3 py-3 transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+                                                                    class="px-3 py-3 transition-colors"
+                                                                    :class="
+                                                                        isUploadOpen(prog, req)
+                                                                            ? 'bg-violet-50/50 dark:bg-violet-500/[0.05]'
+                                                                            : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'
+                                                                    "
                                                                 >
-                                                                    <div class="flex min-w-0 items-start gap-3">
-                                                                        <span
-                                                                            class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
-                                                                            :class="requirementStatusIcon(req.submission?.status).chip"
-                                                                        >
-                                                                            <component
-                                                                                :is="requirementStatusIcon(req.submission?.status).icon"
-                                                                                class="h-4 w-4"
-                                                                            />
-                                                                        </span>
-                                                                        <div class="min-w-0">
-                                                                            <p class="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                                                                                {{ req.title }}
-                                                                            </p>
-                                                                            <p
-                                                                                v-if="req.submission?.submitted_at"
-                                                                                class="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400"
+                                                                    <div
+                                                                        class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+                                                                    >
+                                                                        <div class="flex min-w-0 items-start gap-3">
+                                                                            <span
+                                                                                class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+                                                                                :class="requirementStatusIcon(req.submission?.status).chip"
                                                                             >
-                                                                                Submitted {{ formatDate(req.submission?.submitted_at) }}
-                                                                                <template v-if="req.submission.reviewed_by">
-                                                                                    · Reviewed by
-                                                                                    <span class="font-medium text-slate-600 dark:text-slate-300">{{
-                                                                                        req.submission.reviewed_by
-                                                                                    }}</span>
-                                                                                </template>
-                                                                            </p>
-                                                                            <p v-else class="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
-                                                                                Not yet submitted
-                                                                            </p>
+                                                                                <component
+                                                                                    :is="requirementStatusIcon(req.submission?.status).icon"
+                                                                                    class="h-4 w-4"
+                                                                                />
+                                                                            </span>
+                                                                            <div class="min-w-0">
+                                                                                <p class="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                                                                                    {{ req.title }}
+                                                                                </p>
+                                                                                <p
+                                                                                    v-if="req.submission?.submitted_at"
+                                                                                    class="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400"
+                                                                                >
+                                                                                    Submitted {{ formatDate(req.submission?.submitted_at) }}
+                                                                                    <template v-if="req.submission.reviewed_by">
+                                                                                        · Reviewed by
+                                                                                        <span
+                                                                                            class="font-medium text-slate-600 dark:text-slate-300"
+                                                                                            >{{ req.submission.reviewed_by }}</span
+                                                                                        >
+                                                                                    </template>
+                                                                                </p>
+                                                                                <p
+                                                                                    v-else
+                                                                                    class="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500"
+                                                                                >
+                                                                                    Not yet submitted
+                                                                                </p>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div class="flex shrink-0 items-center gap-2 pl-10 sm:pl-0">
+                                                                            <span
+                                                                                class="rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                                                                                :class="submissionStatusColor(req.submission?.status)"
+                                                                            >
+                                                                                {{ req.submission?.status ?? 'Not Submitted' }}
+                                                                            </span>
+
+                                                                            <button
+                                                                                v-if="req.submission?.file_path"
+                                                                                type="button"
+                                                                                class="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-semibold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/20"
+                                                                                title="View File"
+                                                                                @click.stop="openFilePreview(req.submission.file_path, req.title)"
+                                                                            >
+                                                                                <ExternalLink class="h-3 w-3" /> View File
+                                                                            </button>
+
+                                                                            <button
+                                                                                v-if="!isUploadOpen(prog, req)"
+                                                                                type="button"
+                                                                                class="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-0.5 text-[11px] font-semibold text-violet-700 transition hover:border-violet-300 hover:bg-violet-100 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300 dark:hover:bg-violet-500/20"
+                                                                                :title="
+                                                                                    req.submission?.file_path
+                                                                                        ? `Replace the ${req.title} file`
+                                                                                        : `Upload the ${req.title} submission`
+                                                                                "
+                                                                                @click.stop="openUpload(prog, req)"
+                                                                            >
+                                                                                <Upload class="h-3 w-3" />
+                                                                                {{ req.submission?.file_path ? 'Replace' : 'Upload' }}
+                                                                            </button>
                                                                         </div>
                                                                     </div>
-                                                                    <div class="flex shrink-0 items-center gap-2 pl-10 sm:pl-0">
-                                                                        <span
-                                                                            class="rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-                                                                            :class="submissionStatusColor(req.submission?.status)"
-                                                                        >
-                                                                            {{ req.submission?.status ?? 'Not Submitted' }}
-                                                                        </span>
 
-                                                                        <button
-                                                                            v-if="req.submission?.file_path"
-                                                                            type="button"
-                                                                            class="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-semibold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/20"
-                                                                            title="View File"
-                                                                            @click.stop="openFilePreview(req.submission.file_path, req.title)"
+                                                                    <!-- Inline upload form: submits through the same route as the program page -->
+                                                                    <div
+                                                                        v-if="isUploadOpen(prog, req)"
+                                                                        class="mt-3 cursor-default rounded-xl border border-violet-200 bg-white p-3 shadow-sm dark:border-violet-500/30 dark:bg-slate-900 sm:p-4"
+                                                                        @click.stop
+                                                                    >
+                                                                        <div class="flex items-center justify-between gap-2">
+                                                                            <p
+                                                                                class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-violet-700 dark:text-violet-300"
+                                                                            >
+                                                                                <Upload class="h-3.5 w-3.5" />
+                                                                                {{
+                                                                                    req.submission?.file_path
+                                                                                        ? 'Replace submission'
+                                                                                        : 'Upload submission'
+                                                                                }}
+                                                                            </p>
+                                                                            <span class="text-[11px] text-slate-500 dark:text-slate-400">{{
+                                                                                req.title
+                                                                            }}</span>
+                                                                        </div>
+
+                                                                        <label
+                                                                            class="mt-3 flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed p-3 transition"
+                                                                            :class="
+                                                                                uploadErrors.file
+                                                                                    ? 'border-red-300 bg-red-50/60 dark:border-red-500/40 dark:bg-red-500/[0.06]'
+                                                                                    : uploadFile
+                                                                                      ? 'border-emerald-300 bg-emerald-50/60 dark:border-emerald-500/40 dark:bg-emerald-500/[0.06]'
+                                                                                      : 'border-slate-200 bg-slate-50/60 hover:border-violet-300 hover:bg-violet-50/60 dark:border-slate-700 dark:bg-slate-800/40 dark:hover:border-violet-500/40'
+                                                                            "
                                                                         >
-                                                                            <ExternalLink class="h-3 w-3" /> View File
-                                                                        </button>
+                                                                            <input
+                                                                                type="file"
+                                                                                accept="application/pdf,.pdf"
+                                                                                class="sr-only"
+                                                                                :disabled="uploadProcessing"
+                                                                                @change="onUploadFileChange"
+                                                                            />
+                                                                            <span
+                                                                                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm"
+                                                                                :class="
+                                                                                    uploadFile
+                                                                                        ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 text-white'
+                                                                                        : 'bg-gradient-to-br from-violet-400 to-violet-600 text-white'
+                                                                                "
+                                                                            >
+                                                                                <FileUp class="h-5 w-5" />
+                                                                            </span>
+                                                                            <span class="min-w-0 flex-1">
+                                                                                <span
+                                                                                    class="block truncate text-sm font-semibold text-slate-800 dark:text-slate-100"
+                                                                                    :title="uploadFile?.name"
+                                                                                >
+                                                                                    {{ uploadFile?.name ?? 'Choose a PDF file' }}
+                                                                                </span>
+                                                                                <span class="block text-[11px] text-slate-500 dark:text-slate-400">
+                                                                                    <template v-if="uploadFile"
+                                                                                        >{{ formatFileSize(uploadFile.size) }} · click to
+                                                                                        change</template
+                                                                                    >
+                                                                                    <template v-else-if="req.submission?.file_path"
+                                                                                        >PDF only, up to 20 MB · leave empty to keep the current
+                                                                                        file</template
+                                                                                    >
+                                                                                    <template v-else>PDF only, up to 20 MB</template>
+                                                                                </span>
+                                                                            </span>
+                                                                        </label>
+                                                                        <p
+                                                                            v-if="uploadErrors.file"
+                                                                            class="mt-1.5 text-xs font-medium text-red-600 dark:text-red-400"
+                                                                        >
+                                                                            {{ uploadErrors.file }}
+                                                                        </p>
+
+                                                                        <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                                                            <label class="block">
+                                                                                <span
+                                                                                    class="mb-1 block text-[11px] font-semibold text-slate-600 dark:text-slate-300"
+                                                                                    >Status</span
+                                                                                >
+                                                                                <select
+                                                                                    v-model="uploadStatus"
+                                                                                    :disabled="uploadProcessing"
+                                                                                    :class="[toolbarControlClass, 'h-9 px-3 font-medium']"
+                                                                                >
+                                                                                    <option
+                                                                                        v-for="status in submissionStatuses"
+                                                                                        :key="status"
+                                                                                        :value="status"
+                                                                                    >
+                                                                                        {{ status }}
+                                                                                    </option>
+                                                                                </select>
+                                                                                <span
+                                                                                    v-if="uploadErrors.status"
+                                                                                    class="mt-1 block text-xs text-red-600 dark:text-red-400"
+                                                                                    >{{ uploadErrors.status }}</span
+                                                                                >
+                                                                            </label>
+                                                                            <label class="block sm:col-span-2">
+                                                                                <span
+                                                                                    class="mb-1 block text-[11px] font-semibold text-slate-600 dark:text-slate-300"
+                                                                                    >Remarks
+                                                                                    <span class="font-normal text-slate-400">(optional)</span></span
+                                                                                >
+                                                                                <input
+                                                                                    v-model="uploadRemarks"
+                                                                                    type="text"
+                                                                                    maxlength="2000"
+                                                                                    placeholder="e.g. Encoded from the Google Form responses"
+                                                                                    :disabled="uploadProcessing"
+                                                                                    :class="[toolbarControlClass, 'h-9 px-3']"
+                                                                                />
+                                                                                <span
+                                                                                    v-if="uploadErrors.remarks"
+                                                                                    class="mt-1 block text-xs text-red-600 dark:text-red-400"
+                                                                                    >{{ uploadErrors.remarks }}</span
+                                                                                >
+                                                                            </label>
+                                                                        </div>
+
+                                                                        <p
+                                                                            v-if="uploadErrors.general"
+                                                                            class="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700 dark:bg-red-500/10 dark:text-red-300"
+                                                                        >
+                                                                            {{ uploadErrors.general }}
+                                                                        </p>
+
+                                                                        <div class="mt-3 flex items-center justify-end gap-2">
+                                                                            <button
+                                                                                type="button"
+                                                                                class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:text-white"
+                                                                                :disabled="uploadProcessing"
+                                                                                @click="closeUpload"
+                                                                            >
+                                                                                Cancel
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                class="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-violet-500 to-violet-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-violet-500/25 transition hover:from-violet-600 hover:to-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                                                                :disabled="uploadProcessing"
+                                                                                @click="saveUpload(prog, req)"
+                                                                            >
+                                                                                <Loader2 v-if="uploadProcessing" class="h-3.5 w-3.5 animate-spin" />
+                                                                                <CheckCircle2 v-else class="h-3.5 w-3.5" />
+                                                                                {{ uploadProcessing ? 'Saving…' : 'Save submission' }}
+                                                                            </button>
+                                                                        </div>
                                                                     </div>
                                                                 </li>
                                                             </ul>

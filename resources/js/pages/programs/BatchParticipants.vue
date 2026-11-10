@@ -17,6 +17,7 @@ import BulkSubmissionUpload from '@/pages/programs/BulkSubmissionUpload.vue';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import {
+    CalendarDays,
     CheckCircle2,
     ChevronDown,
     ChevronLeft,
@@ -28,15 +29,23 @@ import {
     Clock,
     CloudUpload,
     Download,
+    ExternalLink,
+    Eye,
+    FileImage,
     FileText,
     FileX,
+    History,
+    Info,
     ListFilter,
     LoaderCircle,
+    Paperclip,
     Save,
     Search,
     Trash2,
+    TriangleAlert,
     Upload,
     UserPlus,
+    UserRound,
     Users,
     X,
     XCircle,
@@ -137,13 +146,161 @@ const openAttendance = (p: any) => {
 
     attFile.value = null;
     attErrors.value = {};
+    isDraggingMemo.value = false;
     showAttendance.value = true;
+};
+
+const MEMO_MAX_BYTES = 5 * 1024 * 1024;
+const memoInput = ref<HTMLInputElement | null>(null);
+const isDraggingMemo = ref(false);
+
+const pickMemoFile = (file: File | null) => {
+    attErrors.value.justification = undefined;
+
+    if (file && file.size > MEMO_MAX_BYTES) {
+        attFile.value = null;
+        attErrors.value.justification = `"${file.name}" is ${formatFileSize(file.size)}. The memo must be 5MB or smaller.`;
+        return;
+    }
+
+    attFile.value = file;
 };
 
 const onFileChange = (e: Event) => {
     const input = e.target as HTMLInputElement;
-    attFile.value = input.files?.[0] ?? null;
+    pickMemoFile(input.files?.[0] ?? null);
 };
+
+const onMemoDrop = (e: DragEvent) => {
+    isDraggingMemo.value = false;
+    pickMemoFile(e.dataTransfer?.files?.[0] ?? null);
+};
+
+const clearPickedMemo = () => {
+    attFile.value = null;
+    if (memoInput.value) memoInput.value.value = '';
+};
+
+const selectAttendance = (value: 'Pending' | 'Complete' | 'Absent') => {
+    attStatus.value = value;
+    attErrors.value = {};
+};
+
+const attendanceOptions = [
+    {
+        value: 'Pending' as const,
+        label: 'Pending',
+        hint: 'Not yet confirmed',
+        icon: Clock,
+        activeClass: 'border-amber-400 bg-amber-50 ring-2 ring-amber-400/30 dark:border-amber-500/70 dark:bg-amber-500/10',
+        iconClass: 'bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300',
+    },
+    {
+        value: 'Complete' as const,
+        label: 'Complete',
+        hint: 'Attended, earns hours',
+        icon: CheckCircle2,
+        activeClass: 'border-emerald-400 bg-emerald-50 ring-2 ring-emerald-400/30 dark:border-emerald-500/70 dark:bg-emerald-500/10',
+        iconClass: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300',
+    },
+    {
+        value: 'Absent' as const,
+        label: 'Absent',
+        hint: 'Needs a memo',
+        icon: XCircle,
+        activeClass: 'border-red-400 bg-red-50 ring-2 ring-red-400/30 dark:border-red-500/70 dark:bg-red-500/10',
+        iconClass: 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-300',
+    },
+];
+
+const memoOnFile = computed(() => attendanceTarget.value?.justification ?? null);
+
+const fileExtension = (name: string | null | undefined) => (name?.split('.').pop() ?? '').toLowerCase();
+
+const memoFileName = computed(() => {
+    const memo = memoOnFile.value;
+    if (!memo) return '';
+    return memo.original_name ?? `Justification memo.${fileExtension(memo.file_path)}`;
+});
+
+const memoExtension = computed(() => fileExtension(memoOnFile.value?.original_name ?? memoOnFile.value?.file_path));
+
+const isImageExtension = (ext: string) => ['jpg', 'jpeg', 'png'].includes(ext);
+
+const memoUploader = computed(() => {
+    const memo = memoOnFile.value;
+    if (!memo?.uploaded_by_name) return null;
+    return {
+        name: memo.uploaded_by_name as string,
+        empcode: memo.uploaded_by_empcode as string | null,
+        isSelfSubmitted: memo.uploaded_by_empcode === attendanceTarget.value?.empcode,
+    };
+});
+
+/** A memo counts as replaced when its record changed well after it was first filed. */
+const memoWasReplaced = computed(() => {
+    const memo = memoOnFile.value;
+    if (!memo?.created_at || !memo?.updated_at) return false;
+    return new Date(memo.updated_at).getTime() - new Date(memo.created_at).getTime() > 60_000;
+});
+
+/** Saving as Pending or Complete makes the server delete the memo on file. */
+const willDeleteMemo = computed(() => !!memoOnFile.value && attStatus.value !== 'Absent');
+
+const hasUnsavedStatusChange = computed(() => !!attendanceTarget.value && attendanceTarget.value.attendance !== attStatus.value);
+
+const initialsOf = (name: string) =>
+    name
+        .split(' ')
+        .filter(Boolean)
+        .map((n) => n[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase();
+
+const formatFileSize = (bytes: number | null | undefined) => {
+    if (!bytes) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const formatDateTime = (d: string | null | undefined) => {
+    if (!d) return '—';
+    return new Date(d).toLocaleString('en-PH', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+    });
+};
+
+const timeAgo = (d: string | null | undefined) => {
+    if (!d) return '';
+    const seconds = Math.round((new Date(d).getTime() - Date.now()) / 1000);
+    const units: [Intl.RelativeTimeFormatUnit, number][] = [
+        ['year', 31_536_000],
+        ['month', 2_592_000],
+        ['week', 604_800],
+        ['day', 86_400],
+        ['hour', 3_600],
+        ['minute', 60],
+    ];
+    const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+    for (const [unit, size] of units) {
+        if (Math.abs(seconds) >= size) return rtf.format(Math.round(seconds / size), unit);
+    }
+    return 'just now';
+};
+
+const batchDateRange = computed(() => {
+    const start = props.batch?.date_start;
+    const end = props.batch?.date_end;
+    if (!start) return '';
+    const fmt = (d: string) => new Date(d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+    return end && end !== start ? `${fmt(start)} – ${fmt(end)}` : fmt(start);
+});
 
 const deletingJustification = ref(false);
 
@@ -162,7 +319,7 @@ const deleteJustificationMemo = async () => {
                 attendanceTarget.value = updated;
                 attStatus.value = ['Pending', 'Complete', 'Absent'].includes(updated.attendance) ? updated.attendance : 'Pending';
             }
-            attFile.value = null;
+            clearPickedMemo();
             attErrors.value = {};
         },
         onFinish: () => {
@@ -200,8 +357,8 @@ const submitAttendance = () => {
             forceFormData: true,
             preserveScroll: true,
             onSuccess: () => {
+                // Keep attendanceTarget so the dialog body doesn't collapse during the close animation.
                 showAttendance.value = false;
-                attendanceTarget.value = null;
             },
             onError: (errors) => {
                 attErrors.value = errors as any;
@@ -1129,85 +1286,414 @@ const submissionSummary = computed(() => {
 
             <!-- ── Set Attendance Dialog ── -->
             <Dialog :open="showAttendance" @update:open="showAttendance = $event">
-                <DialogContent class="max-w-sm !rounded-2xl">
-                    <DialogHeader>
-                        <DialogTitle>
-                            <span class="flex items-center gap-2"> <ClipboardCheck class="h-5 w-5 text-blue-600" /> Set Attendance </span>
-                        </DialogTitle>
-                        <DialogDescription class="text-xs text-muted-foreground">
-                            {{ attendanceTarget?.employee?.name ?? attendanceTarget?.empcode }}
-                            — {{ batch?.batch }}
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <div class="grid gap-3 py-1">
-                        <div class="grid gap-1">
-                            <Label class="text-xs">Attendance <span class="text-red-500">*</span></Label>
-                            <Select v-model="attStatus">
-                                <SelectTrigger class="h-8 text-xs">
-                                    <SelectValue placeholder="Select attendance" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem class="text-xs" value="Pending">Pending</SelectItem>
-                                    <SelectItem class="text-xs" value="Complete">Complete</SelectItem>
-                                    <SelectItem class="text-xs" value="Absent">Absent</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div v-if="attStatus === 'Complete'" class="grid gap-1">
-                            <Label class="text-xs"> Completed Hours <span class="text-red-500">*</span> </Label>
-                            <Input type="number" step="0.5" min="0.5" class="h-8 text-xs" v-model="attHours" placeholder="e.g. 16" />
-                            <p class="text-xs text-red-500">{{ attErrors.hours }}</p>
-                        </div>
-
-                        <div v-if="attStatus === 'Absent'" class="grid gap-1">
-                            <Label class="text-xs">
-                                Justification Memo
-                                <span v-if="!attendanceTarget?.justification" class="text-red-500">*</span>
-                            </Label>
-
-                            <div v-if="attendanceTarget?.justification" class="flex items-center gap-1.5">
-                                <a
-                                    :href="`/storage/${attendanceTarget.justification.file_path}`"
-                                    target="_blank"
-                                    class="inline-flex w-fit items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-400"
-                                >
-                                    <FileText class="h-3 w-3" /> View currently uploaded memo
-                                </a>
-                                <button
-                                    type="button"
-                                    :disabled="deletingJustification"
-                                    title="Remove uploaded memo"
-                                    aria-label="Remove uploaded memo"
-                                    class="inline-flex items-center justify-center rounded-md border border-red-200 bg-red-50 p-1.5 text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400"
-                                    @click="deleteJustificationMemo"
-                                >
-                                    <LoaderCircle v-if="deletingJustification" class="h-3 w-3 animate-spin" />
-                                    <Trash2 v-else class="h-3 w-3" />
-                                </button>
+                <DialogContent class="flex max-h-[92vh] max-w-lg flex-col gap-0 overflow-hidden !rounded-2xl p-0">
+                    <!-- Header -->
+                    <div
+                        class="relative shrink-0 overflow-hidden border-b bg-gradient-to-br from-blue-50 via-white to-indigo-50 px-5 py-4 pr-12 dark:from-blue-950/50 dark:via-background dark:to-indigo-950/40"
+                    >
+                        <div
+                            class="pointer-events-none absolute -right-8 -top-12 h-32 w-32 rounded-full bg-blue-400/20 blur-2xl dark:bg-blue-500/20"
+                        />
+                        <DialogHeader class="relative flex-row items-center gap-3 space-y-0 text-left sm:text-left">
+                            <span
+                                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-600/30"
+                            >
+                                <ClipboardCheck class="h-5 w-5" />
+                            </span>
+                            <div class="min-w-0">
+                                <DialogTitle class="text-base font-bold leading-5">Set Attendance</DialogTitle>
+                                <DialogDescription class="mt-0.5 truncate text-[11px]">
+                                    Record how this participant did in {{ batch?.batch ?? 'this batch' }}
+                                </DialogDescription>
                             </div>
-
-                            <input
-                                type="file"
-                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                class="cursor-pointer text-xs file:mr-2 file:rounded-md file:border-0 file:bg-blue-600 file:px-2.5 file:py-1.5 file:text-[11px] file:font-bold file:text-white hover:file:bg-blue-500"
-                                @change="onFileChange"
-                            />
-                            <p class="text-[11px] text-muted-foreground">PDF, Word, or image. Max 5MB.</p>
-                            <p v-if="attendanceTarget?.justification && !attFile" class="text-[11px] text-slate-500">
-                                A memo is already on file (see the link above). You don't need to upload again — this only applies if you pick a new
-                                file.
-                            </p>
-                            <p class="text-xs text-red-500">{{ attErrors.justification }}</p>
-                        </div>
-
-                        <p v-if="attStatus === 'Pending'" class="text-[11px] text-muted-foreground">
-                            Pending attendance resets the participant's hours to 0.
-                        </p>
+                        </DialogHeader>
                     </div>
 
-                    <div class="flex justify-end gap-2 pt-2">
+                    <!-- Body -->
+                    <div v-if="attendanceTarget" class="grid min-h-0 flex-1 gap-4 overflow-y-auto px-5 py-4">
+                        <!-- Participant card -->
+                        <section class="rounded-xl border bg-card p-3 shadow-sm">
+                            <div class="flex items-center gap-3">
+                                <div
+                                    :class="attendanceTarget.employee?.avatar_color ?? 'bg-blue-500'"
+                                    class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm ring-4 ring-slate-100 dark:ring-slate-800"
+                                >
+                                    {{
+                                        attendanceTarget.employee?.initials || initialsOf(attendanceTarget.employee?.name ?? attendanceTarget.empcode)
+                                    }}
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <p class="truncate text-sm font-bold leading-5">
+                                        {{ attendanceTarget.employee?.name ?? attendanceTarget.empcode }}
+                                    </p>
+                                    <p class="truncate text-[11px] text-muted-foreground">
+                                        {{ attendanceTarget.empcode }}
+                                        <span v-if="attendanceTarget.employee?.POSITION"> · {{ attendanceTarget.employee.POSITION }}</span>
+                                    </p>
+                                    <p
+                                        v-if="attendanceTarget.employee?.['OFFICE/DIVISION'] ?? attendanceTarget.employee?.OFFICE"
+                                        class="truncate text-[11px] text-muted-foreground"
+                                    >
+                                        {{ attendanceTarget.employee?.['OFFICE/DIVISION'] ?? attendanceTarget.employee?.OFFICE }}
+                                    </p>
+                                </div>
+                                <div class="shrink-0 text-right">
+                                    <p class="mb-0.5 text-[9px] font-bold uppercase tracking-wide text-muted-foreground">On record</p>
+                                    <Badge :class="attendanceColor(attendanceTarget.attendance)" class="border-0 text-[10px] font-bold">
+                                        {{ attendanceTarget.attendance }}
+                                    </Badge>
+                                </div>
+                            </div>
+
+                            <div class="mt-3 flex flex-wrap gap-1.5 border-t pt-3">
+                                <span
+                                    class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-500/10 dark:text-blue-300"
+                                >
+                                    <ClipboardList class="h-3 w-3" /> {{ batch?.batch }}
+                                </span>
+                                <span
+                                    v-if="batchDateRange"
+                                    class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground"
+                                >
+                                    <CalendarDays class="h-3 w-3" /> {{ batchDateRange }}
+                                </span>
+                                <span
+                                    v-if="batchHours"
+                                    class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground"
+                                >
+                                    <Clock class="h-3 w-3" /> {{ batchHours }} hrs
+                                </span>
+                                <span
+                                    v-if="attendanceTarget.added_by"
+                                    class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground"
+                                    :title="attendanceTarget.created_at ? `Enrolled ${formatDateTime(attendanceTarget.created_at)}` : undefined"
+                                >
+                                    <UserRound class="h-3 w-3" /> Enrolled by {{ attendanceTarget.added_by }}
+                                </span>
+                            </div>
+                        </section>
+
+                        <!-- Status picker -->
+                        <section class="grid gap-2">
+                            <div class="flex items-center justify-between gap-2">
+                                <h3 class="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                                    Attendance status <span class="text-red-500">*</span>
+                                </h3>
+                                <span
+                                    v-if="hasUnsavedStatusChange"
+                                    class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-500/10 dark:text-blue-300"
+                                >
+                                    {{ attendanceTarget.attendance }} <ChevronRight class="h-3 w-3" /> {{ attStatus }}
+                                </span>
+                            </div>
+                            <div role="radiogroup" aria-label="Attendance status" class="grid grid-cols-3 gap-2">
+                                <button
+                                    v-for="option in attendanceOptions"
+                                    :key="option.value"
+                                    type="button"
+                                    role="radio"
+                                    :aria-checked="attStatus === option.value"
+                                    class="flex flex-col items-center gap-1.5 rounded-xl border p-2.5 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                    :class="
+                                        attStatus === option.value
+                                            ? option.activeClass
+                                            : 'border-border hover:border-slate-300 hover:bg-muted/40 dark:hover:border-slate-600'
+                                    "
+                                    @click="selectAttendance(option.value)"
+                                >
+                                    <span class="flex h-8 w-8 items-center justify-center rounded-full" :class="option.iconClass">
+                                        <component :is="option.icon" class="h-4 w-4" />
+                                    </span>
+                                    <span class="text-xs font-bold">{{ option.label }}</span>
+                                    <span class="text-[10px] leading-tight text-muted-foreground">{{ option.hint }}</span>
+                                </button>
+                            </div>
+                        </section>
+
+                        <!-- Complete: hours -->
+                        <section
+                            v-if="attStatus === 'Complete'"
+                            class="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 dark:border-emerald-900/60 dark:bg-emerald-950/20"
+                        >
+                            <h3
+                                class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-emerald-800 dark:text-emerald-300"
+                            >
+                                <Clock class="h-3.5 w-3.5" /> Completed hours <span class="text-red-500">*</span>
+                            </h3>
+                            <div class="mt-2 flex flex-wrap items-center gap-2">
+                                <div class="relative min-w-[8rem] flex-1">
+                                    <Input
+                                        v-model="attHours"
+                                        type="number"
+                                        step="0.5"
+                                        min="0.5"
+                                        class="h-9 bg-white pr-10 text-sm font-semibold dark:bg-slate-900"
+                                        placeholder="e.g. 16"
+                                    />
+                                    <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground"
+                                        >hrs</span
+                                    >
+                                </div>
+                                <Button
+                                    v-if="batchHours && String(batchHours) !== attHours"
+                                    variant="outline"
+                                    size="sm"
+                                    class="h-9 text-[11px]"
+                                    @click="attHours = String(batchHours)"
+                                >
+                                    Use batch hours ({{ batchHours }})
+                                </Button>
+                            </div>
+                            <p v-if="attErrors.hours" class="mt-1.5 text-xs text-red-500">{{ attErrors.hours }}</p>
+                            <p class="mt-1.5 text-[11px] text-emerald-900/70 dark:text-emerald-200/70">
+                                These hours go on the participant's training record. "Apply to all" gives the same hours to everyone not marked
+                                Absent.
+                            </p>
+                        </section>
+
+                        <!-- Pending: info -->
+                        <section
+                            v-if="attStatus === 'Pending'"
+                            class="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/60 p-3 dark:border-amber-900/60 dark:bg-amber-950/20"
+                        >
+                            <Info class="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                            <p class="text-[11px] text-amber-900 dark:text-amber-200">
+                                Pending means attendance isn't confirmed yet. The participant's hours are reset to 0 until you mark them Complete.
+                            </p>
+                        </section>
+
+                        <!-- Warning: switching away from Absent deletes the memo -->
+                        <section
+                            v-if="willDeleteMemo"
+                            class="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3 dark:border-red-900/60 dark:bg-red-950/30"
+                        >
+                            <TriangleAlert class="mt-0.5 h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
+                            <p class="text-[11px] text-red-800 dark:text-red-200">
+                                Saving as <b>{{ attStatus }}</b> permanently deletes the justification memo on file (<b>{{ memoFileName }}</b
+                                >).
+                            </p>
+                        </section>
+
+                        <!-- Absent: justification memo -->
+                        <section v-if="attStatus === 'Absent'" class="grid gap-3">
+                            <div class="flex items-center justify-between gap-2">
+                                <h3 class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                                    <Paperclip class="h-3.5 w-3.5" /> Justification memo
+                                    <span v-if="!memoOnFile" class="text-red-500">*</span>
+                                </h3>
+                                <span
+                                    v-if="memoOnFile"
+                                    class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
+                                >
+                                    <CheckCircle2 class="h-3 w-3" /> On file
+                                </span>
+                                <span
+                                    v-else
+                                    class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700 dark:bg-red-500/15 dark:text-red-300"
+                                >
+                                    <FileX class="h-3 w-3" /> Not yet filed
+                                </span>
+                            </div>
+
+                            <!-- Memo on file -->
+                            <div v-if="memoOnFile" class="overflow-hidden rounded-xl border bg-card shadow-sm">
+                                <div class="flex items-center gap-3 p-3">
+                                    <div
+                                        class="flex h-11 w-10 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg"
+                                        :class="
+                                            isImageExtension(memoExtension)
+                                                ? 'bg-violet-100 text-violet-600 dark:bg-violet-500/15 dark:text-violet-300'
+                                                : 'bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-300'
+                                        "
+                                    >
+                                        <FileImage v-if="isImageExtension(memoExtension)" class="h-4 w-4" />
+                                        <FileText v-else class="h-4 w-4" />
+                                        <span class="text-[8px] font-black uppercase leading-none">{{ memoExtension }}</span>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-xs font-bold" :title="memoFileName">{{ memoFileName }}</p>
+                                        <p class="text-[11px] text-muted-foreground">
+                                            {{ memoExtension.toUpperCase() }} file
+                                            <span v-if="memoOnFile.file_size"> · {{ formatFileSize(memoOnFile.file_size) }}</span>
+                                        </p>
+                                    </div>
+                                    <div class="flex shrink-0 items-center gap-1">
+                                        <button
+                                            type="button"
+                                            title="Preview memo"
+                                            aria-label="Preview memo"
+                                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border text-slate-600 transition hover:bg-muted dark:text-slate-300"
+                                            @click="
+                                                openFilePreview(
+                                                    memoOnFile.file_path,
+                                                    'Justification memo',
+                                                    attendanceTarget.employee?.name ?? attendanceTarget.empcode,
+                                                )
+                                            "
+                                        >
+                                            <Eye class="h-3.5 w-3.5" />
+                                        </button>
+                                        <a
+                                            :href="`/storage/${memoOnFile.file_path}`"
+                                            target="_blank"
+                                            title="Open in new tab"
+                                            aria-label="Open memo in new tab"
+                                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border text-slate-600 transition hover:bg-muted dark:text-slate-300"
+                                        >
+                                            <ExternalLink class="h-3.5 w-3.5" />
+                                        </a>
+                                        <button
+                                            type="button"
+                                            :disabled="deletingJustification"
+                                            title="Remove memo"
+                                            aria-label="Remove memo"
+                                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400"
+                                            @click="deleteJustificationMemo"
+                                        >
+                                            <LoaderCircle v-if="deletingJustification" class="h-3.5 w-3.5 animate-spin" />
+                                            <Trash2 v-else class="h-3.5 w-3.5" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Filing details -->
+                                <dl class="grid gap-px border-t bg-border sm:grid-cols-2">
+                                    <div class="bg-muted/40 p-3 dark:bg-slate-900/60">
+                                        <dt class="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                                            <UserRound class="h-3 w-3" /> Filed by
+                                        </dt>
+                                        <dd v-if="memoUploader" class="mt-1.5 flex items-center gap-2">
+                                            <span
+                                                class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
+                                                :class="
+                                                    memoUploader.isSelfSubmitted
+                                                        ? 'bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300'
+                                                        : 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300'
+                                                "
+                                            >
+                                                {{ initialsOf(memoUploader.name) }}
+                                            </span>
+                                            <span class="min-w-0">
+                                                <span class="block truncate text-xs font-semibold">{{ memoUploader.name }}</span>
+                                                <span
+                                                    class="block text-[10px] font-semibold"
+                                                    :class="
+                                                        memoUploader.isSelfSubmitted
+                                                            ? 'text-violet-600 dark:text-violet-400'
+                                                            : 'text-blue-600 dark:text-blue-400'
+                                                    "
+                                                >
+                                                    {{ memoUploader.isSelfSubmitted ? 'Self-submitted via My Programs' : 'Filed on their behalf' }}
+                                                </span>
+                                            </span>
+                                        </dd>
+                                        <dd v-else class="mt-1.5">
+                                            <span class="block text-xs font-semibold text-muted-foreground">Not recorded</span>
+                                            <span class="block text-[10px] text-muted-foreground">Uploaded before uploader tracking was added</span>
+                                        </dd>
+                                    </div>
+                                    <div class="bg-muted/40 p-3 dark:bg-slate-900/60">
+                                        <dt class="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                                            <CalendarDays class="h-3 w-3" /> Filed on
+                                        </dt>
+                                        <dd class="mt-1.5 text-xs font-semibold">
+                                            {{ formatDateTime(memoWasReplaced ? memoOnFile.updated_at : memoOnFile.created_at) }}
+                                        </dd>
+                                        <dd class="text-[10px] text-muted-foreground">
+                                            {{ timeAgo(memoWasReplaced ? memoOnFile.updated_at : memoOnFile.created_at) }}
+                                        </dd>
+                                    </div>
+                                </dl>
+
+                                <div
+                                    v-if="memoWasReplaced"
+                                    class="flex items-start gap-1.5 border-t bg-amber-50/70 px-3 py-2 text-[11px] text-amber-800 dark:bg-amber-500/10 dark:text-amber-300"
+                                >
+                                    <History class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                    <span>
+                                        First filed on <b>{{ formatDateTime(memoOnFile.created_at) }}</b> ({{ timeAgo(memoOnFile.created_at) }}). The
+                                        file above replaced it.
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Upload -->
+                            <div class="grid gap-1.5">
+                                <p class="text-[11px] font-semibold text-muted-foreground">
+                                    {{ memoOnFile ? 'Replace with a new file (optional)' : 'Upload the signed memo or excuse letter' }}
+                                </p>
+                                <label
+                                    v-if="!attFile"
+                                    class="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed px-4 py-5 text-center transition"
+                                    :class="
+                                        isDraggingMemo
+                                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10'
+                                            : attErrors.justification
+                                              ? 'border-red-300 bg-red-50/40 dark:border-red-800 dark:bg-red-950/20'
+                                              : 'border-slate-300 hover:border-blue-400 hover:bg-blue-50/40 dark:border-slate-700 dark:hover:border-blue-700 dark:hover:bg-blue-500/5'
+                                    "
+                                    @dragover.prevent="isDraggingMemo = true"
+                                    @dragleave.prevent="isDraggingMemo = false"
+                                    @drop.prevent="onMemoDrop"
+                                >
+                                    <span
+                                        class="pointer-events-none flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300"
+                                    >
+                                        <CloudUpload class="h-5 w-5" />
+                                    </span>
+                                    <span class="pointer-events-none text-xs font-semibold">
+                                        <span class="text-blue-600 dark:text-blue-400">Click to choose</span> or drag &amp; drop
+                                    </span>
+                                    <span class="pointer-events-none text-[10px] text-muted-foreground"
+                                        >PDF, Word (.doc, .docx), JPG or PNG · Max 5MB</span
+                                    >
+                                    <input
+                                        ref="memoInput"
+                                        type="file"
+                                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                        class="sr-only"
+                                        @change="onFileChange"
+                                    />
+                                </label>
+
+                                <div
+                                    v-else
+                                    class="flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950/30"
+                                >
+                                    <span
+                                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm shadow-blue-600/30"
+                                    >
+                                        <FileImage v-if="isImageExtension(fileExtension(attFile.name))" class="h-4 w-4" />
+                                        <FileText v-else class="h-4 w-4" />
+                                    </span>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-xs font-bold" :title="attFile.name">{{ attFile.name }}</p>
+                                        <p class="text-[11px] text-blue-700 dark:text-blue-300">
+                                            {{ formatFileSize(attFile.size) }} · Ready to upload when you save
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        title="Remove selected file"
+                                        aria-label="Remove selected file"
+                                        class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-blue-100 hover:text-slate-700 dark:hover:bg-blue-900/50 dark:hover:text-slate-200"
+                                        @click="clearPickedMemo"
+                                    >
+                                        <X class="h-3.5 w-3.5" />
+                                    </button>
+                                </div>
+
+                                <p v-if="attFile && memoOnFile" class="flex items-start gap-1.5 text-[11px] text-amber-700 dark:text-amber-400">
+                                    <TriangleAlert class="mt-0.5 h-3 w-3 shrink-0" />
+                                    Saving replaces "{{ memoFileName }}" with this file. The old file is deleted.
+                                </p>
+                                <p v-if="attErrors.justification" class="text-xs text-red-500">{{ attErrors.justification }}</p>
+                            </div>
+                        </section>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t bg-muted/30 px-5 py-3">
                         <Button variant="outline" size="sm" @click="showAttendance = false">Cancel</Button>
                         <Button v-if="attStatus === 'Complete'" variant="outline" size="sm" :disabled="attProcessing" @click="applyToAll">
                             <LoaderCircle v-if="attProcessing" class="mr-1 h-3 w-3 animate-spin" />

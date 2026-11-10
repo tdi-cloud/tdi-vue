@@ -89,6 +89,44 @@ test('uploading a justification memo attaches it to the participant when marked 
     Storage::disk('public')->assertExists($participant->justification->file_path);
 });
 
+test('an admin-uploaded justification memo records the file name, size, and who uploaded it', function () {
+    Storage::fake('public');
+    $admin = justificationTestAdmin('EMP-JADM-07');
+    [$participant] = justificationTestSetup();
+
+    $this->actingAs($admin)->post(route('participants.attendance', $participant), [
+        'attendance' => 'Absent',
+        'justification' => UploadedFile::fake()->create('Office Order 12.pdf', 100),
+    ])->assertSessionDoesntHaveErrors();
+
+    $justification = $participant->refresh()->justification;
+    expect($justification->original_name)->toBe('Office Order 12.pdf');
+    expect($justification->file_size)->toBe(100 * 1024);
+    expect($justification->uploaded_by_empcode)->toBe('EMP-JADM-07');
+    expect($justification->uploaded_by_name)->toBe($admin->name);
+});
+
+test('replacing a justification memo updates the uploader to whoever replaced it', function () {
+    Storage::fake('public');
+    $firstAdmin = justificationTestAdmin('EMP-JADM-08');
+    $secondAdmin = justificationTestAdmin('EMP-JADM-09');
+    [$participant] = justificationTestSetup();
+
+    $this->actingAs($firstAdmin)->post(route('participants.attendance', $participant), [
+        'attendance' => 'Absent',
+        'justification' => UploadedFile::fake()->create('first.pdf', 100),
+    ]);
+
+    $this->actingAs($secondAdmin)->post(route('participants.attendance', $participant), [
+        'attendance' => 'Absent',
+        'justification' => UploadedFile::fake()->create('second.pdf', 50),
+    ])->assertSessionDoesntHaveErrors();
+
+    $justification = $participant->refresh()->justification;
+    expect($justification->original_name)->toBe('second.pdf');
+    expect($justification->uploaded_by_empcode)->toBe('EMP-JADM-09');
+});
+
 test('re-submitting absent attendance without a new file keeps the previously uploaded memo', function () {
     Storage::fake('public');
     $admin = justificationTestAdmin('EMP-JADM-02');
@@ -267,6 +305,23 @@ test('a participant can upload a justification without any prior requirement sub
     $justification = AbsentJustification::where('participant_id', $participant->id)->first();
     expect($justification)->not->toBeNull();
     Storage::disk('public')->assertExists($justification->file_path);
+});
+
+test('a self-service justification records the participant as the uploader', function () {
+    Storage::fake('public');
+
+    $user = selfJustificationUser('EMP-JUST-09');
+    $participant = selfJustificationParticipant($user->empcode);
+
+    $this->actingAs($user)->post(
+        route('programs.my-progress.justification.submit', $participant->batch_id),
+        ['file' => UploadedFile::fake()->create('sick-leave.pdf', 100, 'application/pdf')],
+    )->assertSessionHasNoErrors();
+
+    $justification = AbsentJustification::where('participant_id', $participant->id)->first();
+    expect($justification->original_name)->toBe('sick-leave.pdf');
+    expect($justification->uploaded_by_empcode)->toBe('EMP-JUST-09');
+    expect($justification->uploaded_by_name)->toBe($user->name);
 });
 
 test('a non-PDF self-service justification file is rejected', function () {

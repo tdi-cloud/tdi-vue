@@ -121,6 +121,12 @@ interface StatusMeta {
     dot: string;
     badge: string;
     event: string;
+    borderLeft: string;
+    borderTop: string;
+    hover: string;
+    tile: string;
+    text: string;
+    gradient: string;
 }
 
 const STATUS_META: Record<string, StatusMeta> = {
@@ -128,25 +134,49 @@ const STATUS_META: Record<string, StatusMeta> = {
         label: 'Upcoming',
         dot: 'bg-indigo-500',
         badge: 'bg-indigo-50 text-indigo-700 ring-indigo-600/20 dark:bg-indigo-500/15 dark:text-indigo-300 dark:ring-indigo-400/30',
-        event: 'border-indigo-500 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20',
+        event: 'border-indigo-500 bg-indigo-100/70 hover:bg-indigo-200/70 dark:bg-indigo-500/15 dark:hover:bg-indigo-500/25',
+        borderLeft: 'border-l-indigo-500',
+        borderTop: 'border-t-indigo-500',
+        hover: 'hover:bg-indigo-50/70 focus-visible:bg-indigo-50/70 dark:hover:bg-indigo-500/10 dark:focus-visible:bg-indigo-500/10',
+        tile: 'border-indigo-200 bg-indigo-50 dark:border-indigo-500/30 dark:bg-indigo-500/10',
+        text: 'text-indigo-700 dark:text-indigo-300',
+        gradient: 'from-indigo-100/70 to-indigo-50/20 dark:from-indigo-500/20 dark:to-indigo-500/5',
     },
     active: {
         label: 'Active',
         dot: 'bg-cyan-500',
         badge: 'bg-cyan-50 text-cyan-700 ring-cyan-600/20 dark:bg-cyan-500/15 dark:text-cyan-300 dark:ring-cyan-400/30',
-        event: 'border-cyan-500 bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-500/10 dark:hover:bg-cyan-500/20',
+        event: 'border-cyan-500 bg-cyan-100/70 hover:bg-cyan-200/70 dark:bg-cyan-500/15 dark:hover:bg-cyan-500/25',
+        borderLeft: 'border-l-cyan-500',
+        borderTop: 'border-t-cyan-500',
+        hover: 'hover:bg-cyan-50/70 focus-visible:bg-cyan-50/70 dark:hover:bg-cyan-500/10 dark:focus-visible:bg-cyan-500/10',
+        tile: 'border-cyan-200 bg-cyan-50 dark:border-cyan-500/30 dark:bg-cyan-500/10',
+        text: 'text-cyan-700 dark:text-cyan-300',
+        gradient: 'from-cyan-100/70 to-cyan-50/20 dark:from-cyan-500/20 dark:to-cyan-500/5',
     },
     completed: {
         label: 'Completed',
         dot: 'bg-emerald-500',
         badge: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-400/30',
-        event: 'border-emerald-500 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20',
+        event: 'border-emerald-500 bg-emerald-100/70 hover:bg-emerald-200/70 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25',
+        borderLeft: 'border-l-emerald-500',
+        borderTop: 'border-t-emerald-500',
+        hover: 'hover:bg-emerald-50/70 focus-visible:bg-emerald-50/70 dark:hover:bg-emerald-500/10 dark:focus-visible:bg-emerald-500/10',
+        tile: 'border-emerald-200 bg-emerald-50 dark:border-emerald-500/30 dark:bg-emerald-500/10',
+        text: 'text-emerald-700 dark:text-emerald-300',
+        gradient: 'from-emerald-100/70 to-emerald-50/20 dark:from-emerald-500/20 dark:to-emerald-500/5',
     },
     rescheduled: {
         label: 'Rescheduled',
         dot: 'bg-amber-500',
         badge: 'bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-400/30',
-        event: 'border-amber-500 bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/10 dark:hover:bg-amber-500/20',
+        event: 'border-amber-500 bg-amber-100/70 hover:bg-amber-200/70 dark:bg-amber-500/15 dark:hover:bg-amber-500/25',
+        borderLeft: 'border-l-amber-500',
+        borderTop: 'border-t-amber-500',
+        hover: 'hover:bg-amber-50/70 focus-visible:bg-amber-50/70 dark:hover:bg-amber-500/10 dark:focus-visible:bg-amber-500/10',
+        tile: 'border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10',
+        text: 'text-amber-700 dark:text-amber-300',
+        gradient: 'from-amber-100/70 to-amber-50/20 dark:from-amber-500/20 dark:to-amber-500/5',
     },
 };
 
@@ -154,7 +184,13 @@ const FALLBACK_STATUS: StatusMeta = {
     label: 'Unknown',
     dot: 'bg-slate-400',
     badge: 'bg-slate-100 text-slate-700 ring-slate-500/20 dark:bg-slate-500/15 dark:text-slate-300 dark:ring-slate-400/30',
-    event: 'border-slate-400 bg-slate-100 hover:bg-slate-200 dark:bg-slate-500/10 dark:hover:bg-slate-500/20',
+    event: 'border-slate-400 bg-slate-100 hover:bg-slate-200 dark:bg-slate-500/15 dark:hover:bg-slate-500/25',
+    borderLeft: 'border-l-slate-400',
+    borderTop: 'border-t-slate-400',
+    hover: 'hover:bg-slate-50 focus-visible:bg-slate-50 dark:hover:bg-slate-500/10 dark:focus-visible:bg-slate-500/10',
+    tile: 'border-slate-200 bg-slate-50 dark:border-slate-500/30 dark:bg-slate-500/10',
+    text: 'text-slate-700 dark:text-slate-300',
+    gradient: 'from-slate-100/80 to-slate-50/20 dark:from-slate-500/20 dark:to-slate-500/5',
 };
 
 function statusMeta(status: string | null | undefined): StatusMeta {
@@ -181,35 +217,45 @@ const kpis = computed(() => [
         label: 'Total Programs',
         value: filteredEvents.value.length,
         icon: CalendarDays,
-        tile: 'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300',
+        tile: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300',
+        accent: 'border-t-blue-500 from-blue-50 dark:border-t-blue-400 dark:from-blue-500/10',
+        valueColor: 'text-blue-700 dark:text-blue-300',
         span: 'col-span-2 sm:col-span-1',
     },
     {
         label: 'Active',
         value: statusCounts.value.active,
         icon: CirclePlay,
-        tile: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-300',
+        tile: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-500/20 dark:text-cyan-300',
+        accent: 'border-t-cyan-500 from-cyan-50 dark:border-t-cyan-400 dark:from-cyan-500/10',
+        valueColor: 'text-cyan-700 dark:text-cyan-300',
         span: '',
     },
     {
         label: 'Upcoming',
         value: statusCounts.value.upcoming,
         icon: CalendarClock,
-        tile: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300',
+        tile: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300',
+        accent: 'border-t-indigo-500 from-indigo-50 dark:border-t-indigo-400 dark:from-indigo-500/10',
+        valueColor: 'text-indigo-700 dark:text-indigo-300',
         span: '',
     },
     {
         label: 'Completed',
         value: statusCounts.value.completed,
         icon: CircleCheck,
-        tile: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+        tile: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300',
+        accent: 'border-t-emerald-500 from-emerald-50 dark:border-t-emerald-400 dark:from-emerald-500/10',
+        valueColor: 'text-emerald-700 dark:text-emerald-300',
         span: '',
     },
     {
         label: 'Rescheduled',
         value: statusCounts.value.rescheduled,
         icon: RotateCcw,
-        tile: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+        tile: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300',
+        accent: 'border-t-amber-500 from-amber-50 dark:border-t-amber-400 dark:from-amber-500/10',
+        valueColor: 'text-amber-700 dark:text-amber-300',
         span: '',
     },
 ]);
@@ -424,10 +470,12 @@ const calendarOptions = computed<CalendarOptions>(() => ({
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex min-w-0 max-w-full flex-1 flex-col gap-4 px-3 pb-10 pt-3 sm:gap-6 sm:px-6 sm:pt-4">
             <!-- ===================== HEADER ===================== -->
-            <section class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <section
+                class="flex flex-col gap-4 rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 dark:border-blue-500/20 dark:from-blue-500/10 dark:to-indigo-500/10 sm:p-5 lg:flex-row lg:items-end lg:justify-between"
+            >
                 <div class="flex min-w-0 items-start gap-3 sm:gap-4">
                     <div
-                        class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-700 text-white shadow-sm dark:bg-blue-600 sm:h-12 sm:w-12"
+                        class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/25 dark:shadow-blue-500/20 sm:h-12 sm:w-12"
                     >
                         <CalendarDays class="h-5 w-5 sm:h-6 sm:w-6" />
                     </div>
@@ -435,17 +483,20 @@ const calendarOptions = computed<CalendarOptions>(() => ({
                         <h1 class="text-xl font-semibold leading-tight tracking-tight text-foreground sm:text-2xl">
                             Learning &amp; Development Calendar
                         </h1>
-                        <p class="mt-1 text-sm text-muted-foreground">Track training programs, batches, schedules, and learning activities.</p>
+                        <p class="mt-1 text-sm text-foreground/70">Track training programs, batches, schedules, and learning activities.</p>
                     </div>
                 </div>
 
                 <div class="flex w-full flex-col gap-1.5 sm:w-auto">
-                    <label for="category-filter" class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <label for="category-filter" class="flex items-center gap-1.5 text-xs font-semibold text-blue-700 dark:text-blue-300">
                         <Filter class="h-3.5 w-3.5" />
                         Program Category
                     </label>
                     <Select v-model="selectedCategory">
-                        <SelectTrigger id="category-filter" class="h-10 w-full bg-card text-sm font-medium sm:w-64">
+                        <SelectTrigger
+                            id="category-filter"
+                            class="h-10 w-full border-blue-200 bg-card text-sm font-medium dark:border-blue-500/30 sm:w-64"
+                        >
                             <SelectValue placeholder="All Categories" />
                         </SelectTrigger>
                         <SelectContent>
@@ -463,15 +514,15 @@ const calendarOptions = computed<CalendarOptions>(() => ({
                 <div
                     v-for="kpi in kpis"
                     :key="kpi.label"
-                    class="flex min-w-0 items-center gap-3 rounded-xl border bg-card p-3 shadow-sm sm:p-4"
-                    :class="kpi.span"
+                    class="flex min-w-0 items-center gap-3 rounded-xl border border-t-[3px] bg-card bg-gradient-to-br to-card p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:p-4"
+                    :class="[kpi.accent, kpi.span]"
                 >
                     <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg" :class="kpi.tile">
                         <component :is="kpi.icon" class="h-5 w-5" />
                     </div>
                     <div class="min-w-0">
-                        <p class="truncate text-xs font-medium text-muted-foreground">{{ kpi.label }}</p>
-                        <p class="text-xl font-semibold tabular-nums leading-tight text-foreground sm:text-2xl">{{ kpi.value }}</p>
+                        <p class="truncate text-xs font-medium text-foreground/70">{{ kpi.label }}</p>
+                        <p class="text-xl font-semibold tabular-nums leading-tight sm:text-2xl" :class="kpi.valueColor">{{ kpi.value }}</p>
                     </div>
                 </div>
             </section>
@@ -481,13 +532,15 @@ const calendarOptions = computed<CalendarOptions>(() => ({
                 <!-- Calendar -->
                 <section class="tdi-calendar min-w-0 rounded-xl border bg-card shadow-sm" aria-label="Training calendar">
                     <!-- Toolbar -->
-                    <div class="flex flex-col gap-3 border-b px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4">
+                    <div
+                        class="flex flex-col gap-3 rounded-t-xl border-b bg-gradient-to-r from-blue-50/80 to-indigo-50/60 px-3 py-3 dark:from-blue-500/10 dark:to-indigo-500/5 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4"
+                    >
                         <div class="flex min-w-0 items-center gap-2">
                             <div class="flex shrink-0 items-center">
                                 <Button
                                     variant="outline"
                                     size="icon"
-                                    class="h-10 w-10 rounded-r-none sm:h-9 sm:w-9"
+                                    class="h-10 w-10 rounded-r-none border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-blue-500/30 dark:hover:bg-blue-500/15 dark:hover:text-blue-300 sm:h-9 sm:w-9"
                                     :aria-label="`Previous ${periodLabel}`"
                                     :title="`Previous ${periodLabel}`"
                                     @click="goPrev"
@@ -497,7 +550,7 @@ const calendarOptions = computed<CalendarOptions>(() => ({
                                 <Button
                                     variant="outline"
                                     size="icon"
-                                    class="-ml-px h-10 w-10 rounded-l-none sm:h-9 sm:w-9"
+                                    class="-ml-px h-10 w-10 rounded-l-none border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-blue-500/30 dark:hover:bg-blue-500/15 dark:hover:text-blue-300 sm:h-9 sm:w-9"
                                     :aria-label="`Next ${periodLabel}`"
                                     :title="`Next ${periodLabel}`"
                                     @click="goNext"
@@ -505,14 +558,25 @@ const calendarOptions = computed<CalendarOptions>(() => ({
                                     <ChevronRight class="h-4 w-4" />
                                 </Button>
                             </div>
-                            <h2 class="min-w-0 truncate text-base font-semibold text-foreground sm:text-lg" aria-live="polite">
+                            <h2 class="min-w-0 truncate text-base font-semibold text-blue-950 dark:text-blue-50 sm:text-lg" aria-live="polite">
                                 {{ calendarTitle }}
                             </h2>
                         </div>
 
                         <div class="flex items-center justify-between gap-2 sm:justify-end">
-                            <Button variant="outline" class="h-10 px-4 sm:h-9" :disabled="isTodayInView" @click="goToday">Today</Button>
-                            <div class="inline-flex rounded-lg border bg-muted/50 p-0.5" role="group" aria-label="Calendar view">
+                            <Button
+                                variant="outline"
+                                class="h-10 border-blue-200 px-4 hover:bg-blue-50 hover:text-blue-700 dark:border-blue-500/30 dark:hover:bg-blue-500/15 dark:hover:text-blue-300 sm:h-9"
+                                :disabled="isTodayInView"
+                                @click="goToday"
+                            >
+                                Today
+                            </Button>
+                            <div
+                                class="inline-flex rounded-lg border border-blue-200 bg-background/80 p-0.5 dark:border-blue-500/30 dark:bg-background/40"
+                                role="group"
+                                aria-label="Calendar view"
+                            >
                                 <button
                                     v-for="view in viewOptions"
                                     :key="view.value"
@@ -521,7 +585,7 @@ const calendarOptions = computed<CalendarOptions>(() => ({
                                     :class="
                                         currentView === view.value
                                             ? 'bg-blue-700 text-white shadow-sm dark:bg-blue-600'
-                                            : 'text-muted-foreground hover:bg-background hover:text-foreground'
+                                            : 'text-muted-foreground hover:bg-blue-100/70 hover:text-blue-700 dark:hover:bg-blue-500/15 dark:hover:text-blue-300'
                                     "
                                     :aria-pressed="currentView === view.value"
                                     @click="changeView(view.value)"
@@ -576,16 +640,16 @@ const calendarOptions = computed<CalendarOptions>(() => ({
                                 <!-- Month / week: compact card with a status accent -->
                                 <div
                                     v-else
-                                    class="w-full min-w-0 overflow-hidden rounded-[5px] border-l-[3px] px-1.5 py-1 text-foreground transition-colors"
+                                    class="w-full min-w-0 overflow-hidden rounded-[5px] border-l-4 px-1.5 py-1 text-foreground transition-colors"
                                     :class="statusMeta(arg.event.extendedProps.status).event"
                                 >
                                     <p class="truncate text-[11px] font-semibold leading-tight sm:text-xs">
                                         {{ displayTitle(arg.event.extendedProps) }}
                                     </p>
-                                    <p class="truncate text-[10px] leading-tight text-muted-foreground sm:text-[11px]">
+                                    <p class="truncate text-[10px] leading-tight text-foreground/70 sm:text-[11px]">
                                         {{ batchLabel(arg.event.extendedProps.batch) }}
                                     </p>
-                                    <p class="mt-0.5 hidden items-center gap-1 truncate text-[11px] leading-tight text-muted-foreground lg:flex">
+                                    <p class="mt-0.5 hidden items-center gap-1 truncate text-[11px] leading-tight text-foreground/70 lg:flex">
                                         <template v-if="arg.event.extendedProps.time_start">
                                             <Clock3 class="h-3 w-3 shrink-0" />
                                             <span class="truncate">{{ formatTime(arg.event.extendedProps.time_start) }}</span>
@@ -600,25 +664,39 @@ const calendarOptions = computed<CalendarOptions>(() => ({
                     </div>
 
                     <!-- Legend -->
-                    <div class="flex flex-col gap-2 border-t px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-                        <ul class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-muted-foreground sm:flex sm:flex-wrap sm:items-center sm:gap-x-5">
-                            <li v-for="item in legend" :key="item.label" class="flex items-center gap-2">
-                                <span class="h-2.5 w-2.5 rounded-full" :class="item.dot" />
+                    <div
+                        class="flex flex-col gap-2 rounded-b-xl border-t bg-blue-50/40 px-3 py-3 dark:bg-blue-500/5 sm:flex-row sm:items-center sm:justify-between sm:px-5"
+                    >
+                        <ul class="flex flex-wrap items-center gap-2">
+                            <li
+                                v-for="item in legend"
+                                :key="item.label"
+                                class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset"
+                                :class="item.badge"
+                            >
+                                <span class="h-2 w-2 rounded-full" :class="item.dot" />
                                 {{ item.label }}
                             </li>
                         </ul>
                         <p class="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <MousePointerClick class="h-3.5 w-3.5" />
+                            <MousePointerClick class="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                             Select a program to view full details
                         </p>
                     </div>
                 </section>
 
                 <!-- Upcoming Programs -->
-                <aside class="flex min-w-0 flex-col rounded-xl border bg-card shadow-sm xl:self-start" aria-labelledby="upcoming-heading">
-                    <div class="flex items-center justify-between border-b px-4 py-3 sm:px-5 sm:py-4">
-                        <h2 id="upcoming-heading" class="text-base font-semibold text-foreground">Upcoming Programs</h2>
-                        <span class="rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
+                <aside
+                    class="flex min-w-0 flex-col overflow-hidden rounded-xl border bg-card shadow-sm xl:self-start"
+                    aria-labelledby="upcoming-heading"
+                >
+                    <div
+                        class="flex items-center justify-between border-b bg-gradient-to-r from-violet-50 to-purple-50/60 px-4 py-3 dark:from-violet-500/10 dark:to-purple-500/5 sm:px-5 sm:py-4"
+                    >
+                        <h2 id="upcoming-heading" class="text-base font-semibold text-violet-950 dark:text-violet-100">Upcoming Programs</h2>
+                        <span
+                            class="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-violet-700 ring-1 ring-inset ring-violet-600/20 dark:bg-violet-500/20 dark:text-violet-200 dark:ring-violet-400/30"
+                        >
                             {{ upcomingPrograms.length }}
                         </span>
                     </div>
@@ -627,18 +705,20 @@ const calendarOptions = computed<CalendarOptions>(() => ({
                         <li v-for="event in upcomingPrograms" :key="event.id" class="md:border-b xl:border-b-0">
                             <button
                                 type="button"
-                                class="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none sm:px-5"
+                                class="flex w-full items-start gap-3 border-l-4 px-4 py-3 text-left transition-colors focus-visible:outline-none sm:px-5"
+                                :class="[statusMeta(event.extendedProps.status).borderLeft, statusMeta(event.extendedProps.status).hover]"
                                 @click="openDetails(event.extendedProps)"
                             >
                                 <div
                                     v-if="dateParts(event.start)"
-                                    class="flex w-12 shrink-0 flex-col items-center rounded-lg border bg-background py-1.5 leading-none"
+                                    class="flex w-12 shrink-0 flex-col items-center rounded-lg border py-1.5 leading-none"
+                                    :class="statusMeta(event.extendedProps.status).tile"
                                 >
-                                    <span class="text-[10px] font-semibold uppercase text-blue-700 dark:text-blue-400">{{
+                                    <span class="text-[10px] font-semibold uppercase" :class="statusMeta(event.extendedProps.status).text">{{
                                         dateParts(event.start)?.month
                                     }}</span>
                                     <span class="mt-0.5 text-lg font-semibold tabular-nums text-foreground">{{ dateParts(event.start)?.day }}</span>
-                                    <span class="mt-0.5 text-[10px] text-muted-foreground">{{ dateParts(event.start)?.weekday }}</span>
+                                    <span class="mt-0.5 text-[10px] text-foreground/70">{{ dateParts(event.start)?.weekday }}</span>
                                 </div>
                                 <div class="min-w-0 flex-1">
                                     <div class="flex items-start justify-between gap-2">
@@ -655,11 +735,11 @@ const calendarOptions = computed<CalendarOptions>(() => ({
                                     <p class="text-xs text-muted-foreground">{{ batchLabel(event.extendedProps.batch) }}</p>
                                     <div class="mt-1.5 flex flex-col gap-1 text-xs text-muted-foreground">
                                         <span v-if="formatTimeRange(event.extendedProps)" class="inline-flex items-center gap-1.5">
-                                            <Clock3 class="h-3.5 w-3.5 shrink-0" />
+                                            <Clock3 class="h-3.5 w-3.5 shrink-0 text-violet-500 dark:text-violet-400" />
                                             {{ formatTimeRange(event.extendedProps) }}
                                         </span>
                                         <span v-if="event.extendedProps.venue" class="inline-flex min-w-0 items-center gap-1.5">
-                                            <MapPin class="h-3.5 w-3.5 shrink-0" />
+                                            <MapPin class="h-3.5 w-3.5 shrink-0 text-violet-500 dark:text-violet-400" />
                                             <span class="truncate">{{ event.extendedProps.venue }}</span>
                                         </span>
                                     </div>
@@ -689,7 +769,8 @@ const calendarOptions = computed<CalendarOptions>(() => ({
             >
                 <div
                     v-if="hovered"
-                    class="pointer-events-none fixed z-50 w-[296px] rounded-xl border bg-popover p-4 text-popover-foreground shadow-lg"
+                    class="pointer-events-none fixed z-50 w-[296px] rounded-xl border border-t-[3px] bg-popover p-4 text-popover-foreground shadow-lg"
+                    :class="statusMeta(hovered.status).borderTop"
                     :style="popoverStyle"
                     role="tooltip"
                 >
@@ -734,9 +815,12 @@ const calendarOptions = computed<CalendarOptions>(() => ({
             >
                 <template v-if="selected">
                     <!-- Header -->
-                    <div class="shrink-0 border-b bg-muted/40 px-4 pb-4 pt-4 sm:px-6 sm:pb-5 sm:pt-5">
+                    <div
+                        class="shrink-0 border-b bg-gradient-to-br px-4 pb-4 pt-4 sm:px-6 sm:pb-5 sm:pt-5"
+                        :class="statusMeta(selected.status).gradient"
+                    >
                         <div class="flex items-center justify-between gap-3">
-                            <p class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Program Schedule</p>
+                            <p class="text-[11px] font-semibold uppercase tracking-wider text-foreground/70">Program Schedule</p>
                             <DialogClose
                                 class="-mr-2 inline-flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 aria-label="Close"
@@ -750,7 +834,9 @@ const calendarOptions = computed<CalendarOptions>(() => ({
                                 v-if="selectedDate"
                                 class="hidden w-16 shrink-0 flex-col items-center rounded-lg border bg-background py-2 leading-none shadow-sm sm:flex"
                             >
-                                <span class="text-[11px] font-semibold uppercase text-blue-700 dark:text-blue-400">{{ selectedDate.month }}</span>
+                                <span class="text-[11px] font-semibold uppercase" :class="statusMeta(selected.status).text">{{
+                                    selectedDate.month
+                                }}</span>
                                 <span class="mt-1 text-2xl font-semibold tabular-nums text-foreground">{{ selectedDate.day }}</span>
                                 <span class="mt-1 text-[11px] uppercase text-muted-foreground">{{ selectedDate.weekday }}</span>
                             </div>
@@ -758,7 +844,7 @@ const calendarOptions = computed<CalendarOptions>(() => ({
                                 <DialogTitle class="text-lg font-semibold leading-snug text-foreground sm:text-xl">
                                     {{ selected.program_title ?? selected.program_code }}
                                 </DialogTitle>
-                                <DialogDescription class="mt-1 text-sm text-muted-foreground">
+                                <DialogDescription class="mt-1 text-sm text-foreground/70">
                                     {{ selected.program_code }} · {{ batchLabel(selected.batch) }}
                                 </DialogDescription>
                                 <span
@@ -906,13 +992,40 @@ const calendarOptions = computed<CalendarOptions>(() => ({
     --fc-border-color: hsl(var(--border));
     --fc-page-bg-color: transparent;
     --fc-neutral-bg-color: hsl(var(--muted) / 0.5);
-    --fc-list-event-hover-bg-color: hsl(var(--muted) / 0.6);
-    --fc-today-bg-color: rgb(37 99 235 / 0.05);
+    --fc-list-event-hover-bg-color: rgb(239 246 255 / 0.8);
+    --fc-today-bg-color: rgb(59 130 246 / 0.08);
     --fc-event-bg-color: transparent;
     --fc-event-border-color: transparent;
     --fc-more-link-bg-color: transparent;
+
+    /* Accent tokens (Tailwind palette values) */
+    --tdi-header-bg: #eff6ff; /* blue-50 */
+    --tdi-header-text: #4338ca; /* indigo-700 */
+    --tdi-weekend-text: #be123c; /* rose-700 */
+    --tdi-weekend-bg: rgb(255 241 242 / 0.5); /* rose-50 */
+    --tdi-today-number-bg: #1d4ed8; /* blue-700 */
+    --tdi-today-ring: #bfdbfe; /* blue-200 */
+    --tdi-more-text: #1d4ed8; /* blue-700 */
+    --tdi-more-bg: #eff6ff; /* blue-50 */
+    --tdi-more-bg-hover: #dbeafe; /* blue-100 */
+    --tdi-more-ring: rgb(37 99 235 / 0.2);
     font-size: 0.875rem;
     color: hsl(var(--foreground));
+}
+
+.dark .tdi-calendar .fc {
+    --fc-list-event-hover-bg-color: rgb(59 130 246 / 0.08);
+    --fc-today-bg-color: rgb(59 130 246 / 0.14);
+    --tdi-header-bg: rgb(59 130 246 / 0.1);
+    --tdi-header-text: #a5b4fc; /* indigo-300 */
+    --tdi-weekend-text: #fb7185; /* rose-400 */
+    --tdi-weekend-bg: rgb(244 63 94 / 0.04);
+    --tdi-today-number-bg: #2563eb; /* blue-600 */
+    --tdi-today-ring: rgb(59 130 246 / 0.35);
+    --tdi-more-text: #93c5fd; /* blue-300 */
+    --tdi-more-bg: rgb(59 130 246 / 0.15);
+    --tdi-more-bg-hover: rgb(59 130 246 / 0.25);
+    --tdi-more-ring: rgb(96 165 250 / 0.3);
 }
 
 .tdi-calendar .fc .fc-scrollgrid {
@@ -920,19 +1033,41 @@ const calendarOptions = computed<CalendarOptions>(() => ({
     overflow: hidden;
 }
 
-/* Day headers */
+/* Day headers — tinted row, weekends in rose */
+.tdi-calendar .fc .fc-col-header {
+    background: var(--tdi-header-bg);
+}
+
 .tdi-calendar .fc .fc-col-header-cell {
-    background: hsl(var(--muted) / 0.5);
     padding: 0.5rem 0;
 }
 
 .tdi-calendar .fc .fc-col-header-cell-cushion {
-    color: hsl(var(--muted-foreground));
+    color: var(--tdi-header-text);
     font-size: 0.75rem;
     font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;
     text-decoration: none;
+}
+
+.tdi-calendar .fc .fc-col-header-cell.fc-day-sat .fc-col-header-cell-cushion,
+.tdi-calendar .fc .fc-col-header-cell.fc-day-sun .fc-col-header-cell-cushion {
+    color: var(--tdi-weekend-text);
+}
+
+/* Weekend columns */
+.tdi-calendar .fc .fc-daygrid-day.fc-day-sat,
+.tdi-calendar .fc .fc-daygrid-day.fc-day-sun,
+.tdi-calendar .fc .fc-timegrid-col.fc-day-sat,
+.tdi-calendar .fc .fc-timegrid-col.fc-day-sun {
+    background: var(--tdi-weekend-bg);
+}
+
+/* Today cell — declared after the weekend rule so it still wins on Sat/Sun */
+.tdi-calendar .fc .fc-daygrid-day.fc-day-today,
+.tdi-calendar .fc .fc-timegrid-col.fc-day-today {
+    background: var(--fc-today-bg-color);
 }
 
 /* Date numbers */
@@ -962,7 +1097,8 @@ const calendarOptions = computed<CalendarOptions>(() => ({
     margin: 0.25rem;
     padding: 0 0.375rem;
     border-radius: 9999px;
-    background: #1d4ed8;
+    background: var(--tdi-today-number-bg);
+    box-shadow: 0 0 0 3px var(--tdi-today-ring);
     color: #fff;
     font-weight: 600;
 }
@@ -994,23 +1130,28 @@ const calendarOptions = computed<CalendarOptions>(() => ({
     color: inherit;
 }
 
-/* "+x more" link */
+/* "+x more" link — tinted pill */
 .tdi-calendar .fc .fc-daygrid-more-link {
+    display: inline-block;
     margin: 2px 4px 0;
-    padding: 2px 6px;
-    border-radius: 4px;
-    color: #1d4ed8;
+    padding: 1px 8px;
+    border-radius: 9999px;
+    background: var(--tdi-more-bg);
+    box-shadow: inset 0 0 0 1px var(--tdi-more-ring);
+    color: var(--tdi-more-text);
     font-size: 0.75rem;
     font-weight: 600;
-}
-
-.dark .tdi-calendar .fc .fc-daygrid-more-link {
-    color: #60a5fa;
+    transition: background-color 150ms ease;
 }
 
 .tdi-calendar .fc .fc-daygrid-more-link:hover {
-    background: hsl(var(--muted));
+    background: var(--tdi-more-bg-hover);
     text-decoration: none;
+}
+
+.tdi-calendar .fc .fc-daygrid-more-link:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 1px;
 }
 
 /* "+x more" popover */
@@ -1023,7 +1164,7 @@ const calendarOptions = computed<CalendarOptions>(() => ({
 }
 
 .tdi-calendar .fc .fc-popover-header {
-    background: hsl(var(--muted) / 0.6);
+    background: var(--tdi-header-bg);
     color: hsl(var(--foreground));
     font-weight: 600;
     padding: 0.5rem 0.75rem;
@@ -1048,7 +1189,7 @@ const calendarOptions = computed<CalendarOptions>(() => ({
 }
 
 .tdi-calendar .fc .fc-list-day-cushion {
-    background: hsl(var(--muted) / 0.6);
+    background: var(--tdi-header-bg);
     padding: 0.5rem 1rem;
 }
 
@@ -1108,6 +1249,7 @@ const calendarOptions = computed<CalendarOptions>(() => ({
         height: 1.375rem;
         margin: 0.125rem;
         padding: 0 0.25rem;
+        box-shadow: 0 0 0 2px var(--tdi-today-ring);
     }
 
     .tdi-calendar .fc .fc-daygrid-day-frame {
@@ -1120,7 +1262,7 @@ const calendarOptions = computed<CalendarOptions>(() => ({
     }
 
     .tdi-calendar .fc .fc-daygrid-more-link {
-        padding: 2px;
+        padding: 1px 4px;
         font-size: 0.625rem;
     }
 
