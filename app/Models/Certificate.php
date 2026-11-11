@@ -24,11 +24,14 @@ class Certificate extends Model
         'remarks',
         'revoked_at',
         'revoked_reason',
+        'emailed_at',
+        'emailed_by',
     ];
 
     protected $casts = [
         'issued_date' => 'date',
         'revoked_at' => 'datetime',
+        'emailed_at' => 'datetime',
         'hours' => 'decimal:1',
     ];
 
@@ -60,6 +63,23 @@ class Certificate extends Model
     public function program()
     {
         return $this->belongsTo(Program::class, 'program_code', 'program_code');
+    }
+
+    /**
+     * Whether the uploaded PDF is actually on the public disk (the path can outlive the file).
+     */
+    public function hasStoredFile(): bool
+    {
+        return filled($this->file_path) && Storage::disk('public')->exists($this->file_path);
+    }
+
+    /**
+     * Forget that this certificate was emailed, e.g. after its PDF is replaced.
+     */
+    public function markAsNotEmailed(): void
+    {
+        $this->emailed_at = null;
+        $this->emailed_by = null;
     }
 
     // ── Accessor: full URL of the certificate file ──

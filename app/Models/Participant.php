@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Participant extends Model
 {
@@ -24,6 +25,14 @@ class Participant extends Model
     public function employee()
     {
         return $this->belongsTo(Employee::class, 'empcode', 'EMPCODE');
+    }
+
+    /**
+     * The participant's login account, which holds their email address.
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'empcode', 'empcode');
     }
 
     public function justification()

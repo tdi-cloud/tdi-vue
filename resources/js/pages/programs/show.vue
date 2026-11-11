@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useConfirm } from '@/composables/useConfirm';
 import AppLayout from '@/layouts/AppLayout.vue';
+import type { CertificateEmailHistoryEntry, CertificateEmailTemplate } from '@/lib/certificates';
 import BatchList from '@/pages/programs/BatchList.vue';
 import CertificatesPanel from '@/pages/programs/CertificatesPanel.vue';
 import CompetencyModal from '@/pages/programs/CompetencyModal.vue';
@@ -147,6 +148,8 @@ const props = defineProps<{
     submissions: any[];
     canDelete: boolean;
     canCreateRegistrationForms: boolean;
+    certificateEmailTemplates: Record<string, CertificateEmailTemplate>;
+    certificateEmailHistory: CertificateEmailHistoryEntry[];
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -799,7 +802,7 @@ const cardClass = 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark
 
                 <!-- Certificates Tab -->
                 <TabsContent value="certificates" class="mt-0 flex min-w-0 max-w-full flex-col gap-4">
-                    <CertificatesPanel :program="program" />
+                    <CertificatesPanel :program="program" :email-templates="certificateEmailTemplates" :email-history="certificateEmailHistory" />
                 </TabsContent>
 
                 <!-- Requirements Tab -->

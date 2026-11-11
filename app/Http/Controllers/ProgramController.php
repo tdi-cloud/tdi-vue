@@ -2,13 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Batch;
+use App\Models\Certificate;
 use App\Models\DefaultProgramCover;
+use App\Models\EmailReminderLog;
 use App\Models\Employee;
+use App\Models\Participant;
 use App\Models\Program;
 use App\Models\ProgramCompetency;
 use App\Models\ProgramRegistration;
 use App\Models\RegistrationForm;
 use App\Models\Submission;
+use App\Support\CertificateEmailTemplates;
 use App\Support\FlashMessage;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -170,6 +175,8 @@ class ProgramController extends Controller
                     ->orderBy('date_start')
                     ->with([
                         'requirements',
+                        // "Sent history" in the Notify Participants modal.
+                        'participantNotificationLogs' => fn ($lq) => $lq->select(['id', 'type', 'batch_id', 'sent_by', 'sent_by_name', 'subject', 'recipients', 'recipients_count', 'created_at']),
                         'evaluationForm:id,batch_id,is_active',
                         'registrationForm' => fn ($rq) => $rq->select(['id', 'batch_id', 'slug', 'title', 'theme', 'is_open', 'closes_at', 'slot_limit', 'created_by_empcode', 'updated_at'])
                             ->withCount([
@@ -204,6 +211,12 @@ class ProgramController extends Controller
             $form->makeHidden('created_by_empcode');
         });
 
+        // The Email Certificates window only offers certificates whose PDF is really on disk.
+        $program->batches
+            ->flatMap(fn (Batch $batch) => $batch->participants)
+            ->flatMap(fn (Participant $participant) => $participant->certificates)
+            ->each(fn (Certificate $certificate) => $certificate->setAttribute('has_file', $certificate->hasStoredFile()));
+
         $submissions = Submission::with(['participant.employee', 'participant.justification', 'batch', 'requirement'])
             ->where('program_code', $program->program_code)
             ->orderByDesc('submitted_at')
@@ -214,7 +227,39 @@ class ProgramController extends Controller
             'submissions' => $submissions,
             'canDelete' => $program->canBeDeletedBy(auth()->user()),
             'canCreateRegistrationForms' => $program->canCreateRegistrationFormsBy(auth()->user()),
+            'certificateEmailTemplates' => CertificateEmailTemplates::all(),
+            'certificateEmailHistory' => $this->certificateEmailHistory($program),
         ]);
+    }
+
+    /**
+     * Past certificate emails for the History view of the Email Certificates window, newest first.
+     *
+     * @return list<array{id: int, sent_at: string|null, sent_by: string|null, batch_id: int|null, batch: string|null, certificate_type: string|null, subject: string, sent_count: int, failed_count: int}>
+     */
+    private function certificateEmailHistory(Program $program): array
+    {
+        $batchNames = $program->batches->pluck('batch', 'id');
+
+        return $program->certificateEmailLogs()
+            ->get(['id', 'batch_id', 'sent_by', 'sent_by_name', 'subject', 'recipients', 'created_at'])
+            ->map(function (EmailReminderLog $log) use ($batchNames): array {
+                $recipients = collect($log->recipients ?? []);
+
+                return [
+                    'id' => $log->id,
+                    'sent_at' => $log->created_at?->toJSON(),
+                    'sent_by' => $log->sent_by_name ?? $log->sent_by,
+                    'batch_id' => $log->batch_id,
+                    'batch' => $batchNames->get($log->batch_id),
+                    'certificate_type' => $recipients->first()['certificate_type'] ?? null,
+                    'subject' => $log->subject,
+                    'sent_count' => $recipients->where('status', 'sent')->count(),
+                    'failed_count' => $recipients->where('status', 'failed')->count(),
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     public function edit(Program $program)

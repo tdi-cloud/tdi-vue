@@ -50,6 +50,8 @@ class CertificateController extends Controller
             $cert->file_path = $path;
             $cert->file_name = $safeName;
             $cert->uploaded_by = $request->user()->name ?? 'System';
+            // A new PDF hasn't reached the participant yet.
+            $cert->markAsNotEmailed();
         }
 
         $cert->program_code = $validated['program_code'];
@@ -122,6 +124,7 @@ class CertificateController extends Controller
             $cert->file_path = $path;
             $cert->file_name = $safeName;
             $cert->uploaded_by = $uploadedBy;
+            $cert->markAsNotEmailed();
             $cert->status = $validated['status'] ?? $cert->status ?? 'Pending';
             $cert->issued_date = $validated['issued_date'] ?? $cert->issued_date;
             $cert->issued_by = $validated['issued_by'] ?? $cert->issued_by;
@@ -172,6 +175,7 @@ class CertificateController extends Controller
         $cert->file_path = $path;
         $cert->file_name = $safeName;
         $cert->uploaded_by = $user->name;
+        $cert->markAsNotEmailed();
         $cert->hours = $participant->hours ?? 0;
         $cert->status = $cert->status ?? 'Pending';
 

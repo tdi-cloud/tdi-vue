@@ -6,6 +6,7 @@ use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\BatchController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\CertificateController;
+use App\Http\Controllers\CertificateEmailController;
 use App\Http\Controllers\CoverPageController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeclarationController;
@@ -28,6 +29,7 @@ use App\Http\Controllers\NhrdcSelfServiceController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrganizingSponsorController;
 use App\Http\Controllers\ParticipantController;
+use App\Http\Controllers\ParticipantNotificationController;
 use App\Http\Controllers\ProblemReportController;
 use App\Http\Controllers\ProgramActivityController;
 use App\Http\Controllers\ProgramController;
@@ -380,6 +382,11 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::post('/email-reminder/send', [EmailReminderController::class, 'send'])
         ->name('email-reminder.send');
 
+    // NOTIFY PARTICIPANTS — scoped so a batch from another program returns 404
+    Route::post('/programs/{program}/batches/{batch}/notify', [ParticipantNotificationController::class, 'send'])
+        ->scopeBindings()
+        ->name('programs.notify-participants');
+
     // CERTIFICATES
     // ── ADMIN routes (inside auth + admin middleware group) ──
     Route::post('/certificates', [CertificateController::class, 'store'])
@@ -390,6 +397,11 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
 
     Route::delete('/certificates/{certificate}', [CertificateController::class, 'destroy'])
         ->name('certificates.destroy');
+
+    // EMAIL CERTIFICATES — scoped so a batch from another program returns 404
+    Route::post('/programs/{program}/batches/{batch}/certificates/email', [CertificateEmailController::class, 'send'])
+        ->scopeBindings()
+        ->name('programs.email-certificates');
 
     // ATTENDANCE
     Route::get('/employees/search-signatory', [AttendanceController::class, 'searchSignatory'])->middleware('search.suggest')

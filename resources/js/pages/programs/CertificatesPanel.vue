@@ -3,8 +3,18 @@ import EmptyState from '@/components/EmptyState.vue';
 import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useConfirm } from '@/composables/useConfirm';
+import {
+    CERTIFICATE_TYPES as CERT_TYPES,
+    type CertificateEmailHistoryEntry,
+    type CertificateEmailPreset,
+    type CertificateEmailTemplate,
+    isReadyToEmail,
+    CERTIFICATE_TYPE_COLORS as TYPE_COLORS,
+} from '@/lib/certificates';
 import { suggestSearch } from '@/lib/searchSuggestion';
+import CertificateEmailModal from '@/pages/programs/CertificateEmailModal.vue';
 import { router } from '@inertiajs/vue3';
 import {
     AlertTriangle,
@@ -17,8 +27,11 @@ import {
     FileCheck,
     FileUp,
     Filter,
+    Mail,
+    MailCheck,
     Plus,
     Search,
+    Send,
     Trash2,
     Upload,
     X,
@@ -33,6 +46,7 @@ const { confirmDialog } = useConfirm();
 interface Employee {
     name: string;
     EMPCODE: string;
+    FIRSTNAME?: string | null;
     initials: string;
     avatar_color: string;
 }
@@ -52,6 +66,10 @@ interface Certificate {
     remarks: string | null;
     revoked_at: string | null;
     revoked_reason: string | null;
+    /** Whether the PDF is really on disk (set by ProgramController::show()). */
+    has_file?: boolean;
+    emailed_at?: string | null;
+    emailed_by?: string | null;
 }
 
 interface Participant {
@@ -60,6 +78,7 @@ interface Participant {
     attendance: string;
     hours: number;
     batch_id: number;
+    user_email?: string | null;
     employee: Employee | null;
     certificates: Certificate[];
 }
@@ -79,54 +98,22 @@ interface Program {
     batches?: Batch[];
 }
 
-const props = defineProps<{
-    program: Program;
-}>();
+const props = withDefaults(
+    defineProps<{
+        program: Program;
+        emailTemplates?: Record<string, CertificateEmailTemplate>;
+        emailHistory?: CertificateEmailHistoryEntry[];
+    }>(),
+    {
+        emailTemplates: () => ({}),
+        emailHistory: () => [],
+    },
+);
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const CERT_TYPES = ['Participation', 'Completion', 'Appearance', 'Appreciation', 'Recognition', 'Achievement'] as const;
 const CERT_STATUSES = ['Pending', 'Issued', 'Revoked'] as const;
 const PAGE_SIZE = 12;
-
-const TYPE_COLORS: Record<string, { bg: string; text: string; border: string; dot: string }> = {
-    Participation: {
-        bg: 'bg-violet-50 dark:bg-violet-950/40',
-        text: 'text-violet-700 dark:text-violet-300',
-        border: 'border-violet-300 dark:border-violet-700',
-        dot: 'bg-violet-500',
-    },
-    Completion: {
-        bg: 'bg-emerald-50 dark:bg-emerald-950/40',
-        text: 'text-emerald-700 dark:text-emerald-300',
-        border: 'border-emerald-300 dark:border-emerald-700',
-        dot: 'bg-emerald-500',
-    },
-    Appearance: {
-        bg: 'bg-sky-50 dark:bg-sky-950/40',
-        text: 'text-sky-700 dark:text-sky-300',
-        border: 'border-sky-300 dark:border-sky-700',
-        dot: 'bg-sky-500',
-    },
-    Appreciation: {
-        bg: 'bg-amber-50 dark:bg-amber-950/40',
-        text: 'text-amber-700 dark:text-amber-300',
-        border: 'border-amber-300 dark:border-amber-700',
-        dot: 'bg-amber-500',
-    },
-    Recognition: {
-        bg: 'bg-rose-50 dark:bg-rose-950/40',
-        text: 'text-rose-700 dark:text-rose-300',
-        border: 'border-rose-300 dark:border-rose-700',
-        dot: 'bg-rose-500',
-    },
-    Achievement: {
-        bg: 'bg-orange-50 dark:bg-orange-950/40',
-        text: 'text-orange-700 dark:text-orange-300',
-        border: 'border-orange-300 dark:border-orange-700',
-        dot: 'bg-orange-500',
-    },
-};
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
@@ -205,15 +192,19 @@ const paginated = computed(() => {
 const stats = computed(() => {
     let total = 0,
         issued = 0,
-        pending = 0;
+        pending = 0,
+        emailed = 0,
+        readyToEmail = 0;
     for (const { participant } of allRows.value) {
         for (const c of participant.certificates ?? []) {
             total++;
             if (c.status === 'Issued') issued++;
             if (c.status === 'Pending') pending++;
+            if (c.status === 'Issued' && c.emailed_at) emailed++;
+            if (isReadyToEmail(c, participant.user_email)) readyToEmail++;
         }
     }
-    return { participants: allRows.value.length, total, issued, pending };
+    return { participants: allRows.value.length, total, issued, pending, emailed, readyToEmail };
 });
 
 // Kailangan ng file: walang bagong na-select na file AT walang existing file na naka-save.
@@ -232,6 +223,12 @@ function certForType(p: Participant, type: string): Certificate | undefined {
 function formatDate(d: string | null): string {
     if (!d) return '—';
     return new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function emailedTooltip(cert: Certificate): string {
+    if (!cert.emailed_at) return '';
+    const date = new Date(cert.emailed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return `Emailed ${date}${cert.emailed_by ? ` by ${cert.emailed_by}` : ''}`;
 }
 
 function statusStyle(status: string) {
@@ -301,6 +298,17 @@ function saveCertificate() {
 async function deleteCert(cert: Certificate) {
     if (!(await confirmDialog(`Delete this ${cert.type} certificate? This cannot be undone.`))) return;
     router.delete(route('certificates.destroy', cert.id), { preserveScroll: true });
+}
+
+// ─── Email Certificates ──────────────────────────────────────────────────────
+
+const emailModalOpen = ref(false);
+const emailPreset = ref<CertificateEmailPreset | null>(null);
+
+// Opens on the best batch and type, or on one participant's certificate when started from its row.
+function openEmailModal(preset: CertificateEmailPreset | null = null) {
+    emailPreset.value = preset;
+    emailModalOpen.value = true;
 }
 
 // ─── Bulk Upload ─────────────────────────────────────────────────────────────
@@ -477,7 +485,7 @@ function submitBulk() {
 <template>
     <div class="flex flex-col gap-5 pb-6">
         <!-- ── Summary cards ─────────────────────────────────────────────── -->
-        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <div
                 class="flex flex-col gap-1 rounded-xl border bg-gradient-to-br from-violet-50 to-violet-100/50 p-4 shadow-md dark:from-violet-950/40 dark:to-violet-900/20"
             >
@@ -501,6 +509,14 @@ function submitBulk() {
             >
                 <p class="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">Pending</p>
                 <p class="text-2xl font-extrabold text-amber-800 dark:text-amber-200">{{ stats.pending }}</p>
+            </div>
+            <div
+                class="col-span-2 flex flex-col gap-1 rounded-xl border bg-gradient-to-br from-teal-50 to-teal-100/50 p-4 shadow-md dark:from-teal-950/40 dark:to-teal-900/20 sm:col-span-1"
+            >
+                <p class="text-xs font-semibold uppercase tracking-wide text-teal-600 dark:text-teal-400">Emailed</p>
+                <p class="text-2xl font-extrabold text-teal-800 dark:text-teal-200">
+                    {{ stats.emailed }}<span class="text-base font-bold text-teal-600/70 dark:text-teal-400/70"> / {{ stats.issued }}</span>
+                </p>
             </div>
         </div>
 
@@ -582,6 +598,25 @@ function submitBulk() {
                 Bulk Upload
             </Button>
 
+            <Tooltip>
+                <TooltipTrigger as-child>
+                    <!-- Wrapper span: a disabled button fires no hover events, so the tooltip hangs off this instead. -->
+                    <span class="inline-flex" :tabindex="stats.readyToEmail ? undefined : 0">
+                        <Button variant="outline" size="sm" class="gap-1.5" :disabled="!stats.readyToEmail" @click="openEmailModal()">
+                            <Send class="h-4 w-4" />
+                            Email Certificates
+                        </Button>
+                    </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                    {{
+                        stats.readyToEmail
+                            ? 'Email participants their certificate PDF'
+                            : 'Issue a certificate with a PDF to a participant who has an email first'
+                    }}
+                </TooltipContent>
+            </Tooltip>
+
             <span class="text-xs text-muted-foreground"> {{ filtered.length }} participant{{ filtered.length !== 1 ? 's' : '' }} </span>
         </div>
 
@@ -648,6 +683,25 @@ function submitBulk() {
                         </div>
                         <component :is="statusStyle(cert.status).icon" class="h-4 w-4 shrink-0" :class="statusStyle(cert.status).cls" />
                         <div class="flex shrink-0 items-center gap-0.5">
+                            <!-- One mail slot: emerald once emailed, muted while waiting; both open the email window. -->
+                            <button
+                                v-if="isReadyToEmail(cert, participant.user_email)"
+                                class="rounded p-1 transition-colors hover:bg-black/10 dark:hover:bg-white/10"
+                                :class="cert.emailed_at ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground hover:text-foreground'"
+                                :title="cert.emailed_at ? emailedTooltip(cert) : 'Email this certificate'"
+                                :aria-label="cert.emailed_at ? `${emailedTooltip(cert)}. Email it again` : 'Email this certificate'"
+                                @click="openEmailModal({ batchId: batch.id, type: cert.type, certificateId: cert.id })"
+                            >
+                                <component :is="cert.emailed_at ? MailCheck : Mail" class="h-3.5 w-3.5" />
+                            </button>
+                            <span
+                                v-else-if="cert.emailed_at"
+                                class="p-1 text-emerald-600 dark:text-emerald-400"
+                                :title="emailedTooltip(cert)"
+                                :aria-label="emailedTooltip(cert)"
+                            >
+                                <MailCheck class="h-3.5 w-3.5" />
+                            </span>
                             <a
                                 v-if="cert.file_url"
                                 :href="cert.file_url"
@@ -877,6 +931,15 @@ function submitBulk() {
             </div>
         </div>
     </Teleport>
+
+    <CertificateEmailModal
+        :open="emailModalOpen"
+        :program="program"
+        :templates="emailTemplates"
+        :history="emailHistory"
+        :preset="emailPreset"
+        @update:open="emailModalOpen = $event"
+    />
 
     <!-- ══════════════════════════════════════════════════════════ -->
     <!-- Bulk Upload Modal                                          -->

@@ -61,6 +61,7 @@ class HandleInertiaRequests extends Middleware
                 'success' => session('success'),
                 'error' => session('error'),
                 'bulkResult' => fn () => $request->session()->get('bulkResult'),
+                'certificateEmailResult' => fn () => $request->session()->get('certificateEmailResult'),
             ],
         ]);
     }

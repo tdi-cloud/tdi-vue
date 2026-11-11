@@ -36,6 +36,7 @@ import { Deferred, Head, Link, router, useForm } from '@inertiajs/vue3';
 import axios from 'axios';
 import {
     AlignLeft,
+    ArrowUpRight,
     Banknote,
     BarChart3,
     Building,
@@ -78,6 +79,37 @@ const showDashboard = ref(false);
 const showNominationHistory = ref(false);
 const showNhrdcRoster = ref(false);
 const showFormSettingsDropdown = ref(false);
+
+/** Shared look for the glassy action cards in the header banner. */
+const headerActionCardClass =
+    'group relative flex h-full w-full items-start gap-3 rounded-2xl border border-white/15 bg-white/[0.07] p-4 text-left shadow-sm backdrop-blur transition-all duration-200 hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/[0.12] hover:shadow-lg hover:shadow-black/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/70';
+
+const headerActions = [
+    {
+        key: 'dashboard',
+        label: 'Dashboard',
+        description: 'Program totals and analytics',
+        icon: BarChart3,
+        iconTone: 'bg-sky-400/15 text-sky-200 ring-sky-300/25',
+        onClick: () => (showDashboard.value = true),
+    },
+    {
+        key: 'nomination-history',
+        label: 'Nomination History',
+        description: 'Review past nominations',
+        icon: History,
+        iconTone: 'bg-violet-400/15 text-violet-200 ring-violet-300/25',
+        onClick: () => (showNominationHistory.value = true),
+    },
+    {
+        key: 'nhrdc-roster',
+        label: 'Manage NHRDC Roster',
+        description: 'Add or update NHRDC members',
+        icon: UsersRound,
+        iconTone: 'bg-emerald-400/15 text-emerald-200 ring-emerald-300/25',
+        onClick: () => (showNhrdcRoster.value = true),
+    },
+];
 
 interface ForeignProgram {
     id: number;
@@ -495,7 +527,7 @@ function onConfigSaved() {
                     <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-300 via-amber-400 to-transparent" />
                 </div>
 
-                <div class="relative flex flex-col gap-6 p-6 md:p-7 xl:flex-row xl:items-end xl:justify-between">
+                <div class="relative flex flex-col gap-6 p-6 md:p-7">
                     <div class="flex items-start gap-4">
                         <div
                             class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 to-amber-500 text-[#0b1a45] shadow-lg shadow-amber-500/30 ring-4 ring-white/10"
@@ -515,41 +547,56 @@ function onConfigSaved() {
                         </div>
                     </div>
 
-                    <div class="flex flex-wrap gap-2">
-                        <Button
-                            variant="outline"
-                            class="border-white/20 bg-white/10 text-white shadow-sm backdrop-blur hover:bg-white/20 hover:text-white"
-                            @click="showDashboard = true"
+                    <!-- Quick-action cards -->
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                        <button
+                            v-for="action in headerActions"
+                            :key="action.key"
+                            type="button"
+                            :class="headerActionCardClass"
+                            @click="action.onClick"
                         >
-                            <BarChart3 class="mr-1 h-4 w-4" /> Dashboard
-                        </Button>
-                        <Button
-                            variant="outline"
-                            class="border-white/20 bg-white/10 text-white shadow-sm backdrop-blur hover:bg-white/20 hover:text-white"
-                            @click="showNominationHistory = true"
-                        >
-                            <History class="mr-1 h-4 w-4" /> Nomination History
-                        </Button>
-                        <Button
-                            variant="outline"
-                            class="border-white/20 bg-white/10 text-white shadow-sm backdrop-blur hover:bg-white/20 hover:text-white"
-                            @click="showNhrdcRoster = true"
-                        >
-                            <UsersRound class="mr-1 h-4 w-4" /> Manage NHRDC Roster
-                        </Button>
+                            <span
+                                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 transition-transform duration-200 group-hover:scale-105"
+                                :class="action.iconTone"
+                            >
+                                <component :is="action.icon" class="h-5 w-5" />
+                            </span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-sm font-bold text-white">{{ action.label }}</span>
+                                <span class="mt-0.5 block text-xs leading-snug text-blue-100/70">{{ action.description }}</span>
+                            </span>
+                            <ArrowUpRight
+                                class="h-4 w-4 shrink-0 text-white/40 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-white"
+                            />
+                        </button>
+
                         <div class="relative">
-                            <Button
-                                variant="outline"
-                                class="border-white/20 bg-white/10 text-white shadow-sm backdrop-blur hover:bg-white/20 hover:text-white"
+                            <button
+                                type="button"
+                                :class="[headerActionCardClass, showFormSettingsDropdown && 'border-white/30 bg-white/[0.12]']"
+                                :aria-expanded="showFormSettingsDropdown"
                                 @click="showFormSettingsDropdown = !showFormSettingsDropdown"
                             >
-                                <Settings class="mr-1 h-4 w-4" /> Requirements Form Settings
-                            </Button>
+                                <span
+                                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-400/15 text-amber-200 ring-1 ring-amber-300/25 transition-transform duration-200 group-hover:scale-105"
+                                >
+                                    <Settings class="h-5 w-5" />
+                                </span>
+                                <span class="min-w-0 flex-1">
+                                    <span class="block text-sm font-bold text-white">Requirements Form</span>
+                                    <span class="mt-0.5 block text-xs leading-snug text-blue-100/70">Configure settings per sponsor</span>
+                                </span>
+                                <ChevronDown
+                                    class="h-4 w-4 shrink-0 text-white/40 transition-all duration-200 group-hover:text-white"
+                                    :class="{ 'rotate-180 text-white': showFormSettingsDropdown }"
+                                />
+                            </button>
 
                             <!-- Dropdown ng sponsors -->
                             <div
                                 v-if="showFormSettingsDropdown"
-                                class="absolute right-0 top-full z-50 mt-1 min-w-48 rounded-xl border bg-background py-1 text-foreground shadow-lg"
+                                class="absolute inset-x-0 top-full z-50 mt-2 min-w-56 rounded-xl border bg-background py-1 text-foreground shadow-lg"
                             >
                                 <p class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                                     Select Organizing Sponsor
@@ -573,12 +620,24 @@ function onConfigSaved() {
                                 />
                             </div>
                         </div>
-                        <Button
-                            class="bg-gradient-to-r from-amber-300 to-amber-400 font-bold text-[#0b1a45] shadow-lg shadow-amber-500/25 hover:from-amber-200 hover:to-amber-300"
+                        <button
+                            type="button"
+                            class="group relative flex h-full w-full items-start gap-3 overflow-hidden rounded-2xl bg-gradient-to-br from-amber-300 to-amber-500 p-4 text-left text-[#0b1a45] shadow-lg shadow-amber-500/25 ring-1 ring-amber-200/60 transition-all duration-200 hover:-translate-y-0.5 hover:from-amber-200 hover:to-amber-400 hover:shadow-xl hover:shadow-amber-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 sm:col-span-2 xl:col-span-1"
                             @click="showModal = true"
                         >
-                            <Plus class="mr-1 h-4 w-4" /> Add Program
-                        </Button>
+                            <span
+                                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0b1a45] text-amber-300 shadow-md transition-transform duration-200 group-hover:rotate-90"
+                            >
+                                <Plus class="h-5 w-5" />
+                            </span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-sm font-extrabold">Add Program</span>
+                                <span class="mt-0.5 block text-xs font-medium leading-snug text-[#0b1a45]/70">Create a new training opportunity</span>
+                            </span>
+                            <ArrowUpRight
+                                class="h-4 w-4 shrink-0 text-[#0b1a45]/50 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-[#0b1a45]"
+                            />
+                        </button>
                     </div>
                 </div>
             </section>

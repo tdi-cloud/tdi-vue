@@ -9,11 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast/use-toast';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useConfirm } from '@/composables/useConfirm';
 import { suggestionFrom } from '@/lib/http';
 import { suggestSearch } from '@/lib/searchSuggestion';
 import BulkAddParticipants from '@/pages/programs/BulkAddParticipants.vue';
 import BulkSubmissionUpload from '@/pages/programs/BulkSubmissionUpload.vue';
+import NotifyParticipantsModal from '@/pages/programs/NotifyParticipantsModal.vue';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import {
@@ -38,6 +40,7 @@ import {
     Info,
     ListFilter,
     LoaderCircle,
+    Mail,
     Paperclip,
     Save,
     Search,
@@ -92,6 +95,8 @@ const participants = computed(() =>
         }),
 );
 const requirements = computed(() => props.batch?.requirements ?? []);
+
+const showNotify = ref(false);
 
 const listQuery = ref('');
 const page = ref(1);
@@ -923,16 +928,43 @@ const submissionSummary = computed(() => {
                     <p class="text-[11px] text-muted-foreground">Manage participants enrolled in this batch</p>
                 </div>
 
-                <Button
-                    v-if="participants.length"
-                    variant="outline"
-                    size="sm"
-                    class="ml-auto mr-5 border-emerald-200 text-xs text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-950/30"
-                    @click="exportCsv"
-                >
-                    <Download class="mr-1 h-3.5 w-3.5" />
-                    Export CSV
-                </Button>
+                <div class="ml-auto mr-5 flex items-center gap-2">
+                    <Tooltip>
+                        <TooltipTrigger as-child>
+                            <!-- Wrapper span: a disabled button fires no hover events, so the tooltip hangs off this instead. -->
+                            <span class="inline-flex" :tabindex="participants.length ? undefined : 0">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    class="border-blue-200 text-xs text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-950/30"
+                                    :disabled="!participants.length"
+                                    @click="showNotify = true"
+                                >
+                                    <Mail class="mr-1 h-3.5 w-3.5" />
+                                    Notify Participants
+                                </Button>
+                            </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            {{
+                                participants.length
+                                    ? 'Email an announcement, schedule update or instructions to this batch'
+                                    : 'Add participants to this batch before sending a notification'
+                            }}
+                        </TooltipContent>
+                    </Tooltip>
+
+                    <Button
+                        v-if="participants.length"
+                        variant="outline"
+                        size="sm"
+                        class="border-emerald-200 text-xs text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-950/30"
+                        @click="exportCsv"
+                    >
+                        <Download class="mr-1 h-3.5 w-3.5" />
+                        Export CSV
+                    </Button>
+                </div>
             </div>
 
             <div class="flex flex-1 flex-col gap-0 overflow-y-auto">
@@ -1710,6 +1742,8 @@ const submissionSummary = computed(() => {
             </Dialog>
 
             <BulkAddParticipants :open="showBulkAdd" :batch="batch" @update:open="showBulkAdd = $event" />
+
+            <NotifyParticipantsModal :open="showNotify" :program="program ?? null" :batch="batch" @update:open="showNotify = $event" />
 
             <!-- ── Submissions Dialog ── -->
             <Dialog :open="showSubmissions" @update:open="showSubmissions = $event">

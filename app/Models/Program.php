@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Program extends Model
 {
@@ -129,8 +130,19 @@ class Program extends Model
         return $this->hasMany(TesdaOrder::class)->latest();
     }
 
+    /**
+     * Requirement reminders only — participant notifications are tracked per batch.
+     */
     public function emailReminderLogs()
     {
-        return $this->hasMany(EmailReminderLog::class)->latest();
+        return $this->hasMany(EmailReminderLog::class)->reminders()->latest();
+    }
+
+    /**
+     * Certificate emails sent from the Certificates tab, newest first.
+     */
+    public function certificateEmailLogs(): HasMany
+    {
+        return $this->hasMany(EmailReminderLog::class)->certificates()->latest()->latest('id');
     }
 }
