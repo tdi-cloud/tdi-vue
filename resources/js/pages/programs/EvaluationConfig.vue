@@ -2,6 +2,7 @@
 import EmptyState from '@/components/EmptyState.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useConfirm } from '@/composables/useConfirm';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { SETTINGS_CARD } from '@/lib/cardStyles';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import {
     ArrowLeft,
@@ -21,6 +23,7 @@ import {
     Copy,
     ExternalLink,
     Image as ImageIcon,
+    Link2,
     ListChecks,
     LoaderCircle,
     Pencil,
@@ -32,7 +35,7 @@ import {
     Users,
     X,
 } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const { confirmDialog } = useConfirm();
 
@@ -178,6 +181,12 @@ const uploadingBackground = ref(false);
 const removingBackground = ref(false);
 
 const previewBackgroundUrl = computed(() => form.value?.background_image_url ?? props.defaultBackgroundUrl);
+
+// An image URL that doesn't load (e.g. APP_URL points to another host) shows a placeholder, not broken alt text.
+const backgroundPreviewFailed = ref(false);
+watch(previewBackgroundUrl, () => {
+    backgroundPreviewFailed.value = false;
+});
 
 function triggerBackgroundUpload() {
     backgroundFileInput.value?.click();
@@ -579,89 +588,160 @@ function submitBulkFacilitators() {
             </EmptyState>
 
             <template v-else>
-                <!-- Settings -->
-                <div class="flex flex-col gap-4 rounded-2xl border bg-background p-5">
-                    <div class="flex items-start justify-between gap-3">
-                        <div class="min-w-0">
-                            <div v-if="!editingSettings" class="flex items-center gap-2">
-                                <h2 class="text-sm font-extrabold">{{ form.title }}</h2>
-                                <button class="text-muted-foreground transition-colors hover:text-foreground" @click="openEditSettings">
-                                    <Pencil class="h-3.5 w-3.5" />
-                                </button>
+                <!-- Settings — one idea per card -->
+                <div class="flex flex-col gap-4">
+                    <!-- Form details and status -->
+                    <Card :class="SETTINGS_CARD.rose" class="p-5">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div class="min-w-0">
+                                <div v-if="!editingSettings" class="flex items-center gap-2">
+                                    <h2 class="text-sm font-extrabold">{{ form.title }}</h2>
+                                    <button
+                                        class="text-muted-foreground transition-colors hover:text-foreground"
+                                        aria-label="Edit title and intro"
+                                        @click="openEditSettings"
+                                    >
+                                        <Pencil class="h-3.5 w-3.5" />
+                                    </button>
+                                </div>
+                                <div v-else class="flex max-w-md flex-col gap-2">
+                                    <Input v-model="settingsDraft.title" class="h-8 text-xs" placeholder="Form title" />
+                                    <Textarea
+                                        v-model="settingsDraft.intro_text"
+                                        class="text-xs"
+                                        rows="2"
+                                        placeholder="Optional intro text shown to respondents"
+                                    />
+                                    <div class="flex items-center gap-2">
+                                        <Button
+                                            size="sm"
+                                            class="h-7 bg-rose-600 text-xs hover:bg-rose-700 dark:text-white"
+                                            :disabled="savingSettings"
+                                            @click="saveSettings"
+                                        >
+                                            <Check class="mr-1 h-3 w-3" /> Save
+                                        </Button>
+                                        <Button size="sm" variant="outline" class="h-7 text-xs" @click="editingSettings = false">
+                                            <X class="mr-1 h-3 w-3" /> Cancel
+                                        </Button>
+                                    </div>
+                                </div>
+                                <p v-if="!editingSettings && form.intro_text" class="mt-1 max-w-md text-xs text-muted-foreground">
+                                    {{ form.intro_text }}
+                                </p>
+                                <p class="mt-1 text-[11px] text-muted-foreground">Set up by {{ form.created_by_name ?? 'Unknown' }}</p>
                             </div>
-                            <div v-else class="flex max-w-md flex-col gap-2">
-                                <Input v-model="settingsDraft.title" class="h-8 text-xs" placeholder="Form title" />
-                                <Textarea
-                                    v-model="settingsDraft.intro_text"
-                                    class="text-xs"
-                                    rows="2"
-                                    placeholder="Optional intro text shown to respondents"
-                                />
-                                <div class="flex items-center gap-2">
+
+                            <div class="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+                                <Link :href="route('programs.show', batch.program.id) + '?tab=evaluation'">
                                     <Button
                                         size="sm"
-                                        class="h-7 bg-rose-600 text-xs hover:bg-rose-700 dark:text-white"
-                                        :disabled="savingSettings"
-                                        @click="saveSettings"
+                                        variant="outline"
+                                        class="h-8 border-rose-200 text-xs text-rose-600 hover:bg-rose-50 dark:border-rose-900 dark:text-rose-400 dark:hover:bg-rose-950/30"
                                     >
-                                        <Check class="mr-1 h-3 w-3" /> Save
+                                        <BarChart3 class="mr-1 h-3 w-3" /> View Results Dashboard
                                     </Button>
-                                    <Button size="sm" variant="outline" class="h-7 text-xs" @click="editingSettings = false">
-                                        <X class="mr-1 h-3 w-3" /> Cancel
+                                </Link>
+                                <button
+                                    type="button"
+                                    class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-bold transition-colors"
+                                    :class="
+                                        form.is_active
+                                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                                    "
+                                    @click="toggleActive"
+                                >
+                                    <span class="h-1.5 w-1.5 rounded-full" :class="form.is_active ? 'bg-emerald-500' : 'bg-slate-400'" />
+                                    {{ form.is_active ? 'Accepting Responses' : 'Closed' }}
+                                </button>
+                            </div>
+                        </div>
+                    </Card>
+
+                    <div class="grid gap-4 lg:grid-cols-2">
+                        <!-- Public link -->
+                        <Card :class="SETTINGS_CARD.rose" class="flex flex-col gap-4 p-5">
+                            <div class="flex items-start gap-3">
+                                <span
+                                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-700 ring-1 ring-rose-200/70 dark:bg-rose-900/50 dark:text-rose-300 dark:ring-rose-800/60"
+                                >
+                                    <Link2 class="h-4 w-4" />
+                                </span>
+                                <div class="min-w-0">
+                                    <h2 class="text-sm font-semibold">Share</h2>
+                                    <p class="text-[11px] text-muted-foreground">Send this link to the participants who should answer</p>
+                                </div>
+                            </div>
+                            <code class="block truncate rounded-lg bg-muted px-3 py-2 text-[11px]" :title="publicUrl">{{ publicUrl }}</code>
+                            <div class="mt-auto flex flex-wrap gap-2">
+                                <Button size="sm" variant="outline" class="h-8 text-xs" @click="copyLink">
+                                    <Check v-if="linkCopied" class="mr-1 h-3 w-3 text-emerald-600" />
+                                    <Copy v-else class="mr-1 h-3 w-3" /> {{ linkCopied ? 'Copied!' : 'Copy Link' }}
+                                </Button>
+                                <a :href="publicUrl" target="_blank" rel="noopener">
+                                    <Button size="sm" variant="outline" class="h-8 text-xs"><ExternalLink class="mr-1 h-3 w-3" /> Open Form</Button>
+                                </a>
+                            </div>
+                        </Card>
+
+                        <!-- Background image -->
+                        <Card :class="SETTINGS_CARD.rose" class="flex flex-col gap-4 p-5">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="flex min-w-0 items-start gap-3">
+                                    <span
+                                        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-700 ring-1 ring-rose-200/70 dark:bg-rose-900/50 dark:text-rose-300 dark:ring-rose-800/60"
+                                    >
+                                        <ImageIcon class="h-4 w-4" />
+                                    </span>
+                                    <div class="min-w-0">
+                                        <h2 class="text-sm font-semibold">Background Image</h2>
+                                        <p class="text-[11px] text-muted-foreground">Shown behind the public form</p>
+                                    </div>
+                                </div>
+                                <div class="flex shrink-0 items-center gap-2">
+                                    <Button
+                                        v-if="form.background_image_url"
+                                        size="sm"
+                                        variant="ghost"
+                                        class="h-8 text-xs"
+                                        :disabled="removingBackground"
+                                        @click="resetBackground"
+                                    >
+                                        <LoaderCircle v-if="removingBackground" class="mr-1 h-3 w-3 animate-spin" />
+                                        <RotateCcw v-else class="mr-1 h-3 w-3" /> Reset
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        class="h-8 text-xs"
+                                        :disabled="uploadingBackground"
+                                        @click="triggerBackgroundUpload"
+                                    >
+                                        <LoaderCircle v-if="uploadingBackground" class="mr-1 h-3 w-3 animate-spin" />
+                                        <Upload v-else class="mr-1 h-3 w-3" /> Change
                                     </Button>
                                 </div>
                             </div>
-                            <p v-if="!editingSettings && form.intro_text" class="mt-1 max-w-md text-xs text-muted-foreground">
-                                {{ form.intro_text }}
-                            </p>
-                            <p class="mt-1 text-[11px] text-muted-foreground">Set up by {{ form.created_by_name ?? 'Unknown' }}</p>
-                        </div>
-
-                        <div class="flex shrink-0 flex-col items-end gap-2">
-                            <button
-                                type="button"
-                                class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-bold transition-colors"
-                                :class="
-                                    form.is_active
-                                        ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300'
-                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
-                                "
-                                @click="toggleActive"
-                            >
-                                <span class="h-1.5 w-1.5 rounded-full" :class="form.is_active ? 'bg-emerald-500' : 'bg-slate-400'" />
-                                {{ form.is_active ? 'Accepting Responses' : 'Closed' }}
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="flex flex-wrap items-center gap-2 border-t pt-3">
-                        <code class="max-w-xs truncate rounded-md bg-muted px-2 py-1 text-[11px]">{{ publicUrl }}</code>
-                        <Button size="sm" variant="outline" class="h-7 text-xs" @click="copyLink">
-                            <Check v-if="linkCopied" class="mr-1 h-3 w-3 text-emerald-600" />
-                            <Copy v-else class="mr-1 h-3 w-3" /> {{ linkCopied ? 'Copied!' : 'Copy Link' }}
-                        </Button>
-                        <a :href="publicUrl" target="_blank" rel="noopener">
-                            <Button size="sm" variant="outline" class="h-7 text-xs"> <ExternalLink class="mr-1 h-3 w-3" /> Open Form </Button>
-                        </a>
-                        <Link :href="route('programs.show', batch.program.id) + '?tab=evaluation'" class="ml-auto">
-                            <Button size="sm" variant="outline" class="h-7 border-rose-200 text-xs text-rose-600 hover:bg-rose-50">
-                                <BarChart3 class="mr-1 h-3 w-3" /> View Results Dashboard
-                            </Button>
-                        </Link>
-                    </div>
-
-                    <!-- Background image -->
-                    <div class="flex items-center gap-3 border-t pt-3">
-                        <img :src="previewBackgroundUrl" alt="Evaluation form background" class="h-14 w-20 shrink-0 rounded-lg object-cover" />
-                        <div class="min-w-0 flex-1">
-                            <p class="flex items-center gap-1.5 text-xs font-bold">
-                                <ImageIcon class="h-3.5 w-3.5 text-rose-600" /> Background Image
-                            </p>
-                            <p class="text-[11px] text-muted-foreground">
-                                {{ form.background_image_url ? 'Custom background for this batch.' : 'Using the site-wide default background.' }}
-                            </p>
-                        </div>
-                        <div class="flex shrink-0 items-center gap-2">
+                            <div class="flex items-center gap-4">
+                                <img
+                                    v-if="!backgroundPreviewFailed"
+                                    :src="previewBackgroundUrl"
+                                    alt="Evaluation form background"
+                                    class="h-16 w-24 shrink-0 rounded-lg object-cover ring-1 ring-border"
+                                    @error="backgroundPreviewFailed = true"
+                                />
+                                <div
+                                    v-else
+                                    class="flex h-16 w-24 shrink-0 items-center justify-center rounded-lg border border-dashed bg-muted/50 text-muted-foreground"
+                                    title="The preview couldn't load"
+                                >
+                                    <ImageIcon class="h-4 w-4" />
+                                </div>
+                                <p class="text-[11px] text-muted-foreground">
+                                    {{ form.background_image_url ? 'Custom background for this batch.' : 'Using the site-wide default background.' }}
+                                </p>
+                            </div>
                             <input
                                 ref="backgroundFileInput"
                                 type="file"
@@ -669,47 +749,34 @@ function submitBulkFacilitators() {
                                 class="hidden"
                                 @change="handleBackgroundFileChange"
                             />
-                            <Button size="sm" variant="outline" class="h-7 text-xs" :disabled="uploadingBackground" @click="triggerBackgroundUpload">
-                                <LoaderCircle v-if="uploadingBackground" class="mr-1 h-3 w-3 animate-spin" />
-                                <Upload v-else class="mr-1 h-3 w-3" /> Change
-                            </Button>
-                            <Button
-                                v-if="form.background_image_url"
-                                size="sm"
-                                variant="outline"
-                                class="h-7 text-xs"
-                                :disabled="removingBackground"
-                                @click="resetBackground"
-                            >
-                                <LoaderCircle v-if="removingBackground" class="mr-1 h-3 w-3 animate-spin" />
-                                <RotateCcw v-else class="mr-1 h-3 w-3" /> Reset
-                            </Button>
-                        </div>
-                    </div>
-
-                    <div v-if="isSuperAdmin" class="flex items-center justify-between gap-3 border-t pt-3">
-                        <p class="text-[11px] text-muted-foreground">
-                            Superadmin only: permanently delete this batch's evaluation form and start over.
-                        </p>
-                        <Button size="sm" variant="destructive" class="h-7 shrink-0 text-xs" :disabled="deletingForm" @click="deleteForm">
-                            <LoaderCircle v-if="deletingForm" class="mr-1 h-3 w-3 animate-spin" />
-                            <Trash2 v-else class="mr-1 h-3 w-3" /> Delete Evaluation Form
-                        </Button>
+                        </Card>
                     </div>
                 </div>
 
                 <!-- Sections & Questions -->
-                <div class="flex flex-col gap-3">
-                    <h2 class="flex items-center gap-1.5 text-sm font-extrabold">
-                        <ListChecks class="h-4 w-4 text-rose-600" /> Sections & Questions
-                    </h2>
+                <div class="flex flex-col gap-4">
+                    <div class="flex items-start gap-3">
+                        <span
+                            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-700 ring-1 ring-rose-200/70 dark:bg-rose-900/50 dark:text-rose-300 dark:ring-rose-800/60"
+                        >
+                            <ListChecks class="h-4 w-4" />
+                        </span>
+                        <div class="min-w-0">
+                            <h2 class="text-sm font-semibold">Sections &amp; Questions</h2>
+                            <p class="text-[11px] text-muted-foreground">What respondents answer, grouped by section</p>
+                        </div>
+                    </div>
 
-                    <div v-for="(section, sIdx) in form.sections" :key="section.id" class="overflow-hidden rounded-2xl border bg-background">
-                        <div class="flex items-start justify-between gap-3 border-b bg-rose-50/50 px-5 py-4 dark:bg-rose-950/10">
+                    <Card v-for="(section, sIdx) in form.sections" :key="section.id" :class="SETTINGS_CARD.plain" class="overflow-hidden">
+                        <div class="flex items-start justify-between gap-3 border-b bg-rose-50/40 px-5 py-4 dark:bg-rose-950/10">
                             <div class="min-w-0 flex-1">
                                 <div v-if="editingSectionId !== section.id" class="flex items-center gap-2">
                                     <h3 class="text-sm font-bold">{{ section.title }}</h3>
-                                    <button class="text-muted-foreground transition-colors hover:text-foreground" @click="openEditSection(section)">
+                                    <button
+                                        class="text-muted-foreground transition-colors hover:text-foreground"
+                                        aria-label="Edit section"
+                                        @click="openEditSection(section)"
+                                    >
                                         <Pencil class="h-3.5 w-3.5" />
                                     </button>
                                 </div>
@@ -742,6 +809,7 @@ function submitBulkFacilitators() {
                                 <button
                                     class="rounded p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
                                     :disabled="sIdx === 0"
+                                    aria-label="Move section up"
                                     @click="moveSection(section, 'up')"
                                 >
                                     <ChevronUp class="h-4 w-4" />
@@ -749,6 +817,7 @@ function submitBulkFacilitators() {
                                 <button
                                     class="rounded p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
                                     :disabled="sIdx === form.sections.length - 1"
+                                    aria-label="Move section down"
                                     @click="moveSection(section, 'down')"
                                 >
                                     <ChevronDown class="h-4 w-4" />
@@ -781,6 +850,7 @@ function submitBulkFacilitators() {
                                     <button
                                         class="rounded p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
                                         :disabled="qIdx === 0"
+                                        aria-label="Move question up"
                                         @click="moveQuestion(question, 'up')"
                                     >
                                         <ChevronUp class="h-3.5 w-3.5" />
@@ -788,18 +858,21 @@ function submitBulkFacilitators() {
                                     <button
                                         class="rounded p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
                                         :disabled="qIdx === section.questions.length - 1"
+                                        aria-label="Move question down"
                                         @click="moveQuestion(question, 'down')"
                                     >
                                         <ChevronDown class="h-3.5 w-3.5" />
                                     </button>
                                     <button
                                         class="rounded p-1 text-muted-foreground transition-colors hover:text-blue-600"
+                                        aria-label="Edit question"
                                         @click="openEditQuestion(section, question)"
                                     >
                                         <Pencil class="h-3.5 w-3.5" />
                                     </button>
                                     <button
                                         class="rounded p-1 text-muted-foreground transition-colors hover:text-red-600"
+                                        aria-label="Delete question"
                                         @click="deleteQuestion(question)"
                                     >
                                         <Trash2 class="h-3.5 w-3.5" />
@@ -814,38 +887,42 @@ function submitBulkFacilitators() {
                                 <Plus class="mr-1 h-3 w-3" /> Add Question
                             </Button>
                         </div>
-                    </div>
+                    </Card>
                 </div>
 
                 <!-- Facilitators -->
-                <div class="flex flex-col gap-3">
-                    <div class="flex items-center justify-between">
-                        <h2 class="flex items-center gap-1.5 text-sm font-extrabold"><Users class="h-4 w-4 text-rose-600" /> Facilitators to Rate</h2>
-                        <div class="flex items-center gap-2">
-                            <Button size="sm" variant="outline" class="h-7 text-xs" @click="openBulkAdd">
+                <Card :class="SETTINGS_CARD.rose" class="flex flex-col gap-4 p-5">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div class="flex min-w-0 items-start gap-3">
+                            <span
+                                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-700 ring-1 ring-rose-200/70 dark:bg-rose-900/50 dark:text-rose-300 dark:ring-rose-800/60"
+                            >
+                                <Users class="h-4 w-4" />
+                            </span>
+                            <div class="min-w-0">
+                                <h2 class="text-sm font-semibold">Facilitators to Rate</h2>
+                                <p class="text-[11px] text-muted-foreground">
+                                    Each respondent rates every facilitator here using the Section III questions
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex shrink-0 items-center gap-2">
+                            <Button size="sm" variant="outline" class="h-8 text-xs" @click="openBulkAdd">
                                 <ClipboardPaste class="mr-1 h-3 w-3" /> Bulk Add
                             </Button>
-                            <Button size="sm" class="h-7 bg-rose-600 text-xs hover:bg-rose-700 dark:text-white" @click="openAddFacilitator">
+                            <Button size="sm" class="h-8 bg-rose-600 text-xs hover:bg-rose-700 dark:text-white" @click="openAddFacilitator">
                                 <Plus class="mr-1 h-3 w-3" /> Add Facilitator
                             </Button>
                         </div>
                     </div>
-                    <p class="-mt-2 text-xs text-muted-foreground">
-                        Every facilitator added here will be rated separately by each respondent using the Section III questions above.
-                    </p>
 
-                    <EmptyState
-                        v-if="!form.facilitators.length"
-                        compact
-                        class="rounded-2xl border border-dashed"
-                        title="No facilitators added yet."
-                    />
+                    <EmptyState v-if="!form.facilitators.length" compact class="rounded-xl border border-dashed" title="No facilitators added yet." />
 
-                    <div v-else class="divide-y overflow-hidden rounded-2xl border bg-background">
+                    <div v-else class="divide-y overflow-hidden rounded-xl border">
                         <div
                             v-for="(facilitator, fIdx) in form.facilitators"
                             :key="facilitator.id"
-                            class="flex items-center justify-between gap-3 px-5 py-3"
+                            class="flex items-center justify-between gap-3 px-4 py-3"
                         >
                             <div class="min-w-0">
                                 <p class="truncate text-sm font-bold">{{ facilitator.name }}</p>
@@ -855,6 +932,7 @@ function submitBulkFacilitators() {
                                 <button
                                     class="rounded p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
                                     :disabled="fIdx === 0"
+                                    aria-label="Move facilitator up"
                                     @click="moveFacilitator(facilitator, 'up')"
                                 >
                                     <ChevronUp class="h-3.5 w-3.5" />
@@ -862,18 +940,21 @@ function submitBulkFacilitators() {
                                 <button
                                     class="rounded p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
                                     :disabled="fIdx === form.facilitators.length - 1"
+                                    aria-label="Move facilitator down"
                                     @click="moveFacilitator(facilitator, 'down')"
                                 >
                                     <ChevronDown class="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                     class="rounded p-1 text-muted-foreground transition-colors hover:text-blue-600"
+                                    aria-label="Edit facilitator"
                                     @click="openEditFacilitator(facilitator)"
                                 >
                                     <Pencil class="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                     class="rounded p-1 text-muted-foreground transition-colors hover:text-red-600"
+                                    aria-label="Delete facilitator"
                                     @click="deleteFacilitator(facilitator)"
                                 >
                                     <Trash2 class="h-3.5 w-3.5" />
@@ -881,7 +962,38 @@ function submitBulkFacilitators() {
                             </div>
                         </div>
                     </div>
-                </div>
+                </Card>
+
+                <!-- Delete form (superadmin only), kept last and apart from everyday settings -->
+                <Card
+                    v-if="isSuperAdmin"
+                    :class="SETTINGS_CARD.danger"
+                    class="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between"
+                >
+                    <div class="flex min-w-0 items-start gap-3">
+                        <span
+                            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-700 ring-1 ring-red-200/70 dark:bg-red-900/50 dark:text-red-300 dark:ring-red-800/60"
+                        >
+                            <Trash2 class="h-4 w-4" />
+                        </span>
+                        <div class="min-w-0">
+                            <h2 class="text-sm font-semibold">Delete Evaluation Form</h2>
+                            <p class="text-[11px] text-muted-foreground">
+                                Superadmin only: permanently delete this batch's evaluation form and start over.
+                            </p>
+                        </div>
+                    </div>
+                    <Button
+                        size="sm"
+                        variant="destructive"
+                        class="h-8 shrink-0 self-start text-xs sm:self-auto"
+                        :disabled="deletingForm"
+                        @click="deleteForm"
+                    >
+                        <LoaderCircle v-if="deletingForm" class="mr-1 h-3 w-3 animate-spin" />
+                        <Trash2 v-else class="mr-1 h-3 w-3" /> Delete Evaluation Form
+                    </Button>
+                </Card>
             </template>
         </div>
 

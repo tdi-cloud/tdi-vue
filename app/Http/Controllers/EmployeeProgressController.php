@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\UpdateEmployeePhotoRequest;
 use App\Models\Employee;
 use App\Models\Participant;
 use App\Models\Program;
@@ -9,15 +10,22 @@ use App\Models\Requirement;
 use App\Models\Submission;
 use App\Support\SearchSuggester;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class EmployeeProgressController extends Controller
 {
+    /**
+     * Employees page: paginated employees with their training progress. Filter
+     * changes are partial reloads (employees, offices, filters, suggestion), so
+     * the region and plantilla status lists are closures that only run on a full visit.
+     */
     public function index(Request $request)
     {
-        $query = Employee::with('user:id,empcode,avatar')->withCount('participants');
+        // The employee picture (EmployeePhoto, by EMPCODE) is shown first, then the account avatar.
+        $query = Employee::with(['user:id,empcode,avatar', 'photo:id,empcode,path'])->withCount('participants');
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -84,8 +92,9 @@ class EmployeeProgressController extends Controller
             $stats = $progressStats->get($employee->EMPCODE);
             $subs = $submissionStats->get($employee->EMPCODE);
 
-            return array_merge($employee->toArray(), [
+            return array_merge(Arr::except($employee->toArray(), ['photo']), [
                 'avatar' => $employee->user?->avatar,
+                'photo_url' => $employee->photo?->url,
                 'progress_stats' => [
                     'total_programs' => (int) ($stats->total_programs ?? 0),
                     'completed_programs' => (int) ($stats->completed_programs ?? 0),
@@ -99,23 +108,27 @@ class EmployeeProgressController extends Controller
             ]);
         });
 
-        $regions = Employee::distinct()->orderBy('REGION')->pluck('REGION');
-        $plantillaStatuses = Employee::distinct()->orderBy('PLANTILLA STATUS')->pluck('PLANTILLA STATUS');
-
-        $officesQuery = Employee::query();
-        if ($request->filled('region') && $request->region !== 'all') {
-            $officesQuery->where('REGION', $request->region);
-        }
-        $offices = $officesQuery->whereNotNull('OFFICE')->where('OFFICE', '!=', '')
-            ->distinct()->orderBy('OFFICE')->pluck('OFFICE');
-
         return Inertia::render('employees/index', [
             'employees' => $employees,
-            'regions' => $regions,
-            'offices' => $offices,
-            'plantillaStatuses' => $plantillaStatuses,
+            'regions' => fn () => Employee::distinct()->orderBy('REGION')->pluck('REGION'),
+            'offices' => function () use ($request) {
+                $officesQuery = Employee::query();
+                if ($request->filled('region') && $request->region !== 'all') {
+                    $officesQuery->where('REGION', $request->region);
+                }
+
+                return $officesQuery->whereNotNull('OFFICE')->where('OFFICE', '!=', '')
+                    ->distinct()->orderBy('OFFICE')->pluck('OFFICE');
+            },
+            'plantillaStatuses' => fn () => Employee::distinct()->orderBy('PLANTILLA STATUS')->pluck('PLANTILLA STATUS'),
             'filters' => $request->only(['search', 'region', 'office', 'plantilla', 'per_page']),
-            'suggestion' => SearchSuggester::forEmptyResults(
+            // Superadmins add, change or remove employee pictures from the cards.
+            'canManagePhotos' => $request->user()->isSuperAdmin(),
+            'photoRules' => [
+                'maxKilobytes' => UpdateEmployeePhotoRequest::MAX_KILOBYTES,
+                'types' => UpdateEmployeePhotoRequest::TYPES,
+            ],
+            'suggestion' => fn () => SearchSuggester::forEmptyResults(
                 $request->string('search'),
                 $employees->total(),
                 fn () => Employee::query()->get(['FIRSTNAME', 'LASTNAME', 'OFFICE/DIVISION'])

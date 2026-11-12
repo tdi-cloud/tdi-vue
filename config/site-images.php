@@ -23,6 +23,12 @@ return [
         'default' => '/storage/hero/cpsc.JPG',
     ],
 
+    'public_form_background' => [
+        'label' => 'Public Forms Background (default for all public forms)',
+        'section' => 'Public Forms',
+        'default' => '/storage/hero/cpsc.JPG',
+    ],
+
     'navbar_logo' => [
         'label' => 'Navbar Logo (TESDA Seal)',
         'section' => 'Navbar',

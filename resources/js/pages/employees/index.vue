@@ -1,57 +1,33 @@
 <script setup lang="ts">
+import EmployeePictureDialog from '@/components/employee-progress/EmployeePictureDialog.vue';
+import EmployeeProgressCard from '@/components/employee-progress/EmployeeProgressCard.vue';
+import EmployeeProgressPager from '@/components/employee-progress/EmployeeProgressPager.vue';
 import EmployeeProgressModal from '@/components/EmployeeProgressModal.vue';
 import EmptyState from '@/components/EmptyState.vue';
+import DirectoryAmbience from '@/components/position-directory/DirectoryAmbience.vue';
+import DirectoryCombobox from '@/components/position-directory/DirectoryCombobox.vue';
+import DirectoryHero from '@/components/position-directory/DirectoryHero.vue';
+import DirectorySearchField from '@/components/position-directory/DirectorySearchField.vue';
+import FanCarousel from '@/components/position-directory/FanCarousel.vue';
+import ResultsSkeleton from '@/components/position-directory/ResultsSkeleton.vue';
+import ViewModeToggle from '@/components/position-directory/ViewModeToggle.vue';
 import SearchEmptyState from '@/components/SearchEmptyState.vue';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useMotionLevel } from '@/composables/useMotionLevel';
 import AppLayout from '@/layouts/AppLayout.vue';
+import type { PaginatedEmployees, ProgressEmployee } from '@/lib/employeeProgress';
+import { pluralize, type ComboboxOption, type HeroStat, type PhotoRules } from '@/lib/positionDirectory';
 import { Head, router } from '@inertiajs/vue3';
-import { ArrowRight, Building2, CheckCircle2, ChevronDown, Hash, MapPin, Search, SlidersHorizontal, Users, X } from 'lucide-vue-next';
-import { computed, ref, watch } from 'vue';
-
-interface Employee {
-    id: number;
-    EMPCODE: string;
-    FIRSTNAME: string;
-    LASTNAME: string;
-    MI: string;
-    POSITION: string;
-    'OFFICE/DIVISION': string;
-    'PLANTILLA STATUS': string;
-    REGION: string;
-    OFFICE: string;
-    SEX: string;
-    SG: string;
-    name: string;
-    initials: string;
-    avatar_color: string;
-    avatar: string | null;
-    progress_stats: {
-        total_programs: number;
-        completed_programs: number;
-        total_hours: number;
-        hours_completed: number;
-    };
-    submission_stats: {
-        total_requirements: number;
-        approved_submissions: number;
-    };
-}
-
-interface PaginatedEmployees {
-    data: Employee[];
-    current_page: number;
-    last_page: number;
-    total: number;
-    from: number;
-    to: number;
-    links: { url: string | null; label: string; active: boolean }[];
-}
+import { useIntersectionObserver, useResizeObserver } from '@vueuse/core';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, GraduationCap, Info, Layers, Users, X } from 'lucide-vue-next';
+import { computed, reactive, ref, watch } from 'vue';
+// Theme colours (.pd-theme), shared with the Position Directory.
+import '../../../css/position-directory.css';
 
 const props = defineProps<{
     employees: PaginatedEmployees;
-    regions: string[];
-    offices: string[];
-    plantillaStatuses: string[];
+    regions: (string | null)[];
+    offices: (string | null)[];
+    plantillaStatuses: (string | null)[];
     filters: {
         search?: string;
         region?: string;
@@ -61,16 +37,24 @@ const props = defineProps<{
     };
     // "Did you mean …?" when a search finds nothing (server-side SearchSuggester).
     suggestion?: string | null;
+    // Superadmins add, change or remove employee pictures from the cards.
+    canManagePhotos: boolean;
+    photoRules: PhotoRules;
 }>();
 
-// Filters
+// ─── How much motion to show ────────────────────────────────────────────────
+const motionLevel = useMotionLevel();
+
+// ─── Filters (kept in the query string) ────────────────────────────────────
+const PER_PAGE_OPTIONS = ['10', '25', '50', '100'];
+
 const search = ref(props.filters.search ?? '');
 const region = ref(props.filters.region ?? 'all');
 const office = ref(props.filters.office ?? 'all');
 const plantilla = ref(props.filters.plantilla ?? 'all');
 const perPage = ref(props.filters.per_page ?? '10');
 
-// Kapag nagbago ang region, i-reset ang office selection dahil magbabago rin ang mga choices nito.
+// A new region changes the office choices, so the office selection starts over.
 watch(region, () => {
     office.value = 'all';
 });
@@ -79,19 +63,89 @@ const hasActiveFilters = computed(
     () => search.value !== '' || region.value !== 'all' || office.value !== 'all' || plantilla.value !== 'all' || perPage.value !== '10',
 );
 
-const clearFilters = () => {
+function clearFilters(): void {
     search.value = '';
     region.value = 'all';
     office.value = 'all';
     plantilla.value = 'all';
     perPage.value = '10';
-};
+}
+
+const isFilled = (value: string | null | undefined): value is string => typeof value === 'string' && value.trim() !== '';
+
+const regionOptions = computed<ComboboxOption[]>(() => [
+    { value: 'all', label: 'All regions' },
+    ...props.regions.filter(isFilled).map((value) => ({ value, label: value })),
+]);
+
+const officeOptions = computed<ComboboxOption[]>(() => [
+    { value: 'all', label: 'All offices' },
+    ...props.offices.filter(isFilled).map((value) => ({ value, label: value })),
+]);
+
+const plantillaOptions = computed<ComboboxOption[]>(() => [
+    { value: 'all', label: 'All statuses' },
+    ...props.plantillaStatuses.filter(isFilled).map((value) => ({ value, label: value.toUpperCase() })),
+]);
+
+/** Removable chips for the floating bar on narrow pages. */
+const activeFilterChips = computed(() => {
+    const chips: { key: string; label: string; clear: () => void }[] = [];
+    if (region.value !== 'all') {
+        chips.push({ key: 'region', label: region.value, clear: () => (region.value = 'all') });
+    }
+    if (office.value !== 'all') {
+        chips.push({ key: 'office', label: office.value, clear: () => (office.value = 'all') });
+    }
+    if (plantilla.value !== 'all') {
+        chips.push({ key: 'plantilla', label: plantilla.value.toUpperCase(), clear: () => (plantilla.value = 'all') });
+    }
+    return chips;
+});
+
+// ─── Loading results (partial reloads: the region/status lists aren't re-queried) ─
+const RELOADED_PROPS = ['employees', 'offices', 'filters', 'suggestion'];
+
+const isLoading = ref(false);
+const resultsRef = ref<HTMLElement | null>(null);
+let latestVisit = 0;
+
+/** Card to centre in the fan when the next page of results arrives. */
+let pendingLanding: 'first' | 'last' = 'first';
+
+function visitEmployees(url: string, data: Record<string, string | undefined>, options: { replace: boolean; landOn?: 'first' | 'last' }): void {
+    const visit = ++latestVisit;
+    pendingLanding = options.landOn ?? 'first';
+
+    router.get(url, data, {
+        only: RELOADED_PROPS,
+        preserveState: true,
+        preserveScroll: true,
+        replace: options.replace,
+        onStart: () => {
+            isLoading.value = true;
+        },
+        onSuccess: () => {
+            // Deep in the previous list (e.g. at the pager below the grid)? Bring the new list's top into view.
+            const top = resultsRef.value?.getBoundingClientRect().top ?? 0;
+            if (top < 0) {
+                resultsRef.value?.scrollIntoView({ behavior: motionLevel.value === 'still' ? 'auto' : 'smooth', block: 'start' });
+            }
+        },
+        onFinish: () => {
+            if (visit === latestVisit) {
+                isLoading.value = false;
+            }
+        },
+    });
+}
 
 let debounce: ReturnType<typeof setTimeout>;
 watch([search, region, office, plantilla, perPage], () => {
     clearTimeout(debounce);
     debounce = setTimeout(() => {
-        router.get(
+        restoreFanFocus = false;
+        visitEmployees(
             route('employees.index'),
             {
                 search: search.value || undefined,
@@ -100,514 +154,974 @@ watch([search, region, office, plantilla, perPage], () => {
                 plantilla: plantilla.value !== 'all' ? plantilla.value : undefined,
                 per_page: perPage.value !== '10' ? perPage.value : undefined,
             },
-            { preserveScroll: true, preserveState: true, replace: true },
+            { replace: true },
         );
     }, 350);
 });
 
-// Detail Modal
+function goToPage(url: string | null, landOn: 'first' | 'last' = 'first'): void {
+    if (!url || isLoading.value) {
+        return;
+    }
+    visitEmployees(url, {}, { replace: false, landOn });
+}
+
+// ─── Layout: 3D fan showcase (default) or a card grid ─────────────────────
+type ViewMode = 'showcase' | 'grid';
+const VIEW_STORAGE_KEY = 'tdi:employees:view';
+
+function readViewMode(): ViewMode {
+    try {
+        return window.localStorage.getItem(VIEW_STORAGE_KEY) === 'grid' ? 'grid' : 'showcase';
+    } catch {
+        return 'showcase';
+    }
+}
+
+const viewMode = ref<ViewMode>(readViewMode());
+
+watch(viewMode, (mode) => {
+    try {
+        window.localStorage.setItem(VIEW_STORAGE_KEY, mode);
+    } catch {
+        // Not remembered; the choice still applies until the page is reloaded.
+    }
+});
+
+/** Employee in the centre of the fan (index on the current page). */
+const fanIndex = ref(0);
+const fanRef = ref<{ element: HTMLElement | null } | null>(null);
+let restoreFanFocus = false;
+
+watch(
+    () => props.employees,
+    (page) => {
+        fanIndex.value = pendingLanding === 'last' ? Math.max(0, page.data.length - 1) : 0;
+        pendingLanding = 'first';
+    },
+);
+
+/** Arrows, keys or a swipe past either end of the page: continue on the previous/next page. */
+function onFanEdge(direction: -1 | 1): void {
+    const url = direction === 1 ? props.employees.next_page_url : props.employees.prev_page_url;
+    if (!url || isLoading.value) {
+        return;
+    }
+    restoreFanFocus = fanRef.value?.element?.contains(document.activeElement) ?? false;
+    goToPage(url, direction === 1 ? 'first' : 'last');
+}
+
+// The fan is rebuilt after loading; keyboard users keep browsing where they were.
+watch(
+    fanRef,
+    (fan) => {
+        if (fan?.element && restoreFanFocus) {
+            restoreFanFocus = false;
+            fan.element.focus({ preventScroll: true });
+        }
+    },
+    { flush: 'post' },
+);
+
+/** Taller text block under a shorter picture than the directory card (see EmployeeProgressCard). */
+const fanGeometry = { '--fan-card-ratio': '0.8', '--fan-card-text': '185px' };
+
+// ─── One-screen layout on wide pages ───────────────────────────────────────
+// Left: title, 3D emblem, search, filters and counts (pinned). Right: the cards.
+// Measured on the page itself (not the window) because the sidebar may be open
+// or collapsed; the gap between thresholds stops a scrollbar appearing or
+// disappearing from flipping the layout back and forth.
+const pageRef = ref<HTMLElement | null>(null);
+const isWide = ref(false);
+
+// Applied on the next frame: changing the layout inside the observer callback
+// makes the browser report a "ResizeObserver loop" error.
+let layoutFrame = 0;
+useResizeObserver(pageRef, ([entry]) => {
+    const width = entry.contentRect.width;
+    cancelAnimationFrame(layoutFrame);
+    layoutFrame = requestAnimationFrame(() => {
+        isWide.value = isWide.value ? width >= 980 : width >= 1000;
+    });
+});
+
+/** The fan stretches to fill the right column, so everything fits one screen. */
+const fillsScreen = computed(() => isWide.value && viewMode.value === 'showcase');
+
+// On narrow pages the banner scrolls away, and a floating bar takes over.
+const heroRef = ref<HTMLElement | null>(null);
+const isHeroVisible = ref(true);
+useIntersectionObserver(heroRef, ([entry]) => {
+    isHeroVisible.value = entry?.isIntersecting ?? true;
+});
+
+// Kept open while it has focus, so it doesn't vanish mid-typing when shorter results bring the banner back.
+const toolbarRef = ref<HTMLElement | null>(null);
+const toolbarHasFocus = ref(false);
+
+function onToolbarFocusOut(event: FocusEvent): void {
+    toolbarHasFocus.value = toolbarRef.value?.contains(event.relatedTarget as Node | null) ?? false;
+}
+
+const isToolbarShown = computed(() => !isWide.value && (!isHeroVisible.value || toolbarHasFocus.value));
+
+// ─── Hero counts and wording ───────────────────────────────────────────────
+const inTrainingCount = computed(() => props.employees.data.filter((employee) => employee.progress_stats.total_programs > 0).length);
+
+const heroStats = computed<HeroStat[]>(() => [
+    { label: 'Employees', value: props.employees.total, icon: Users },
+    { label: 'Page', value: props.employees.current_page, suffix: `/ ${props.employees.last_page.toLocaleString()}`, icon: Layers },
+    { label: 'In training', value: inTrainingCount.value, suffix: `/ ${props.employees.data.length}`, icon: GraduationCap },
+]);
+
+/** Changes with every new set of results, to play the hero's light sweep. */
+const resultsKey = computed(() => `${props.employees.current_page}|${JSON.stringify(props.filters)}`);
+
+/** What the shown results are filtered by (the server's filters, not the fields being typed in). */
+const resultsTitle = computed(() => {
+    if (props.filters.search) {
+        return `Results for “${props.filters.search}”`;
+    }
+    const parts = [props.filters.region, props.filters.office, props.filters.plantilla?.toUpperCase()].filter(isFilled);
+    return parts.length > 0 ? parts.join(' · ') : 'All employees';
+});
+
+const announcement = computed(() => {
+    if (isLoading.value) {
+        return '';
+    }
+    const { total, from, to } = props.employees;
+    return total === 0 ? 'No employees found.' : `Showing ${from ?? 0}–${to ?? 0} of ${pluralize(total, 'employee')}.`;
+});
+
+// ─── Progress modal ────────────────────────────────────────────────────────
 const selectedEmpcode = ref<string | null>(null);
 
-const openDetails = (emp: Employee) => {
-    selectedEmpcode.value = emp.EMPCODE;
-};
+function openDetails(employee: ProgressEmployee): void {
+    selectedEmpcode.value = employee.EMPCODE;
+}
 
-const closeModal = () => {
+function closeModal(): void {
     selectedEmpcode.value = null;
-};
+}
 
-// Helpers
-const plantillaColor = (status: string) => {
-    const s = status?.toUpperCase();
-    if (s === 'PERMANENT')
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200/80 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20';
-    if (s === 'JOB ORDER') return 'bg-amber-50 text-amber-700 border-amber-200/80 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20';
-    if (s === 'CTI') return 'bg-blue-50 text-blue-700 border-blue-200/80 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/20';
-    return 'bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-500/10 dark:text-slate-300 dark:border-slate-500/20';
-};
+// ─── Employee pictures (superadmins) ───────────────────────────────────────
+// Pictures changed in this session, by EMPCODE: shown at once, without reloading the list.
+const photoOverrides = reactive(new Map<string, string | null>());
 
-const progressPercent = (num: number, denom: number) => (denom > 0 ? Math.min(100, Math.round((num / denom) * 100)) : 0);
+function photoUrlFor(employee: ProgressEmployee): string | null {
+    return photoOverrides.has(employee.EMPCODE) ? (photoOverrides.get(employee.EMPCODE) ?? null) : employee.photo_url;
+}
 
-const formatHours = (hours: number) => (Number.isInteger(hours) ? hours : Number(hours.toFixed(1)));
+const isPictureDialogOpen = ref(false);
+const pictureEmployee = ref<ProgressEmployee | null>(null);
 
-const paginationLabel = (label: string) => (label.includes('Previous') ? '&lsaquo;' : label.includes('Next') ? '&rsaquo;' : label);
+function openPictureDialog(employee: ProgressEmployee): void {
+    pictureEmployee.value = employee;
+    isPictureDialogOpen.value = true;
+}
 
-// Shared progress metric definitions, used by both the desktop table and mobile cards.
-const progressMetrics = (emp: Employee) => [
-    {
-        key: 'programs',
-        label: 'Programs',
-        value: `${emp.progress_stats.completed_programs} / ${emp.progress_stats.total_programs}`,
-        percent: progressPercent(emp.progress_stats.completed_programs, emp.progress_stats.total_programs),
-        bar: 'from-emerald-500 to-emerald-400 dark:from-emerald-500 dark:to-emerald-400/80',
-    },
-    {
-        key: 'hours',
-        label: 'Hours',
-        value: `${formatHours(emp.progress_stats.hours_completed)} / ${formatHours(emp.progress_stats.total_hours)} hrs`,
-        percent: progressPercent(emp.progress_stats.hours_completed, emp.progress_stats.total_hours),
-        bar: 'from-indigo-500 to-blue-400 dark:from-indigo-500 dark:to-blue-400/80',
-    },
-    {
-        key: 'submissions',
-        label: 'Submissions',
-        value: `${emp.submission_stats.approved_submissions} / ${emp.submission_stats.total_requirements}`,
-        percent: progressPercent(emp.submission_stats.approved_submissions, emp.submission_stats.total_requirements),
-        bar: 'from-violet-500 to-violet-400 dark:from-violet-500 dark:to-violet-400/80',
-    },
-];
-
-const selectClass =
-    'h-10 w-full appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-9 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 focus:border-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 dark:border-slate-700/70 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20';
+function onPhotoChanged(empcode: string, url: string | null): void {
+    photoOverrides.set(empcode, url);
+}
 </script>
 
 <template>
     <Head title="Employee Progress" />
 
     <AppLayout>
-        <div class="flex flex-1 flex-col gap-6 bg-slate-50/60 p-4 dark:bg-transparent sm:p-6 lg:p-8">
-            <!-- Header -->
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                <div class="flex items-start gap-3">
-                    <span class="mt-1.5 hidden h-8 w-1 shrink-0 rounded-full bg-gradient-to-b from-indigo-500 to-blue-500 sm:block" />
-                    <div>
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-600 dark:text-indigo-400">
-                            Learning &amp; Development
-                        </p>
-                        <h1 class="mt-1 text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-3xl">Employee Progress</h1>
-                        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Track individual employee training progress and achievements</p>
-                    </div>
-                </div>
-                <div
-                    class="flex items-center gap-3 self-start rounded-2xl border border-slate-200/80 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 sm:self-auto"
-                >
-                    <span
-                        class="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400"
+        <div ref="pageRef" class="pd-theme pd-page" :data-motion="motionLevel">
+            <DirectoryAmbience :motion-level="motionLevel" :tone="(employees.current_page - 1) % 4" />
+
+            <p class="sr-only" aria-live="polite">{{ announcement }}</p>
+
+            <div class="pd-page__inner" :class="{ 'is-wide': isWide }">
+                <aside ref="heroRef" class="pd-page__side">
+                    <DirectoryHero
+                        title-accent="Employees"
+                        subtitle="TESDA Workforce Training Progress"
+                        :stats="heroStats"
+                        :node-count="employees.data.length"
+                        :pulse-key="resultsKey"
+                        visual-label="Each orbiting light is an employee on this page"
+                        emblem="gear"
+                        :motion-level="motionLevel"
+                        :loading="isLoading"
+                        :panel="isWide"
                     >
-                        <Users class="h-4 w-4" />
-                    </span>
-                    <div>
-                        <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Employees</p>
-                        <p class="text-lg font-bold tabular-nums leading-tight text-slate-900 dark:text-white">
-                            {{ employees.total.toLocaleString() }}
-                        </p>
-                    </div>
-                </div>
-            </div>
+                        <template #selector>
+                            <div class="ep-filters">
+                                <DirectorySearchField
+                                    v-model="search"
+                                    label="Search employees"
+                                    placeholder="Name, employee code or office…"
+                                    :loading="isLoading"
+                                />
+                                <div class="ep-filters__grid">
+                                    <DirectoryCombobox
+                                        :options="regionOptions"
+                                        :selected="region"
+                                        label="Region"
+                                        placeholder="All regions"
+                                        item-name="region"
+                                        size="small"
+                                        @select="(value) => (region = value)"
+                                    />
+                                    <DirectoryCombobox
+                                        :options="plantillaOptions"
+                                        :selected="plantilla"
+                                        label="Plantilla status"
+                                        placeholder="All statuses"
+                                        item-name="status"
+                                        item-name-plural="statuses"
+                                        size="small"
+                                        align="end"
+                                        :searchable="false"
+                                        @select="(value) => (plantilla = value)"
+                                    />
+                                    <DirectoryCombobox
+                                        class="ep-filters__wide"
+                                        :options="officeOptions"
+                                        :selected="office"
+                                        label="Office"
+                                        placeholder="All offices"
+                                        item-name="office"
+                                        size="small"
+                                        @select="(value) => (office = value)"
+                                    />
+                                </div>
+                            </div>
+                        </template>
+                        <template #footer>
+                            <div class="ep-hero-footer">
+                                <p class="ep-order-note">
+                                    <Info class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                    Employees with training programs are listed first, then by last name.
+                                </p>
+                                <button v-if="hasActiveFilters" type="button" class="ep-clear" @click="clearFilters">
+                                    <X class="h-3.5 w-3.5" aria-hidden="true" />
+                                    Clear filters
+                                </button>
+                            </div>
+                        </template>
+                    </DirectoryHero>
+                </aside>
 
-            <!-- Search + Filters -->
-            <section class="rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
-                <div class="flex flex-col gap-3 border-b border-slate-100 p-4 dark:border-slate-800 sm:flex-row sm:items-center sm:p-5">
-                    <div class="relative flex-1">
-                        <Search class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-                        <input
-                            v-model="search"
-                            type="text"
-                            placeholder="Search employee, office, or employee code..."
-                            class="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/70 pl-10 pr-10 text-sm text-slate-800 shadow-inner shadow-slate-100/50 transition placeholder:text-slate-400 hover:border-slate-300 focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10 dark:border-slate-700/70 dark:bg-slate-950/40 dark:text-slate-100 dark:shadow-none dark:placeholder:text-slate-500 dark:hover:border-slate-600 dark:focus:border-indigo-500 dark:focus:bg-slate-950/60 dark:focus:ring-indigo-500/20"
-                        />
-                        <button
-                            v-if="search"
-                            type="button"
-                            class="absolute right-2.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
-                            aria-label="Clear search"
-                            @click="search = ''"
-                        >
-                            <X class="h-3.5 w-3.5" />
-                        </button>
-                    </div>
-                    <div class="flex items-center justify-between gap-2 sm:justify-end">
-                        <div class="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
-                            <SlidersHorizontal class="h-3.5 w-3.5" />
-                            <span>Filters</span>
-                        </div>
-                        <Transition
-                            enter-active-class="transition duration-200 ease-out"
-                            enter-from-class="opacity-0 translate-x-1"
-                            leave-active-class="transition duration-150 ease-in"
-                            leave-to-class="opacity-0"
-                        >
-                            <button
-                                v-if="hasActiveFilters"
-                                type="button"
-                                class="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
-                                @click="clearFilters"
+                <section
+                    ref="resultsRef"
+                    class="pd-results"
+                    :class="{ 'is-fill': fillsScreen }"
+                    aria-labelledby="ep-results-title"
+                    :aria-busy="isLoading"
+                >
+                    <!-- Narrow pages: floats from a zero-height sticky anchor once the banner has scrolled away -->
+                    <div v-if="!isWide" class="pd-toolbar-anchor">
+                        <Transition name="pd-fade">
+                            <div
+                                v-show="isToolbarShown"
+                                ref="toolbarRef"
+                                class="pd-toolbar"
+                                @focusin="toolbarHasFocus = true"
+                                @focusout="onToolbarFocusOut"
                             >
-                                <X class="h-3.5 w-3.5" /> Clear all
-                            </button>
-                        </Transition>
-                    </div>
-                </div>
+                                <div class="pd-toolbar__search">
+                                    <DirectorySearchField
+                                        v-model="search"
+                                        variant="compact"
+                                        label="Search employees"
+                                        placeholder="Search employees…"
+                                        :loading="isLoading"
+                                    />
+                                </div>
 
-                <div class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-4">
-                    <div class="flex flex-col gap-1.5">
-                        <label
-                            for="filter-region"
-                            class="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"
-                        >
-                            <MapPin class="h-3 w-3 text-indigo-500 dark:text-indigo-400" /> Region
-                        </label>
-                        <div class="relative">
-                            <select id="filter-region" v-model="region" :class="selectClass">
-                                <option value="all">All</option>
-                                <option v-for="r in regions" :key="r" :value="r">{{ r }}</option>
-                            </select>
-                            <ChevronDown class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                        </div>
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                        <label
-                            for="filter-office"
-                            class="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"
-                        >
-                            <Building2 class="h-3 w-3 text-indigo-500 dark:text-indigo-400" /> Office
-                        </label>
-                        <div class="relative">
-                            <select id="filter-office" v-model="office" :class="selectClass">
-                                <option value="all">All</option>
-                                <option v-for="o in offices" :key="o" :value="o">{{ o }}</option>
-                            </select>
-                            <ChevronDown class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                        </div>
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                        <label
-                            for="filter-plantilla"
-                            class="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"
-                        >
-                            <CheckCircle2 class="h-3 w-3 text-indigo-500 dark:text-indigo-400" /> Plantilla Status
-                        </label>
-                        <div class="relative">
-                            <select id="filter-plantilla" v-model="plantilla" :class="selectClass">
-                                <option value="all">All</option>
-                                <option v-for="p in plantillaStatuses" :key="p" :value="p">{{ p?.toUpperCase() }}</option>
-                            </select>
-                            <ChevronDown class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                        </div>
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                        <label
-                            for="filter-per-page"
-                            class="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"
-                        >
-                            <Hash class="h-3 w-3 text-indigo-500 dark:text-indigo-400" /> Show per page
-                        </label>
-                        <div class="relative">
-                            <select id="filter-per-page" v-model="perPage" :class="selectClass">
-                                <option value="10">10</option>
-                                <option value="25">25</option>
-                                <option value="50">50</option>
-                                <option value="100">100</option>
-                            </select>
-                            <ChevronDown class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Results -->
-            <section class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
-                <!-- Summary strip -->
-                <div class="flex flex-wrap items-center gap-x-8 gap-y-2 border-b border-slate-100 px-4 py-3.5 dark:border-slate-800 sm:px-6">
-                    <div class="flex items-baseline gap-2">
-                        <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Employees</span>
-                        <span class="text-sm font-bold tabular-nums text-slate-900 dark:text-white">{{ employees.total.toLocaleString() }}</span>
-                    </div>
-                    <div class="flex items-baseline gap-2">
-                        <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Currently Showing</span>
-                        <span class="text-sm font-bold tabular-nums text-slate-900 dark:text-white"
-                            >{{ employees.from ?? 0 }}–{{ employees.to ?? 0 }}</span
-                        >
-                    </div>
-                </div>
-
-                <!-- Desktop / tablet table -->
-                <div class="hidden md:block">
-                    <table class="w-full text-sm">
-                        <thead>
-                            <tr class="border-b border-slate-200/80 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900">
-                                <th
-                                    class="hidden px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-indigo-900/60 dark:text-indigo-200/60 xl:table-cell"
-                                >
-                                    Empcode
-                                </th>
-                                <th
-                                    class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-indigo-900/60 dark:text-indigo-200/60 lg:px-6 xl:pl-4"
-                                >
-                                    Employee
-                                </th>
-                                <th
-                                    class="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-indigo-900/60 dark:text-indigo-200/60 lg:px-4"
-                                >
-                                    Plantilla
-                                </th>
-                                <th
-                                    class="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-indigo-900/60 dark:text-indigo-200/60 lg:px-4"
-                                >
-                                    Program Progress
-                                </th>
-                                <th
-                                    class="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-indigo-900/60 dark:text-indigo-200/60 lg:px-4"
-                                >
-                                    Hours Progress
-                                </th>
-                                <th
-                                    class="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-indigo-900/60 dark:text-indigo-200/60 lg:px-4"
-                                >
-                                    Submission Progress
-                                </th>
-                                <th
-                                    class="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-indigo-900/60 dark:text-indigo-200/60 lg:px-6"
-                                >
-                                    Action
-                                </th>
-                            </tr>
-                        </thead>
-                        <TransitionGroup tag="tbody" class="divide-y divide-slate-100 dark:divide-slate-800/80" appear>
-                            <tr
-                                v-for="(emp, index) in employees.data"
-                                :key="emp.id"
-                                class="group transition-colors duration-200 hover:bg-indigo-50/40 dark:hover:bg-indigo-500/[0.04]"
-                                :style="{ animationDelay: `${index * 40}ms` }"
-                            >
-                                <td class="hidden whitespace-nowrap px-6 py-4 font-mono text-xs text-slate-500 dark:text-slate-400 xl:table-cell">
-                                    {{ emp.EMPCODE }}
-                                </td>
-                                <td class="px-4 py-4 lg:px-6 xl:pl-4">
-                                    <div class="flex items-center gap-3">
-                                        <Avatar
-                                            class="h-9 w-9 shrink-0 overflow-hidden rounded-full ring-2 ring-white dark:ring-slate-900"
-                                            :class="emp.avatar_color"
+                                <ul v-if="activeFilterChips.length > 0" class="pd-toolbar__chips" aria-label="Active filters">
+                                    <li v-for="chip in activeFilterChips" :key="chip.key">
+                                        <button
+                                            type="button"
+                                            class="pd-toolbar__chip"
+                                            :aria-label="`Remove filter ${chip.label}`"
+                                            @click="chip.clear"
                                         >
-                                            <AvatarImage v-if="emp.avatar" :src="emp.avatar" :alt="emp.name" />
-                                            <AvatarFallback
-                                                class="flex h-full w-full items-center justify-center rounded-full bg-transparent text-xs font-bold text-white"
-                                            >
-                                                {{ emp.initials }}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                        <div class="min-w-0">
-                                            <p class="truncate text-sm font-bold leading-tight text-slate-900 dark:text-slate-100">
-                                                {{ emp.name?.toUpperCase() }}
-                                            </p>
-                                            <p class="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{{ emp['OFFICE/DIVISION'] }}</p>
-                                            <p class="mt-0.5 font-mono text-[11px] text-slate-400 dark:text-slate-500 xl:hidden">{{ emp.EMPCODE }}</p>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="px-3 py-4 lg:px-4">
-                                    <span
-                                        class="inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11px] font-semibold tracking-wide"
-                                        :class="plantillaColor(emp['PLANTILLA STATUS'])"
-                                    >
-                                        {{ emp['PLANTILLA STATUS'] }}
-                                    </span>
-                                </td>
-                                <td v-for="metric in progressMetrics(emp)" :key="metric.key" class="min-w-[130px] px-3 py-4 lg:min-w-[150px] lg:px-4">
-                                    <div class="mb-1.5 flex items-baseline justify-between gap-2 text-xs">
-                                        <span class="whitespace-nowrap font-semibold tabular-nums text-slate-700 dark:text-slate-200">{{
-                                            metric.value
-                                        }}</span>
-                                        <span class="font-medium tabular-nums text-slate-500 dark:text-slate-400">{{ metric.percent }}%</span>
-                                    </div>
-                                    <div class="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                                        <div
-                                            class="h-full rounded-full bg-gradient-to-r transition-[width] duration-700 ease-out"
-                                            :class="metric.bar"
-                                            :style="{ width: metric.percent + '%' }"
-                                        />
-                                    </div>
-                                </td>
-                                <td class="px-4 py-4 text-right lg:px-6">
+                                            <span class="truncate">{{ chip.label }}</span>
+                                            <X class="h-3 w-3 shrink-0" aria-hidden="true" />
+                                        </button>
+                                    </li>
+                                </ul>
+
+                                <div v-if="employees.last_page > 1" class="pd-toolbar__pages">
                                     <button
                                         type="button"
-                                        @click="openDetails(emp)"
-                                        class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition-all duration-200 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-500/15 dark:border-slate-700 dark:bg-transparent dark:text-slate-300 dark:hover:border-indigo-500/50 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-300"
+                                        class="pd-toolbar__page-button"
+                                        :disabled="!employees.prev_page_url || isLoading"
+                                        aria-label="Previous page"
+                                        @click="goToPage(employees.prev_page_url)"
                                     >
-                                        <Users class="h-3.5 w-3.5" />
-                                        <span class="hidden lg:inline">View Details</span>
-                                        <ArrowRight class="h-3 w-3 transition-transform duration-200 group-hover:translate-x-0.5" />
+                                        <ChevronLeft class="h-4 w-4" aria-hidden="true" />
                                     </button>
-                                </td>
-                            </tr>
-
-                            <tr v-if="employees.data?.length === 0" key="empty-state">
-                                <td colspan="7" class="px-4 py-16">
-                                    <SearchEmptyState
-                                        v-if="filters.search"
-                                        compact
-                                        :query="filters.search"
-                                        :suggestion="suggestion"
-                                        @search="search = $event"
-                                        @clear-filters="clearFilters"
-                                    />
-                                    <EmptyState
-                                        v-else
-                                        compact
-                                        variant="filtered"
-                                        :icon="Users"
-                                        title="No employees found."
-                                        description="Try adjusting your filters."
-                                        @clear-filters="clearFilters"
-                                    />
-                                </td>
-                            </tr>
-                        </TransitionGroup>
-                    </table>
-                </div>
-
-                <!-- Mobile cards -->
-                <TransitionGroup tag="div" class="divide-y divide-slate-100 dark:divide-slate-800/80 md:hidden" appear>
-                    <article v-for="(emp, index) in employees.data" :key="emp.id" class="p-4" :style="{ animationDelay: `${index * 40}ms` }">
-                        <div class="flex items-start gap-3">
-                            <Avatar class="h-10 w-10 shrink-0 overflow-hidden rounded-full" :class="emp.avatar_color">
-                                <AvatarImage v-if="emp.avatar" :src="emp.avatar" :alt="emp.name" />
-                                <AvatarFallback
-                                    class="flex h-full w-full items-center justify-center rounded-full bg-transparent text-xs font-bold text-white"
-                                >
-                                    {{ emp.initials }}
-                                </AvatarFallback>
-                            </Avatar>
-                            <div class="min-w-0 flex-1">
-                                <p class="text-sm font-bold leading-tight text-slate-900 dark:text-slate-100">{{ emp.name?.toUpperCase() }}</p>
-                                <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{{ emp['OFFICE/DIVISION'] }}</p>
-                                <div class="mt-2 flex flex-wrap items-center gap-2">
-                                    <span
-                                        class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold tracking-wide"
-                                        :class="plantillaColor(emp['PLANTILLA STATUS'])"
+                                    <span class="pd-toolbar__page-count">
+                                        {{ employees.current_page.toLocaleString() }} / {{ employees.last_page.toLocaleString() }}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        class="pd-toolbar__page-button"
+                                        :disabled="!employees.next_page_url || isLoading"
+                                        aria-label="Next page"
+                                        @click="goToPage(employees.next_page_url)"
                                     >
-                                        {{ emp['PLANTILLA STATUS'] }}
-                                    </span>
-                                    <span class="font-mono text-[11px] text-slate-400 dark:text-slate-500">{{ emp.EMPCODE }}</span>
+                                        <ChevronRight class="h-4 w-4" aria-hidden="true" />
+                                    </button>
                                 </div>
                             </div>
-                        </div>
+                        </Transition>
+                    </div>
 
-                        <div class="mt-4 flex flex-col gap-3 rounded-xl bg-slate-50/80 p-3 dark:bg-slate-950/30">
-                            <div v-for="metric in progressMetrics(emp)" :key="metric.key">
-                                <div class="mb-1.5 flex items-baseline justify-between gap-2 text-xs">
-                                    <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{{
-                                        metric.label
-                                    }}</span>
-                                    <span class="tabular-nums">
-                                        <span class="font-semibold text-slate-700 dark:text-slate-200">{{ metric.value }}</span>
-                                        <span class="ml-2 font-medium text-slate-500 dark:text-slate-400">{{ metric.percent }}%</span>
-                                    </span>
+                    <Transition name="pd-stage" mode="out-in">
+                        <!-- Loading -->
+                        <ResultsSkeleton v-if="isLoading" key="loading" label="Loading employees…" :motion-level="motionLevel" />
+
+                        <!-- Results -->
+                        <div v-else-if="employees.data.length > 0" key="results" class="pd-results__list">
+                            <header class="pd-results__header">
+                                <div class="min-w-0">
+                                    <p class="pd-results__eyebrow">Training progress</p>
+                                    <h2 id="ep-results-title" class="pd-results__title">{{ resultsTitle }}</h2>
                                 </div>
-                                <div class="h-1.5 overflow-hidden rounded-full bg-slate-200/70 dark:bg-slate-800">
-                                    <div
-                                        class="h-full rounded-full bg-gradient-to-r transition-[width] duration-700 ease-out"
-                                        :class="metric.bar"
-                                        :style="{ width: metric.percent + '%' }"
+                                <div class="pd-results__aside">
+                                    <ViewModeToggle v-model="viewMode" />
+                                    <div class="ep-per-page" role="group" aria-label="Employees per page">
+                                        <span class="ep-per-page__label" aria-hidden="true">Per page</span>
+                                        <button
+                                            v-for="option in PER_PAGE_OPTIONS"
+                                            :key="option"
+                                            type="button"
+                                            class="ep-per-page__button"
+                                            :aria-pressed="perPage === option"
+                                            :aria-label="`${option} per page`"
+                                            @click="perPage = option"
+                                        >
+                                            {{ option }}
+                                        </button>
+                                    </div>
+                                </div>
+                            </header>
+
+                            <FanCarousel
+                                v-if="viewMode === 'showcase'"
+                                ref="fanRef"
+                                v-model:active-index="fanIndex"
+                                :items="employees.data"
+                                :item-key="(employee) => employee.EMPCODE"
+                                :item-name="(employee) => employee.name"
+                                label="Employees and their training progress"
+                                :motion-level="motionLevel"
+                                :fill="fillsScreen"
+                                :has-previous="Boolean(employees.prev_page_url)"
+                                :has-next="Boolean(employees.next_page_url)"
+                                :counter-offset="(employees.from ?? 1) - 1"
+                                :counter-total="employees.total"
+                                :style="fanGeometry"
+                                @open="openDetails"
+                                @edge="onFanEdge"
+                            >
+                                <!-- Page of results in the fan -->
+                                <template #header>
+                                    <header class="ep-fan-header">
+                                        <p class="ep-fan-header__index" aria-hidden="true">
+                                            {{ String(employees.current_page).padStart(2, '0') }}<span>/ {{ employees.last_page }}</span>
+                                        </p>
+                                        <div class="ep-fan-header__copy">
+                                            <p class="ep-fan-header__eyebrow">Page {{ employees.current_page }} of {{ employees.last_page }}</p>
+                                            <h3 class="ep-fan-header__title">
+                                                Employees {{ (employees.from ?? 0).toLocaleString() }}–{{ (employees.to ?? 0).toLocaleString() }}
+                                                <span>of {{ employees.total.toLocaleString() }}</span>
+                                            </h3>
+                                        </div>
+                                        <div v-if="employees.last_page > 1" class="ep-fan-header__nav">
+                                            <button
+                                                type="button"
+                                                class="ep-fan-header__button"
+                                                :disabled="!employees.prev_page_url"
+                                                @click="goToPage(employees.prev_page_url)"
+                                            >
+                                                <ChevronsLeft class="h-4 w-4" aria-hidden="true" />
+                                                <span>Previous page</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="ep-fan-header__button"
+                                                :disabled="!employees.next_page_url"
+                                                @click="goToPage(employees.next_page_url)"
+                                            >
+                                                <span>Next page</span>
+                                                <ChevronsRight class="h-4 w-4" aria-hidden="true" />
+                                            </button>
+                                        </div>
+                                    </header>
+                                </template>
+
+                                <template #card="{ item, featured }">
+                                    <EmployeeProgressCard
+                                        :employee="item"
+                                        :photo-url="photoUrlFor(item)"
+                                        :index="0"
+                                        :motion-level="motionLevel"
+                                        :featured="featured"
+                                        :can-manage-photos="canManagePhotos"
+                                        @open="openDetails"
+                                        @manage-photo="openPictureDialog"
                                     />
-                                </div>
+                                </template>
+                            </FanCarousel>
+
+                            <div v-else class="ep-grid">
+                                <EmployeeProgressCard
+                                    v-for="(employee, index) in employees.data"
+                                    :key="employee.EMPCODE"
+                                    :employee="employee"
+                                    :photo-url="photoUrlFor(employee)"
+                                    :index="index"
+                                    :motion-level="motionLevel"
+                                    :can-manage-photos="canManagePhotos"
+                                    @open="openDetails"
+                                    @manage-photo="openPictureDialog"
+                                />
                             </div>
+
+                            <!-- The one-screen showcase pages through its header and arrows instead -->
+                            <EmployeeProgressPager
+                                v-if="!fillsScreen"
+                                class="ep-pager"
+                                :links="employees.links"
+                                :from="employees.from"
+                                :to="employees.to"
+                                :total="employees.total"
+                                :loading="isLoading"
+                                @visit="(url) => goToPage(url)"
+                            />
                         </div>
 
-                        <button
-                            type="button"
-                            @click="openDetails(emp)"
-                            class="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition-colors duration-200 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 dark:border-slate-700 dark:bg-transparent dark:text-slate-300 dark:hover:border-indigo-500/50 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-300"
-                        >
-                            <Users class="h-3.5 w-3.5" /> View Details <ArrowRight class="h-3 w-3" />
-                        </button>
-                    </article>
-
-                    <div v-if="employees.data?.length === 0" key="empty-state">
-                        <SearchEmptyState
-                            v-if="filters.search"
-                            compact
-                            :query="filters.search"
-                            :suggestion="suggestion"
-                            @search="search = $event"
-                            @clear-filters="clearFilters"
-                        />
-                        <EmptyState
-                            v-else
-                            compact
-                            variant="filtered"
-                            :icon="Users"
-                            title="No employees found."
-                            description="Try adjusting your filters."
-                            @clear-filters="clearFilters"
-                        />
-                    </div>
-                </TransitionGroup>
-
-                <!-- Pagination -->
-                <div
-                    class="flex flex-col items-center gap-3 border-t border-slate-100 bg-slate-50/60 px-4 py-3.5 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:justify-between sm:px-6"
-                >
-                    <p class="text-xs text-slate-500 dark:text-slate-400">
-                        Showing
-                        <span class="font-semibold tabular-nums text-slate-700 dark:text-slate-200"
-                            >{{ employees.from ?? 0 }}–{{ employees.to ?? 0 }}</span
-                        >
-                        of
-                        <span class="font-semibold tabular-nums text-slate-700 dark:text-slate-200">{{ employees.total }}</span>
-                    </p>
-                    <div class="flex flex-wrap items-center justify-center gap-1">
-                        <template v-for="link in employees.links" :key="link.label">
-                            <a
-                                v-if="link.url"
-                                :href="link.url"
-                                class="inline-flex h-8 min-w-8 items-center justify-center rounded-lg border px-2 text-xs font-medium tabular-nums transition-colors duration-200"
-                                :class="
-                                    link.active
-                                        ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 dark:border-indigo-500 dark:bg-indigo-500'
-                                        : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-indigo-500/40 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-300'
-                                "
-                                v-html="paginationLabel(link.label)"
+                        <!-- Nothing to show -->
+                        <div v-else key="empty" class="pd-results__empty">
+                            <h2 id="ep-results-title" class="sr-only">Results</h2>
+                            <SearchEmptyState
+                                v-if="filters.search"
+                                :query="filters.search"
+                                :suggestion="suggestion"
+                                @search="search = $event"
+                                @clear-filters="clearFilters"
                             />
-                            <span
+                            <EmptyState
                                 v-else
-                                class="inline-flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-xs text-slate-400 opacity-60 dark:text-slate-500"
-                                v-html="paginationLabel(link.label)"
+                                variant="filtered"
+                                :icon="Users"
+                                title="No employees found."
+                                description="Try adjusting your filters."
+                                @clear-filters="clearFilters"
                             />
-                        </template>
-                    </div>
-                </div>
-            </section>
+                        </div>
+                    </Transition>
+                </section>
+            </div>
         </div>
 
         <!-- ===== Employee Progress Modal ===== -->
         <EmployeeProgressModal :empcode="selectedEmpcode" @close="closeModal" />
+
+        <!-- ===== Employee picture (superadmins) ===== -->
+        <EmployeePictureDialog
+            v-if="canManagePhotos"
+            v-model:open="isPictureDialogOpen"
+            :employee="pictureEmployee"
+            :photo-url="pictureEmployee ? photoUrlFor(pictureEmployee) : null"
+            :photo-rules="photoRules"
+            :motion-level="motionLevel"
+            @photo-changed="onPhotoChanged"
+        />
     </AppLayout>
 </template>
 
 <style scoped>
-.v-enter-active {
-    animation: slideIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+.pd-page {
+    position: relative;
+    flex: 1;
+    overflow: clip;
+    background: var(--pd-page-bg);
+    color: var(--pd-ink);
 }
 
-.v-leave-active {
-    animation: slideOut 0.2s ease both;
-}
-
-@keyframes slideIn {
-    0% {
-        opacity: 0;
-        transform: translateY(6px);
-    }
-    100% {
-        opacity: 1;
-        transform: translateY(0);
+@media (min-width: 768px) {
+    .pd-page {
+        border-bottom-left-radius: 0.75rem;
+        border-bottom-right-radius: 0.75rem;
     }
 }
 
-@keyframes slideOut {
-    0% {
-        opacity: 1;
-    }
-    100% {
-        opacity: 0;
+/*
+ * minmax(0, 1fr): the column is never wider than the screen, so wide content
+ * (e.g. the filter chips in the floating bar) can't stretch the page sideways.
+ */
+.pd-page__inner {
+    position: relative;
+    z-index: 1;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+    max-width: 90rem;
+    padding: 1rem;
+}
+
+@media (min-width: 640px) {
+    .pd-page__inner {
+        padding: 1.5rem;
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .v-enter-active,
-    .v-leave-active {
-        animation: none;
+/*
+ * Wide pages: two columns that together fit one screen. --pd-screen-h is the
+ * viewport minus the app header (4rem), the inset layout margins (2 × 0.5rem)
+ * and this page's padding (2 × 1.5rem).
+ */
+.pd-page__inner.is-wide {
+    --pd-screen-h: max(32rem, calc(100svh - 8rem));
+    grid-template-columns: minmax(20rem, 25rem) minmax(0, 1fr);
+    align-items: start;
+    gap: 1.25rem;
+}
+
+/* The panel holds search and filters too, so its 3D emblem may shrink further than the directory's. */
+.pd-page__side {
+    --pd-hero-visual-min: 3.5rem;
+}
+
+.pd-page__inner.is-wide .pd-page__side {
+    position: sticky;
+    top: 1.5rem;
+    z-index: 30;
+    height: var(--pd-screen-h);
+}
+
+.pd-results.is-fill {
+    display: flex;
+    flex-direction: column;
+    height: var(--pd-screen-h);
+}
+
+.pd-results.is-fill > .pd-results__list,
+.pd-results.is-fill > .pd-results__loading {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    min-height: 0;
+}
+
+/* ─── Hero: search and filters ──────────────────────────────────────────── */
+.ep-filters {
+    display: grid;
+    gap: 0.7rem;
+}
+
+.ep-filters__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+}
+
+.ep-filters__wide {
+    grid-column: 1 / -1;
+}
+
+.ep-hero-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 0.75rem;
+}
+
+.ep-order-note {
+    display: flex;
+    flex: 1 1 14rem;
+    align-items: flex-start;
+    gap: 0.4rem;
+}
+
+.ep-order-note svg {
+    margin-top: 0.1rem;
+}
+
+.ep-clear {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.3rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(226, 194, 122, 0.45);
+    background: rgba(255, 255, 255, 0.06);
+    padding: 0.3rem 0.7rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #f6e7bd;
+    transition:
+        background-color 0.2s ease,
+        border-color 0.2s ease;
+}
+
+.ep-clear:hover {
+    border-color: rgba(226, 194, 122, 0.85);
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.ep-clear:focus-visible {
+    outline: 2px solid #e2c27a;
+    outline-offset: 2px;
+}
+
+/* ─── Floating bar (narrow pages) ───────────────────────────────────────── */
+/* Zero-height sticky anchor: the bar floats over the results instead of taking space above them. */
+.pd-toolbar-anchor {
+    position: sticky;
+    top: 0.5rem;
+    z-index: 20;
+    height: 0;
+}
+
+.pd-toolbar {
+    position: relative;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 1.1rem;
+    border: 1px solid var(--pd-border);
+    background: color-mix(in srgb, var(--pd-page-bg) 84%, transparent);
+    padding: 0.5rem;
+    box-shadow: 0 12px 30px -24px rgba(10, 36, 99, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.pd-toolbar__search {
+    flex: 1 1 14rem;
+    min-width: 0;
+}
+
+.pd-toolbar__chips {
+    display: flex;
+    flex: 999 1 auto;
+    min-width: 0;
+    gap: 0.35rem;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    padding: 0.15rem;
+}
+
+.pd-toolbar__chip {
+    display: inline-flex;
+    max-width: 12rem;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    background: linear-gradient(120deg, var(--pd-navy), var(--pd-royal));
+    padding: 0.35rem 0.65rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #ffffff;
+    box-shadow: 0 0 0 2px var(--pd-gold-halo);
+}
+
+.pd-toolbar__chip:focus-visible,
+.pd-toolbar__page-button:focus-visible {
+    outline: 2px solid var(--pd-gold);
+    outline-offset: 2px;
+}
+
+.pd-toolbar__pages {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: auto;
+}
+
+.pd-toolbar__page-button {
+    display: inline-flex;
+    width: 2.25rem;
+    height: 2.25rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: 1px solid var(--pd-border);
+    background: var(--pd-surface-strong);
+    color: var(--pd-ink);
+}
+
+.pd-toolbar__page-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+}
+
+.pd-toolbar__page-count {
+    min-width: 3.5rem;
+    text-align: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--pd-ink-soft);
+}
+
+/* ─── Results ───────────────────────────────────────────────────────────── */
+.pd-results {
+    scroll-margin-top: 5.5rem;
+}
+
+.pd-results__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.5rem 1.5rem;
+    margin-bottom: 0.75rem;
+    padding: 0 0.25rem;
+}
+
+.pd-results__eyebrow {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--pd-gold-ink);
+}
+
+.pd-results__title {
+    margin-top: 0.1rem;
+    font-size: clamp(1.1rem, 1rem + 0.5vw, 1.4rem);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    overflow-wrap: anywhere;
+    color: var(--pd-ink);
+}
+
+/* Per page and layout toggle on one line (toggle last), wrapping on narrow screens */
+.pd-results__aside {
+    display: flex;
+    flex-direction: row-reverse;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.5rem 0.75rem;
+}
+
+.ep-per-page {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    border-radius: 9999px;
+    border: 1px solid var(--pd-border);
+    background: var(--pd-surface-strong);
+    padding: 0.25rem;
+}
+
+.ep-per-page__label {
+    padding: 0 0.4rem 0 0.55rem;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--pd-ink-soft);
+}
+
+.ep-per-page__button {
+    min-width: 2.1rem;
+    border-radius: 9999px;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--pd-ink-soft);
+    transition:
+        background-color 0.25s ease,
+        color 0.25s ease;
+}
+
+.ep-per-page__button:hover {
+    color: var(--pd-ink);
+}
+
+.ep-per-page__button[aria-pressed='true'] {
+    background: linear-gradient(120deg, var(--pd-navy), var(--pd-royal));
+    color: #ffffff;
+}
+
+.ep-per-page__button:focus-visible {
+    outline: 2px solid var(--pd-gold);
+    outline-offset: 2px;
+}
+
+/* ─── Fan header: the page of results ───────────────────────────────────── */
+.ep-fan-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.6rem 1.25rem;
+    padding: 0 1.25rem;
+}
+
+@media (min-width: 640px) {
+    .ep-fan-header {
+        padding: 0 1.75rem;
     }
+}
+
+.ep-fan-header__index {
+    font-size: 1.75rem;
+    font-weight: 800;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+    background: linear-gradient(160deg, var(--pd-royal), var(--pd-gold));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.ep-fan-header__index span {
+    margin-left: 0.25rem;
+    font-size: 0.85rem;
+    letter-spacing: 0;
+    color: var(--pd-ink-soft);
+    -webkit-text-fill-color: var(--pd-ink-soft);
+}
+
+.ep-fan-header__copy {
+    min-width: 0;
+    flex: 1 1 12rem;
+}
+
+.ep-fan-header__eyebrow {
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--pd-ink-soft);
+}
+
+.ep-fan-header__title {
+    margin-top: 0.1rem;
+    font-size: clamp(1rem, 0.95rem + 0.35vw, 1.2rem);
+    font-weight: 800;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+    color: var(--pd-ink);
+}
+
+.ep-fan-header__title span {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--pd-ink-soft);
+}
+
+.ep-fan-header__nav {
+    display: flex;
+    gap: 0.4rem;
+}
+
+.ep-fan-header__button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border-radius: 9999px;
+    border: 1px solid var(--pd-border);
+    background: var(--pd-surface-strong);
+    padding: 0.35rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--pd-ink);
+    transition:
+        border-color 0.2s ease,
+        opacity 0.2s ease;
+}
+
+.ep-fan-header__button:hover:not(:disabled) {
+    border-color: var(--pd-royal);
+}
+
+.ep-fan-header__button:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+}
+
+.ep-fan-header__button:focus-visible {
+    outline: 2px solid var(--pd-gold);
+    outline-offset: 2px;
+}
+
+/* ─── Grid view ─────────────────────────────────────────────────────────── */
+/* Room above the cards for their float, and below for the floor shadows. */
+.ep-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 13.5rem), 1fr));
+    gap: 1.75rem 1.25rem;
+    margin-bottom: 1rem;
+    padding: 1rem 0.25rem 1.25rem;
+}
+
+.ep-pager {
+    margin-top: 0.75rem;
+}
+
+.ep-grid + .ep-pager {
+    margin-top: 0;
+}
+
+.pd-results__empty {
+    border-radius: 1.5rem;
+    border: 1px solid var(--pd-border);
+    background: var(--pd-surface);
+}
+
+/* ─── Transitions ───────────────────────────────────────────────────────── */
+.pd-stage-enter-active {
+    transition:
+        opacity 0.45s ease,
+        transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.pd-stage-leave-active {
+    transition:
+        opacity 0.2s ease,
+        transform 0.2s ease;
+}
+
+.pd-stage-enter-from {
+    opacity: 0;
+    transform: perspective(1200px) translateY(24px) rotateX(6deg);
+}
+
+.pd-stage-leave-to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.99);
+}
+
+.pd-fade-enter-active,
+.pd-fade-leave-active {
+    transition: opacity 0.25s ease;
+}
+
+.pd-fade-enter-from,
+.pd-fade-leave-to {
+    opacity: 0;
+}
+
+.pd-page[data-motion='still'] .pd-stage-enter-active,
+.pd-page[data-motion='still'] .pd-stage-leave-active {
+    transition: opacity 0.1s linear;
+}
+
+.pd-page[data-motion='still'] .pd-stage-enter-from,
+.pd-page[data-motion='still'] .pd-stage-leave-to {
+    transform: none;
 }
 </style>

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Employee extends Model
 {
@@ -46,5 +47,15 @@ class Employee extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'EMPCODE', 'empcode');
+    }
+
+    /**
+     * Profile picture (EmployeePhoto), matched by EMPCODE so it survives HR's monthly re-import.
+     *
+     * @return HasOne<EmployeePhoto, $this>
+     */
+    public function photo(): HasOne
+    {
+        return $this->hasOne(EmployeePhoto::class, 'empcode', 'EMPCODE');
     }
 }

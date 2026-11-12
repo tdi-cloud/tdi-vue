@@ -13,6 +13,7 @@ import {
     ClipboardCheck,
     ClipboardList,
     Earth,
+    FilePenLine,
     FileStack,
     Gauge,
     Images,
@@ -135,6 +136,13 @@ const allNavItems: NavItem[] = [
         url: '/how-to-videos',
         icon: PlayCircle,
         color: 'text-sky-500',
+        group: 'Management',
+    },
+    {
+        title: 'Public Forms',
+        url: '/public-forms',
+        icon: FilePenLine,
+        color: 'text-blue-600',
         group: 'Management',
     },
 ];

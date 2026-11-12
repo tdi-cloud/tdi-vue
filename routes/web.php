@@ -13,6 +13,7 @@ use App\Http\Controllers\DeclarationController;
 use App\Http\Controllers\DefaultProgramCoverController;
 use App\Http\Controllers\EmailReminderController;
 use App\Http\Controllers\EmployeeMapController;
+use App\Http\Controllers\EmployeePhotoController;
 use App\Http\Controllers\EmployeeProgressController;
 use App\Http\Controllers\EnrolledProgramController;
 use App\Http\Controllers\EvaluationController;
@@ -34,6 +35,9 @@ use App\Http\Controllers\ProblemReportController;
 use App\Http\Controllers\ProgramActivityController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\ProvisionalEmployeeController;
+use App\Http\Controllers\PublicFormAdminController;
+use App\Http\Controllers\PublicFormController;
+use App\Http\Controllers\PublicFormEditorController;
 use App\Http\Controllers\PublicRegistrationController;
 use App\Http\Controllers\RegionalReportController;
 use App\Http\Controllers\RegistrationFormController;
@@ -255,6 +259,29 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::post('/program-registrations/{programRegistration}/resend-login', [RegistrationReviewController::class, 'resendLogin'])
         ->middleware('throttle:6,1,resend-login')
         ->name('program-registrations.resend-login');
+
+    // PUBLIC FORMS (admin): the forms, their responses, question editor and settings
+    Route::get('/public-forms', [PublicFormAdminController::class, 'index'])->name('public-forms.admin.index');
+    Route::post('/public-forms', [PublicFormAdminController::class, 'store'])->name('public-forms.admin.store');
+    Route::get('/public-forms/{slug}', [PublicFormAdminController::class, 'show'])->name('public-forms.admin.show');
+    Route::put('/public-forms/{slug}', [PublicFormAdminController::class, 'update'])->name('public-forms.admin.update');
+    Route::delete('/public-forms/{slug}', [PublicFormAdminController::class, 'destroy'])->name('public-forms.admin.destroy');
+    Route::put('/public-forms/{slug}/details', [PublicFormAdminController::class, 'updateDetails'])->name('public-forms.admin.details.update');
+    Route::get('/public-forms/{slug}/export', [PublicFormAdminController::class, 'export'])->name('public-forms.admin.export');
+    Route::delete('/public-forms/{slug}/responses/{publicFormResponse}', [PublicFormAdminController::class, 'destroyResponse'])->name('public-forms.admin.responses.destroy');
+    Route::post('/public-forms/{slug}/background', [PublicFormAdminController::class, 'uploadBackground'])->name('public-forms.admin.background.upload');
+    Route::put('/public-forms/{slug}/background', [PublicFormAdminController::class, 'updateBackground'])->name('public-forms.admin.background.update');
+    Route::delete('/public-forms/{slug}/background', [PublicFormAdminController::class, 'destroyBackground'])->name('public-forms.admin.background.destroy');
+
+    // PUBLIC FORMS question editor: sections (steps) and their questions
+    Route::post('/public-forms/{slug}/sections', [PublicFormEditorController::class, 'storeSection'])->name('public-forms.admin.sections.store');
+    Route::put('/public-form-sections/{section}', [PublicFormEditorController::class, 'updateSection'])->name('public-form-sections.update');
+    Route::delete('/public-form-sections/{section}', [PublicFormEditorController::class, 'destroySection'])->name('public-form-sections.destroy');
+    Route::post('/public-form-sections/{section}/move', [PublicFormEditorController::class, 'moveSection'])->name('public-form-sections.move');
+    Route::post('/public-forms/{slug}/questions', [PublicFormEditorController::class, 'storeQuestion'])->name('public-forms.admin.questions.store');
+    Route::put('/public-form-questions/{question}', [PublicFormEditorController::class, 'updateQuestion'])->name('public-form-questions.update');
+    Route::delete('/public-form-questions/{question}', [PublicFormEditorController::class, 'destroyQuestion'])->name('public-form-questions.destroy');
+    Route::post('/public-form-questions/{question}/move', [PublicFormEditorController::class, 'moveQuestion'])->name('public-form-questions.move');
 
     // COVER PAGE
     Route::post('/programs/cover/upload', [CoverPageController::class, 'upload'])->name('programs.cover.upload');
@@ -485,6 +512,10 @@ Route::middleware(['auth', 'verified', 'superadmin'])->group(function () {
     Route::post('/user-management/{user}/avatar', [UserManagementController::class, 'updateAvatar'])->name('user-management.avatar.update');
     Route::delete('/user-management/{user}/avatar', [UserManagementController::class, 'destroyAvatar'])->name('user-management.avatar.destroy');
 
+    // EMPLOYEE PICTURES (upload, change, remove from the Employees page), keyed by EMPCODE
+    Route::post('/employees/{empcode}/photo', [EmployeePhotoController::class, 'update'])->name('employees.photo.update');
+    Route::delete('/employees/{empcode}/photo', [EmployeePhotoController::class, 'destroy'])->name('employees.photo.destroy');
+
     // HOMEPAGE IMAGES
     Route::get('/site-images', [SiteImageController::class, 'index'])->name('site-images.index');
     Route::post('/site-images/{key}', [SiteImageController::class, 'update'])->name('site-images.update');
@@ -684,6 +715,13 @@ Route::get('/join/{slug}', [PublicRegistrationController::class, 'show'])->name(
 Route::get('/join/{slug}/search', [PublicRegistrationController::class, 'search'])->middleware(['throttle:60,1,join-search', 'search.suggest'])->name('join.search');
 Route::post('/join/{slug}', [PublicRegistrationController::class, 'submit'])->middleware('throttle:20,1,join-submit')->name('join.submit');
 Route::get('/join/{slug}/success', [PublicRegistrationController::class, 'success'])->name('join.success');
+
+// Public forms (e.g. the Learning and Development Survey): no login, employees find their name first
+Route::get('/forms', [PublicFormController::class, 'index'])->name('public-forms.index');
+Route::get('/forms/{slug}', [PublicFormController::class, 'show'])->name('public-forms.show');
+Route::get('/forms/{slug}/search', [PublicFormController::class, 'search'])->middleware(['throttle:60,1,public-form-search', 'search.suggest'])->name('public-forms.search');
+Route::post('/forms/{slug}', [PublicFormController::class, 'submit'])->middleware('throttle:20,1,public-form-submit')->name('public-forms.submit');
+Route::get('/forms/{slug}/success', [PublicFormController::class, 'success'])->name('public-forms.success');
 
 // LOCAL ONLY: email template preview
 if (app()->environment('local')) {

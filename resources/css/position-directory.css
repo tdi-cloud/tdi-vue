@@ -1,0 +1,124 @@
+/*
+ * Design tokens for the navy/gold "pd" theme (first built for the former
+ * Position Directory). Used by the Employees page (and its teleported picture
+ * dialog) and by pages that reuse its ambient background, such as the dashboard.
+ * Apply them by adding the .pd-theme class to a container.
+ */
+.pd-theme {
+    --pd-page-bg: #f3f6fc;
+    --pd-surface: rgba(255, 255, 255, 0.72);
+    --pd-surface-strong: #ffffff;
+    --pd-section-surface: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.62));
+    --pd-section-lit-border: rgba(201, 162, 74, 0.45);
+    --pd-border: rgba(16, 42, 100, 0.1);
+    --pd-ink: #0b1f44;
+    --pd-ink-soft: #4a5a7c;
+    --pd-navy: #0a2463;
+    --pd-royal: #1d4ed8;
+    --pd-azure: #3b82f6;
+    --pd-gold: #c9a24a;
+    --pd-gold-ink: #86661c;
+    --pd-gold-halo: rgba(201, 162, 74, 0.2);
+    --pd-hover: rgba(29, 78, 216, 0.07);
+    --pd-focus-ring: rgba(29, 78, 216, 0.2);
+    --pd-chip: rgba(16, 42, 100, 0.06);
+    --pd-card-surface: #ffffff;
+    --pd-card-back: linear-gradient(165deg, #ffffff, #eef3ff);
+    --pd-card-border: rgba(16, 42, 100, 0.1);
+    --pd-card-shadow: rgba(10, 36, 99, 0.32);
+    --pd-sheen: rgba(255, 255, 255, 0.42);
+    --pd-dialog-surface: linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(239, 244, 255, 0.98));
+    --pd-placeholder-top: #dce7ff;
+    --pd-placeholder-bottom: #9db5ea;
+    --pd-placeholder-figure-top: #ffffff;
+    --pd-placeholder-figure-bottom: #e3ebff;
+    --pd-placeholder-line: rgba(255, 255, 255, 0.65);
+    --pd-drop-border: rgba(29, 78, 216, 0.35);
+    --pd-drop-bg: rgba(29, 78, 216, 0.04);
+    --pd-danger: #b42318;
+    --pd-danger-bg: rgba(180, 35, 24, 0.08);
+    --pd-hero-from: #061a45;
+    --pd-hero-via: #0b2c73;
+    --pd-hero-to: #143f9f;
+    --pd-hero-glow: rgba(96, 145, 255, 0.38);
+    --pd-grid-line: rgba(16, 42, 100, 0.05);
+    --pd-orb-blue: rgba(59, 130, 246, 0.16);
+    --pd-orb-gold: rgba(201, 162, 74, 0.12);
+    --pd-tone-0: rgba(59, 130, 246, 0.22);
+    --pd-tone-1: rgba(201, 162, 74, 0.2);
+    --pd-tone-2: rgba(14, 116, 144, 0.18);
+    --pd-tone-3: rgba(99, 102, 241, 0.18);
+    --pd-beam: rgba(255, 255, 255, 0.55);
+    --pd-beam-gold: rgba(201, 162, 74, 0.14);
+    --pd-trace: rgba(29, 78, 216, 0.1);
+    --pd-trace-node: rgba(201, 162, 74, 0.4);
+    --pd-trace-pulse: rgba(29, 78, 216, 0.45);
+    --pd-particle: rgba(59, 130, 246, 0.6);
+    --pd-particle-gold: rgba(201, 162, 74, 0.75);
+    --pd-skeleton: rgba(16, 42, 100, 0.07);
+    --pd-skeleton-shine: rgba(255, 255, 255, 0.85);
+    /* Training progress rings and bars (Employees page) */
+    --pd-metric-programs: #059669;
+    --pd-metric-hours: #1d4ed8;
+    --pd-metric-submissions: #b8892c;
+    --pd-metric-track: rgba(16, 42, 100, 0.08);
+}
+
+.dark .pd-theme {
+    --pd-page-bg: #050d22;
+    --pd-surface: rgba(15, 30, 66, 0.62);
+    --pd-surface-strong: #0d1b3d;
+    --pd-section-surface: linear-gradient(180deg, rgba(14, 29, 64, 0.78), rgba(9, 20, 47, 0.58));
+    --pd-section-lit-border: rgba(226, 194, 122, 0.4);
+    --pd-border: rgba(148, 178, 255, 0.14);
+    --pd-ink: #eef3ff;
+    --pd-ink-soft: #a6b5d6;
+    --pd-navy: #1e3a8a;
+    --pd-royal: #5b8cff;
+    --pd-azure: #60a5fa;
+    --pd-gold: #e2c27a;
+    --pd-gold-ink: #e2c27a;
+    --pd-gold-halo: rgba(226, 194, 122, 0.16);
+    --pd-hover: rgba(91, 140, 255, 0.12);
+    --pd-focus-ring: rgba(91, 140, 255, 0.3);
+    --pd-chip: rgba(148, 178, 255, 0.12);
+    --pd-card-surface: #0e1d40;
+    --pd-card-back: linear-gradient(165deg, #10224b, #0a1733);
+    --pd-card-border: rgba(148, 178, 255, 0.16);
+    --pd-card-shadow: rgba(0, 0, 0, 0.6);
+    --pd-sheen: rgba(160, 196, 255, 0.14);
+    --pd-dialog-surface: linear-gradient(160deg, rgba(14, 29, 64, 0.98), rgba(7, 17, 40, 0.98));
+    --pd-placeholder-top: #1d3f8f;
+    --pd-placeholder-bottom: #0b1d4a;
+    --pd-placeholder-figure-top: #a7bdf0;
+    --pd-placeholder-figure-bottom: #5d79c0;
+    --pd-placeholder-line: rgba(160, 190, 255, 0.25);
+    --pd-drop-border: rgba(91, 140, 255, 0.45);
+    --pd-drop-bg: rgba(91, 140, 255, 0.06);
+    --pd-danger: #ff8a80;
+    --pd-danger-bg: rgba(255, 138, 128, 0.1);
+    --pd-hero-from: #040b1f;
+    --pd-hero-via: #08194a;
+    --pd-hero-to: #0e2c74;
+    --pd-hero-glow: rgba(80, 130, 255, 0.3);
+    --pd-grid-line: rgba(148, 178, 255, 0.05);
+    --pd-orb-blue: rgba(59, 130, 246, 0.18);
+    --pd-orb-gold: rgba(226, 194, 122, 0.08);
+    --pd-tone-0: rgba(59, 130, 246, 0.25);
+    --pd-tone-1: rgba(226, 194, 122, 0.16);
+    --pd-tone-2: rgba(34, 211, 238, 0.14);
+    --pd-tone-3: rgba(129, 140, 248, 0.2);
+    --pd-beam: rgba(120, 160, 255, 0.08);
+    --pd-beam-gold: rgba(226, 194, 122, 0.08);
+    --pd-trace: rgba(120, 160, 255, 0.1);
+    --pd-trace-node: rgba(226, 194, 122, 0.4);
+    --pd-trace-pulse: rgba(120, 170, 255, 0.6);
+    --pd-particle: rgba(150, 190, 255, 0.7);
+    --pd-particle-gold: rgba(226, 194, 122, 0.8);
+    --pd-skeleton: rgba(148, 178, 255, 0.08);
+    --pd-skeleton-shine: rgba(148, 178, 255, 0.16);
+    --pd-metric-programs: #34d399;
+    --pd-metric-hours: #6f9bff;
+    --pd-metric-submissions: #e2c27a;
+    --pd-metric-track: rgba(148, 178, 255, 0.14);
+}

@@ -3,6 +3,7 @@ import EmptyState from '@/components/EmptyState.vue';
 import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useConfirm } from '@/composables/useConfirm';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { SETTINGS_CARD } from '@/lib/cardStyles';
 import { suggestionFrom } from '@/lib/http';
 import { REGISTRATION_THEMES } from '@/lib/registrationThemes';
 import RegistrationReviewPanel, { type RegistrationRow } from '@/pages/programs/RegistrationReviewPanel.vue';
@@ -17,6 +19,7 @@ import { Head, router } from '@inertiajs/vue3';
 import axios from 'axios';
 import {
     ArrowLeft,
+    CalendarClock,
     Check,
     ChevronDown,
     ChevronUp,
@@ -25,6 +28,7 @@ import {
     ExternalLink,
     Eye,
     Image as ImageIcon,
+    Link2,
     ListChecks,
     LoaderCircle,
     Lock,
@@ -675,196 +679,215 @@ function backToProgram() {
                     :field-options="fieldOptions"
                 />
 
-                <!-- Settings -->
-                <div v-show="activeTab === 'settings'" class="flex flex-col gap-4 rounded-2xl border bg-background p-5">
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div class="min-w-0">
-                            <div v-if="!editingText" class="flex items-center gap-2">
-                                <h2 class="text-sm font-extrabold">{{ form.title }}</h2>
-                                <button
-                                    v-if="canManage"
-                                    class="text-muted-foreground transition-colors hover:text-foreground"
-                                    aria-label="Edit title and instructions"
-                                    @click="openEditText"
-                                >
-                                    <Pencil class="h-3.5 w-3.5" />
-                                </button>
-                            </div>
-                            <div v-else class="flex max-w-md flex-col gap-2">
-                                <Input v-model="textDraft.title" class="h-8 text-xs" placeholder="Form title" />
-                                <Textarea
-                                    v-model="textDraft.intro_text"
-                                    class="text-xs"
-                                    rows="3"
-                                    placeholder="Optional instructions shown at the top of the form"
-                                />
-                                <p v-if="settingsErrors.title" class="text-xs text-red-500">{{ settingsErrors.title }}</p>
-                                <div class="flex items-center gap-2">
-                                    <Button
-                                        size="sm"
-                                        class="h-7 bg-blue-600 text-xs hover:bg-blue-700 dark:text-white"
-                                        :disabled="savingSettings"
-                                        @click="saveText"
-                                    >
-                                        <Check class="mr-1 h-3 w-3" /> Save
-                                    </Button>
-                                    <Button size="sm" variant="outline" class="h-7 text-xs" @click="editingText = false">
-                                        <X class="mr-1 h-3 w-3" /> Cancel
-                                    </Button>
-                                </div>
-                            </div>
-                            <p v-if="!editingText && form.intro_text" class="mt-1 max-w-md whitespace-pre-line text-xs text-muted-foreground">
-                                {{ form.intro_text }}
-                            </p>
-                            <p class="mt-1 text-[11px] text-muted-foreground">Set up by {{ form.created_by_name ?? 'Unknown' }}</p>
-                        </div>
-
-                        <div class="flex shrink-0 flex-col items-start gap-1 sm:items-end">
-                            <button
-                                type="button"
-                                class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-bold transition-colors disabled:cursor-default"
-                                :class="
-                                    form.is_open
-                                        ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300'
-                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
-                                "
-                                :disabled="!canManage || savingSettings"
-                                @click="toggleOpen"
-                            >
-                                <span class="h-1.5 w-1.5 rounded-full" :class="form.is_open ? 'bg-emerald-500' : 'bg-slate-400'" />
-                                {{ form.is_open ? 'Accepting Registrations' : 'Closed' }}
-                            </button>
-                            <p v-if="statusNote" class="max-w-xs text-[11px] text-amber-600 dark:text-amber-400 sm:text-right">{{ statusNote }}</p>
-                        </div>
-                    </div>
-
-                    <!-- Closing date and slots -->
-                    <div class="grid gap-3 border-t pt-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-                        <div class="grid gap-1">
-                            <Label for="closes-at" class="text-xs">Closing Date &amp; Time</Label>
-                            <Input
-                                id="closes-at"
-                                v-model="scheduleDraft.closes_at"
-                                type="datetime-local"
-                                class="h-8 text-xs"
-                                :disabled="!canManage"
-                            />
-                            <p v-if="settingsErrors.closes_at" class="text-xs text-red-500">{{ settingsErrors.closes_at }}</p>
-                            <p v-else class="text-[11px] text-muted-foreground">Leave empty to keep it open until you close it.</p>
-                        </div>
-                        <div class="grid gap-1">
-                            <Label for="slot-limit" class="text-xs">Registration Slots</Label>
-                            <Input
-                                id="slot-limit"
-                                v-model="scheduleDraft.slot_limit"
-                                type="number"
-                                min="1"
-                                class="h-8 text-xs"
-                                placeholder="No limit"
-                                :disabled="!canManage"
-                            />
-                            <p v-if="settingsErrors.slot_limit" class="text-xs text-red-500">{{ settingsErrors.slot_limit }}</p>
-                            <p v-else class="text-[11px] text-muted-foreground">
-                                {{ form.slots_taken }} taken{{ form.slot_limit ? ` of ${form.slot_limit}` : '' }} (pending + approved).
-                                <template v-if="program?.pax"> Program pax: {{ program.pax }}.</template>
-                            </p>
-                        </div>
-                        <Button
-                            v-if="canManage"
-                            size="sm"
-                            class="h-8 bg-blue-600 text-xs hover:bg-blue-700 dark:text-white"
-                            :disabled="!scheduleChanged || savingSettings"
-                            @click="saveSchedule"
-                        >
-                            <Save class="mr-1 h-3 w-3" /> Save
-                        </Button>
-                    </div>
-
-                    <!-- Public link -->
-                    <div class="flex flex-wrap items-center gap-2 border-t pt-3">
-                        <code class="max-w-full truncate rounded-md bg-muted px-2 py-1 text-[11px] sm:max-w-xs">{{ publicUrl }}</code>
-                        <Button size="sm" variant="outline" class="h-7 text-xs" @click="copyLink">
-                            <Check v-if="linkCopied" class="mr-1 h-3 w-3 text-emerald-600" />
-                            <Copy v-else class="mr-1 h-3 w-3" /> {{ linkCopied ? 'Copied!' : 'Copy Link' }}
-                        </Button>
-                        <a :href="publicUrl" target="_blank" rel="noopener">
-                            <Button size="sm" variant="outline" class="h-7 text-xs"><ExternalLink class="mr-1 h-3 w-3" /> Open Form</Button>
-                        </a>
-                        <a v-if="canManage" :href="previewUrl" target="_blank" rel="noopener">
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                class="h-7 border-blue-200 text-xs text-blue-600 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-400"
-                            >
-                                <Eye class="mr-1 h-3 w-3" /> Preview
-                            </Button>
-                        </a>
-                    </div>
-
-                    <!-- Theme -->
-                    <div class="flex flex-col gap-2 border-t pt-3">
-                        <p class="flex items-center gap-1.5 text-xs font-bold"><Palette class="h-3.5 w-3.5 text-blue-600" /> Color Theme</p>
-                        <div class="flex flex-wrap gap-2">
-                            <button
-                                v-for="key in themes"
-                                :key="key"
-                                type="button"
-                                class="flex items-center gap-2 rounded-xl border px-2.5 py-1.5 text-xs font-semibold transition disabled:cursor-default"
-                                :class="form.theme === key ? 'border-blue-500 ring-2 ring-blue-100 dark:ring-blue-900' : 'hover:bg-muted'"
-                                :disabled="!canManage || savingSettings"
-                                :aria-pressed="form.theme === key"
-                                @click="chooseTheme(key)"
-                            >
-                                <span class="h-5 w-8 rounded-md" :class="REGISTRATION_THEMES[key]?.swatch" />
-                                {{ REGISTRATION_THEMES[key]?.label ?? key }}
-                                <Check v-if="form.theme === key" class="h-3.5 w-3.5 text-blue-600" />
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Background image -->
-                    <div class="flex flex-col gap-2 border-t pt-3">
-                        <p class="flex items-center gap-1.5 text-xs font-bold"><ImageIcon class="h-3.5 w-3.5 text-blue-600" /> Background Image</p>
-                        <div class="flex flex-wrap items-center gap-3">
-                            <img
-                                v-if="previewBackgroundUrl"
-                                :src="previewBackgroundUrl"
-                                alt="Registration form background"
-                                class="h-14 w-20 shrink-0 rounded-lg object-cover"
-                            />
-                            <div
-                                v-else
-                                class="flex h-14 w-20 shrink-0 items-center justify-center rounded-lg border border-dashed bg-gray-100 text-[10px] font-semibold text-gray-400"
-                            >
-                                None
-                            </div>
-                            <div class="flex min-w-0 flex-1 flex-col gap-2">
-                                <div v-if="canManage" class="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Background image">
+                <!-- Settings — one idea per card -->
+                <div v-show="activeTab === 'settings'" class="flex flex-col gap-4">
+                    <!-- Form details and status -->
+                    <Card :class="SETTINGS_CARD.blue" class="p-5">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div class="min-w-0">
+                                <div v-if="!editingText" class="flex items-center gap-2">
+                                    <h2 class="text-sm font-extrabold">{{ form.title }}</h2>
                                     <button
-                                        v-for="choice in BACKGROUND_CHOICES"
-                                        :key="choice.value"
-                                        type="button"
-                                        role="radio"
-                                        :aria-checked="backgroundChoice === choice.value"
-                                        class="rounded-full border px-3 py-1 text-xs font-semibold transition-colors disabled:cursor-default"
-                                        :class="
-                                            backgroundChoice === choice.value
-                                                ? 'border-blue-600 bg-blue-600 text-white'
-                                                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                                        "
-                                        :disabled="savingSettings || uploadingBackground || removingBackground"
-                                        @click="chooseBackground(choice.value)"
+                                        v-if="canManage"
+                                        class="text-muted-foreground transition-colors hover:text-foreground"
+                                        aria-label="Edit title and instructions"
+                                        @click="openEditText"
                                     >
-                                        {{ choice.label }}
+                                        <Pencil class="h-3.5 w-3.5" />
                                     </button>
                                 </div>
-                                <p class="text-[11px] text-muted-foreground">{{ backgroundNote }}</p>
+                                <div v-else class="flex max-w-md flex-col gap-2">
+                                    <Input v-model="textDraft.title" class="h-8 text-xs" placeholder="Form title" />
+                                    <Textarea
+                                        v-model="textDraft.intro_text"
+                                        class="text-xs"
+                                        rows="3"
+                                        placeholder="Optional instructions shown at the top of the form"
+                                    />
+                                    <p v-if="settingsErrors.title" class="text-xs text-red-500">{{ settingsErrors.title }}</p>
+                                    <div class="flex items-center gap-2">
+                                        <Button
+                                            size="sm"
+                                            class="h-7 bg-blue-600 text-xs hover:bg-blue-700 dark:text-white"
+                                            :disabled="savingSettings"
+                                            @click="saveText"
+                                        >
+                                            <Check class="mr-1 h-3 w-3" /> Save
+                                        </Button>
+                                        <Button size="sm" variant="outline" class="h-7 text-xs" @click="editingText = false">
+                                            <X class="mr-1 h-3 w-3" /> Cancel
+                                        </Button>
+                                    </div>
+                                </div>
+                                <p v-if="!editingText && form.intro_text" class="mt-1 max-w-md whitespace-pre-line text-xs text-muted-foreground">
+                                    {{ form.intro_text }}
+                                </p>
+                                <p class="mt-1 text-[11px] text-muted-foreground">Set up by {{ form.created_by_name ?? 'Unknown' }}</p>
                             </div>
-                            <div v-if="canManage && backgroundChoice === 'custom'" class="flex shrink-0 items-center gap-2">
+
+                            <div class="flex shrink-0 flex-col items-start gap-1 sm:items-end">
+                                <button
+                                    type="button"
+                                    class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-bold transition-colors disabled:cursor-default"
+                                    :class="
+                                        form.is_open
+                                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                                    "
+                                    :disabled="!canManage || savingSettings"
+                                    @click="toggleOpen"
+                                >
+                                    <span class="h-1.5 w-1.5 rounded-full" :class="form.is_open ? 'bg-emerald-500' : 'bg-slate-400'" />
+                                    {{ form.is_open ? 'Accepting Registrations' : 'Closed' }}
+                                </button>
+                                <p v-if="statusNote" class="max-w-xs text-[11px] text-amber-600 dark:text-amber-400 sm:text-right">
+                                    {{ statusNote }}
+                                </p>
+                            </div>
+                        </div>
+                    </Card>
+
+                    <div class="grid gap-4 lg:grid-cols-2">
+                        <!-- Closing date and slots -->
+                        <Card :class="SETTINGS_CARD.blue" class="flex flex-col gap-4 p-5">
+                            <div class="flex items-start gap-3">
+                                <span
+                                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 ring-1 ring-blue-200/70 dark:bg-blue-900/50 dark:text-blue-300 dark:ring-blue-800/60"
+                                >
+                                    <CalendarClock class="h-4 w-4" />
+                                </span>
+                                <div class="min-w-0">
+                                    <h2 class="text-sm font-semibold">Schedule &amp; Slots</h2>
+                                    <p class="text-[11px] text-muted-foreground">When the form closes and how many people can register</p>
+                                </div>
+                            </div>
+                            <div class="grid gap-3 sm:grid-cols-2">
+                                <div class="grid content-start gap-1">
+                                    <Label for="closes-at" class="text-xs">Closing Date &amp; Time</Label>
+                                    <Input
+                                        id="closes-at"
+                                        v-model="scheduleDraft.closes_at"
+                                        type="datetime-local"
+                                        class="h-8 text-xs"
+                                        :disabled="!canManage"
+                                    />
+                                    <p v-if="settingsErrors.closes_at" class="text-xs text-red-500">{{ settingsErrors.closes_at }}</p>
+                                    <p v-else class="text-[11px] text-muted-foreground">Leave empty to keep it open until you close it.</p>
+                                </div>
+                                <div class="grid content-start gap-1">
+                                    <Label for="slot-limit" class="text-xs">Registration Slots</Label>
+                                    <Input
+                                        id="slot-limit"
+                                        v-model="scheduleDraft.slot_limit"
+                                        type="number"
+                                        min="1"
+                                        class="h-8 text-xs"
+                                        placeholder="No limit"
+                                        :disabled="!canManage"
+                                    />
+                                    <p v-if="settingsErrors.slot_limit" class="text-xs text-red-500">{{ settingsErrors.slot_limit }}</p>
+                                    <p v-else class="text-[11px] text-muted-foreground">
+                                        {{ form.slots_taken }} taken{{ form.slot_limit ? ` of ${form.slot_limit}` : '' }} (pending + approved).
+                                        <template v-if="program?.pax"> Program pax: {{ program.pax }}.</template>
+                                    </p>
+                                </div>
+                            </div>
+                            <div v-if="canManage" class="mt-auto flex justify-end">
                                 <Button
                                     size="sm"
+                                    class="h-8 bg-blue-600 text-xs hover:bg-blue-700 dark:text-white"
+                                    :disabled="!scheduleChanged || savingSettings"
+                                    @click="saveSchedule"
+                                >
+                                    <Save class="mr-1 h-3 w-3" /> Save
+                                </Button>
+                            </div>
+                        </Card>
+
+                        <!-- Public link -->
+                        <Card :class="SETTINGS_CARD.blue" class="flex flex-col gap-4 p-5">
+                            <div class="flex items-start gap-3">
+                                <span
+                                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 ring-1 ring-blue-200/70 dark:bg-blue-900/50 dark:text-blue-300 dark:ring-blue-800/60"
+                                >
+                                    <Link2 class="h-4 w-4" />
+                                </span>
+                                <div class="min-w-0">
+                                    <h2 class="text-sm font-semibold">Share</h2>
+                                    <p class="text-[11px] text-muted-foreground">Send this link to the people who should register</p>
+                                </div>
+                            </div>
+                            <code class="block truncate rounded-lg bg-muted px-3 py-2 text-[11px]" :title="publicUrl">{{ publicUrl }}</code>
+                            <div class="mt-auto flex flex-wrap gap-2">
+                                <Button size="sm" variant="outline" class="h-8 text-xs" @click="copyLink">
+                                    <Check v-if="linkCopied" class="mr-1 h-3 w-3 text-emerald-600" />
+                                    <Copy v-else class="mr-1 h-3 w-3" /> {{ linkCopied ? 'Copied!' : 'Copy Link' }}
+                                </Button>
+                                <a :href="publicUrl" target="_blank" rel="noopener">
+                                    <Button size="sm" variant="outline" class="h-8 text-xs"><ExternalLink class="mr-1 h-3 w-3" /> Open Form</Button>
+                                </a>
+                                <a v-if="canManage" :href="previewUrl" target="_blank" rel="noopener">
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        class="h-8 border-blue-200 text-xs text-blue-600 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-400"
+                                    >
+                                        <Eye class="mr-1 h-3 w-3" /> Preview
+                                    </Button>
+                                </a>
+                            </div>
+                        </Card>
+
+                        <!-- Theme -->
+                        <Card :class="SETTINGS_CARD.blue" class="flex flex-col gap-4 p-5">
+                            <div class="flex items-start gap-3">
+                                <span
+                                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 ring-1 ring-blue-200/70 dark:bg-blue-900/50 dark:text-blue-300 dark:ring-blue-800/60"
+                                >
+                                    <Palette class="h-4 w-4" />
+                                </span>
+                                <div class="min-w-0">
+                                    <h2 class="text-sm font-semibold">Color Theme</h2>
+                                    <p class="text-[11px] text-muted-foreground">The colors of the public form</p>
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <button
+                                    v-for="key in themes"
+                                    :key="key"
+                                    type="button"
+                                    class="flex items-center gap-2 rounded-xl border px-2.5 py-1.5 text-xs font-semibold transition disabled:cursor-default"
+                                    :class="form.theme === key ? 'border-blue-500 ring-2 ring-blue-100 dark:ring-blue-900' : 'hover:bg-muted'"
+                                    :disabled="!canManage || savingSettings"
+                                    :aria-pressed="form.theme === key"
+                                    @click="chooseTheme(key)"
+                                >
+                                    <span class="h-5 w-8 rounded-md" :class="REGISTRATION_THEMES[key]?.swatch" />
+                                    {{ REGISTRATION_THEMES[key]?.label ?? key }}
+                                    <Check v-if="form.theme === key" class="h-3.5 w-3.5 text-blue-600" />
+                                </button>
+                            </div>
+                        </Card>
+
+                        <!-- Background image -->
+                        <Card :class="SETTINGS_CARD.blue" class="flex flex-col gap-4 p-5">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="flex min-w-0 items-start gap-3">
+                                    <span
+                                        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 ring-1 ring-blue-200/70 dark:bg-blue-900/50 dark:text-blue-300 dark:ring-blue-800/60"
+                                    >
+                                        <ImageIcon class="h-4 w-4" />
+                                    </span>
+                                    <div class="min-w-0">
+                                        <h2 class="text-sm font-semibold">Background Image</h2>
+                                        <p class="text-[11px] text-muted-foreground">Shown behind the public form</p>
+                                    </div>
+                                </div>
+                                <Button
+                                    v-if="canManage && backgroundChoice === 'custom'"
+                                    size="sm"
                                     variant="outline"
-                                    class="h-7 text-xs"
+                                    class="h-8 shrink-0 text-xs"
                                     :disabled="uploadingBackground"
                                     @click="backgroundFileInput?.click()"
                                 >
@@ -872,34 +895,85 @@ function backToProgram() {
                                     <Upload v-else class="mr-1 h-3 w-3" /> Change Image
                                 </Button>
                             </div>
-                            <LoaderCircle
-                                v-if="removingBackground || (uploadingBackground && backgroundChoice !== 'custom')"
-                                class="h-4 w-4 animate-spin text-muted-foreground"
+                            <div class="flex items-center gap-4">
+                                <img
+                                    v-if="previewBackgroundUrl"
+                                    :src="previewBackgroundUrl"
+                                    alt="Registration form background"
+                                    class="h-16 w-24 shrink-0 rounded-lg object-cover ring-1 ring-border"
+                                />
+                                <div
+                                    v-else
+                                    class="flex h-16 w-24 shrink-0 items-center justify-center rounded-lg border border-dashed bg-muted/50 text-[10px] font-semibold text-muted-foreground"
+                                >
+                                    None
+                                </div>
+                                <div class="flex min-w-0 flex-1 flex-col gap-2">
+                                    <div v-if="canManage" class="flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label="Background image">
+                                        <button
+                                            v-for="choice in BACKGROUND_CHOICES"
+                                            :key="choice.value"
+                                            type="button"
+                                            role="radio"
+                                            :aria-checked="backgroundChoice === choice.value"
+                                            class="rounded-full border px-3 py-1 text-xs font-semibold transition-colors disabled:cursor-default"
+                                            :class="
+                                                backgroundChoice === choice.value
+                                                    ? 'border-blue-600 bg-blue-600 text-white'
+                                                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                            "
+                                            :disabled="savingSettings || uploadingBackground || removingBackground"
+                                            @click="chooseBackground(choice.value)"
+                                        >
+                                            {{ choice.label }}
+                                        </button>
+                                        <LoaderCircle
+                                            v-if="removingBackground || (uploadingBackground && backgroundChoice !== 'custom')"
+                                            class="h-4 w-4 animate-spin text-muted-foreground"
+                                        />
+                                    </div>
+                                    <p class="text-[11px] text-muted-foreground">{{ backgroundNote }}</p>
+                                </div>
+                            </div>
+                            <input
+                                v-if="canManage"
+                                ref="backgroundFileInput"
+                                type="file"
+                                accept="image/jpeg,image/jpg,image/png,image/webp"
+                                class="hidden"
+                                @change="handleBackgroundFileChange"
                             />
-                        </div>
-                        <input
-                            v-if="canManage"
-                            ref="backgroundFileInput"
-                            type="file"
-                            accept="image/jpeg,image/jpg,image/png,image/webp"
-                            class="hidden"
-                            @change="handleBackgroundFileChange"
-                        />
+                        </Card>
                     </div>
                 </div>
 
                 <!-- Questions -->
-                <div v-show="activeTab === 'settings'" class="flex flex-col gap-3">
-                    <div class="flex items-center justify-between gap-2">
-                        <h2 class="flex items-center gap-1.5 text-sm font-extrabold"><ListChecks class="h-4 w-4 text-blue-600" /> Form Questions</h2>
-                        <Button v-if="canManage" size="sm" class="h-7 bg-blue-600 text-xs hover:bg-blue-700 dark:text-white" @click="openAddQuestion">
+                <Card v-show="activeTab === 'settings'" :class="SETTINGS_CARD.blue" class="flex flex-col gap-4 p-5">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex min-w-0 items-start gap-3">
+                            <span
+                                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 ring-1 ring-blue-200/70 dark:bg-blue-900/50 dark:text-blue-300 dark:ring-blue-800/60"
+                            >
+                                <ListChecks class="h-4 w-4" />
+                            </span>
+                            <div class="min-w-0">
+                                <h2 class="text-sm font-semibold">Form Questions</h2>
+                                <p class="text-[11px] text-muted-foreground">Asked after the standard registration steps</p>
+                            </div>
+                        </div>
+                        <Button
+                            v-if="canManage"
+                            size="sm"
+                            class="h-8 shrink-0 bg-blue-600 text-xs hover:bg-blue-700 dark:text-white"
+                            @click="openAddQuestion"
+                        >
                             <Plus class="mr-1 h-3 w-3" /> Add Question
                         </Button>
                     </div>
 
                     <!-- Fixed steps -->
-                    <div class="rounded-2xl border bg-blue-50/50 px-5 py-4 dark:bg-blue-950/10">
-                        <p class="text-xs font-bold">Always included</p>
+                    <div class="rounded-xl bg-blue-50/60 px-4 py-3.5 dark:bg-blue-950/20">
+                        <p class="text-xs font-semibold">Always included</p>
                         <p class="mt-0.5 text-[11px] text-muted-foreground">
                             These steps can't be removed, because approving a registration needs this information.
                         </p>
@@ -914,7 +988,7 @@ function backToProgram() {
                     <EmptyState
                         v-if="!form.questions.length"
                         compact
-                        class="rounded-2xl border border-dashed"
+                        class="rounded-xl border border-dashed"
                         title="No additional questions yet."
                         :description="
                             canManage
@@ -923,8 +997,8 @@ function backToProgram() {
                         "
                     />
 
-                    <div v-else class="divide-y overflow-hidden rounded-2xl border bg-background">
-                        <div v-for="(question, qIdx) in form.questions" :key="question.id" class="flex items-start justify-between gap-3 px-5 py-3">
+                    <div v-else class="divide-y overflow-hidden rounded-xl border">
+                        <div v-for="(question, qIdx) in form.questions" :key="question.id" class="flex items-start justify-between gap-3 px-4 py-3">
                             <div class="min-w-0 flex-1">
                                 <p class="text-xs font-semibold">{{ question.label }}</p>
                                 <p v-if="question.help_text" class="mt-0.5 text-[11px] text-muted-foreground">{{ question.help_text }}</p>
@@ -976,16 +1050,23 @@ function backToProgram() {
                             </div>
                         </div>
                     </div>
-                </div>
+                </Card>
 
                 <!-- Who can edit -->
-                <div v-show="activeTab === 'settings'" class="flex flex-col gap-3 rounded-2xl border bg-background p-5">
-                    <div>
-                        <h2 class="flex items-center gap-1.5 text-sm font-extrabold"><ShieldCheck class="h-4 w-4 text-blue-600" /> Who Can Edit</h2>
-                        <p class="mt-0.5 text-[11px] text-muted-foreground">
-                            The people below and every superadmin can change this form and approve or reject its registrations. Other admins can only
-                            view it.
-                        </p>
+                <Card v-show="activeTab === 'settings'" :class="SETTINGS_CARD.blue" class="flex flex-col gap-4 p-5">
+                    <div class="flex items-start gap-3">
+                        <span
+                            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 ring-1 ring-blue-200/70 dark:bg-blue-900/50 dark:text-blue-300 dark:ring-blue-800/60"
+                        >
+                            <ShieldCheck class="h-4 w-4" />
+                        </span>
+                        <div class="min-w-0">
+                            <h2 class="text-sm font-semibold">Who Can Edit</h2>
+                            <p class="text-[11px] text-muted-foreground">
+                                The people below and every superadmin can change this form and approve or reject its registrations. Other admins can
+                                only view it.
+                            </p>
+                        </div>
                     </div>
 
                     <ul class="divide-y overflow-hidden rounded-xl border" aria-label="People who can edit this form">
@@ -1117,7 +1198,7 @@ function backToProgram() {
                         <Lock class="mt-0.5 h-3.5 w-3.5 shrink-0" />
                         {{ canManage ? editorOnlyNote : readOnlyNote }}
                     </p>
-                </div>
+                </Card>
             </template>
         </div>
 
