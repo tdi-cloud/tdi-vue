@@ -235,3 +235,33 @@ test('non-admin users cannot access the supervisory compliance endpoint', functi
 
     $this->actingAs($user)->getJson(route('dashboard.supervisory-compliance'))->assertForbidden();
 });
+
+test('the SG filter compares grades as numbers, so SG 9 is not counted as SG 18 and above', function () {
+    $admin = supCompTestAdmin('EMP-SC-ADM-SG'); // SG 24, not started
+    $batch = supCompTestBatch(40);
+
+    $senior = supCompTestEmployee('EMP-SC-SG24', 'Santos');
+    $junior = supCompTestEmployee('EMP-SC-SG09', 'Almarinez');
+    // SG is a text column; as text, "9" sorts after "18".
+    Employee::where('EMPCODE', $junior->EMPCODE)->update(['SG' => '9']);
+
+    foreach ([$senior, $junior] as $index => $employee) {
+        Participant::create([
+            'sort_order' => $index + 1, 'batch_id' => $batch->id, 'empcode' => $employee->EMPCODE,
+            'attendance' => 'Complete', 'hours' => 40, 'added_by' => 'system',
+        ]);
+    }
+
+    // The dashboard sends the filter in the query string, so it arrives as the string "18".
+    $filters = ['region' => 'ALL', 'office' => 'ALL', 'office_filter' => 'ALL', 'sg_min' => '18'];
+
+    $stats = $this->actingAs($admin)->getJson(route('dashboard.supervisory-compliance', $filters))->assertOk();
+    expect($stats->json('total'))->toBe(2)
+        ->and($stats->json('completed'))->toBe(1)
+        ->and($stats->json('not_started'))->toBe(1);
+
+    $list = $this->actingAs($admin)
+        ->getJson(route('dashboard.supervisory-compliance.list', [...$filters, 'type' => 'completed']))
+        ->assertOk();
+    expect(collect($list->json('employees'))->pluck('EMPCODE')->all())->toBe(['EMP-SC-SG24']);
+});

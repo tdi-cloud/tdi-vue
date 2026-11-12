@@ -72,14 +72,19 @@ class DashboardController extends Controller
      * Dashboard. 'ALL' o walang laman = walang year filter.
      */
     /**
-     * Minimum salary grade filter. A minimum of 1 or less means "every
-     * employee", so no SG condition is added — Job Order employees have no SG
-     * (stored as an empty string), and `SG >= 1` would silently drop all of
-     * them even when "JOB ORDER" is checked on the Dashboard.
+     * Minimum salary grade filter. SG is a text column, so it is compared as a
+     * number — as text, "9" sorts after "18" and SG 2–9 employees would pass an
+     * "SG ≥ 18" filter. A minimum of 1 or less means "every employee", so no SG
+     * condition is added — Job Order employees have no SG (stored as an empty
+     * string), and `SG >= 1` would silently drop all of them even when
+     * "JOB ORDER" is checked on the Dashboard.
      */
     private function applyMinimumSg($query, $sgMin, string $column = 'SG')
     {
-        return $query->when((int) $sgMin > 1, fn ($q) => $q->where($column, '>=', $sgMin));
+        return $query->when((int) $sgMin > 1, fn ($q) => $q->whereRaw(
+            'CAST('.$q->getGrammar()->wrap($column).' AS UNSIGNED) >= ?',
+            [(int) $sgMin],
+        ));
     }
 
     private function applyYearFilter($query, $year, string $column = 'batches.date_start')
@@ -445,7 +450,7 @@ class DashboardController extends Controller
 
         $baseQuery = function () use ($region, $statuses, $officeFilter, $office, $sgMin) {
             return $this->applyEmployeeFilters(
-                DB::table('employees')->where('SG', '>=', $sgMin),
+                $this->applyMinimumSg(DB::table('employees'), $sgMin),
                 $region, $statuses, $officeFilter, $office
             );
         };
@@ -476,14 +481,14 @@ class DashboardController extends Controller
         // hiwalay na query) — ito ang pinaka-malaking dahilan kung bakit
         // mabagal mag-load ang Supervisory/Managerial na card sa Dashboard.
         $totalByRegion = $this->applyEmployeeFilters(
-            DB::table('employees')->where('SG', '>=', $sgMin), null, $statuses, $officeFilter, $office
+            $this->applyMinimumSg(DB::table('employees'), $sgMin), null, $statuses, $officeFilter, $office
         )
             ->select('REGION as region', DB::raw('COUNT(*) as total'))
             ->groupBy('REGION')
             ->pluck('total', 'region');
 
         $regionRows = $this->applyEmployeeFilters(
-            DB::table('employees')->where('SG', '>=', $sgMin),
+            $this->applyMinimumSg(DB::table('employees'), $sgMin),
             null, $statuses, $officeFilter, $office
         )
             ->joinSub($hoursSubquery, 'emp_hours', fn ($j) => $j->on('employees.EMPCODE', '=', 'emp_hours.empcode'))
@@ -562,7 +567,7 @@ class DashboardController extends Controller
             ->groupBy('participants.empcode');
 
         $baseEmployees = $this->applyEmployeeFilters(
-            DB::table('employees')->where('SG', '>=', $sgMin),
+            $this->applyMinimumSg(DB::table('employees'), $sgMin),
             $region, $statuses, $officeFilter, $office
         );
 
