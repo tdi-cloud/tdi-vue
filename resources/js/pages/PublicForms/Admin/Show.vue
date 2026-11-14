@@ -24,6 +24,7 @@ import {
     ListChecks,
     LoaderCircle,
     MailWarning,
+    PanelTop,
     Pencil,
     Search,
     Settings2,
@@ -46,6 +47,8 @@ interface AdminPublicForm extends PublicFormSummary {
     background_image_url: string | null;
     /** "No background": a plain light gray page. */
     hide_background: boolean;
+    /** The wide banner picture above the title, if one was uploaded. */
+    header_image_url: string | null;
 }
 
 interface ResponseRow {
@@ -265,6 +268,54 @@ async function resetBackground(): Promise<void> {
     });
 }
 
+/* ── Header banner picture (above the title; separate from the background) ── */
+
+const headerFileInput = ref<HTMLInputElement | null>(null);
+const headerUpload = useForm<{ image: File | null }>({ image: null });
+const removingHeader = ref(false);
+/** The picked file, shown right away while it uploads. */
+const pendingHeaderPreview = ref<string | null>(null);
+
+const headerPreviewUrl = computed(() => pendingHeaderPreview.value ?? props.form.header_image_url);
+const isHeaderBusy = computed(() => headerUpload.processing || removingHeader.value);
+const headerUploadPercentage = computed(() => Math.round(headerUpload.progress?.percentage ?? 0));
+
+function uploadHeaderImage(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    headerUpload.clearErrors();
+    pendingHeaderPreview.value = URL.createObjectURL(file);
+    headerUpload.image = file;
+    headerUpload.post(route('public-forms.admin.header-image.upload', props.form.slug), {
+        preserveScroll: true,
+        forceFormData: true,
+        onFinish: () => {
+            // Lets the same file be picked again after an error.
+            input.value = '';
+            headerUpload.reset('image');
+            if (pendingHeaderPreview.value) URL.revokeObjectURL(pendingHeaderPreview.value);
+            pendingHeaderPreview.value = null;
+        },
+    });
+}
+
+async function removeHeaderImage(): Promise<void> {
+    const confirmed = await confirmDialog('Remove the header picture? The public form will start with its title and description.', {
+        confirmText: 'Remove Picture',
+    });
+    if (!confirmed) return;
+
+    removingHeader.value = true;
+    router.delete(route('public-forms.admin.header-image.destroy', props.form.slug), {
+        preserveScroll: true,
+        onFinish: () => {
+            removingHeader.value = false;
+        },
+    });
+}
+
 /* ── Delete the form ──────────────────────────────────────────────────────── */
 
 const deletingForm = ref(false);
@@ -405,7 +456,7 @@ async function deleteResponse(response: ResponseRow): Promise<void> {
                 :responses-count="stats.total"
             />
 
-            <!-- Settings: link, title and description, open/close, background, delete -->
+            <!-- Settings: link, title and description, open/close, background, header picture, delete -->
             <div v-show="tab === 'settings'" class="grid gap-4 lg:grid-cols-2">
                 <div class="rounded-2xl border bg-background p-5">
                     <div class="mb-3 flex flex-wrap items-center gap-1.5">
@@ -608,6 +659,87 @@ async function deleteResponse(response: ResponseRow): Promise<void> {
                     <p class="text-[11px] text-muted-foreground">JPG, PNG or WebP, up to 5 MB. A wide landscape picture works best.</p>
 
                     <input ref="backgroundFileInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="uploadBackground" />
+                </div>
+
+                <div class="flex flex-col gap-3 rounded-2xl border bg-background p-5 lg:col-span-2">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <h2 class="flex items-center gap-1.5 text-sm font-bold"><PanelTop class="h-4 w-4" /> Header Banner Image</h2>
+                            <p class="mt-0.5 text-[11px] text-muted-foreground">
+                                A wide picture shown on its own above the title and description of the public form.
+                            </p>
+                        </div>
+                        <div v-if="form.header_image_url" class="flex shrink-0 gap-2">
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                class="h-8 text-xs"
+                                :disabled="isHeaderBusy"
+                                @click="headerFileInput?.click()"
+                            >
+                                <LoaderCircle v-if="headerUpload.processing" class="mr-1 h-3 w-3 animate-spin" />
+                                <Upload v-else class="mr-1 h-3 w-3" /> Change Picture
+                            </Button>
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                class="h-8 border-red-200 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900/60 dark:hover:bg-red-950/30"
+                                :disabled="isHeaderBusy"
+                                @click="removeHeaderImage"
+                            >
+                                <LoaderCircle v-if="removingHeader" class="mr-1 h-3 w-3 animate-spin" />
+                                <Trash2 v-else class="mr-1 h-3 w-3" /> Remove
+                            </Button>
+                        </div>
+                    </div>
+
+                    <!-- Same shape as on the public form (about 16:5) -->
+                    <div>
+                        <img
+                            v-if="headerPreviewUrl"
+                            :src="headerPreviewUrl"
+                            :alt="`Header picture of ${form.title}`"
+                            class="block aspect-[16/5] w-full rounded-xl border object-cover object-center transition-opacity"
+                            :class="{ 'opacity-60': headerUpload.processing }"
+                        />
+                        <button
+                            v-else
+                            type="button"
+                            class="flex aspect-[16/5] w-full flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed bg-muted/40 text-muted-foreground transition-colors hover:border-blue-400 hover:bg-blue-50/60 hover:text-blue-700 disabled:cursor-default dark:hover:bg-blue-950/20 dark:hover:text-blue-300"
+                            :disabled="isHeaderBusy"
+                            @click="headerFileInput?.click()"
+                        >
+                            <Upload class="h-5 w-5" />
+                            <span class="text-xs font-semibold">Upload a header picture</span>
+                            <span class="text-[11px]">No header picture yet. The form starts with its title.</span>
+                        </button>
+                    </div>
+
+                    <div v-if="headerUpload.processing" class="flex items-center gap-2" role="status" aria-live="polite">
+                        <div
+                            class="h-1.5 flex-1 overflow-hidden rounded-full bg-muted"
+                            role="progressbar"
+                            :aria-valuenow="headerUploadPercentage"
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                            aria-label="Upload progress"
+                        >
+                            <div class="h-full rounded-full bg-blue-600 transition-all" :style="{ width: `${headerUploadPercentage}%` }" />
+                        </div>
+                        <span class="w-24 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground"
+                            >Uploading… {{ headerUploadPercentage }}%</span
+                        >
+                    </div>
+
+                    <p v-if="headerUpload.errors.image" class="text-xs text-red-500">{{ headerUpload.errors.image }}</p>
+                    <p class="text-[11px] text-muted-foreground">
+                        JPG, PNG or WebP, up to 5 MB. Use a wide landscape picture, about 16:5 (e.g. 1600 × 500 pixels); the edges may be cropped to
+                        fit.
+                    </p>
+
+                    <input ref="headerFileInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="uploadHeaderImage" />
                 </div>
 
                 <div

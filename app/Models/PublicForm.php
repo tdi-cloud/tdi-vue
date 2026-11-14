@@ -15,7 +15,8 @@ use Illuminate\Support\Str;
 /**
  * A public (no login) form built by admins, such as the Learning and
  * Development Survey: its banner texts, sections and questions, whether it
- * takes responses, and its background picture. The logic for answering it
+ * takes responses, its background picture and the header picture above its
+ * title. The logic for answering it
  * (validation, answers in words, export) is in PublicFormDefinition.
  */
 class PublicForm extends Model
@@ -33,6 +34,9 @@ class PublicForm extends Model
     /** Folder on the public disk for each form's own background picture. */
     public const BACKGROUND_DIRECTORY = 'public-form-backgrounds';
 
+    /** Folder on the public disk for each form's header banner picture (shown above the title). */
+    public const HEADER_IMAGE_DIRECTORY = 'public-form-headers';
+
     /** About how long one question takes, for the "About N minutes" estimate. */
     private const MINUTES_PER_QUESTION = 0.4;
 
@@ -49,6 +53,7 @@ class PublicForm extends Model
         'closes_at',
         'background_image',
         'hide_background',
+        'header_image',
         'updated_by',
         'created_by',
     ];
@@ -206,6 +211,14 @@ class PublicForm extends Model
         }
 
         return $this->customBackgroundUrl() ?? SiteImage::urlFor(self::DEFAULT_BACKGROUND_KEY);
+    }
+
+    /**
+     * URL of the banner picture shown above the title, or null when the form has none.
+     */
+    public function headerImageUrl(): ?string
+    {
+        return $this->header_image ? Storage::disk('public')->url($this->header_image) : null;
     }
 
     /**

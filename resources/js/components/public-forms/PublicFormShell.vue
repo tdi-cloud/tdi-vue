@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import PublicFormBackdrop from '@/components/public-forms/PublicFormBackdrop.vue';
 import { onMounted } from 'vue';
 
 /**
  * Page frame for the public forms: always light (like the public
- * registration form), the form's background picture behind a white wash,
- * a centred column and the TESDA footer.
+ * registration form), the form's background picture under an animated
+ * technology layer and a white wash, a centred column and the TESDA footer.
  */
 withDefaults(
     defineProps<{
@@ -32,7 +33,9 @@ onMounted(() => {
                 :style="{ backgroundImage: `url(${JSON.stringify(backgroundUrl)})` }"
                 aria-hidden="true"
             ></div>
-            <div class="fixed inset-0 bg-white/80" aria-hidden="true"></div>
+            <PublicFormBackdrop :focus-width="width" />
+            <!-- White wash over the animation so the form keeps the focus -->
+            <div class="fixed inset-0 bg-white/50" aria-hidden="true"></div>
         </template>
 
         <div class="relative mx-auto w-full space-y-4" :class="width === 'md' ? 'max-w-md' : 'max-w-2xl lg:max-w-3xl xl:max-w-4xl'">
@@ -44,7 +47,7 @@ onMounted(() => {
                     alt="TESDA Development Institute"
                     class="h-7 w-7 object-contain"
                 />
-                <span class="text-sm font-semibold text-gray-600">TESDA Development Institute</span>
+                <span class="text-sm font-semibold text-gray-100">TESDA Development Institute</span>
             </footer>
         </div>
     </div>

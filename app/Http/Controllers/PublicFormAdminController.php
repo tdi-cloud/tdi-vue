@@ -26,7 +26,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * Admin side of the public forms: the list of forms (and creating new ones),
  * and for each form its responses (list, delete, CSV export), its question
  * editor (see PublicFormEditorController) and its settings: public link,
- * title and description, open/close and background picture.
+ * title and description, open/close, background picture and header picture.
  */
 class PublicFormAdminController extends Controller
 {
@@ -287,6 +287,39 @@ class PublicFormAdminController extends Controller
         return back()->with('success', FlashMessage::make('Background reset', "The {$form->title} now uses the site-wide default picture from Homepage Images."));
     }
 
+    // POST /public-forms/{slug}/header-image
+    // A wide banner picture shown above the title and description; separate from the background.
+    public function uploadHeaderImage(Request $request, string $slug): RedirectResponse
+    {
+        $form = PublicForm::where('slug', $slug)->firstOrFail();
+
+        $request->validate([
+            'image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ], [], ['image' => 'header picture']);
+
+        // Stored first, so the old picture is only deleted once the new one is saved.
+        $path = $request->file('image')->store(PublicForm::HEADER_IMAGE_DIRECTORY, 'public');
+        $this->deleteHeaderImageFile($form);
+
+        $form->update([
+            'header_image' => $path,
+            'updated_by' => $request->user()->id,
+        ]);
+
+        return back()->with('success', FlashMessage::make('Header picture updated', "People will see the new picture above the title of the {$form->title}."));
+    }
+
+    // DELETE /public-forms/{slug}/header-image
+    public function destroyHeaderImage(Request $request, string $slug): RedirectResponse
+    {
+        $form = PublicForm::where('slug', $slug)->firstOrFail();
+
+        $this->deleteHeaderImageFile($form);
+        $form->update(['header_image' => null, 'updated_by' => $request->user()->id]);
+
+        return back()->with('success', FlashMessage::make('Header picture removed', "The {$form->title} now starts with its title and description."));
+    }
+
     // DELETE /public-forms/{slug}
     // Only a form without responses can be deleted; one with responses can be closed instead.
     public function destroy(string $slug): RedirectResponse
@@ -301,6 +334,7 @@ class PublicFormAdminController extends Controller
         }
 
         $this->deleteBackgroundFile($form);
+        $this->deleteHeaderImageFile($form);
         $form->delete();
 
         return redirect()->route('public-forms.admin.index')->with('success', FlashMessage::make('Form deleted', "{$form->title} and its questions were deleted. Its link no longer works."));
@@ -379,6 +413,7 @@ class PublicFormAdminController extends Controller
             'closes_at' => $form->closes_at?->format('Y-m-d\TH:i'),
             'background_image_url' => $form->customBackgroundUrl(),
             'hide_background' => $form->hide_background,
+            'header_image_url' => $form->headerImageUrl(),
         ]);
     }
 
@@ -430,6 +465,13 @@ class PublicFormAdminController extends Controller
     {
         if ($form->background_image && Storage::disk('public')->exists($form->background_image)) {
             Storage::disk('public')->delete($form->background_image);
+        }
+    }
+
+    private function deleteHeaderImageFile(PublicForm $form): void
+    {
+        if ($form->header_image && Storage::disk('public')->exists($form->header_image)) {
+            Storage::disk('public')->delete($form->header_image);
         }
     }
 }

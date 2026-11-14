@@ -272,6 +272,8 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::post('/public-forms/{slug}/background', [PublicFormAdminController::class, 'uploadBackground'])->name('public-forms.admin.background.upload');
     Route::put('/public-forms/{slug}/background', [PublicFormAdminController::class, 'updateBackground'])->name('public-forms.admin.background.update');
     Route::delete('/public-forms/{slug}/background', [PublicFormAdminController::class, 'destroyBackground'])->name('public-forms.admin.background.destroy');
+    Route::post('/public-forms/{slug}/header-image', [PublicFormAdminController::class, 'uploadHeaderImage'])->name('public-forms.admin.header-image.upload');
+    Route::delete('/public-forms/{slug}/header-image', [PublicFormAdminController::class, 'destroyHeaderImage'])->name('public-forms.admin.header-image.destroy');
 
     // PUBLIC FORMS question editor: sections (steps) and their questions
     Route::post('/public-forms/{slug}/sections', [PublicFormEditorController::class, 'storeSection'])->name('public-forms.admin.sections.store');

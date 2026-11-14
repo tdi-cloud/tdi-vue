@@ -73,6 +73,7 @@ class PublicFormController extends Controller
             'questions' => $definition->questions(),
             'otherValue' => PublicFormDefinition::OTHER_VALUE,
             'backgroundUrl' => $form->publicBackgroundUrl(),
+            'headerImageUrl' => $form->headerImageUrl(),
             'preview' => $isPreview ? ['closedReason' => $closedReason] : null,
         ]);
     }

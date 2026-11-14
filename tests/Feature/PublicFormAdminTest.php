@@ -39,8 +39,13 @@ test('guests are sent to the login page and regular users are refused', function
         ->assertForbidden();
     $this->actingAs($user)->put(route('public-forms.admin.background.update', $slug), ['hide_background' => true])->assertForbidden();
     $this->actingAs($user)->delete(route('public-forms.admin.background.destroy', $slug))->assertForbidden();
+    $this->actingAs($user)
+        ->post(route('public-forms.admin.header-image.upload', $slug), ['image' => UploadedFile::fake()->image('banner.jpg')])
+        ->assertForbidden();
+    $this->actingAs($user)->delete(route('public-forms.admin.header-image.destroy', $slug))->assertForbidden();
 
     expect(PublicForm::count())->toBe(1)
+        ->and(surveyForm()->header_image)->toBeNull()
         ->and(surveyForm()->is_open)->toBeTrue()
         ->and(surveyForm()->title)->toBe('Learning and Development Survey');
 });
@@ -189,6 +194,10 @@ test('an unknown form returns 404 on the admin pages', function () {
         ->assertNotFound();
     $this->actingAs($admin)->put(route('public-forms.admin.background.update', 'does-not-exist'), ['hide_background' => true])->assertNotFound();
     $this->actingAs($admin)->delete(route('public-forms.admin.background.destroy', 'does-not-exist'))->assertNotFound();
+    $this->actingAs($admin)
+        ->post(route('public-forms.admin.header-image.upload', 'does-not-exist'), ['image' => UploadedFile::fake()->image('banner.jpg')])
+        ->assertNotFound();
+    $this->actingAs($admin)->delete(route('public-forms.admin.header-image.destroy', 'does-not-exist'))->assertNotFound();
     $this->actingAs($admin)->put(route('public-forms.admin.details.update', 'does-not-exist'), ['title' => 'Title'])->assertNotFound();
 });
 
@@ -434,10 +443,135 @@ test('only JPG, PNG or WebP pictures up to 5 MB are accepted as backgrounds', fu
     'larger than 5 MB' => fn () => UploadedFile::fake()->image('huge.jpg')->size(6000),
 ]);
 
+test('a form without a header picture shows none', function () {
+    $this->actingAs(publicFormAdmin())
+        ->get(route('public-forms.admin.show', 'ld-survey-2026'))
+        ->assertInertia(fn ($page) => $page->where('form.header_image_url', null));
+
+    $this->get(route('public-forms.show', 'ld-survey-2026'))
+        ->assertInertia(fn ($page) => $page->component('PublicForms/Form')->where('headerImageUrl', null));
+});
+
+test('admins can upload, replace and remove a form\'s header picture', function () {
+    Storage::fake('public');
+    $admin = publicFormAdmin();
+
+    $this->actingAs($admin)
+        ->post(route('public-forms.admin.header-image.upload', 'ld-survey-2026'), ['image' => UploadedFile::fake()->image('first.jpg', 1600, 500)])
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('success');
+
+    $first = surveyForm()->header_image;
+    expect($first)->toStartWith(PublicForm::HEADER_IMAGE_DIRECTORY.'/')
+        ->and(surveyForm()->updated_by)->toBe($admin->id);
+    Storage::disk('public')->assertExists($first);
+
+    $this->actingAs($admin)
+        ->get(route('public-forms.admin.show', 'ld-survey-2026'))
+        ->assertInertia(fn ($page) => $page->where('form.header_image_url', Storage::disk('public')->url($first)));
+
+    $this->get(route('public-forms.show', 'ld-survey-2026'))
+        ->assertInertia(fn ($page) => $page->where('headerImageUrl', Storage::disk('public')->url($first)));
+
+    // Replacing the picture deletes the old file.
+    $this->actingAs($admin)
+        ->post(route('public-forms.admin.header-image.upload', 'ld-survey-2026'), ['image' => UploadedFile::fake()->image('second.webp', 1600, 500)])
+        ->assertSessionHasNoErrors();
+
+    $second = surveyForm()->header_image;
+    expect($second)->not->toBe($first);
+    Storage::disk('public')->assertMissing($first);
+    Storage::disk('public')->assertExists($second);
+
+    // Removing it deletes the file and the form starts with its title again.
+    $this->actingAs($admin)
+        ->delete(route('public-forms.admin.header-image.destroy', 'ld-survey-2026'))
+        ->assertSessionHas('success');
+
+    expect(surveyForm()->header_image)->toBeNull();
+    Storage::disk('public')->assertMissing($second);
+
+    $this->get(route('public-forms.show', 'ld-survey-2026'))
+        ->assertInertia(fn ($page) => $page->where('headerImageUrl', null));
+});
+
+test('the header picture and the background picture are kept apart', function () {
+    Storage::fake('public');
+    $admin = publicFormAdmin();
+
+    $this->actingAs($admin)
+        ->post(route('public-forms.admin.background.upload', 'ld-survey-2026'), ['image' => UploadedFile::fake()->image('bg.jpg')]);
+    $this->actingAs($admin)
+        ->put(route('public-forms.admin.background.update', 'ld-survey-2026'), ['hide_background' => true]);
+    $background = surveyForm()->background_image;
+
+    $this->actingAs($admin)
+        ->post(route('public-forms.admin.header-image.upload', 'ld-survey-2026'), ['image' => UploadedFile::fake()->image('banner.jpg', 1600, 500)]);
+    $header = surveyForm()->header_image;
+
+    // Uploading a header picture leaves the background setting as it was.
+    expect($header)->not->toBe($background)
+        ->and(surveyForm()->background_image)->toBe($background)
+        ->and(surveyForm()->hide_background)->toBeTrue();
+
+    $this->get(route('public-forms.show', 'ld-survey-2026'))
+        ->assertInertia(fn ($page) => $page
+            ->where('backgroundUrl', null)
+            ->where('headerImageUrl', Storage::disk('public')->url($header))
+        );
+
+    // Going back to the site-default background keeps the header picture.
+    $this->actingAs($admin)->delete(route('public-forms.admin.background.destroy', 'ld-survey-2026'));
+    expect(surveyForm()->header_image)->toBe($header);
+    Storage::disk('public')->assertExists($header);
+
+    // Removing the header picture keeps a custom background.
+    $this->actingAs($admin)
+        ->post(route('public-forms.admin.background.upload', 'ld-survey-2026'), ['image' => UploadedFile::fake()->image('bg2.jpg')]);
+    $background = surveyForm()->background_image;
+
+    $this->actingAs($admin)->delete(route('public-forms.admin.header-image.destroy', 'ld-survey-2026'));
+    expect(surveyForm()->background_image)->toBe($background);
+    Storage::disk('public')->assertExists($background);
+});
+
+test('only JPG, PNG or WebP pictures up to 5 MB are accepted as header pictures', function (?UploadedFile $file) {
+    Storage::fake('public');
+
+    $this->actingAs(publicFormAdmin())
+        ->post(route('public-forms.admin.header-image.upload', 'ld-survey-2026'), ['image' => $file])
+        ->assertSessionHasErrors('image');
+
+    expect(surveyForm()->header_image)->toBeNull();
+    expect(Storage::disk('public')->allFiles())->toBe([]);
+})->with([
+    'no file' => fn () => null,
+    'a PDF' => fn () => UploadedFile::fake()->create('notes.pdf', 100, 'application/pdf'),
+    'a GIF' => fn () => UploadedFile::fake()->image('animation.gif'),
+    'larger than 5 MB' => fn () => UploadedFile::fake()->image('huge.jpg')->size(6000),
+]);
+
+test('a failed header picture upload keeps the current one', function () {
+    Storage::fake('public');
+    $admin = publicFormAdmin();
+
+    $this->actingAs($admin)
+        ->post(route('public-forms.admin.header-image.upload', 'ld-survey-2026'), ['image' => UploadedFile::fake()->image('banner.jpg', 1600, 500)]);
+    $current = surveyForm()->header_image;
+
+    $this->actingAs($admin)
+        ->post(route('public-forms.admin.header-image.upload', 'ld-survey-2026'), ['image' => UploadedFile::fake()->image('animation.gif')])
+        ->assertSessionHasErrors('image');
+
+    expect(surveyForm()->header_image)->toBe($current);
+    Storage::disk('public')->assertExists($current);
+});
+
 test('a form without responses can be deleted with its sections and questions', function () {
     Storage::fake('public');
-    $form = PublicForm::factory()->withQuestions()->create(['background_image' => 'public-form-backgrounds/old.jpg']);
+    $form = PublicForm::factory()->withQuestions()->withBackground('public-form-backgrounds/old.jpg')->withHeaderImage('public-form-headers/old.jpg')->create();
     Storage::disk('public')->put('public-form-backgrounds/old.jpg', 'picture');
+    Storage::disk('public')->put('public-form-headers/old.jpg', 'picture');
 
     $this->actingAs(publicFormAdmin())
         ->delete(route('public-forms.admin.destroy', $form->slug))
@@ -448,6 +582,7 @@ test('a form without responses can be deleted with its sections and questions', 
         ->and(PublicFormSection::where('public_form_id', $form->id)->exists())->toBeFalse()
         ->and(PublicFormQuestion::withTrashed()->where('public_form_id', $form->id)->exists())->toBeFalse();
     Storage::disk('public')->assertMissing('public-form-backgrounds/old.jpg');
+    Storage::disk('public')->assertMissing('public-form-headers/old.jpg');
 
     $this->get(route('public-forms.show', $form->slug))->assertNotFound();
 });

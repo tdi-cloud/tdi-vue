@@ -50,6 +50,11 @@ class PublicFormFactory extends Factory
         return $this->state(fn () => ['background_image' => $path]);
     }
 
+    public function withHeaderImage(string $path = 'public-form-headers/banner.jpg'): static
+    {
+        return $this->state(fn () => ['header_image' => $path]);
+    }
+
     public function withoutBackground(): static
     {
         return $this->state(fn () => ['hide_background' => true]);

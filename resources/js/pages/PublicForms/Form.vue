@@ -48,6 +48,8 @@ const props = defineProps<{
     otherValue: string;
     /** The form's background picture; null for a plain page. */
     backgroundUrl: string | null;
+    /** The wide banner picture above the title (Settings → Header Banner Image); null when the form has none. */
+    headerImageUrl: string | null;
     /** Set when an admin opens the form with ?preview=1; closedReason says whether it is closed to the public. */
     preview: { closedReason: string | null } | null;
 }>();
@@ -393,6 +395,11 @@ function submit(): void {
             </span>
             <span v-else>Preview. This form is open, so anything you submit here is saved as a real response.</span>
         </p>
+
+        <!-- Header picture: its own card above the title, never behind it -->
+        <div v-if="headerImageUrl" class="overflow-hidden rounded-2xl bg-white shadow-md">
+            <img :src="headerImageUrl" alt="" decoding="async" class="block aspect-[16/5] w-full object-cover object-center" />
+        </div>
 
         <!-- Banner -->
         <div class="overflow-hidden rounded-2xl shadow-md">
