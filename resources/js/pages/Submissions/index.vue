@@ -103,12 +103,15 @@ interface PaginatedSubmissions {
 const props = defineProps<{
     submissions: PaginatedSubmissions;
     programs: ProgramRef[];
+    // One per requirement title (e.g. "REAP — Terminal Report and Re-entry Action Plan"), then "Other documents".
+    requirements: { value: string; label: string }[];
     // Distinct employee regions (REGION column) for the region filter.
     regions: string[];
     stats?: { total: number; pending: number; approved: number; rejected: number };
     filters: {
         status?: string;
         program_code?: string;
+        requirement?: string;
         region?: string;
         search?: string;
     };
@@ -126,12 +129,14 @@ const STATUSES = ['Pending', 'Approved', 'Rejected'];
 
 const search = ref(props.filters.search ?? '');
 const filterProgram = ref(props.filters.program_code || 'all');
+const filterRequirement = ref(props.filters.requirement || 'all');
 const filterRegion = ref(props.filters.region || 'all');
 const filterStatus = ref(props.filters.status || 'all');
 
 const clearFilters = () => {
     search.value = '';
     filterProgram.value = 'all';
+    filterRequirement.value = 'all';
     filterRegion.value = 'all';
     filterStatus.value = 'all';
 };
@@ -142,6 +147,7 @@ const applyFilters = () => {
         {
             search: search.value || undefined,
             program_code: filterProgram.value === 'all' ? undefined : filterProgram.value,
+            requirement: filterRequirement.value === 'all' ? undefined : filterRequirement.value,
             region: filterRegion.value === 'all' ? undefined : filterRegion.value,
             status: filterStatus.value === 'all' ? undefined : filterStatus.value,
         },
@@ -150,7 +156,7 @@ const applyFilters = () => {
 };
 
 let debounce: ReturnType<typeof setTimeout>;
-watch([search, filterProgram, filterRegion, filterStatus], () => {
+watch([search, filterProgram, filterRequirement, filterRegion, filterStatus], () => {
     clearTimeout(debounce);
     debounce = setTimeout(applyFilters, 350);
 });
@@ -284,8 +290,10 @@ const approveAll = async () => {
     const programTitle = props.programs.find((p) => p.program_code === filterProgram.value)?.title;
     const scope = programTitle ? `of "${programTitle}"` : 'across all programs';
     const regionScope = filterRegion.value === 'all' ? '' : ` in ${filterRegion.value}`;
+    const requirementLabel = props.requirements.find((r) => r.value === filterRequirement.value)?.label;
+    const requirementScope = requirementLabel ? ` for "${requirementLabel}"` : '';
     const confirmed = await confirmDialog(
-        `Approve all ${count} pending submission(s) ${scope}${regionScope}${search.value ? ' that match your search' : ''}? Rejected submissions will not be changed.`,
+        `Approve all ${count} pending submission(s)${requirementScope} ${scope}${regionScope}${search.value ? ' that match your search' : ''}? Rejected submissions will not be changed.`,
         { title: 'Approve all pending submissions?', confirmText: 'Approve all' },
     );
     if (!confirmed) return;
@@ -295,6 +303,7 @@ const approveAll = async () => {
         route('submissions.approve-all'),
         {
             program_code: filterProgram.value === 'all' ? null : filterProgram.value,
+            requirement: filterRequirement.value === 'all' ? null : filterRequirement.value,
             region: filterRegion.value === 'all' ? null : filterRegion.value,
             search: search.value || null,
         },
@@ -461,10 +470,10 @@ onMounted(() => {
 
                 <!-- Filters -->
                 <div
-                    class="grid grid-cols-1 gap-2.5 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_16rem_11rem_11rem]"
+                    class="grid grid-cols-1 gap-2.5 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-[minmax(0,1fr)_15rem_15rem_10rem_10rem]"
                 >
                     <!-- Search -->
-                    <div class="relative sm:col-span-2 lg:col-span-1">
+                    <div class="relative sm:col-span-2 lg:col-span-4 xl:col-span-1">
                         <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
                             v-model="search"
@@ -483,6 +492,19 @@ onMounted(() => {
                             <SelectItem class="text-xs" value="all">All programs</SelectItem>
                             <SelectItem v-for="p in programs" :key="p.id" :value="p.program_code" class="text-xs">
                                 {{ p.title }}
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    <!-- Requirement filter (by title, across every program and batch) -->
+                    <Select v-model="filterRequirement">
+                        <SelectTrigger class="h-10 w-full min-w-0 text-sm" aria-label="Filter by requirement">
+                            <SelectValue placeholder="All requirements" class="truncate" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem class="text-xs" value="all">All requirements</SelectItem>
+                            <SelectItem v-for="r in requirements" :key="r.value" :value="r.value" class="text-xs">
+                                {{ r.label }}
                             </SelectItem>
                         </SelectContent>
                     </Select>
@@ -545,10 +567,10 @@ onMounted(() => {
                     @clear-filters="clearFilters"
                 />
                 <EmptyState
-                    v-else-if="filterProgram !== 'all' || filterRegion !== 'all' || filterStatus !== 'all'"
+                    v-else-if="filterProgram !== 'all' || filterRequirement !== 'all' || filterRegion !== 'all' || filterStatus !== 'all'"
                     variant="filtered"
                     title="No submissions found"
-                    description="Try a different program, region or status filter."
+                    description="Try a different program, requirement, region or status filter."
                     @clear-filters="clearFilters"
                 />
                 <EmptyState

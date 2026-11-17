@@ -234,3 +234,67 @@ test('region filter narrows the global submissions list to employees of one regi
     expect($response->inertiaProps('filters.region'))->toBe('Region VII');
     expect($response->inertiaProps('approvablePendingCount'))->toBe(1);
 });
+
+test('requirement filter narrows the list to one requirement title across programs, and lists every title to choose from', function () {
+    $admin = globalSubIndexAdmin('EMP-GSI-ADM-REQ1');
+    [$programA, $batchA, $treapA] = globalSubIndexSetup('Global Submissions Requirement Filter A');
+    [$programB, $batchB, $treapB] = globalSubIndexSetup('Global Submissions Requirement Filter B');
+    $reapA = Requirement::create([
+        'batch_id' => $batchA->id,
+        'title' => 'REAP',
+        'name' => Requirement::nameFor('REAP'),
+        'due_date' => now()->addWeeks(2)->toDateString(),
+        'is_required' => true,
+    ]);
+
+    globalSubIndexSubmission($programA, $batchA, $treapA, globalSubIndexEmployee('EMP-GSI-R1', 'Aquino')->EMPCODE, 'Pending');
+    globalSubIndexSubmission($programB, $batchB, $treapB, globalSubIndexEmployee('EMP-GSI-R2', 'Mendoza')->EMPCODE, 'Approved');
+    $reap = globalSubIndexSubmission($programA, $batchA, $reapA, globalSubIndexEmployee('EMP-GSI-R3', 'Ramos')->EMPCODE, 'Pending');
+
+    $treapOnly = $this->actingAs($admin)->get(route('submissions.index', ['requirement' => 'TREAP']))->assertOk();
+
+    expect(collect($treapOnly->inertiaProps('submissions')['data'])->pluck('requirement.title')->all())->toBe(['TREAP', 'TREAP'])
+        ->and($treapOnly->inertiaProps('requirements'))->toBe([
+            ['value' => 'REAP', 'label' => 'REAP — Terminal Report and Re-entry Action Plan'],
+            ['value' => 'TREAP', 'label' => 'TREAP — Terminal Report'],
+            ['value' => '__other__', 'label' => 'Other documents (no requirement)'],
+        ]);
+
+    $reapOnly = $this->actingAs($admin)->get(route('submissions.index', ['requirement' => 'REAP']))->assertOk();
+
+    expect(collect($reapOnly->inertiaProps('submissions')['data'])->pluck('id')->all())->toBe([$reap->id])
+        ->and($reapOnly->inertiaProps('filters.requirement'))->toBe('REAP');
+});
+
+test('the requirement filter keeps submissions of a deleted requirement under its title, and "Other documents" shows those sent without one', function () {
+    $admin = globalSubIndexAdmin('EMP-GSI-ADM-REQ2');
+    [$programA, $batchA, $treapA] = globalSubIndexSetup('Global Submissions Requirement Kept A');
+    [$programB, $batchB, $treapB] = globalSubIndexSetup('Global Submissions Requirement Kept B');
+
+    $live = globalSubIndexSubmission($programA, $batchA, $treapA, globalSubIndexEmployee('EMP-GSI-K1', 'Lopez')->EMPCODE, 'Pending');
+    $kept = globalSubIndexSubmission($programB, $batchB, $treapB, globalSubIndexEmployee('EMP-GSI-K2', 'Navarro')->EMPCODE, 'Pending');
+    $treapB->delete();
+
+    $otherParticipant = Participant::create([
+        'sort_order' => 2, 'batch_id' => $batchA->id, 'empcode' => globalSubIndexEmployee('EMP-GSI-K3', 'Pascual')->EMPCODE,
+        'attendance' => 'Complete', 'hours' => 16, 'added_by' => 'system',
+    ]);
+    $otherDocument = Submission::create([
+        'participant_id' => $otherParticipant->id,
+        'program_code' => $programA->program_code,
+        'batch_id' => $batchA->id,
+        'requirement_id' => null,
+        'document_title' => 'Certificate of Completion',
+        'status' => 'Pending',
+        'file_path' => 'submissions/certificate.pdf',
+        'submitted_at' => now(),
+    ]);
+
+    expect($kept->fresh()->requirement_id)->toBeNull();
+
+    $treap = $this->actingAs($admin)->get(route('submissions.index', ['requirement' => 'TREAP']));
+    expect(collect($treap->inertiaProps('submissions')['data'])->pluck('id')->sort()->values()->all())->toBe(collect([$live->id, $kept->id])->sort()->values()->all());
+
+    $other = $this->actingAs($admin)->get(route('submissions.index', ['requirement' => '__other__']));
+    expect(collect($other->inertiaProps('submissions')['data'])->pluck('id')->all())->toBe([$otherDocument->id]);
+});

@@ -139,7 +139,7 @@ test('the responses page lists the answers in words, newest first, and can be se
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('PublicForms/Admin/Show')
-            ->where('initialTab', 'responses')
+            ->where('initialTab', 'dashboard')
             ->where('stats.total', 2)
             ->where('stats.emails_not_sent', 1)
             ->has('editor.sections', 3)

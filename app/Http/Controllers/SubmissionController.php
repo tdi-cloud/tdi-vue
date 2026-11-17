@@ -19,6 +19,9 @@ use Inertia\Inertia;
 
 class SubmissionController extends Controller
 {
+    /** Requirement filter value for documents sent without a requirement. */
+    public const OTHER_DOCUMENTS = '__other__';
+
     // GET /submissions
     // Global na "inbox" ng lahat ng requirement submissions, lintas sa lahat
     // ng program — hindi tulad ng per-program na Submissions tab (ProgramController@show).
@@ -34,8 +37,9 @@ class SubmissionController extends Controller
         return Inertia::render('Submissions/index', [
             'submissions' => $submissions,
             'programs' => Program::orderBy('title')->get(['id', 'program_code', 'title']),
+            'requirements' => $this->requirementFilterOptions(),
             'regions' => Employee::query()->whereNotNull('REGION')->distinct()->orderBy('REGION')->pluck('REGION'),
-            'filters' => $request->only(['status', 'program_code', 'region', 'search']),
+            'filters' => $request->only(['status', 'program_code', 'requirement', 'region', 'search']),
             'suggestion' => SearchSuggester::forEmptyResults(
                 $request->string('search'),
                 $submissions->total(),
@@ -216,12 +220,13 @@ class SubmissionController extends Controller
      * POST /submissions/approve-all (superadmins only)
      *
      * Approves every Pending submission across all programs, narrowed by the
-     * same program/region/search filters the global Submissions page is showing.
+     * same program/requirement/region/search filters the global Submissions page is showing.
      */
     public function approveAll(Request $request): RedirectResponse
     {
         $request->validate([
             'program_code' => 'nullable|string',
+            'requirement' => 'nullable|string',
             'region' => 'nullable|string',
             'search' => 'nullable|string',
         ]);
@@ -246,6 +251,7 @@ class SubmissionController extends Controller
     {
         return $query
             ->when($request->filled('program_code'), fn ($q) => $q->where('program_code', $request->program_code))
+            ->when($request->filled('requirement'), fn ($q) => $this->whereRequirement($q, $request->string('requirement')->toString()))
             ->when($request->filled('region'), fn ($q) => $q->whereHas('participant.employee', fn ($e) => $e->where('REGION', $request->string('region'))))
             ->when($request->filled('search'), function ($q) use ($request) {
                 $search = $request->string('search');
@@ -258,6 +264,54 @@ class SubmissionController extends Controller
                         ->orWhere('document_title', 'like', "%{$search}%");
                 });
             });
+    }
+
+    /**
+     * Submissions for one requirement title (e.g. "REAP", in any program or
+     * batch), including those whose requirement was deleted since: they keep
+     * its title in document_title. OTHER_DOCUMENTS means documents sent
+     * without a requirement.
+     *
+     * @param  Builder<Submission>  $query
+     * @return Builder<Submission>
+     */
+    private function whereRequirement(Builder $query, string $title): Builder
+    {
+        if ($title === self::OTHER_DOCUMENTS) {
+            return $query->whereNull('requirement_id')->where(fn (Builder $other) => $other
+                ->whereNull('document_title')
+                ->orWhereNotIn('document_title', Requirement::query()->whereNotNull('title')->select('title')));
+        }
+
+        return $query->where(fn (Builder $match) => $match
+            ->whereHas('requirement', fn (Builder $requirement) => $requirement->where('title', $title))
+            ->orWhere(fn (Builder $kept) => $kept->whereNull('requirement_id')->where('document_title', $title)));
+    }
+
+    /**
+     * The requirement filter's choices: one per requirement title, e.g.
+     * "REAP — Terminal Report and Re-entry Action Plan", then "Other documents".
+     *
+     * @return list<array{value: string, label: string}>
+     */
+    private function requirementFilterOptions(): array
+    {
+        return Requirement::query()
+            ->selectRaw('title, MIN(name) as name')
+            ->whereNotNull('title')
+            ->where('title', '<>', '')
+            ->groupBy('title')
+            ->orderBy('title')
+            ->get()
+            ->map(fn (Requirement $requirement) => [
+                'value' => $requirement->title,
+                'label' => filled($requirement->name) && $requirement->name !== $requirement->title
+                    ? "{$requirement->title} — {$requirement->name}"
+                    : $requirement->title,
+            ])
+            ->push(['value' => self::OTHER_DOCUMENTS, 'label' => 'Other documents (no requirement)'])
+            ->values()
+            ->all();
     }
 
     /**

@@ -47,7 +47,7 @@ onMounted(() => {
                     alt="TESDA Development Institute"
                     class="h-7 w-7 object-contain"
                 />
-                <span class="text-sm font-semibold text-gray-100">TESDA Development Institute</span>
+                <span class="text-sm font-semibold text-white">TESDA Development Institute</span>
             </footer>
         </div>
     </div>

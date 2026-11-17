@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
 import FormQuestionsEditor from '@/components/public-forms/admin/FormQuestionsEditor.vue';
+import FormDashboard from '@/components/public-forms/dashboard/FormDashboard.vue';
 import PublicLinkField from '@/components/public-forms/PublicLinkField.vue';
 import SearchEmptyState from '@/components/SearchEmptyState.vue';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useConfirm } from '@/composables/useConfirm';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { type EditorData, type PublicFormSummary, type ReadableAnswer, type SurveySection } from '@/lib/publicForms';
+import { type EditorData, type FormDashboardData, type PublicFormSummary, type ReadableAnswer, type SurveySection } from '@/lib/publicForms';
 import { registrationTheme } from '@/lib/registrationThemes';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
@@ -21,6 +22,7 @@ import {
     Eye,
     Image as ImageIcon,
     Inbox,
+    LayoutDashboard,
     ListChecks,
     LoaderCircle,
     MailWarning,
@@ -65,7 +67,7 @@ interface ResponseRow {
     answers: ReadableAnswer[];
 }
 
-type Tab = 'responses' | 'questions' | 'settings';
+type Tab = 'dashboard' | 'responses' | 'questions' | 'settings';
 
 const props = defineProps<{
     form: AdminPublicForm;
@@ -82,6 +84,8 @@ const props = defineProps<{
     stats: { total: number; emails_not_sent: number };
     /** The site-wide default background (Homepage Images). */
     defaultBackgroundUrl: string;
+    /** Deferred: loads right after the page, so it is undefined at first. */
+    dashboard?: FormDashboardData;
     initialTab: Tab;
 }>();
 
@@ -99,10 +103,17 @@ const { confirmDialog } = useConfirm();
 const tab = ref<Tab>(props.initialTab);
 
 const TABS = computed<{ value: Tab; label: string; count?: number; icon: typeof Inbox }[]>(() => [
+    { value: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { value: 'responses', label: 'Responses', count: props.stats.total, icon: Inbox },
     { value: 'questions', label: 'Questions', count: props.form.question_count, icon: ListChecks },
     { value: 'settings', label: 'Settings', icon: Settings2 },
 ]);
+
+/** From the dashboard's "See all in Responses". */
+function showResponses(): void {
+    tab.value = 'responses';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
 /* ── Title and description (like the registration form's) ──────────────────── */
 
@@ -389,7 +400,9 @@ async function deleteResponse(response: ResponseRow): Promise<void> {
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex flex-1 flex-col gap-5 p-4">
             <!-- Header -->
-            <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-800 via-blue-700 to-sky-600 p-6 text-white shadow-xl">
+            <div
+                class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-800 via-blue-700 to-sky-600 p-6 text-white shadow-xl print:hidden"
+            >
                 <div class="pointer-events-none absolute inset-0 overflow-hidden">
                     <div class="absolute -right-8 -top-8 h-48 w-48 rounded-full bg-white/5" />
                 </div>
@@ -421,8 +434,8 @@ async function deleteResponse(response: ResponseRow): Promise<void> {
             </div>
 
             <!-- Tabs -->
-            <div class="flex flex-wrap items-center justify-between gap-2 border-b">
-                <div class="flex gap-1" role="tablist" aria-label="Form sections">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b print:hidden">
+                <div class="flex flex-wrap gap-1" role="tablist" aria-label="Form sections">
                     <button
                         v-for="item in TABS"
                         :key="item.value"
@@ -446,6 +459,9 @@ async function deleteResponse(response: ResponseRow): Promise<void> {
                     <a :href="form.preview_url" target="_blank" rel="noopener"><Eye class="mr-1 h-3.5 w-3.5" /> Preview form</a>
                 </Button>
             </div>
+
+            <!-- Dashboard: the summary of every response -->
+            <FormDashboard v-if="tab === 'dashboard'" :form="form" :dashboard="dashboard" @show-responses="showResponses" />
 
             <!-- Questions -->
             <FormQuestionsEditor

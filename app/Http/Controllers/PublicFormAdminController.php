@@ -9,6 +9,7 @@ use App\Models\PublicFormSection;
 use App\Models\SiteImage;
 use App\Support\FlashMessage;
 use App\Support\LiteMode;
+use App\Support\PublicForms\PublicFormDashboard;
 use App\Support\PublicForms\PublicFormDefinition;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,7 +31,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class PublicFormAdminController extends Controller
 {
-    public const TABS = ['responses', 'questions', 'settings'];
+    public const TABS = ['dashboard', 'responses', 'questions', 'settings'];
 
     // GET /public-forms
     public function index(): Response
@@ -156,6 +157,7 @@ class PublicFormAdminController extends Controller
 
         $total = PublicFormResponse::where('form_slug', $slug)->count();
         $tab = $request->query('tab');
+        $dashboardFilters = $this->dashboardFilters($request);
 
         return Inertia::render('PublicForms/Admin/Show', [
             'form' => $this->formData($form, count($definition->questions())),
@@ -168,7 +170,9 @@ class PublicFormAdminController extends Controller
                 'emails_not_sent' => PublicFormResponse::where('form_slug', $slug)->whereNull('confirmation_sent_at')->count(),
             ],
             'defaultBackgroundUrl' => SiteImage::urlFor(PublicForm::DEFAULT_BACKGROUND_KEY),
-            'initialTab' => in_array($tab, self::TABS, true) ? $tab : ($total > 0 ? 'responses' : 'questions'),
+            // Loaded right after the page, so the other tabs open without waiting for it.
+            'dashboard' => Inertia::defer(fn () => (new PublicFormDashboard($form))->summary($dashboardFilters)),
+            'initialTab' => in_array($tab, self::TABS, true) ? $tab : ($total > 0 ? 'dashboard' : 'questions'),
         ]);
     }
 
@@ -452,6 +456,40 @@ class PublicFormAdminController extends Controller
             'removed_count' => PublicFormQuestion::onlyTrashed()->where('public_form_id', $form->id)->count(),
             'other_value' => PublicFormDefinition::OTHER_VALUE,
         ];
+    }
+
+    /**
+     * The Dashboard filters from the query string. A blank or malformed value
+     * (e.g. a hand-edited date) is ignored rather than refused, since this is
+     * a page link, not a form.
+     *
+     * @return array{region: string|null, office: string|null, from: string|null, to: string|null}
+     */
+    private function dashboardFilters(Request $request): array
+    {
+        $date = function (string $key) use ($request): ?string {
+            $value = trim($request->string($key)->toString());
+
+            if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $value, $parts) !== 1) {
+                return null;
+            }
+
+            return checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1]) ? $value : null;
+        };
+
+        $filters = [
+            'region' => $this->nullableText($request->string('region')->limit(100, '')->toString()),
+            'office' => $this->nullableText($request->string('office')->limit(150, '')->toString()),
+            'from' => $date('from'),
+            'to' => $date('to'),
+        ];
+
+        // A range picked backwards still means the days between the two dates.
+        if ($filters['from'] !== null && $filters['to'] !== null && $filters['from'] > $filters['to']) {
+            [$filters['from'], $filters['to']] = [$filters['to'], $filters['from']];
+        }
+
+        return $filters;
     }
 
     private function nullableText(?string $value): ?string

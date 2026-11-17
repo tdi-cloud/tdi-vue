@@ -273,3 +273,30 @@ test('the global submissions page only offers approve all to superadmins', funct
         ->get(route('submissions.index'))
         ->assertInertia(fn (Assert $page) => $page->where('canApproveAll', false));
 });
+
+test('the superadmin approve all follows the requirement filter', function () {
+    $superadmin = approveAllUser('superadmin');
+    $program = approveAllProgram('Program A');
+    [$batch, $treap] = approveAllBatch($program, 'Batch 1');
+    $reap = Requirement::create([
+        'batch_id' => $batch->id,
+        'title' => 'REAP',
+        'name' => Requirement::nameFor('REAP'),
+        'due_date' => now()->addWeeks(2)->toDateString(),
+        'is_required' => true,
+    ]);
+    $pendingTreap = approveAllSubmission($program, $batch, $treap, 'EMP-AA-Q1', 'Pending');
+    $pendingReap = approveAllSubmission($program, $batch, $reap, 'EMP-AA-Q2', 'Pending');
+
+    $this->actingAs($superadmin)
+        ->get(route('submissions.index', ['requirement' => 'REAP']))
+        ->assertInertia(fn ($page) => $page->where('approvablePendingCount', 1));
+
+    $this->actingAs($superadmin)
+        ->post(route('submissions.approve-all'), ['requirement' => 'REAP'])
+        ->assertRedirect()
+        ->assertSessionHas('success.title', '1 submission(s) approved');
+
+    expect($pendingReap->fresh()->status)->toBe('Approved');
+    expect($pendingTreap->fresh()->status)->toBe('Pending');
+});
