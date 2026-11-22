@@ -14,6 +14,8 @@ const props = withDefaults(
     defineProps<
         SidebarMenuButtonProps & {
             tooltip?: string | Component;
+            /** Also show the tooltip while the sidebar is expanded (e.g. when the label is truncated). */
+            tooltipWhenExpanded?: boolean;
         }
     >(),
     {
@@ -26,7 +28,7 @@ const props = withDefaults(
 const { isMobile, state } = useSidebar();
 
 const delegatedProps = computed(() => {
-    const { tooltip, ...delegated } = props;
+    const { tooltip, tooltipWhenExpanded, ...delegated } = props;
     return delegated;
 });
 </script>
@@ -42,7 +44,7 @@ const delegatedProps = computed(() => {
                 <slot />
             </SidebarMenuButtonChild>
         </TooltipTrigger>
-        <TooltipContent side="right" align="center" :hidden="state !== 'collapsed' || isMobile">
+        <TooltipContent side="right" align="center" :hidden="isMobile || (state !== 'collapsed' && !tooltipWhenExpanded)">
             <template v-if="typeof tooltip === 'string'">
                 {{ tooltip }}
             </template>

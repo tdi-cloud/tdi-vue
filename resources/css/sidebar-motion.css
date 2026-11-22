@@ -1,0 +1,435 @@
+/*
+ * Sidebar motion: timing tokens, keyframes and effects for AppSidebar, NavMain,
+ * AppLogo and the SidebarTrigger. Tweak durations, easings and distances here.
+ * Colors come from the sidebar theme tokens or from each item's icon color
+ * (`currentColor`), so light and dark mode both work without extra rules.
+ */
+:root {
+    --sb-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --sb-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --sb-dur-fast: 150ms; /* hover fade, press */
+    --sb-dur-icon: 380ms; /* icon micro-animations */
+    --sb-dur-pill: 350ms; /* sliding active pill */
+    --sb-dur-collapse: 250ms; /* collapse / expand */
+    --sb-dur-enter: 300ms; /* first-load stagger, per item */
+    --sb-dur-ripple: 550ms;
+    --sb-dur-sheen: 700ms;
+    --sb-stagger: 35ms; /* NavMain lowers this when there are many items */
+    --sb-nudge: 3px;
+    --sb-press-scale: 0.97;
+}
+
+/* ---------- Sliding active pill ---------- */
+
+.sb-pill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    border-radius: calc(var(--radius) - 2px);
+    background: hsl(var(--sidebar-accent));
+    background: color-mix(in srgb, currentColor 8%, hsl(var(--sidebar-accent)));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 12%, transparent);
+    /* No transition by default: the sidebar remounts on every visit and the pill must appear at once. */
+    will-change: transform;
+}
+
+.sb-pill[data-animate='true'] {
+    transition:
+        transform var(--sb-dur-pill) var(--sb-spring),
+        width var(--sb-dur-pill) var(--sb-ease-out),
+        height var(--sb-dur-pill) var(--sb-ease-out),
+        color var(--sb-dur-pill) var(--sb-ease-out),
+        opacity var(--sb-dur-fast) ease-out;
+}
+
+.sb-pill[data-visible='false'] {
+    opacity: 0;
+}
+
+.sb-pill-bar {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 3px;
+    height: 55%;
+    border-radius: 9999px;
+    background: currentColor;
+    transform: translateY(-50%);
+}
+
+/* ---------- Menu items ---------- */
+
+.sb-nav .sb-item {
+    transition:
+        width var(--sb-dur-collapse) var(--sb-ease-out),
+        height var(--sb-dur-collapse) var(--sb-ease-out),
+        padding var(--sb-dur-collapse) var(--sb-ease-out),
+        background-color var(--sb-dur-fast) ease-out,
+        color var(--sb-dur-fast) ease-out,
+        transform var(--sb-dur-fast) var(--sb-ease-out);
+}
+
+.sb-nav .sb-item:active {
+    transform: scale(var(--sb-press-scale));
+}
+
+.sb-nav .sb-icon-wrap,
+.sb-nav .sb-label {
+    transition:
+        transform var(--sb-dur-fast) var(--sb-ease-out),
+        opacity var(--sb-dur-collapse) var(--sb-ease-out);
+}
+
+.sb-nav .sb-item:is(:hover, :focus-visible) > .sb-icon-wrap,
+.sb-nav .sb-item:is(:hover, :focus-visible) > .sb-label {
+    transform: translateX(var(--sb-nudge));
+}
+
+/* Inactive icons are slightly muted; hover, focus and the active item show full color. */
+.sb-nav .sb-icon {
+    opacity: 0.7;
+    filter: saturate(0.75);
+    transition:
+        opacity var(--sb-dur-fast) ease-out,
+        filter var(--sb-dur-fast) ease-out;
+}
+
+.sb-nav .sb-item:is(:hover, :focus-visible, [data-active='true']) .sb-icon {
+    opacity: 1;
+    filter: none;
+}
+
+/* One-shot icon micro-animations: they play once each time hover (or keyboard focus) starts. */
+.sb-nav .sb-item:is(:hover, :focus-visible) .sb-icon {
+    animation: sb-icon-scale var(--sb-dur-icon) var(--sb-ease-out);
+}
+.sb-nav .sb-item:is(:hover, :focus-visible) .sb-icon[data-motion='rotate'] {
+    animation-name: sb-icon-rotate;
+}
+.sb-nav .sb-item:is(:hover, :focus-visible) .sb-icon[data-motion='bounce'] {
+    animation-name: sb-icon-bounce;
+}
+.sb-nav .sb-item:is(:hover, :focus-visible) .sb-icon[data-motion='flip'] {
+    animation-name: sb-icon-flip;
+}
+.sb-nav .sb-item:is(:hover, :focus-visible) .sb-icon[data-motion='drop'] {
+    animation-name: sb-icon-drop;
+}
+.sb-nav .sb-item:is(:hover, :focus-visible) .sb-icon[data-motion='pulse'] {
+    animation-name: sb-icon-pulse;
+}
+.sb-nav .sb-item:is(:hover, :focus-visible) .sb-icon[data-motion='pop'] {
+    animation: sb-icon-pop var(--sb-dur-icon) var(--sb-spring);
+}
+.sb-nav .sb-item:is(:hover, :focus-visible) .sb-icon[data-motion='swing'] {
+    animation-name: sb-icon-swing;
+}
+.sb-nav .sb-item:is(:hover, :focus-visible) .sb-icon[data-motion='spin'] {
+    animation-duration: 500ms;
+    animation-name: sb-icon-spin;
+}
+.sb-nav .sb-item:is(:hover, :focus-visible) .sb-icon[data-motion='wiggle'] {
+    animation-name: sb-icon-wiggle;
+}
+
+/* Effects layer (spotlight + ripples) sits behind the icon and label. */
+.sb-fx {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+.sb-fx::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    background: radial-gradient(7rem circle at var(--sb-x, 50%) var(--sb-y, 50%), color-mix(in srgb, currentColor 16%, transparent), transparent 70%);
+    transition: opacity var(--sb-dur-fast) ease-out;
+}
+
+.sb-nav[data-sb-spotlight='true'] .sb-item:hover .sb-fx::before {
+    opacity: 1;
+}
+
+.sb-ripple {
+    position: absolute;
+    border-radius: 9999px;
+    background: currentColor;
+    pointer-events: none;
+    animation: sb-ripple var(--sb-dur-ripple) var(--sb-ease-out) forwards;
+}
+
+/* ---------- Group labels ---------- */
+
+.sb-nav .sb-group-label {
+    position: relative;
+    transition:
+        height var(--sb-dur-collapse) var(--sb-ease-out),
+        margin var(--sb-dur-collapse) var(--sb-ease-out);
+}
+
+.sb-nav .sb-group-text {
+    display: inline-block;
+    transition:
+        opacity var(--sb-dur-collapse) var(--sb-ease-out),
+        transform var(--sb-dur-collapse) var(--sb-ease-out);
+}
+
+/* Thin divider the label turns into when the sidebar is collapsed to icons. */
+.sb-nav .sb-group-label::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 0.375rem;
+    left: 0.375rem;
+    height: 1px;
+    background: hsl(var(--sidebar-foreground) / 0.18);
+    opacity: 0;
+    transform: scaleX(0);
+    transition:
+        opacity var(--sb-dur-collapse) var(--sb-ease-out),
+        transform var(--sb-dur-collapse) var(--sb-ease-out);
+}
+
+/* ---------- Collapsed (icon-only) sidebar ---------- */
+
+[data-collapsible='icon'] .sb-nav .sb-item > .sb-icon-wrap {
+    transform: none;
+}
+
+[data-collapsible='icon'] .sb-nav .sb-item > .sb-label,
+[data-collapsible='icon'] .sb-nav .sb-group-text {
+    opacity: 0;
+    transform: translateX(-8px);
+}
+
+[data-collapsible='icon'] .sb-nav .sb-group-label:not([data-first])::after {
+    opacity: 1;
+    transform: scaleX(1);
+}
+
+/* ---------- First-load stagger ---------- */
+
+.sb-enter {
+    animation: sb-enter var(--sb-dur-enter) var(--sb-ease-out) backwards;
+    animation-delay: calc(var(--sb-i, 0) * var(--sb-stagger));
+}
+
+.sb-pill.sb-fade-in {
+    animation: sb-fade-in var(--sb-dur-enter) var(--sb-ease-out) backwards;
+    animation-delay: calc(var(--sb-i, 0) * var(--sb-stagger));
+}
+
+/* ---------- Logo sheen ---------- */
+
+.sb-sheen {
+    position: relative;
+    overflow: hidden;
+}
+
+.sb-sheen::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(115deg, transparent 30%, hsl(var(--sidebar-primary-foreground) / 0.5) 50%, transparent 70%);
+    transform: translateX(-110%);
+    pointer-events: none;
+}
+
+.sb-logo-link:hover .sb-sheen::after,
+.sb-sheen:hover::after {
+    animation: sb-sheen var(--sb-dur-sheen) var(--sb-ease-out);
+}
+
+/* ---------- SidebarTrigger icon swap ---------- */
+
+.sb-trigger-icon {
+    grid-area: 1 / 1;
+    transition:
+        opacity var(--sb-dur-collapse) var(--sb-ease-out),
+        transform var(--sb-dur-collapse) var(--sb-spring);
+}
+
+.sb-trigger-icon[data-visible='false'] {
+    opacity: 0;
+    transform: rotate(-90deg) scale(0.6);
+}
+
+/* ---------- Thin scrollbar, only visible on hover ---------- */
+
+.sb-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+}
+
+.sb-scroll:hover {
+    scrollbar-color: hsl(var(--sidebar-foreground) / 0.25) transparent;
+}
+
+.sb-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sb-scroll::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background: transparent;
+}
+
+.sb-scroll:hover::-webkit-scrollbar-thumb {
+    background: hsl(var(--sidebar-foreground) / 0.25);
+}
+
+/* ---------- Keyframes ---------- */
+
+@keyframes sb-enter {
+    from {
+        opacity: 0;
+        transform: translateX(-12px);
+    }
+}
+
+@keyframes sb-fade-in {
+    from {
+        opacity: 0;
+    }
+}
+
+@keyframes sb-ripple {
+    from {
+        opacity: 0.2;
+        transform: scale(0);
+    }
+    to {
+        opacity: 0;
+        transform: scale(1);
+    }
+}
+
+@keyframes sb-sheen {
+    from {
+        transform: translateX(-110%);
+    }
+    to {
+        transform: translateX(110%);
+    }
+}
+
+@keyframes sb-icon-scale {
+    50% {
+        transform: scale(1.15);
+    }
+}
+
+@keyframes sb-icon-rotate {
+    40% {
+        transform: rotate(-18deg);
+    }
+    75% {
+        transform: rotate(6deg);
+    }
+}
+
+@keyframes sb-icon-bounce {
+    30% {
+        transform: translateY(-3px);
+    }
+    55% {
+        transform: translateY(0);
+    }
+    75% {
+        transform: translateY(-1px);
+    }
+}
+
+@keyframes sb-icon-flip {
+    45% {
+        transform: perspective(40px) rotateX(35deg);
+    }
+    80% {
+        transform: perspective(40px) rotateX(-8deg);
+    }
+}
+
+@keyframes sb-icon-drop {
+    35% {
+        transform: translateY(3px);
+    }
+    70% {
+        transform: translateY(-1px);
+    }
+}
+
+@keyframes sb-icon-pulse {
+    35% {
+        transform: scale(1.2);
+    }
+    70% {
+        transform: scale(0.94);
+    }
+}
+
+@keyframes sb-icon-pop {
+    45% {
+        transform: scale(1.25);
+    }
+}
+
+@keyframes sb-icon-swing {
+    25% {
+        transform: rotate(-16deg);
+    }
+    55% {
+        transform: rotate(10deg);
+    }
+    80% {
+        transform: rotate(-4deg);
+    }
+}
+
+@keyframes sb-icon-spin {
+    to {
+        transform: rotateY(360deg);
+    }
+}
+
+@keyframes sb-icon-wiggle {
+    20% {
+        transform: rotate(-9deg);
+    }
+    45% {
+        transform: rotate(8deg);
+    }
+    70% {
+        transform: rotate(-4deg);
+    }
+}
+
+/* ---------- Reduced motion: no movement, keep simple color/opacity changes ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --sb-nudge: 0px;
+        --sb-press-scale: 1;
+        --sb-dur-collapse: 0ms;
+        --sb-dur-pill: 0ms;
+    }
+
+    .sb-nav .sb-icon,
+    .sb-enter,
+    .sb-pill,
+    .sb-ripple,
+    .sb-sheen::after {
+        animation: none !important;
+    }
+
+    [data-collapsible='icon'] .sb-nav .sb-item > .sb-label,
+    [data-collapsible='icon'] .sb-nav .sb-group-text,
+    .sb-trigger-icon[data-visible='false'] {
+        transform: none;
+    }
+}

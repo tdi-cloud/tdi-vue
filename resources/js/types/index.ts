@@ -16,6 +16,19 @@ export interface NavItem {
     isActive?: boolean;
 }
 
+/** One-shot icon animation a sidebar item plays on hover; items without one get a small scale pop. */
+export type SidebarIconMotion = 'rotate' | 'bounce' | 'flip' | 'drop' | 'pulse' | 'pop' | 'swing' | 'spin' | 'wiggle';
+
+export interface SidebarNavItem {
+    title: string;
+    url: string;
+    icon: LucideIcon;
+    /** Tailwind text color class for the icon, e.g. `text-indigo-600`. */
+    color?: string;
+    group?: string;
+    motion?: SidebarIconMotion;
+}
+
 export interface SharedData {
     name: string;
     quote: { message: string; author: string };

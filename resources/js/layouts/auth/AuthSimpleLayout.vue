@@ -1,11 +1,14 @@
 <script setup lang="ts">
+import { cn } from '@/lib/utils';
 import type { SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, ref, type HTMLAttributes } from 'vue';
 
 defineProps<{
     title?: string;
     description?: string;
+    /** Extra classes for the card, merged last so they win (e.g. the green success border on the OTP page). */
+    cardClass?: HTMLAttributes['class'];
 }>();
 
 const logoFailed = ref(false);
@@ -65,11 +68,14 @@ const backgroundImage = computed(() => page.props.authBackground);
                 </div>
 
                 <div
-                    class="rounded-2xl border p-8 shadow-2xl backdrop-blur-xl"
                     :class="
-                        backgroundImage
-                            ? 'border-blue-200/30 bg-gradient-to-br from-blue-400/20 via-blue-500/10 to-blue-900/25 shadow-black/20'
-                            : 'border-blue-100 bg-white/80 shadow-blue-900/5'
+                        cn(
+                            'rounded-2xl border p-8 shadow-2xl backdrop-blur-xl',
+                            backgroundImage
+                                ? 'border-blue-200/30 bg-gradient-to-br from-blue-400/20 via-blue-500/10 to-blue-900/25 shadow-black/20'
+                                : 'border-blue-100 bg-white/80 shadow-blue-900/5',
+                            cardClass,
+                        )
                     "
                 >
                     <div class="mb-6 space-y-1 text-center">

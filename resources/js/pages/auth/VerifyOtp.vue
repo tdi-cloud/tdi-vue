@@ -1,109 +1,46 @@
 <script setup lang="ts">
-import SubmitButton from '@/components/SubmitButton.vue';
-import { Input } from '@/components/ui/input';
+import OtpVerify from '@/components/OtpVerify.vue';
+import { updateTheme } from '@/composables/useAppearance';
 import AuthBase from '@/layouts/AuthLayout.vue';
-import { Head, useForm } from '@inertiajs/vue3';
-import { Mail } from 'lucide-vue-next';
-import { onMounted, ref } from 'vue';
+import type { SharedData } from '@/types';
+import { Head, router, usePage } from '@inertiajs/vue3';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
-const props = defineProps<{ email: string }>();
+defineProps<{
+    email: string;
+    resendAvailableIn: number;
+}>();
 
-const form = useForm({
-    email: props.email,
-    otp: '',
-});
-
-const digits = ref(['', '', '', '', '', '']);
-const inputs = ref<HTMLInputElement[]>([]);
-
-const updateOtp = () => {
-    form.otp = digits.value.join('');
-};
-
-const onInput = (index: number) => {
-    updateOtp();
-    if (digits.value[index] && index < 5) {
-        inputs.value[index + 1]?.focus();
-    }
-};
-
-const onKeydown = (index: number, e: KeyboardEvent) => {
-    if (e.key === 'Backspace' && !digits.value[index] && index > 0) {
-        inputs.value[index - 1]?.focus();
-    }
-};
-
-const onPaste = (e: ClipboardEvent) => {
-    const pasted = e.clipboardData?.getData('text').trim().slice(0, 6) ?? '';
-    if (/^\d{6}$/.test(pasted)) {
-        digits.value = pasted.split('');
-        updateOtp();
-        inputs.value[5]?.focus();
-        e.preventDefault();
-    }
-};
-
-const submit = () => {
-    form.post(route('register'));
-};
-
+// ── Force light mode on the OTP page ────────────────────────────────────────
 onMounted(() => {
-    inputs.value[0]?.focus();
+    document.documentElement.classList.remove('dark');
 });
+
+onBeforeUnmount(() => {
+    updateTheme((localStorage.getItem('appearance') as 'light' | 'dark' | 'system' | null) || 'system');
+});
+
+const page = usePage<SharedData>();
+const isCelebrating = ref(false);
+
+// The layout card's border and outer glow turn green once the code is accepted.
+const cardClass = computed(() => [
+    'transition-[border-color,box-shadow] duration-300',
+    isCelebrating.value &&
+        (page.props.authBackground
+            ? 'border-green-400/70 shadow-[0_0_48px_-4px] shadow-green-400/50'
+            : 'border-green-600/60 shadow-[0_0_40px_-6px] shadow-green-600/30'),
+]);
+
+const goToRedirect = (url: string) => {
+    router.visit(url);
+};
 </script>
 
 <template>
-    <AuthBase title="" description="">
+    <AuthBase title="" description="" :card-class="cardClass">
         <Head title="Verify OTP" />
 
-        <div class="flex flex-col items-center gap-6">
-            <!-- Icon -->
-            <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50">
-                <Mail class="h-8 w-8 text-blue-500" />
-            </div>
-
-            <!-- Heading -->
-            <div class="text-center">
-                <h1 class="text-2xl font-bold text-white drop-shadow">Verify Your Email</h1>
-                <p class="mt-1 text-sm text-white/80 drop-shadow">
-                    Enter the OTP sent to <strong>{{ email }}</strong>
-                </p>
-            </div>
-
-            <form @submit.prevent="submit" class="flex w-full flex-col items-center gap-6">
-                <!-- 6-digit inputs -->
-                <div class="flex w-full flex-col items-center gap-2">
-                    <label class="text-xs font-semibold uppercase tracking-widest text-white/80 drop-shadow"> One-Time Password </label>
-                    <div class="flex gap-3" @paste="onPaste">
-                        <Input
-                            v-for="(_, i) in digits"
-                            :key="i"
-                            :ref="
-                                (el) => {
-                                    if (el) inputs[i] = (el as any).$el ?? el;
-                                }
-                            "
-                            type="text"
-                            inputmode="numeric"
-                            maxlength="1"
-                            v-model="digits[i]"
-                            @input="onInput(i)"
-                            @keydown="onKeydown(i, $event)"
-                            class="h-14 w-12 text-center text-xl font-bold tracking-widest"
-                        />
-                    </div>
-                    <p v-if="form.errors.otp" class="text-sm text-destructive">{{ form.errors.otp }}</p>
-                </div>
-
-                <SubmitButton
-                    class="w-full bg-gradient-to-b from-blue-700 to-blue-900 font-extrabold shadow-md shadow-blue-900/20 hover:brightness-110"
-                    :processing="form.processing"
-                    processing-label="Verifying…"
-                    :disabled="form.otp.length < 6"
-                >
-                    Verify OTP
-                </SubmitButton>
-            </form>
-        </div>
+        <OtpVerify :email="email" :resend-available-in="resendAvailableIn" @celebrating="isCelebrating = $event" @verified="goToRedirect" />
     </AuthBase>
 </template>

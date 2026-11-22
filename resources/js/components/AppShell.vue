@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { onMounted, ref } from 'vue';
+import { ref } from 'vue';
 
 interface Props {
     variant?: 'header' | 'sidebar';
@@ -8,11 +8,20 @@ interface Props {
 
 defineProps<Props>();
 
-const isOpen = ref(true);
+/**
+ * Read synchronously (not in onMounted): the layout remounts on every Inertia visit,
+ * and starting open would make a collapsed sidebar animate closed again each time.
+ */
+function readStoredOpenState(): boolean {
+    try {
+        return localStorage.getItem('sidebar') !== 'false';
+    } catch {
+        // Storage blocked: fall back to the default open sidebar.
+        return true;
+    }
+}
 
-onMounted(() => {
-    isOpen.value = localStorage.getItem('sidebar') !== 'false';
-});
+const isOpen = ref(readStoredOpenState());
 
 const handleSidebarChange = (open: boolean) => {
     isOpen.value = open;
